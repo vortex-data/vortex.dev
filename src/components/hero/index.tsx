@@ -89,7 +89,7 @@ void main() {
     const camera = new Camera(gl, { near: 0.1, far: 100 });
     camera.position.set(2.2, 2.2, 2.2);
     camera.lookAt(new Vec3(0, 0, 0));
-    renderer.setSize(window.innerWidth, window.innerHeight - 264);
+    renderer.setSize(window.innerWidth, window.innerHeight - 240);
     const resize = () => {
       camera.perspective({ aspect: gl.canvas.width / gl.canvas.height });
     };
