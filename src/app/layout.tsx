@@ -31,7 +31,7 @@ export default async function RootLayout({
       >
         <Header />
         <main className="w-full h-auto mx-auto">
-          <div className="flex flex-col mx-auto max-w-[1920px] relative justify-center items-center overflow-clip">
+          <div className="flex flex-col mx-auto relative justify-center items-center overflow-clip">
             {children}
           </div>
         </main>
