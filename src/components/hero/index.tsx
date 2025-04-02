@@ -11,9 +11,10 @@ import {
   Vec3
 } from "ogl";
 import { useEffect, useRef } from "react";
+import { Overlay } from "../overlay";
 
-const DESKTOP_HEIGHT = 240;
-const MOBILE_HEIGHT = 340;
+const DESKTOP_HEIGHT = 256;
+const MOBILE_HEIGHT = 356;
 
 export const HeroASCII = () => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -235,9 +236,12 @@ void main() {
   }, []);
 
   return (
-    <div
-      ref={containerRef}
-      className="w-[calc(100%-2rem)] mx-4 h-full overflow-clip"
-    ></div>
+    <div className="w-full h-full overflow-clip">
+      <div
+        ref={containerRef}
+        className="w-[calc(100%-2rem)] mx-4 h-full overflow-clip"
+      ></div>
+      <Overlay />
+    </div>
   );
 };

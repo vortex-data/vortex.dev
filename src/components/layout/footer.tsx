@@ -4,7 +4,7 @@ import Link from "next/link";
 
 export const Footer = () => {
   return (
-    <div className="flex flex-col-reverse md:flex-row justify-between items-center m-4 mt-2 dashed-top dashed-bottom after:hidden md:after:block md:h-[84px]">
+    <div className="flex flex-col-reverse md:flex-row justify-between items-center m-4 dashed-top dashed-bottom after:hidden md:after:block md:h-[84px]">
       <div className="flex items-center gap-4 dashed-right after:hidden lg:after:block h-full pl-2 lg:px-10 py-8 pb-4 md:py-0">
         <span className="text-sm font-mono text-white">
           © {new Date().getFullYear()} All rights reserved.
