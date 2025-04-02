@@ -21,7 +21,7 @@ const MOBILE_HEIGHT = 260;
 const DESKTOP_CAMERA_POSITION = new Vec3(8, -4, 15);
 const MOBILE_CAMERA_POSITION = new Vec3(14, -10, 21);
 
-const MODEL_POSITION = new Vec3(0, 0, 0);
+const MODEL_POSITION = new Vec3(-0.3, 0, 0);
 
 export const HeroASCIINotFound = () => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -110,7 +110,7 @@ void main() {
     camera.position.set(
       isMobile() ? MOBILE_CAMERA_POSITION : DESKTOP_CAMERA_POSITION
     );
-    camera.lookAt(MODEL_POSITION);
+    camera.lookAt(new Vec3(0, 0, 0));
 
     const scene = new Transform();
     scene.position.copy(MODEL_POSITION);
