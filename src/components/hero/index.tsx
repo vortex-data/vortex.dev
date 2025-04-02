@@ -103,6 +103,7 @@ void main() {
 
     const renderer = new Renderer({ antialias: true });
     const gl = renderer.gl;
+    gl.clearColor(0.0627, 0.0627, 0.0627, 1.0);
     containerRef.current?.appendChild(gl.canvas);
     const camera = new Camera(gl, { near: 0.1, far: 100, fov: 10 });
     camera.position.set(
