@@ -144,7 +144,6 @@ void main() {
     let currentRotationY = 0;
     let currentRotationZ = 0;
     let isDragging = false;
-    let lastTouchX = 0;
 
     function onMouseMove(e: MouseEvent) {
       const x = (e.clientX / window.innerWidth) * 2 - 1;
@@ -157,7 +156,6 @@ void main() {
 
     function onTouchStart(e: TouchEvent) {
       isDragging = true;
-      lastTouchX = e.touches[0].clientX;
       // Prevent default touch behavior
       e.preventDefault();
     }
@@ -169,17 +167,14 @@ void main() {
       e.preventDefault();
 
       const touchX = e.touches[0].clientX;
+      const touchY = e.touches[0].clientY;
 
-      const deltaX = (touchX - lastTouchX) / window.innerWidth;
+      const x = (touchX / window.innerWidth) * 2 - 1;
+      const y = (touchY / window.innerHeight) * 2 - 1;
 
-      // Only update Y rotation (left/right movement)
-      targetRotationY += deltaX * MAX_TILT * 2;
-      targetRotationY = Math.max(
-        -MAX_TILT,
-        Math.min(MAX_TILT, targetRotationY)
-      );
-
-      lastTouchX = touchX;
+      targetRotationX = y * MAX_TILT;
+      targetRotationY = x * MAX_TILT;
+      targetRotationZ = -y * MAX_TILT;
     }
 
     function onTouchEnd() {
