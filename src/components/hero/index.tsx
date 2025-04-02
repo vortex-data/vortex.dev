@@ -16,6 +16,9 @@ import { Overlay } from "../overlay";
 const DESKTOP_HEIGHT = 256;
 const MOBILE_HEIGHT = 356;
 
+const DESKTOP_CAMERA_POSITION = 2.3;
+const MOBILE_CAMERA_POSITION = 2.7;
+
 export const HeroASCII = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -93,14 +96,19 @@ void main() {
   }
   fragColor = vec4(col, 1.0);
 }`;
+
+    const isMobile = () => window.innerWidth < 768;
+
     const renderer = new Renderer({ antialias: true });
     const gl = renderer.gl;
     containerRef.current?.appendChild(gl.canvas);
     const camera = new Camera(gl, { near: 0.1, far: 100 });
-    camera.position.set(2.2, 2.2, 2.2);
+    camera.position.set(
+      isMobile()
+        ? new Vec3(MOBILE_CAMERA_POSITION)
+        : new Vec3(DESKTOP_CAMERA_POSITION)
+    );
     camera.lookAt(new Vec3(0, 0, 0));
-
-    const isMobile = () => window.innerWidth < 768; // Common breakpoint for mobile
 
     const updateSize = () => {
       const height = isMobile() ? MOBILE_HEIGHT : DESKTOP_HEIGHT;
