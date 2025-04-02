@@ -246,7 +246,7 @@ void main() {
   }, []);
 
   return (
-    <div className="w-full overflow-clip h-[calc(100dvh-356px)] lg:h-[calc(100dvh-256px)]">
+    <div className="w-full overflow-clip h-[calc(100dvh-356px)] md:h-[calc(100dvh-256px)]">
       <div
         ref={containerRef}
         className="w-[calc(100%-2rem)] mx-4 h-full overflow-clip"
