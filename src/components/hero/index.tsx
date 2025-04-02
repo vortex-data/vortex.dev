@@ -1,7 +1,9 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 import {
   Box,
   Camera,
+  GLTFLoader,
   Mesh,
   Plane,
   Program,
@@ -16,14 +18,15 @@ import { Overlay } from "../overlay";
 const DESKTOP_HEIGHT = 256;
 const MOBILE_HEIGHT = 260;
 
-const DESKTOP_CAMERA_POSITION = 2.3;
-const MOBILE_CAMERA_POSITION = 2.7;
+const DESKTOP_CAMERA_POSITION = new Vec3(5, -5, 10);
+
+const MOBILE_CAMERA_POSITION = new Vec3(2, -2, 1);
 
 export const HeroASCII = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const container = containerRef.current;
-    const vertex = `#version 300 es
+    const vertex = /*glsl*/ `#version 300 es
 in vec3 position;
 in vec3 normal;
 in vec2 uv;
@@ -37,7 +40,7 @@ void main() {
   vNormal = normalize(normalMatrix * normal);
   gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
 }`;
-    const fragment = `#version 300 es
+    const fragment = /*glsl*/ `#version 300 es
 precision mediump float;
 uniform float uTime;
 in vec2 vUv;
@@ -50,7 +53,7 @@ void main() {
   // Basic white color with light intensity
   fragColor = vec4(light, light, light, 1.0);
 }`;
-    const asciiVertex = `#version 300 es
+    const asciiVertex = /*glsl*/ `#version 300 es
 in vec2 uv;
 in vec2 position;
 out vec2 vUv;
@@ -58,16 +61,16 @@ void main() {
   vUv = uv;
   gl_Position = vec4(position, 0., 1.);
 }`;
-    const asciiFragment = `#version 300 es
+    const asciiFragment = /*glsl*/ `#version 300 es
 precision highp float;
 uniform vec2 uResolution;
 uniform sampler2D uTexture;
 out vec4 fragColor;
 float character(int n, vec2 p) {
   // character grid scale
-  float scale = uResolution.x < 768.0 ? 6.0 : 4.0;
+  float scale = uResolution.x < 768.0 ? 6.0 : 6.0;
   p = floor(p * vec2(-scale, scale) + 2.5);
-  if(clamp(p.x, 0.0, 4.0) == p.x && clamp(p.y, 0.0, 4.0) == p.y) {
+  if(clamp(p.x, 0.0, 6.0) == p.x && clamp(p.y, 0.0, 6.0) == p.y) {
     int a = int(round(p.x) + 5.0 * round(p.y));
     if(((n >> a) & 1) == 1) return 0.8;
   }
@@ -76,7 +79,7 @@ float character(int n, vec2 p) {
 void main() {
   vec2 pix = gl_FragCoord.xy;
   // pixel size
-  float pixelSize = uResolution.x < 768.0 ? 12.0 : 16.0;
+  float pixelSize = uResolution.x < 768.0 ? 12.0 : 14.0;
   vec3 col = texture(uTexture, floor(pix / pixelSize) * pixelSize / uResolution.xy).rgb;
   float gray = 0.3 * col.r + 0.59 * col.g + 0.11 * col.b;
   int n = 2048;
@@ -88,7 +91,7 @@ void main() {
   if(gray > 0.7) n = 13195790;
   if(gray > 0.8) n = 11512810;
   // char size
-  float charSize = uResolution.x < 768.0 ? 6.0 : 8.0;
+  float charSize = uResolution.x < 768.0 ? 6.0 : 4.0;
   vec2 p = mod(pix / charSize, 2.0) - vec2(1.0);
   col = vec3(character(n, p));
   if (gray < 0.2) {
@@ -102,13 +105,37 @@ void main() {
     const renderer = new Renderer({ antialias: true });
     const gl = renderer.gl;
     containerRef.current?.appendChild(gl.canvas);
-    const camera = new Camera(gl, { near: 0.1, far: 100 });
+    const camera = new Camera(gl, { near: 0.1, far: 100, fov: 10 });
     camera.position.set(
-      isMobile()
-        ? new Vec3(MOBILE_CAMERA_POSITION)
-        : new Vec3(DESKTOP_CAMERA_POSITION)
+      isMobile() ? MOBILE_CAMERA_POSITION : DESKTOP_CAMERA_POSITION
     );
     camera.lookAt(new Vec3(0, 0, 0));
+
+    const scene = new Transform();
+
+    let gltf: any;
+    async function loadModel() {
+      gltf = await GLTFLoader.load(gl, "/logo.glb");
+
+      const s = gltf.scene || gltf.scenes[0];
+      s.forEach((root: any) => {
+        root.setParent(scene);
+        root.traverse((node: any) => {
+          if (node.program) {
+            node.program = createProgram();
+          }
+        });
+      });
+    }
+
+    function createProgram() {
+      return new Program(gl, {
+        vertex,
+        fragment
+      });
+    }
+
+    loadModel();
 
     const updateSize = () => {
       const height = isMobile() ? MOBILE_HEIGHT : DESKTOP_HEIGHT;
@@ -150,10 +177,9 @@ void main() {
     const asciiScene = new Transform();
     asciiMesh.setParent(asciiScene);
 
-    const MAX_TILT = 0.2;
+    const MAX_TILT = 0.4;
     const LERP_FACTOR = 0.05;
 
-    // Add hover and touch animation
     let targetRotationX = 0;
     let targetRotationY = 0;
     let targetRotationZ = 0;
@@ -173,7 +199,6 @@ void main() {
 
     function onTouchStart(e: TouchEvent) {
       isDragging = true;
-      // Prevent default touch behavior
       e.preventDefault();
     }
 
@@ -204,20 +229,25 @@ void main() {
     window.addEventListener("touchend", onTouchEnd);
 
     function update(time: number) {
+      // Animate model if it has animations
+      if (gltf?.animations?.length) {
+        const { animation } = gltf.animations[0];
+        animation.elapsed += 0.01;
+        animation.update();
+      }
+
       const elapsedTime = time * 0.001;
       boxProgram.uniforms.uTime.value = elapsedTime;
 
-      // Smoothly interpolate current rotation towards target rotation
       currentRotationX += (targetRotationX - currentRotationX) * LERP_FACTOR;
       currentRotationY += (targetRotationY - currentRotationY) * LERP_FACTOR;
       currentRotationZ += (targetRotationZ - currentRotationZ) * LERP_FACTOR;
 
-      // Apply rotation to the box
-      boxMesh.rotation.x = currentRotationX;
-      boxMesh.rotation.y = currentRotationY;
-      boxMesh.rotation.z = currentRotationZ;
+      scene.rotation.x = currentRotationX;
+      scene.rotation.y = currentRotationY;
+      scene.rotation.z = currentRotationZ;
 
-      renderer.render({ scene: boxScene, camera, target: renderTarget });
+      renderer.render({ scene, camera, target: renderTarget });
       asciiProgram.uniforms.uResolution.value = [
         gl.canvas.width,
         gl.canvas.height
