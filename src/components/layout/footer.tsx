@@ -27,7 +27,11 @@ export const Footer = () => {
               />
             </NextLink>
             <span>
-              Made by <Link href="https://spiraldb.com">Spiral</Link>.
+              Made by{" "}
+              <Link href="https://spiraldb.com" target="_blank">
+                Spiral
+              </Link>
+              .
             </span>
           </span>
           <span className="text-white font-mono text-sm text-center md:text-left">

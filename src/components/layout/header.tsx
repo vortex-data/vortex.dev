@@ -17,14 +17,16 @@ export const Header = () => {
       </NextLink>
       <div className="flex items-center gap-8 flex-1 justify-end md:flex-none dashed-left before:hidden md:before:block h-full px-10">
         <Link
-          href="/"
+          href="https://github.com/spiraldb/vortex"
           className="uppercase text-white font-mono text-base md:text-[18px] font-medium"
+          target="_blank"
         >
           GitHub
         </Link>
         <Link
-          href="/"
+          href="https://docs.vortex.dev"
           className="uppercase text-white font-mono text-base md:text-[18px] font-medium"
+          target="_blank"
         >
           Docs
         </Link>
