@@ -113,7 +113,9 @@ void main() {
     const updateSize = () => {
       const height = isMobile() ? MOBILE_HEIGHT : DESKTOP_HEIGHT;
       renderer.setSize(window.innerWidth - 32, window.innerHeight - height);
-      camera.perspective({ aspect: gl.canvas.width / gl.canvas.height });
+      camera.perspective({
+        aspect: (gl.canvas.width + 32) / gl.canvas.height
+      });
     };
 
     window.addEventListener("resize", updateSize);
