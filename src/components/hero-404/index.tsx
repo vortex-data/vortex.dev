@@ -106,7 +106,7 @@ void main() {
 
     const isMobile = () => window.innerWidth < 768;
 
-    const renderer = new Renderer({ antialias: true });
+    const renderer = new Renderer({ antialias: true, alpha: true });
     const gl = renderer.gl;
     gl.clearColor(0.0627, 0.0627, 0.0627, 1.0);
     containerRef.current?.appendChild(gl.canvas);
