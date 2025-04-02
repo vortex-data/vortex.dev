@@ -94,11 +94,14 @@ void main() {
   // char size
   float charSize = 4.0;
   vec2 p = mod(pix / charSize, 2.0) - vec2(1.0);
-  col = vec3(character(n, p));
+  float char = character(n, p);
+  
+  vec3 charColor = vec3(1.0);
   if (gray < 0.2) {
-    col *= 0.4;
+    charColor *= 0.4;
   }
-  fragColor = vec4(col, 1.0);
+  
+  fragColor = vec4(charColor, char);
 }`;
 
     const isMobile = () => window.innerWidth < 768;
