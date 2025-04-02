@@ -12,6 +12,9 @@ import {
 } from "ogl";
 import { useEffect, useRef } from "react";
 
+const DESKTOP_HEIGHT = 240;
+const MOBILE_HEIGHT = 340;
+
 export const HeroASCII = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -89,12 +92,17 @@ void main() {
     const camera = new Camera(gl, { near: 0.1, far: 100 });
     camera.position.set(2.2, 2.2, 2.2);
     camera.lookAt(new Vec3(0, 0, 0));
-    renderer.setSize(window.innerWidth, window.innerHeight - 240);
-    const resize = () => {
+
+    const isMobile = () => window.innerWidth < 768; // Common breakpoint for mobile
+
+    const updateSize = () => {
+      const height = isMobile() ? MOBILE_HEIGHT : DESKTOP_HEIGHT;
+      renderer.setSize(window.innerWidth, window.innerHeight - height);
       camera.perspective({ aspect: gl.canvas.width / gl.canvas.height });
     };
-    window.addEventListener("resize", resize);
-    resize();
+
+    window.addEventListener("resize", updateSize);
+    updateSize();
     const boxProgram = new Program(gl, {
       vertex: vertex,
       fragment: fragment,
@@ -128,13 +136,15 @@ void main() {
     const MAX_TILT = 0.2;
     const LERP_FACTOR = 0.05;
 
-    // Add hover animation
+    // Add hover and touch animation
     let targetRotationX = 0;
     let targetRotationY = 0;
     let targetRotationZ = 0;
     let currentRotationX = 0;
     let currentRotationY = 0;
     let currentRotationZ = 0;
+    let isDragging = false;
+    let lastTouchX = 0;
 
     function onMouseMove(e: MouseEvent) {
       const x = (e.clientX / window.innerWidth) * 2 - 1;
@@ -145,7 +155,41 @@ void main() {
       targetRotationZ = -y * MAX_TILT;
     }
 
+    function onTouchStart(e: TouchEvent) {
+      isDragging = true;
+      lastTouchX = e.touches[0].clientX;
+      // Prevent default touch behavior
+      e.preventDefault();
+    }
+
+    function onTouchMove(e: TouchEvent) {
+      if (!isDragging) return;
+
+      // Prevent default touch behavior
+      e.preventDefault();
+
+      const touchX = e.touches[0].clientX;
+
+      const deltaX = (touchX - lastTouchX) / window.innerWidth;
+
+      // Only update Y rotation (left/right movement)
+      targetRotationY += deltaX * MAX_TILT * 2;
+      targetRotationY = Math.max(
+        -MAX_TILT,
+        Math.min(MAX_TILT, targetRotationY)
+      );
+
+      lastTouchX = touchX;
+    }
+
+    function onTouchEnd() {
+      isDragging = false;
+    }
+
     window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("touchstart", onTouchStart, { passive: false });
+    window.addEventListener("touchmove", onTouchMove, { passive: false });
+    window.addEventListener("touchend", onTouchEnd);
 
     function update(time: number) {
       const elapsedTime = time * 0.001;
@@ -176,8 +220,11 @@ void main() {
     }
     animationId = requestAnimationFrame(animate);
     return () => {
-      window.removeEventListener("resize", resize);
+      window.removeEventListener("resize", updateSize);
       window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("touchstart", onTouchStart);
+      window.removeEventListener("touchmove", onTouchMove);
+      window.removeEventListener("touchend", onTouchEnd);
       cancelAnimationFrame(animationId);
       renderer.gl.getExtension("WEBGL_lose_context")?.loseContext();
       if (container?.contains(gl.canvas)) {
