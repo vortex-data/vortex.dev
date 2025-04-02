@@ -19,8 +19,7 @@ const DESKTOP_HEIGHT = 256;
 const MOBILE_HEIGHT = 260;
 
 const DESKTOP_CAMERA_POSITION = new Vec3(5, -5, 10);
-
-const MOBILE_CAMERA_POSITION = new Vec3(2, -2, 1);
+const MOBILE_CAMERA_POSITION = new Vec3(7, -7, 12);
 
 export const HeroASCII = () => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -68,7 +67,7 @@ uniform sampler2D uTexture;
 out vec4 fragColor;
 float character(int n, vec2 p) {
   // character grid scale
-  float scale = uResolution.x < 768.0 ? 6.0 : 6.0;
+  float scale = uResolution.x < 768.0 ? 5.0 : 6.0;
   p = floor(p * vec2(-scale, scale) + 2.5);
   if(clamp(p.x, 0.0, 6.0) == p.x && clamp(p.y, 0.0, 6.0) == p.y) {
     int a = int(round(p.x) + 5.0 * round(p.y));
@@ -79,7 +78,7 @@ float character(int n, vec2 p) {
 void main() {
   vec2 pix = gl_FragCoord.xy;
   // pixel size
-  float pixelSize = uResolution.x < 768.0 ? 12.0 : 14.0;
+  float pixelSize = uResolution.x < 768.0 ? 10.0 : 14.0;
   vec3 col = texture(uTexture, floor(pix / pixelSize) * pixelSize / uResolution.xy).rgb;
   float gray = 0.3 * col.r + 0.59 * col.g + 0.11 * col.b;
   int n = 2048;
@@ -91,7 +90,7 @@ void main() {
   if(gray > 0.7) n = 13195790;
   if(gray > 0.8) n = 11512810;
   // char size
-  float charSize = uResolution.x < 768.0 ? 6.0 : 4.0;
+  float charSize = 4.0;
   vec2 p = mod(pix / charSize, 2.0) - vec2(1.0);
   col = vec3(character(n, p));
   if (gray < 0.2) {
