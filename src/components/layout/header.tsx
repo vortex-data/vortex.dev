@@ -5,7 +5,7 @@ import { Link } from "../link";
 
 export const Header = () => {
   return (
-    <div className="flex justify-between items-center m-4 mb-2 dashed-top dashed-bottom h-[108px]">
+    <div className="flex justify-between items-center m-4 mb-2 dashed-top dashed-bottom h-[72px] mx-2 md:h-[108px]">
       <NextLink
         href="/"
         className="flex items-center gap-4 dashed-right h-full px-8"

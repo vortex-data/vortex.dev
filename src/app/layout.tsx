@@ -27,11 +27,11 @@ export default async function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${funnelDisplay.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${funnelDisplay.variable} antialiased overflow-hidden`}
       >
         <Header />
         <main className="w-full h-auto mx-auto">
-          <div className="flex flex-col mx-auto relative justify-center items-center overflow-clip">
+          <div className="flex flex-col mx-auto relative justify-center items-center">
             {children}
           </div>
         </main>

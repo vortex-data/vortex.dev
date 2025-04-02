@@ -14,7 +14,7 @@ import { useEffect, useRef } from "react";
 import { Overlay } from "../overlay";
 
 const DESKTOP_HEIGHT = 256;
-const MOBILE_HEIGHT = 356;
+const MOBILE_HEIGHT = 260;
 
 const DESKTOP_CAMERA_POSITION = 2.3;
 const MOBILE_CAMERA_POSITION = 2.7;
@@ -246,7 +246,7 @@ void main() {
   }, []);
 
   return (
-    <div className="w-full overflow-clip h-[calc(100dvh-356px)] md:h-[calc(100dvh-256px)]">
+    <div className="w-full overflow-clip h-[calc(100dvh-260px)] md:h-[calc(100dvh-256px)]">
       <div
         ref={containerRef}
         className="w-[calc(100%-2rem)] mx-4 h-full overflow-clip"
