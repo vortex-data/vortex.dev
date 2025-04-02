@@ -1,7 +1,7 @@
 import SpiralLogo from "@/assets/spiral.svg";
 import Image from "next/image";
-import Link from "next/link";
-
+import NextLink from "next/link";
+import { Link } from "../link";
 export const Footer = () => {
   return (
     <div className="flex flex-col-reverse md:flex-row justify-between items-center m-4 dashed-top dashed-bottom after:hidden md:after:block md:h-[84px]">
@@ -15,14 +15,17 @@ export const Footer = () => {
       <div className="flex items-center gap-8 dashed-left before:hidden lg:before:block h-full lg:px-10">
         <div className="flex flex-col md:flex-row items-center gap-2 py-8 md:py-0">
           <span className="text-white font-mono text-sm flex gap-4">
-            <Link href="/" className="uppercase text-white font-mono text-sm">
+            <NextLink
+              href="/"
+              className="uppercase text-white font-mono text-sm"
+            >
               <Image
                 src={SpiralLogo}
                 alt="Spiral Logo"
                 width={15}
                 height={18}
               />
-            </Link>
+            </NextLink>
             <span>
               Made by <Link href="https://spiraldb.com">Spiral</Link>.
             </span>
