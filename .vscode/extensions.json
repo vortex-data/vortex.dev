@@ -1,0 +1,6 @@
+{
+  "recommendations": [
+    "tailwindcss.tailwindcss-intellisense",
+    "esbenp.prettier-vscode"
+  ]
+}

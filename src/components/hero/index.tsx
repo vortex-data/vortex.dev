@@ -1,6 +1,6 @@
 "use client";
-import { useEffect, useRef } from "react";
 import {
+  Box,
   Camera,
   Mesh,
   Plane,
@@ -8,9 +8,9 @@ import {
   Renderer,
   RenderTarget,
   Transform,
-  Box,
-  Vec3,
+  Vec3
 } from "ogl";
+import { useEffect, useRef } from "react";
 
 export const HeroASCII = () => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -68,7 +68,7 @@ void main() {
   vec2 pix = gl_FragCoord.xy;
   vec3 col = texture(uTexture, floor(pix / 16.0) * 16.0 / uResolution.xy).rgb;
   float gray = 0.3 * col.r + 0.59 * col.g + 0.11 * col.b;
-  int n = 4096;
+  int n = 2048;
   if(gray > 0.2) n = 65600;
   if(gray > 0.3) n = 163153;
   if(gray > 0.4) n = 15255086;
@@ -87,7 +87,7 @@ void main() {
     const gl = renderer.gl;
     containerRef.current?.appendChild(gl.canvas);
     const camera = new Camera(gl, { near: 0.1, far: 100 });
-    camera.position.set(2, 2, 2);
+    camera.position.set(2.2, 2.2, 2.2);
     camera.lookAt(new Vec3(0, 0, 0));
     renderer.setSize(window.innerWidth, window.innerHeight);
     const resize = () => {
@@ -99,13 +99,13 @@ void main() {
       vertex: vertex,
       fragment: fragment,
       uniforms: {
-        uTime: { value: 0 },
+        uTime: { value: 0 }
       },
-      cullFace: false,
+      cullFace: false
     });
     const boxMesh = new Mesh(gl, {
       geometry: new Box(gl, { width: 1, height: 2, depth: 1 }),
-      program: boxProgram,
+      program: boxProgram
     });
     const renderTarget = new RenderTarget(gl);
     const asciiProgram = new Program(gl, {
@@ -113,12 +113,12 @@ void main() {
       fragment: asciiFragment,
       uniforms: {
         uResolution: { value: [gl.canvas.width, gl.canvas.height] },
-        uTexture: { value: renderTarget.texture },
-      },
+        uTexture: { value: renderTarget.texture }
+      }
     });
     const asciiMesh = new Mesh(gl, {
       geometry: new Plane(gl, { width: 2, height: 2 }),
-      program: asciiProgram,
+      program: asciiProgram
     });
     const boxScene = new Transform();
     boxMesh.setParent(boxScene);
@@ -139,7 +139,7 @@ void main() {
     function onMouseMove(e: MouseEvent) {
       const x = (e.clientX / window.innerWidth) * 2 - 1;
       const y = (e.clientY / window.innerHeight) * 2 - 1;
-      
+
       targetRotationX = y * MAX_TILT;
       targetRotationY = x * MAX_TILT;
       targetRotationZ = -y * MAX_TILT;
@@ -164,7 +164,7 @@ void main() {
       renderer.render({ scene: boxScene, camera, target: renderTarget });
       asciiProgram.uniforms.uResolution.value = [
         gl.canvas.width,
-        gl.canvas.height,
+        gl.canvas.height
       ];
       renderer.render({ scene: asciiScene, camera });
     }
@@ -187,6 +187,9 @@ void main() {
   }, []);
 
   return (
-    <div ref={containerRef} className="w-full h-full absolute inset-0"></div>
+    <div
+      ref={containerRef}
+      className="w-[calc(100%-2rem)] mx-4 h-full overflow-clip"
+    ></div>
   );
 };
