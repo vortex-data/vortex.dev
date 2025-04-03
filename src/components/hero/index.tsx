@@ -104,7 +104,11 @@ void main() {
 
     const isMobile = () => window.innerWidth < 768;
 
-    const renderer = new Renderer({ antialias: true, alpha: true });
+    const renderer = new Renderer({
+      antialias: true,
+      alpha: true,
+      autoClear: true
+    });
     const gl = renderer.gl;
     gl.clearColor(0.0627, 0.0627, 0.0627, 1.0);
     containerRef.current?.appendChild(gl.canvas);
@@ -166,6 +170,7 @@ void main() {
     const asciiProgram = new Program(gl, {
       vertex: asciiVertex,
       fragment: asciiFragment,
+      transparent: true,
       uniforms: {
         uResolution: { value: [gl.canvas.width, gl.canvas.height] },
         uTexture: { value: renderTarget.texture }
