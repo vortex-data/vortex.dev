@@ -17,10 +17,6 @@ export const metadata: Metadata = {
   },
   alternates: {
     canonical: "https://vortex.dev"
-  },
-  robots: {
-    index: true,
-    follow: true
   }
 };
 
