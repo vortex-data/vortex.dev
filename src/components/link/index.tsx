@@ -19,7 +19,13 @@ export const Link = ({ href, children, ...props }: LinkProps) => {
   });
 
   return (
-    <NextLink href={href} ref={ref} onMouseOver={replay} {...props}>
+    <NextLink
+      href={href}
+      ref={ref}
+      onMouseOver={replay}
+      onTouchStart={replay}
+      {...props}
+    >
       {children}
     </NextLink>
   );

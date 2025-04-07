@@ -207,14 +207,18 @@ void main() {
 
     function onTouchStart(e: TouchEvent) {
       isDragging = true;
-      e.preventDefault();
+      if (e.target instanceof HTMLCanvasElement) {
+        e.preventDefault();
+      }
     }
 
     function onTouchMove(e: TouchEvent) {
       if (!isDragging) return;
 
       // Prevent default touch behavior
-      e.preventDefault();
+      if (e.target instanceof HTMLCanvasElement) {
+        e.preventDefault();
+      }
 
       const touchX = e.touches[0].clientX;
       const touchY = e.touches[0].clientY;
