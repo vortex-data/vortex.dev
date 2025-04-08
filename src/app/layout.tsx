@@ -1,5 +1,6 @@
 import { Footer } from "@/components/layout/footer";
 import { Header } from "@/components/layout/header";
+import PlausibleProvider from "next-plausible";
 import { Funnel_Display, Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -29,13 +30,17 @@ export default async function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${funnelDisplay.variable} antialiased overflow-hidden`}
       >
-        <Header />
-        <main className="w-full h-auto mx-auto">
-          <div className="flex flex-col mx-auto relative justify-center items-center">
-            {children}
-          </div>
-        </main>
-        <Footer />
+        <PlausibleProvider
+          domain={process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN ?? ""}
+        >
+          <Header />
+          <main className="w-full h-auto mx-auto">
+            <div className="flex flex-col mx-auto relative justify-center items-center">
+              {children}
+            </div>
+          </main>
+          <Footer />
+        </PlausibleProvider>
       </body>
     </html>
   );
