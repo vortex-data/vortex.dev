@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@vercel/analytics": "^1.5.0",
     "next": "15.2.4",
     "next-plausible": "^3.12.4",
     "ogl": "^1.0.11",

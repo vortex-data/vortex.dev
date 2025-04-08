@@ -1,5 +1,6 @@
 import { Footer } from "@/components/layout/footer";
 import { Header } from "@/components/layout/header";
+import { Analytics } from "@vercel/analytics/react";
 import PlausibleProvider from "next-plausible";
 import { Funnel_Display, Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
@@ -41,6 +42,7 @@ export default async function RootLayout({
           </main>
           <Footer />
         </PlausibleProvider>
+        <Analytics />
       </body>
     </html>
   );
