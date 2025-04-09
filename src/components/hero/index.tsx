@@ -187,6 +187,8 @@ void main() {
 
     const MAX_TILT = 0.4;
     const LERP_FACTOR = 0.05;
+    const BASE_ROTATION_SPEED = 0.002; // Speed for continuous rotation
+    const MODEL_ROTATION_SPEED = 0.003; // Speed for model's own rotation
 
     let targetRotationX = 0;
     let targetRotationY = 0;
@@ -195,6 +197,8 @@ void main() {
     let currentRotationY = 0;
     let currentRotationZ = 0;
     let isDragging = false;
+    let baseRotationAngle = 0;
+    let modelRotationAngle = 0;
 
     function onMouseMove(e: MouseEvent) {
       const x = (e.clientX / window.innerWidth) * 2 - 1;
@@ -251,13 +255,26 @@ void main() {
       const elapsedTime = time * 0.001;
       boxProgram.uniforms.uTime.value = elapsedTime;
 
+      // Update rotation angles
+      baseRotationAngle += BASE_ROTATION_SPEED;
+      modelRotationAngle += MODEL_ROTATION_SPEED;
+
       currentRotationX += (targetRotationX - currentRotationX) * LERP_FACTOR;
       currentRotationY += (targetRotationY - currentRotationY) * LERP_FACTOR;
       currentRotationZ += (targetRotationZ - currentRotationZ) * LERP_FACTOR;
 
+      // base rotation with user interaction for the scene
       scene.rotation.x = currentRotationX;
-      scene.rotation.y = currentRotationY;
+      scene.rotation.y = currentRotationY + baseRotationAngle; // Constant rotation
       scene.rotation.z = currentRotationZ;
+
+      // rotation to the model itself
+      if (gltf && gltf.scene) {
+        const s = gltf.scene || gltf.scenes[0];
+        s.forEach((root: any) => {
+          root.rotation.z = modelRotationAngle;
+        });
+      }
 
       renderer.render({ scene, camera, target: renderTarget });
       asciiProgram.uniforms.uResolution.value = [
