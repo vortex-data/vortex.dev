@@ -14,9 +14,10 @@ export const Footer = () => {
       <div className="dashed-right h-full lg:hidden"></div>
       <div className="flex items-center gap-8 dashed-left before:hidden lg:before:block h-full lg:px-10">
         <div className="flex flex-col md:flex-row items-center gap-2 py-4 md:py-0">
-          <span className="text-white font-mono text-sm flex gap-4">
+          <span className="text-white font-mono text-sm flex gap-3 items-center">
             <NextLink
-              href="/"
+              href="https://spiraldb.com"
+              target="_blank"
               className="uppercase text-white font-mono text-sm"
             >
               <Image
