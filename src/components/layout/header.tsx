@@ -1,3 +1,4 @@
+import LogoMobile from "@/assets/logo-mobile.svg";
 import Logo from "@/assets/logo.svg";
 import Image from "next/image";
 import NextLink from "next/link";
@@ -10,10 +11,20 @@ export const Header = () => {
         href="/"
         className="flex items-center gap-4 dashed-right h-full px-8"
       >
-        <Image src={Logo} alt="Logo" width={44} height={44} />
-        <h1 className="text-4xl font-funnel text-white hidden md:inline-block">
-          Vortex
-        </h1>
+        <Image
+          src={Logo}
+          alt="Vortex Logo"
+          width={44}
+          height={44}
+          className="hidden md:block w-full h-[44px]"
+        />
+        <Image
+          src={LogoMobile}
+          alt="Vortex Logo"
+          width={40}
+          height={40}
+          className="block md:hidden w-full h-[40px]"
+        />
       </NextLink>
       <div className="flex items-center gap-8 flex-1 justify-end md:flex-none dashed-left before:hidden md:before:block h-full px-10">
         <Link
