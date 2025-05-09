@@ -14,9 +14,9 @@ export const Header = () => {
         <Image
           src={Logo}
           alt="Vortex Logo"
-          width={44}
+          width={120}
           height={44}
-          className="hidden md:block w-full h-[44px]"
+          className="hidden md:block"
         />
         <Image
           src={LogoMobile}
