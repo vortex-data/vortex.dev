@@ -7,13 +7,13 @@ export const Overlay = () => {
         </div>
 
         <div className="absolute bottom-5 md:bottom-3 left-1/2 -translate-x-1/2 md:left-14 md:translate-x-0 text-white bg-background w-[274px] lg:w-[324px] text-left font-mono text-xs md:text-sm lg:px-4 py-1 px-3 md:py-2">
-          100-200x faster random access
+          200x faster random access
           <br />
           2-10x faster scans
           <br />
-          Similar write throughput
+          5x faster writes
           <br />
-          Similar compression ratios
+          Similar compression ratio
           <br />
           (vs. Apache Parquet)
         </div>
