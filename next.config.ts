@@ -2,7 +2,27 @@ import type { NextConfig } from "next";
 import { withPlausibleProxy } from "next-plausible";
 
 const nextConfig: NextConfig = withPlausibleProxy()({
-  /* config options here */
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY',
+          },
+          {
+            key: 'Content-Security-Policy',
+            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' plausible.io; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' plausible.io vitals.vercel-insights.com; worker-src 'self' blob:; child-src 'self' blob:;",
+          },
+        ],
+      },
+    ];
+  },
 });
 
 export default nextConfig;
