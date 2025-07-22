@@ -32,7 +32,7 @@ const nextConfig: NextConfig = withPlausibleProxy()({
         permanent: true
       },
       {
-        source: "/go",
+        source: "/slack",
         destination: "https://join.slack.com/t/spiraldb/shared_invite/zt-382vtcz8y-Fe5YEL2_zShwSCgNRnwktQ",
         permanent: false
       }
