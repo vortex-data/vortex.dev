@@ -30,6 +30,11 @@ const nextConfig: NextConfig = withPlausibleProxy()({
         source: "/code",
         destination: "https://github.com/vortex-data/vortex",
         permanent: true
+      },
+      {
+        source: "/go",
+        destination: "https://join.slack.com/t/spiraldb/shared_invite/zt-382vtcz8y-Fe5YEL2_zShwSCgNRnwktQ",
+        permanent: false
       }
     ];
   }
