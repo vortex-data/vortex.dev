@@ -41,6 +41,13 @@ export const Header = () => {
         >
           Docs
         </Link>
+        <Link
+          href="https://bench.vortex.dev"
+          className="uppercase text-white font-mono text-base md:text-[18px] font-medium"
+          target="_blank"
+        >
+          Bench
+        </Link>
       </div>
     </div>
   );

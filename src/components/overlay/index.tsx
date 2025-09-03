@@ -7,9 +7,9 @@ export const Overlay = () => {
         </div>
 
         <div className="absolute bottom-5 md:bottom-3 left-1/2 -translate-x-1/2 md:left-14 md:translate-x-0 text-white bg-background w-[274px] lg:w-[324px] text-left font-mono text-xs md:text-sm lg:px-4 py-1 px-3 md:py-2">
-          200x faster random access
+          100x faster random access
           <br />
-          2-10x faster scans
+          10-20x faster scans
           <br />
           5x faster writes
           <br />
