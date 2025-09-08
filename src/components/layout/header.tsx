@@ -48,6 +48,12 @@ export const Header = () => {
         >
           Bench
         </Link>
+        <Link
+          href="/blog"
+          className="uppercase text-white font-mono text-base md:text-[18px] font-medium"
+        >
+          Blog
+        </Link>
       </div>
     </div>
   );
