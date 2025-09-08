@@ -29,7 +29,7 @@ export default async function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${funnelDisplay.variable} antialiased overflow-hidden`}
+        className={`${geistSans.variable} ${geistMono.variable} ${funnelDisplay.variable} antialiased`}
       >
         <PlausibleProvider
           domain={process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN ?? ""}
