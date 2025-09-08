@@ -1,8 +1,8 @@
-import { getPostBySlug, getAllSlugs } from '@/lib/blog';
-import { notFound } from 'next/navigation';
-import ReactMarkdown from 'react-markdown';
-import Link from 'next/link';
-import { Metadata } from 'next';
+import { getAllSlugs, getPostBySlug } from "@/lib/blog";
+import { Metadata } from "next";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import ReactMarkdown from "react-markdown";
 
 interface BlogPostPageProps {
   params: Promise<{ slug: string }>;
@@ -11,17 +11,19 @@ interface BlogPostPageProps {
 export async function generateStaticParams() {
   const slugs = getAllSlugs();
   return slugs.map((slug) => ({
-    slug,
+    slug
   }));
 }
 
-export async function generateMetadata({ params }: BlogPostPageProps): Promise<Metadata> {
+export async function generateMetadata({
+  params
+}: BlogPostPageProps): Promise<Metadata> {
   const { slug } = await params;
   const post = getPostBySlug(slug);
 
   if (!post) {
     return {
-      title: 'Post Not Found | Vortex Blog',
+      title: "Post Not Found | Vortex Blog"
     };
   }
 
@@ -35,7 +37,7 @@ export async function generateMetadata({ params }: BlogPostPageProps): Promise<M
       url: `https://vortex.dev/blog/${slug}`,
       type: "article",
       locale: "en_US",
-      publishedTime: post.date,
+      publishedTime: post.date
     },
     alternates: {
       canonical: `https://vortex.dev/blog/${slug}`
@@ -53,9 +55,9 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
 
   return (
     <div className="min-h-screen w-full bg-background text-white">
-      <div className="max-w-4xl mx-auto px-4 py-16">
+      <div className="max-w-6xl mx-auto px-4 py-16">
         {/* Back to blog link */}
-        <Link 
+        <Link
           href="/blog"
           className="inline-flex items-center gap-2 text-grey font-mono text-sm hover:text-white transition-colors mb-8"
         >
@@ -67,28 +69,26 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
           <h1 className="text-3xl md:text-5xl font-funnel font-light text-white mb-6">
             {post.title}
           </h1>
-          
+
           <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-8 text-grey font-mono text-sm">
             <time dateTime={post.date}>
-              {new Date(post.date).toLocaleDateString('en-US', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
+              {new Date(post.date).toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "long",
+                day: "numeric"
               })}
             </time>
-            
+
             <div className="flex items-center gap-2">
               <span>by</span>
-              <span className="text-white">
-                {post.authors.join(', ')}
-              </span>
+              <span className="text-white">{post.authors.join(", ")}</span>
             </div>
           </div>
         </header>
 
         {/* Post content */}
-        <article className="dashed-top p-6 md:p-8">
-          <div className="prose prose-invert prose-lg max-w-none">
+        <article className="dashed-top p-4 md:p-6">
+          <div className="w-full max-w-none">
             <ReactMarkdown
               components={{
                 h1: ({ children }) => (
@@ -107,22 +107,22 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
                   </h3>
                 ),
                 p: ({ children }) => (
-                  <p className="text-grey font-sans text-base leading-relaxed mb-4">
+                  <p className="text-grey font-sans text-base leading-relaxed mb-4 break-words">
                     {children}
                   </p>
                 ),
                 ul: ({ children }) => (
-                  <ul className="list-disc list-inside text-grey font-sans text-base leading-relaxed mb-4 space-y-2">
+                  <ul className="text-grey my-4 list-disc ml-6 w-full max-w-none">
                     {children}
                   </ul>
                 ),
                 ol: ({ children }) => (
-                  <ol className="list-decimal list-inside text-grey font-sans text-base leading-relaxed mb-4 space-y-2">
+                  <ol className="text-grey my-4 list-decimal ml-6 w-full max-w-none">
                     {children}
                   </ol>
                 ),
                 li: ({ children }) => (
-                  <li className="text-grey">
+                  <li className="text-grey mb-2 break-words w-full max-w-none">
                     {children}
                   </li>
                 ),
@@ -152,11 +152,15 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
                   </pre>
                 ),
                 a: ({ children, href }) => (
-                  <a 
+                  <a
                     href={href}
                     className="text-white underline hover:text-grey transition-colors"
-                    target={href?.startsWith('http') ? '_blank' : undefined}
-                    rel={href?.startsWith('http') ? 'noopener noreferrer' : undefined}
+                    target={href?.startsWith("http") ? "_blank" : undefined}
+                    rel={
+                      href?.startsWith("http")
+                        ? "noopener noreferrer"
+                        : undefined
+                    }
                   >
                     {children}
                   </a>
@@ -167,10 +171,8 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
                   </strong>
                 ),
                 em: ({ children }) => (
-                  <em className="text-white italic">
-                    {children}
-                  </em>
-                ),
+                  <em className="text-white italic">{children}</em>
+                )
               }}
             >
               {post.content}

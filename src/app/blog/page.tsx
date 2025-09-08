@@ -25,7 +25,7 @@ export default function BlogPage() {
 
   return (
     <div className="min-h-screen w-full bg-background text-white">
-      <div className="max-w-4xl mx-auto px-4 py-16">
+      <div className="max-w-5xl mx-auto px-4 py-16">
         <div className="mb-12">
           <h1 className="text-4xl md:text-6xl font-funnel font-light text-white mb-4">
             Blog
