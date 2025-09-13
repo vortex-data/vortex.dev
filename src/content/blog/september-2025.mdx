@@ -1,0 +1,67 @@
+---
+title: "September Bulletin #2"
+date: "2025-010-08"
+authors: ["Community Team"]
+excerpt: "Overview of all work happening in Vortex"
+published: true
+---
+
+> Editor's note: Its been pointed out to us that while this post is published in October, it covers work done in September, so this will be the second September Bulletin.
+
+This is the second monthly issue of all that has been happening in Vortex!
+
+Development keeps moving quickly, with many new features and improvements to the Rust API. This month we accepted 180 commits from 13 different contributors, with the relentless renovate-bot taking the crown for most changes merged.
+
+## Core
+
+1. Published an [RFC](https://github.com/vortex-data/vortex/pull/4726) presenting our planned changes to how arrays and compute interact with each other, introducing what we call Operators.
+1. Started work on GPU-powered kernels.
+1. Merged a few big changes to the IO APIs ([#4557](https://github.com/vortex-data/vortex/pull/4608), [#4608](https://github.com/vortex-data/vortex/pull/4608)), which introduce new push-based write API (in addition to the existing stream-based one), and writes now return both the file's footer (which can now be cached, reused and even de/serialized [#4598](https://github.com/vortex-data/vortex/pull/4608)), and the file's total compressed size.
+1. Added a new encoding - [fastlanes](https://github.com/spiraldb/fastlanes)-based RLE [#4588](https://github.com/vortex-data/vortex/pull/4588), [#4789](https://github.com/vortex-data/vortex/pull/4789).
+1. The work on the new `FixedSizeList` keeps moving forward - [#4590](https://github.com/vortex-data/vortex/pull/4590), [#4601](https://github.com/vortex-data/vortex/pull/4601).
+1. Added a new canonical encoding for list types, see the [tracking issue](https://github.com/vortex-data/vortex/issues/4699) for full details and work.
+1. Fixed a long-standing issue where we used to underestimate the uncompressed size of arrays, causing inaccurate array stats and a consistent underestimation of the overall data size. [#4963](https://github.com/vortex-data/vortex/pull/4693).
+1. Improved performance for very wide tables (1K+ columns), improving a new compression [benchmark](https://github.com/vortex-data/vortex/pull/4867) by over 80%. [#4863](https://github.com/vortex-data/vortex/pull/4863) [#4868](https://github.com/vortex-data/vortex/pull/4868) [#4877](https://github.com/vortex-data/vortex/pull/4877)
+1. Allow users to write with different compression strategies from Python [#4825](https://github.com/vortex-data/vortex/pull/4825)
+
+## Integrations
+
+### DuckDB
+
+1. Landed a release of the Vortex extension for the most recent DuckDB release (1.4). As always, you can install and load the extension with:
+
+   ```sql
+   INSTALL vortex FROM community;
+   LOAD vortex;
+   ```
+
+1. Improved the testing of our DuckDB extension, making it easier and faster to run tests, using a debug build of DuckDB.
+1. Added zero-copy exporting of arrays to DuckDB [#4812](https://github.com/vortex-data/vortex/pull/4812) [#4804](https://github.com/vortex-data/vortex/pull/4804)
+
+### Apache DataFusion
+
+1. Use the built-in `FilePruner` to prune file based on the full expression, even for expressions we can't push down yet like dynamic expressions.
+1. Support for tables with hive-style partitioning.
+1. Updated our Apache DataFusion integration to the most recent release (v50.1.0) [#4577](https://github.com/vortex-data/vortex/pull/4577)
+
+## Acknowledgments
+
+We want to thank to anyone who has tried Vortex, provided feedback, asked question and filed issues.
+
+Special thanks go for all the contributors who took the time and care to contribute to Vortex this month (in descending count of commits):
+
+```text
+    39  Adam Gutglick
+    28  Connor Tsui
+    21  Alexander Droste
+    20  Nicholas Gates
+    19  Onur Satici
+    19  Joe Isaacs
+    15  Robert Kruszewski
+    10  Dan King
+     4  Dmitrii Blaginin
+     2  Andrew Duffy
+     1  Will Manning
+     1  Evan Martin
+     1  Alfonso Subiotto Marqués
+```
