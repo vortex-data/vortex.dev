@@ -1,7 +1,15 @@
-import type { NextConfig } from "next";
 import { withPlausibleProxy } from "next-plausible";
 
-const nextConfig: NextConfig = withPlausibleProxy()({
+// Start Velite automatically with Next.js (recommended approach)
+const isDev = process.argv.indexOf("dev") !== -1;
+const isBuild = process.argv.indexOf("build") !== -1;
+if (!process.env.VELITE_STARTED && (isDev || isBuild)) {
+  process.env.VELITE_STARTED = "1";
+  const { build } = await import("velite");
+  await build({ watch: isDev, clean: !isDev });
+}
+
+const nextConfig = withPlausibleProxy()({
   async headers() {
     return [
       {
@@ -33,7 +41,8 @@ const nextConfig: NextConfig = withPlausibleProxy()({
       },
       {
         source: "/slack",
-        destination: "https://join.slack.com/t/spiraldb/shared_invite/zt-382vtcz8y-Fe5YEL2_zShwSCgNRnwktQ",
+        destination:
+          "https://join.slack.com/t/spiraldb/shared_invite/zt-382vtcz8y-Fe5YEL2_zShwSCgNRnwktQ",
         permanent: false
       }
     ];

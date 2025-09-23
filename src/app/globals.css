@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 
 :root {
   --background: #101010;
@@ -63,5 +64,40 @@ body {
 
   .dashed-left {
     @apply relative before:absolute before:top-0 before:bottom-0 before:left-0 before:w-px before:bg-[length:1px_16px] before:bg-repeat-y before:bg-[linear-gradient(to_bottom,white_12px,transparent_4px)];
+  }
+}
+
+/* Custom prose styles for blog content */
+@layer components {
+  .prose-grey {
+    @apply prose-invert;
+  }
+
+  .prose-grey p {
+    @apply text-grey mb-4;
+  }
+
+  .prose-grey ol, .prose-grey ul {
+    @apply text-grey space-y-2;
+  }
+
+  .prose-grey li {
+    @apply text-grey;
+  }
+
+  .prose-grey a {
+    @apply text-white hover:text-grey transition-colors underline;
+  }
+
+  .prose-grey pre {
+    @apply bg-white/5 border border-white/10 text-white font-mono text-sm;
+  }
+
+  .prose-grey code {
+    @apply text-white bg-white/10 px-1 py-0.5 rounded text-sm font-mono;
+  }
+
+  .prose-grey blockquote {
+    @apply border-l-white/30 text-grey italic;
   }
 }

@@ -1,8 +1,8 @@
 import { getAllSlugs, getPostBySlug } from "@/lib/blog";
+import { MDXRenderer } from "@/components/MDXRenderer";
 import { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { MDXRemote } from "next-mdx-remote/rsc";
 
 interface BlogPostPageProps {
   params: Promise<{ slug: string }>;
@@ -88,94 +88,8 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
 
         {/* Post content */}
         <article className="dashed-top p-4 md:p-6">
-          <div className="w-full max-w-none">
-            <MDXRemote
-              source={post.content}
-              components={{
-                h1: ({ children }) => (
-                  <h1 className="text-2xl md:text-3xl font-sans font-semibold text-white mt-8 mb-4 first:mt-0">
-                    {children}
-                  </h1>
-                ),
-                h2: ({ children }) => (
-                  <h2 className="text-xl md:text-2xl font-sans font-semibold text-white mt-8 mb-4">
-                    {children}
-                  </h2>
-                ),
-                h3: ({ children }) => (
-                  <h3 className="text-lg md:text-xl font-sans font-semibold text-white mt-6 mb-3">
-                    {children}
-                  </h3>
-                ),
-                p: ({ children }) => (
-                  <p className="text-grey font-sans text-base leading-relaxed mb-4 break-words">
-                    {children}
-                  </p>
-                ),
-                ul: ({ children }) => (
-                  <ul className="text-grey my-4 list-disc ml-6 w-full max-w-none">
-                    {children}
-                  </ul>
-                ),
-                ol: ({ children }) => (
-                  <ol className="text-grey my-4 list-decimal ml-6 w-full max-w-none">
-                    {children}
-                  </ol>
-                ),
-                li: ({ children }) => (
-                  <li className="text-grey mb-2 break-words w-full max-w-none">
-                    {children}
-                  </li>
-                ),
-                blockquote: ({ children }) => (
-                  <blockquote className="border-l-4 border-white pl-4 italic text-grey mb-4">
-                    {children}
-                  </blockquote>
-                ),
-                code: ({ children, className }) => {
-                  const isInline = !className;
-                  if (isInline) {
-                    return (
-                      <code className="bg-white/10 text-white font-mono text-sm px-1.5 py-0.5 rounded">
-                        {children}
-                      </code>
-                    );
-                  }
-                  return (
-                    <code className="block bg-white/5 text-white font-mono text-sm p-4 rounded overflow-x-auto mb-4">
-                      {children}
-                    </code>
-                  );
-                },
-                pre: ({ children }) => (
-                  <pre className="bg-white/5 text-white font-mono text-sm p-4 rounded overflow-x-auto mb-4">
-                    {children}
-                  </pre>
-                ),
-                a: ({ children, href }) => (
-                  <a
-                    href={href}
-                    className="text-white underline hover:text-grey transition-colors"
-                    target={href?.startsWith("http") ? "_blank" : undefined}
-                    rel={
-                      href?.startsWith("http")
-                        ? "noopener noreferrer"
-                        : undefined
-                    }
-                  >
-                    {children}
-                  </a>
-                ),
-                strong: ({ children }) => (
-                  <strong className="text-white font-semibold">
-                    {children}
-                  </strong>
-                ),
-                em: ({ children }) => (
-                  <em className="text-white italic">{children}</em>
-                )
-              }}
-            />
+          <div className="w-full max-w-none prose prose-invert prose-grey">
+            <MDXRenderer code={post.body} />
           </div>
         </article>
       </div>
