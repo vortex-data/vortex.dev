@@ -29,7 +29,6 @@ html {
 body {
   background: var(--background);
   font-family: theme("fontFamily.sans");
-  text-wrap: balance;
   text-rendering: optimizeLegibility;
 
   u {
