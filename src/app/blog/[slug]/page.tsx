@@ -2,7 +2,7 @@ import { getAllSlugs, getPostBySlug } from "@/lib/blog";
 import { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import ReactMarkdown from "react-markdown";
+import { MDXRemote } from "next-mdx-remote/rsc";
 
 interface BlogPostPageProps {
   params: Promise<{ slug: string }>;
@@ -89,7 +89,8 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
         {/* Post content */}
         <article className="dashed-top p-4 md:p-6">
           <div className="w-full max-w-none">
-            <ReactMarkdown
+            <MDXRemote
+              source={post.content}
               components={{
                 h1: ({ children }) => (
                   <h1 className="text-2xl md:text-3xl font-sans font-semibold text-white mt-8 mb-4 first:mt-0">
@@ -174,9 +175,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
                   <em className="text-white italic">{children}</em>
                 )
               }}
-            >
-              {post.content}
-            </ReactMarkdown>
+            />
           </div>
         </article>
       </div>

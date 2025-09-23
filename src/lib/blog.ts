@@ -27,12 +27,12 @@ export function getAllPosts(): BlogPostMeta[] {
   if (!fs.existsSync(blogDirectory)) {
     return [];
   }
-  
+
   const filenames = fs.readdirSync(blogDirectory);
   const posts = filenames
-    .filter((name) => name.endsWith('.md'))
+    .filter((name) => name.endsWith('.mdx'))
     .map((name) => {
-      const slug = name.replace(/\.md$/, '');
+      const slug = name.replace(/\.mdx$/, '');
       const fullPath = path.join(blogDirectory, name);
       const fileContents = fs.readFileSync(fullPath, 'utf8');
       const { data } = matter(fileContents);
@@ -43,10 +43,10 @@ export function getAllPosts(): BlogPostMeta[] {
         date: data.date || '',
         authors: Array.isArray(data.authors) ? data.authors : [data.authors || 'Anonymous'],
         excerpt: data.excerpt || '',
-        published: data.published !== false, // defaults to true unless explicitly set to false
+        published: data.published !== false,
       };
     })
-    .filter((post) => post.published) // only show published posts
+    .filter((post) => post.published)
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   return posts;
@@ -57,8 +57,8 @@ export function getPostBySlug(slug: string): BlogPost | null {
     return null;
   }
 
-  const fullPath = path.join(blogDirectory, `${slug}.md`);
-  
+  const fullPath = path.join(blogDirectory, `${slug}.mdx`);
+
   if (!fs.existsSync(fullPath)) {
     return null;
   }
@@ -73,7 +73,7 @@ export function getPostBySlug(slug: string): BlogPost | null {
     authors: Array.isArray(data.authors) ? data.authors : [data.authors || 'Anonymous'],
     content,
     excerpt: data.excerpt || '',
-    published: data.published !== false, // defaults to true unless explicitly set to false
+    published: data.published !== false,
   };
 }
 
@@ -84,13 +84,13 @@ export function getAllSlugs(): string[] {
 
   const filenames = fs.readdirSync(blogDirectory);
   return filenames
-    .filter((name) => name.endsWith('.md'))
+    .filter((name) => name.endsWith('.mdx'))
     .map((name) => {
-      const slug = name.replace(/\.md$/, '');
+      const slug = name.replace(/\.mdx$/, '');
       const fullPath = path.join(blogDirectory, name);
       const fileContents = fs.readFileSync(fullPath, 'utf8');
       const { data } = matter(fileContents);
-      
+
       // Only include published posts (defaults to true)
       return data.published !== false ? slug : null;
     })
