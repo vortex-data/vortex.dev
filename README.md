@@ -2,25 +2,13 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
-First, install dependencies and run the development server:
+Start by install the [bun](https://bun.sh/) package manager.
+
+Then, install dependencies and run the development server:
 
 ```bash
-npm install
-npm run dev
-```
-
-or
-
-```bash
-yarn install
-yarn dev
-```
-
-or
-
-```bash
-pnpm install
-pnpm dev
+bun install
+bun dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
@@ -29,7 +17,7 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-**Note:** The deployment is managed by `pnpm`, so any dependency change should be managed by it and reflected in `pnpm-lock.yaml`.
+**Note:** The deployment is managed by `bun`, so any dependency change should be managed by it and reflected in `bun.lock`.
 
 ## Learn More
 

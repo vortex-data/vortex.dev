@@ -46,7 +46,7 @@ export default function BlogPage() {
             {posts.map((post) => (
               <Link
                 key={post.slug}
-                href={`/blog/${post.slug}`}
+                href={`/blog/${post.slugAsParams}`}
                 className="block group"
               >
                 <article className="dashed-top dashed-bottom p-6 hover:bg-white/5 transition-colors">

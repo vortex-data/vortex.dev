@@ -1,98 +1,24 @@
-import fs from 'fs';
-import path from 'path';
-import matter from 'gray-matter';
+import { blog } from '#site/content';
 
-const blogDirectory = path.join(process.cwd(), 'src/content/blog');
+export type BlogPost = (typeof blog)[number];
 
-export interface BlogPost {
-  slug: string;
-  title: string;
-  date: string;
-  authors: string[];
-  content: string;
-  excerpt?: string;
-  published: boolean;
-}
-
-export interface BlogPostMeta {
-  slug: string;
-  title: string;
-  date: string;
-  authors: string[];
-  excerpt?: string;
-  published: boolean;
-}
+export type BlogPostMeta = (typeof blog)[number];
 
 export function getAllPosts(): BlogPostMeta[] {
-  if (!fs.existsSync(blogDirectory)) {
-    return [];
-  }
-  
-  const filenames = fs.readdirSync(blogDirectory);
-  const posts = filenames
-    .filter((name) => name.endsWith('.md'))
-    .map((name) => {
-      const slug = name.replace(/\.md$/, '');
-      const fullPath = path.join(blogDirectory, name);
-      const fileContents = fs.readFileSync(fullPath, 'utf8');
-      const { data } = matter(fileContents);
-
-      return {
-        slug,
-        title: data.title || slug,
-        date: data.date || '',
-        authors: Array.isArray(data.authors) ? data.authors : [data.authors || 'Anonymous'],
-        excerpt: data.excerpt || '',
-        published: data.published !== false, // defaults to true unless explicitly set to false
-      };
-    })
-    .filter((post) => post.published) // only show published posts
+  return blog
+    .filter((post) => post.published)
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
-  return posts;
 }
 
 export function getPostBySlug(slug: string): BlogPost | null {
-  if (!fs.existsSync(blogDirectory)) {
-    return null;
-  }
+  const post = blog.find((post) => post.slugAsParams === slug);
+  if (!post || !post.published) return null;
 
-  const fullPath = path.join(blogDirectory, `${slug}.md`);
-  
-  if (!fs.existsSync(fullPath)) {
-    return null;
-  }
-
-  const fileContents = fs.readFileSync(fullPath, 'utf8');
-  const { data, content } = matter(fileContents);
-
-  return {
-    slug,
-    title: data.title || slug,
-    date: data.date || '',
-    authors: Array.isArray(data.authors) ? data.authors : [data.authors || 'Anonymous'],
-    content,
-    excerpt: data.excerpt || '',
-    published: data.published !== false, // defaults to true unless explicitly set to false
-  };
+  return post;
 }
 
 export function getAllSlugs(): string[] {
-  if (!fs.existsSync(blogDirectory)) {
-    return [];
-  }
-
-  const filenames = fs.readdirSync(blogDirectory);
-  return filenames
-    .filter((name) => name.endsWith('.md'))
-    .map((name) => {
-      const slug = name.replace(/\.md$/, '');
-      const fullPath = path.join(blogDirectory, name);
-      const fileContents = fs.readFileSync(fullPath, 'utf8');
-      const { data } = matter(fileContents);
-      
-      // Only include published posts (defaults to true)
-      return data.published !== false ? slug : null;
-    })
-    .filter((slug): slug is string => slug !== null);
+  return blog
+    .filter((post) => post.published)
+    .map((post) => post.slugAsParams);
 }
