@@ -1,0 +1,34 @@
+---
+title: "October Bulletin"
+date: "2025-11-6"
+authors: ["Community Team"]
+excerpt: "Overview of all work happening in Vortex"
+published: true
+---
+
+This month a lot of focus has been put on improving correctness using our fuzzer, in revamping arrays to make compute over compressed data and compute over GPUs even better.
+
+## Core
+
+1. Children of `ZonedLayoutReader` are evaluated lazily. [#5007]()
+1. Introduced our own bit-buffer type, allowing for in-place mutation [#4940]()
+
+## Integrations
+
+### DFT
+
+You can now try Vortex as part of [dft](https://github.com/datafusion-contrib/datafusion-dft), a batteries-included suite of data tools based on Apache DataFusion.
+
+### DataFusion
+
+1. Added support for pushing down filters onto fields of struct columns. #5024
+
+## Acknowledgments
+
+We want to thank to anyone who has tried Vortex, provided feedback, asked question and filed issues.
+
+Special thanks go for all the contributors who took the time and care to contribute to Vortex this month (in descending count of commits):
+
+```text
+...
+```
