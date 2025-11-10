@@ -42,7 +42,7 @@ const nextConfig = withPlausibleProxy()({
       {
         source: "/slack",
         destination:
-          "https://join.slack.com/t/spiraldb/shared_invite/zt-382vtcz8y-Fe5YEL2_zShwSCgNRnwktQ",
+          "https://join.slack.com/t/vortex-data/shared_invite/zt-3i4ian4du-mmm~~g9jdz2U_B0dA8CIEg",
         permanent: false
       }
     ];
