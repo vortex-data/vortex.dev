@@ -7,9 +7,9 @@ export const Footer = () => {
     <div className="flex flex-col-reverse md:flex-row justify-between items-center m-4 mt-2 md:mt-4 md:m-10 dashed-top dashed-bottom after:hidden md:after:block md:h-[84px]">
       <div className="flex items-center gap-4 dashed-right after:hidden lg:after:block h-full md:pl-2 lg:px-10 py-4 pb-4 md:py-0">
         <span className="text-sm font-mono text-white">
-          An Incubating project of the {" "}
+          Copyright © Vortex a Series of{" "}
           <Link href="https://lfprojects.org" target="_blank">
-            Linux Foundation
+            LF Projects, LLC
           </Link>
           .
         </span>
