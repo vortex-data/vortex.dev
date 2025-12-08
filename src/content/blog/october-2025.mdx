@@ -6,12 +6,22 @@ excerpt: "Overview of all work happening in Vortex"
 published: true
 ---
 
-This month a lot of focus has been put on improving correctness using our fuzzer, in revamping arrays to make compute over compressed data and compute over GPUs even better.
+In October, a lot of focus was on revamping Array evaluation to be fully lazy, by converting their execution
+to an Operator model that evaluates into Vectors (fully decompressed, zero-copy to Arrow representation).
+This work enables many more optimizations, and also provides unified abstractions for evaluating on
+different processor types (CPUs & GPUs).
+
+In parallel, Vortex added experimental support for a GPU Scan, with fused CUDA kernels for decompressing Vortex data
+directly on-device.
+
+For an in-depth view of this work, see the [recent talk on Vortex](https://db.cs.cmu.edu/events/futuredata-vortex/)
+as part of CMU's Future Data Seminar.
 
 ## Core
 
-1. Children of `ZonedLayoutReader` are evaluated lazily. [#5007]()
-1. Introduced our own bit-buffer type, allowing for in-place mutation [#4940]()
+1. Children of `ZonedLayoutReader` are evaluated lazily. [#5007](https://github.com/vortex-data/vortex/pull/5007)
+2. Introduced our own bit-buffer type, allowing for in-place mutation [#4940](https://github.com/vortex-data/vortex/pull/4940)
+3. Introduced experimental GPU Scan [#5012](https://github.com/vortex-data/vortex/pull/5012)
 
 ## Integrations
 
@@ -22,6 +32,10 @@ You can now try Vortex as part of [dft](https://github.com/datafusion-contrib/da
 ### DataFusion
 
 1. Added support for pushing down filters onto fields of struct columns. #5024
+
+### DuckDB
+
+As of DuckDB 1.4.2, Vortex is included as a core extension in DuckDB. See their [docs](https://duckdb.org/docs/stable/core_extensions/vortex) for more details.
 
 ## Acknowledgments
 
