@@ -1,6 +1,7 @@
 import LFLogo from "@/assets/lf_white.svg";
 import SpiralLogo from "@/assets/spiral.svg";
 import Image from "next/image";
+import NextLink from "next/link";
 import { Link } from "../link";
 
 export const Footer = () => {
@@ -31,7 +32,9 @@ export const Footer = () => {
       </div>
       <div className="text-center py-8">
         <span className="text-xs font-mono text-gray-500 flex items-center justify-center gap-2">
-          <Image src={SpiralLogo} alt="Spiral Logo" width={15} height={15} />
+          <NextLink href="https://spiraldb.com" target="_blank">
+            <Image src={SpiralLogo} alt="Spiral Logo" width={15} height={18} />
+          </NextLink>
           Donated by{" "}
           <Link href="https://spiraldb.com" target="_blank">
             Spiral.
