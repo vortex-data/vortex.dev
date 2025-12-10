@@ -1,0 +1,43 @@
+---
+title: "November Bulletin"
+date: "2025-12-08"
+authors: ["Community Team"]
+excerpt: "Overview of all work happening in Vortex"
+published: true
+---
+
+In November, work continued on revamping Array evaluation to be fully lazy, by converting their execution
+to an Operator model that evaluates into Vectors (fully decompressed, zero-copy to Arrow representation).
+
+As a reminder, this work enables many more optimizations, and also provides unified abstractions for evaluating on
+different processor types (CPUs & GPUs). We anticipate shipping lazy Array evaluation
+
+## Around the Ecosystem
+
+- Polar Signals [replaced Parquet with Vortex](https://www.polarsignals.com/blog/posts/2025/11/25/interface-parquet-vortex) for their profiling database
+  > Given how well Vortex’s design matched our needs, we tried it out and got a 70% average performance improvement on all our queries.
+- Spice AI launched the [Spice Cayenne Data Accelerator](https://spice.ai/blog/spice-cloud-v1-9-0-cayenne-data-accelerator) based on Vortex
+
+## Core
+
+-
+-
+
+## Integrations
+
+### DuckDB
+
+Vortex is now a DuckDB [core extension](https://duckdb.org/docs/stable/core_extensions/vortex) only and was removed from the list of community releases.
+
+Starting with the next DuckDB version, `INSTALL vortex FROM community;` will no longer work. Instead, use `INSTALL vortex;`.
+
+## Acknowledgments
+
+We want to thank to anyone who has tried Vortex, provided feedback, asked question and filed issues.
+
+```text
+Alfonso Subiotto Marqués
+Frederic Branczyk
+James Xu
+Nick Cameron
+```
