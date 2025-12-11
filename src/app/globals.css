@@ -11,6 +11,21 @@
   --font-mono: var(--font-geist-mono);
 
   --color-grey: #D9D9D9;
+  --color-spiral-black: rgba(16, 16, 16, 1);
+  --color-spiral-white: rgba(255, 255, 255, 1);
+  --color-spiral-grey: rgba(236, 236, 236, 1);
+  --color-spiral-grey-dark: rgba(143, 143, 143, 1);
+  --color-spiral-grey-light: rgba(207, 207, 207, 1);
+  --color-spiral-grey-lightest: rgba(241, 241, 241, 1);
+  --color-spiral-green: rgba(206, 229, 98, 1);
+  --color-spiral-washed-green: rgba(241, 248, 208, 1);
+  --color-spiral-light-blue: rgba(44, 185, 209, 1);
+  --color-spiral-washed-light-blue: rgba(213, 241, 246, 1);
+  --color-spiral-washed-lighter-blue: rgba(234, 248, 250, 1);
+  --color-spiral-blue: rgba(89, 113, 253, 1);
+  --color-spiral-pink: rgba(238, 179, 225, 1);
+  --color-spiral-orange: rgba(251, 134, 61, 1);
+  --color-spiral-red: rgba(204, 51, 51, 1);
 
   /* Fonts */
   --font-funnel: "Funnel Display", sans-serif;
@@ -66,6 +81,15 @@ body {
   }
 }
 
+/* Override prose bullets - outside layer for higher specificity */
+.prose.prose-grey :where(ul > li)::marker {
+  color: var(--color-spiral-grey);
+}
+
+.prose.prose-grey blockquote {
+  border-left-color: var(--color-spiral-grey-dark);
+}
+
 /* Custom prose styles for blog content */
 @layer components {
   .prose-grey {
@@ -77,26 +101,65 @@ body {
   }
 
   .prose-grey ol, .prose-grey ul {
-    @apply text-grey space-y-2;
+    @apply text-white space-y-2;
   }
 
   .prose-grey li {
     @apply text-grey;
   }
 
-  .prose-grey a {
-    @apply text-white hover:text-grey transition-colors underline;
+  .prose.prose-grey a {
+    @apply !text-spiral-light-blue hover:!text-spiral-washed-light-blue transition-colors underline;
   }
 
   .prose-grey pre {
-    @apply bg-white/5 border border-white/10 text-white font-mono text-sm;
+    @apply bg-[#0d1117] border border-white/10 text-white font-mono text-sm p-4 rounded-lg overflow-x-auto;
+  }
+
+  .prose-grey pre code {
+    @apply bg-transparent p-0 rounded-none text-inherit;
   }
 
   .prose-grey code {
     @apply text-white bg-white/10 px-1 py-0.5 rounded text-sm font-mono;
   }
 
+  /* Syntax highlighting line styles */
+  .prose-grey pre [data-line] {
+    @apply px-4 -mx-4 border-l-2 border-transparent;
+  }
+
+  /* Highlighted lines */
+  .prose-grey pre [data-highlighted-line] {
+    @apply bg-white/10 border-l-white/50;
+  }
+
+  /* Line numbers */
+  .prose-grey pre [data-line-numbers] [data-line]::before {
+    counter-increment: line;
+    content: counter(line);
+    @apply inline-block w-8 mr-4 text-right text-white/30;
+  }
+
+  .prose-grey pre [data-line-numbers] {
+    counter-reset: line;
+  }
+
+  /* Highlighted words */
+  .prose-grey [data-highlighted-chars] {
+    @apply bg-white/20 rounded px-1 py-0.5;
+  }
+
+  /* Code block title/caption */
+  .prose-grey figcaption[data-rehype-pretty-code-title] {
+    @apply text-xs text-white/50 font-mono px-4 py-2 border-b border-white/10 bg-white/5 rounded-t-lg;
+  }
+
+  .prose-grey figcaption[data-rehype-pretty-code-title] + pre {
+    @apply rounded-t-none mt-0;
+  }
+
   .prose-grey blockquote {
-    @apply border-l-white/30 text-grey italic;
+    @apply border-l-spiral-blue text-grey italic;
   }
 }

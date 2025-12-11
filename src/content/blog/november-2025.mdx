@@ -1,0 +1,53 @@
+---
+title: "November Bulletin"
+date: "2025-12-08"
+authors: ["Community Team"]
+excerpt: "Overview of all work happening in Vortex"
+published: true
+---
+
+In November, work continued on revamping Array evaluation to be fully lazy. This happens by converting their execution
+to an Operator model that evaluates into Vectors (fully decompressed, zero-copy to Arrow representation). As a reminder, this work enables many more optimizations, and also provides unified abstractions for evaluating on
+different processor types (CPUs & GPUs). We anticipate shipping lazy Array evaluation by the end of the year.
+
+## Around the Ecosystem
+
+- Spice AI launched the [Spice Cayenne Data Accelerator](https://spice.ai/blog/spice-cloud-v1-9-0-cayenne-data-accelerator) based on Vortex
+- Polar Signals [replaced Parquet with Vortex](https://www.polarsignals.com/blog/posts/2025/11/25/interface-parquet-vortex) for their profiling database
+  > Given how well Vortex’s design matched our needs, we tried it out and got a 70% average performance improvement on all our queries.
+- Vortex is now a DuckDB [core extension](https://duckdb.org/docs/stable/core_extensions/vortex) only and was removed from the list of community releases. To install:
+  ```sql
+  INSTALL vortex;
+  ```
+
+## Discussions
+
+Feel free to contribute to the following recent discussions:
+
+- Release process for breaking API changes [#5624](https://github.com/vortex-data/vortex/discussions/5624)
+- Benchmark restructuring [#5674](https://github.com/vortex-data/vortex/discussions/5674)
+- To upvote priority on Vortex integrations, please comment on [#5525](https://github.com/vortex-data/vortex/discussions/5525).
+
+## Acknowledgments
+
+We want to thank to anyone who has tried Vortex, provided feedback, asked question and filed issues. Special congratulations to Alfonso Subiotto Marqués on joining the Technical Steering Committee as a committer.
+
+The following contributed to the November releases.
+
+```text
+Joe Isaacs
+Connor Tsui
+Nicholas Gates
+Robert Kruszewski
+Andrew Duffy
+Alexander Droste
+Dan King
+Onur Satici
+Adam Gutglick
+Alfonso Subiotto Marqués
+Will Manning
+Dmitrii Blaginin
+Frederic Branczyk
+James Xu
+Nick Cameron
+```
