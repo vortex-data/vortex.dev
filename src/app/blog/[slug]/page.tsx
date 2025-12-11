@@ -1,5 +1,5 @@
-import { getAllSlugs, getPostBySlug } from "@/lib/blog";
 import { MDXRenderer } from "@/components/MDXRenderer";
+import { getAllSlugs, getPostBySlug } from "@/lib/blog";
 import { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -81,7 +81,9 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
 
             <div className="flex items-center gap-2">
               <span>by</span>
-              <span className="text-white">{post.authors.join(", ")}</span>
+              <span className="text-spiral-green">
+                {post.authors.join(", ")}
+              </span>
             </div>
           </div>
         </header>

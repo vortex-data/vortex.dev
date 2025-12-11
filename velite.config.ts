@@ -1,3 +1,4 @@
+import rehypePrettyCode from "rehype-pretty-code";
 import { defineCollection, defineConfig, s } from "velite";
 
 const blog = defineCollection({
@@ -11,7 +12,17 @@ const blog = defineCollection({
       authors: s.array(s.string()),
       excerpt: s.string().optional(),
       published: s.boolean().default(true),
-      body: s.mdx()
+      body: s.mdx({
+        rehypePlugins: [
+          [
+            rehypePrettyCode,
+            {
+              theme: "night-owl",
+              keepBackground: false
+            }
+          ]
+        ]
+      })
     })
     .transform((data) => ({
       ...data,
