@@ -81,6 +81,15 @@ body {
   }
 }
 
+/* Override prose bullets - outside layer for higher specificity */
+.prose.prose-grey :where(ul > li)::marker {
+  color: var(--color-spiral-grey);
+}
+
+.prose.prose-grey blockquote {
+  border-left-color: var(--color-spiral-grey-dark);
+}
+
 /* Custom prose styles for blog content */
 @layer components {
   .prose-grey {
@@ -92,7 +101,7 @@ body {
   }
 
   .prose-grey ol, .prose-grey ul {
-    @apply text-grey space-y-2;
+    @apply text-white space-y-2;
   }
 
   .prose-grey li {
@@ -151,6 +160,6 @@ body {
   }
 
   .prose-grey blockquote {
-    @apply border-l-white/30 text-grey italic;
+    @apply border-l-spiral-blue text-grey italic;
   }
 }
