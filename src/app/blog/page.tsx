@@ -1,3 +1,4 @@
+import { NewsletterForm } from "@/components/newsletter-form";
 import { getAllPosts } from "@/lib/blog";
 import { Metadata } from "next";
 import Link from "next/link";
@@ -24,15 +25,20 @@ export default function BlogPage() {
   const posts = getAllPosts();
 
   return (
-    <div className="min-h-screen w-full bg-background text-white">
+    <div className="h-full w-full bg-background text-white">
       <div className="max-w-5xl mx-auto px-4 py-16">
-        <div className="mb-12">
-          <h1 className="text-4xl md:text-6xl font-funnel font-light text-white mb-4">
-            Blog
-          </h1>
-          <p className="text-grey font-mono text-lg">
-            Updates and insights from the Vortex team
-          </p>
+        <div className="mb-12 flex flex-col lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <h1 className="text-4xl md:text-6xl font-funnel font-light text-white mb-4">
+              Blog
+            </h1>
+            <p className="text-grey font-mono text-lg">
+              Updates and insights from the Vortex team
+            </p>
+          </div>
+          <div className="lg:w-80 lg:flex-shrink-0 sm:pb-2">
+            <NewsletterForm variant="compact" />
+          </div>
         </div>
 
         {posts.length === 0 ? (

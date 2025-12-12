@@ -19,7 +19,7 @@ import { Overlay } from "../overlay";
 // Header: 108px (h-[108px]) + 40px (m-10 top) + 24px (mb-6) = 172px
 // Footer: 16px (mt-4) + 40px (m-10 bottom) + 84px (md:h-[84px]) + 36px (pt-4 + content) = 176px
 // Total: 172px + 176px = 348px
-const DESKTOP_HEIGHT = 348;
+const DESKTOP_HEIGHT = 334;
 // Header: 72px (h-[72px]) + 16px (m-4 top) + 8px (mb-2) = 96px
 // Footer: 8px (mt-2) + 16px (m-4 bottom) + 52px (py-4 + content) + 36px (pt-4 + content) = 112px
 // Total: 96px + 112px = 208px
@@ -295,7 +295,7 @@ void main() {
   }, []);
 
   return (
-    <div className="w-full overflow-clip h-[calc(100dvh-208px)] md:h-[calc(100dvh-354px)]">
+    <div className="w-full overflow-clip md:h-[calc(100dvh-208px)] lg:h-[calc(100dvh-332px)]">
       <div
         ref={containerRef}
         className="w-[calc(100%-2rem)] md:w-[calc(100%-5rem)] mx-4 md:mx-10 h-full overflow-clip"

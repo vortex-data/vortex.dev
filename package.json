@@ -21,6 +21,7 @@
     "react-dom": "^19.2.1",
     "react-markdown": "^10.1.0",
     "rehype-pretty-code": "^0.14.1",
+    "resend": "^6.6.0",
     "use-scramble": "^2.2.15",
     "velite": "^0.3.1"
   },
