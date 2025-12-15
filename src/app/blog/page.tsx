@@ -36,7 +36,7 @@ export default function BlogPage() {
               Updates and insights from the Vortex team
             </p>
           </div>
-          <div className="lg:w-80 lg:flex-shrink-0 sm:pb-2">
+          <div className="lg:w-80 lg:flex-shrink-0 sm:pb-2 sm:mr-1">
             <NewsletterForm variant="compact" />
           </div>
         </div>
