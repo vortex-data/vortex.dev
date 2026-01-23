@@ -11,7 +11,14 @@ published: true
 The work mentioned in the previous bulletin to revamp Array evaluation to be fully lazy was released on January 6th. This happens by converting their execution to an Operator model that evaluates into Vectors (fully decompressed, zero-copy to Arrow representation). As a reminder, this work enables many more optimizations, and also provides unified abstractions for evaluating on
 different processor types (CPUs & GPUs).
 
-Speaking of, focus is now on GPU support. The goal is to enable querying training data on the fly and streaming it from object storage directly to GPU memory with high throughput. To achieve this, the team is: - adding the necessary encodings via Vortex's extensions to enable GPU-native decompression - integrating with NVIDIA's CUDA toolkit so GPUs can scan Vortex files in object storage directly
+## GPU Support
+
+Speaking of, focus is now on enabling reading Vortex files into GPUs. To achieve this, the team is:
+
+- Adding GPU decompression for existing kernels, as well as some new encodings optimized for GPU
+- Integrating with NVIDIA's CUDA toolkit for high performance I/O.
+
+The first supported output types will be Arrow Device Arrays and cuDF. As with all of Vortex, these capabilities are fully exposed to plugins so advanced users can extend and customize for their own use.
 
 ## Around the Ecosystem
 
