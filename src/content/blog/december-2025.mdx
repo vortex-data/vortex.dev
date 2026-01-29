@@ -1,41 +1,46 @@
 ---
 title: "December & January Bulletin"
-date: "2026-01-06"
+date: "2026-01-30"
 authors: ["Community Team"]
 excerpt: "Overview of all work happening in Vortex"
 published: true
 ---
 
-[TODO - Adam to fill in Datafusion 52 support]
+The work mentioned in the previous bulletin to revamp Array evaluation to be fully lazy was [released](https://github.com/vortex-data/vortex/releases/tag/0.57.0) on January 6th. This happens by converting their execution to an Operator model that evaluates into Vectors (fully decompressed, zero-copy to Arrow representation). As a reminder, this work enables many more optimizations, and also provides unified abstractions for evaluating on
+different processor types (CPUs & GPUs).
 
 ## GPU Support
 
-Speaking of, focus is now on enabling reading Vortex files into GPUs. To achieve this, the team is:
+Speaking of, focus is now on support for reading Vortex files into GPUs. To achieve this, the team is
 
-- Adding GPU decompression for existing kernels, as well as some new encodings optimized for GPU
+- Adding GPU decompression for existing kernels, as well as some new encodings optimized for GPU; and
 - Integrating with NVIDIA's CUDA toolkit for high performance I/O.
 
-The first supported output types will be Arrow Device Arrays and cuDF. As with all of Vortex, these capabilities are fully exposed to plugins so advanced users can extend and customize for their own use.
+The first supported output types will be Arrow Device Arrays and cuDF, and a few key PRs have already landed.
+
+- Add CUDA kernels for decoding bitpacked arrays on GPU ([#6145](https://github.com/vortex-data/vortex/pull/6145))
+- GPU filter kernel for primitive types ([#6188](https://github.com/vortex-data/vortex/pull/6188))
+- GPU filter kernel for decimals, strings and binary ([#6196](https://github.com/vortex-data/vortex/pull/6196))
+- GPU Scans ([#6199](https://github.com/vortex-data/vortex/pull/6199))
+
+As with all of Vortex, these capabilities are fully exposed to plugins so advanced users can extend and customize for their own use.
 
 ## Around the Ecosystem
 
-- DuckDB Labs published [performance benchmarks](https://duckdb.org/2026/01/23/duckdb-vortex-extension) comparing Vortex (using the `vortex` extension) versus Parquet. Spoiler alert: Vortex was ~18% faster!
-- Spice AI began a blog series about building their data accelerato Cayenne with Vortex and Datafusion
-  - [🌪️ Vortex: The Bet on Encoding-Efficient Columnar Storage for Hot Data](https://www.linkedin.com/posts/lukekim_datafusion-spiceai-data-activity-7417019189477126144-1TRe/)
-  - [🔬 The Research Behind Modern Data Compression & Vortex](https://www.linkedin.com/posts/lukekim_datafusion-developers-ai-activity-7417649503291498496-TD5_/)
-  - [🤖 Three Data Problems Vortex Solves for Applications and Agents in 2026](https://www.linkedin.com/posts/lukekim_vortex-efficient-columnar-storage-for-hot-activity-7419472524750798848-lZC6/)
+**DuckDB Labs** published [performance benchmarks](https://duckdb.org/2026/01/23/duckdb-vortex-extension) comparing Vortex (using the `vortex` extension) versus Parquet. Spoiler alert: Vortex reduced total query time by ~18-35%!
 
-### DataFusion
+**Spice AI** began a blog series about building their data accelerato Cayenne with Vortex and Datafusion:
 
-Over the past two months we've released support for DataFusion 51, and then merged support for DataFusion 52.
+- [🌪️ Vortex: The Bet on Encoding-Efficient Columnar Storage for Hot Data](https://www.linkedin.com/posts/lukekim_datafusion-spiceai-data-activity-7417019189477126144-1TRe/)
+- [🔬 The Research Behind Modern Data Compression & Vortex](https://www.linkedin.com/posts/lukekim_datafusion-developers-ai-activity-7417649503291498496-TD5_/)
+- [🤖 Three Data Problems Vortex Solves for Applications and Agents in 2026](https://www.linkedin.com/posts/lukekim_vortex-efficient-columnar-storage-for-hot-activity-7419472524750798848-lZC6/)
+
+**DataFusion:** Over the past two months we've released support for DataFusion 51, and then merged support for DataFusion 52.
 
 - Expression conversion is now extendable, allowing users to push down custom UDFs or any other DataFusion expressions.
 - Support for schema evolution between files within the same table has improved dramatically, fixing many bugs and and allowing deeper pushdown over nested structs columns.
 - We now support tables that have more complex arrow types (Like Dict, REE), while also doing less work exporting from Vortex to Arrow.
 - Delegate some caching to to DataFusion's built in caching, allowing users to tune it using familiar configurations.
-
-The work mentioned in the previous bulletin to revamp Array evaluation to be fully lazy was released on January 6th. This happens by converting their execution to an Operator model that evaluates into Vectors (fully decompressed, zero-copy to Arrow representation). As a reminder, this work enables many more optimizations, and also provides unified abstractions for evaluating on
-different processor types (CPUs & GPUs).
 
 ## Acknowledgments
 
