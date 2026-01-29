@@ -1,0 +1,59 @@
+---
+title: "October Bulletin"
+date: "2025-11-6"
+authors: ["Community Team"]
+excerpt: "Overview of all work happening in Vortex"
+published: true
+---
+
+In October, a lot of focus was on revamping Array evaluation to be fully lazy, by converting their execution
+to an Operator model that evaluates into Vectors (fully decompressed, zero-copy to Arrow representation).
+This work enables many more optimizations, and also provides unified abstractions for evaluating on
+different processor types (CPUs & GPUs).
+
+In parallel, Vortex added experimental support for a GPU Scan, with fused CUDA kernels for decompressing Vortex data
+directly on-device.
+
+For an in-depth view of this work, see the [recent talk on Vortex](https://db.cs.cmu.edu/events/futuredata-vortex/)
+as part of CMU's Future Data Seminar.
+
+## Core
+
+1. Children of `ZonedLayoutReader` are evaluated lazily. [#5007](https://github.com/vortex-data/vortex/pull/5007)
+2. Introduced our own bit-buffer type, allowing for in-place mutation [#4940](https://github.com/vortex-data/vortex/pull/4940)
+3. Introduced experimental GPU Scan [#5012](https://github.com/vortex-data/vortex/pull/5012)
+
+## Integrations
+
+### DFT
+
+You can now try Vortex as part of [dft](https://github.com/datafusion-contrib/datafusion-dft), a batteries-included suite of data tools based on Apache DataFusion.
+
+### DataFusion
+
+1. Added support for pushing down filters onto fields of struct columns. #5024
+
+### DuckDB
+
+As of DuckDB 1.4.2, Vortex is included as a core extension in DuckDB. See their [docs](https://duckdb.org/docs/stable/core_extensions/vortex) for more details.
+
+## Acknowledgments
+
+We want to thank to anyone who has tried Vortex, provided feedback, asked question and filed issues.
+
+Special thanks go for all the contributors who took the time and care to contribute to Vortex this month (in descending count of commits):
+
+```text
+    41  Connor Tsui
+    38  Joe Isaacs
+    24  Nicholas Gates
+    22  Robert Kruszewski
+    22  Adam Gutglick
+    10  Andrew Duffy
+    8   Dan King
+    8   Alexander Droste
+    7   Onur Satici
+    5   Alfonso Subiotto Marqués
+    2   Dmitrii Blaginin
+    1   Maksim Dergousov
+```

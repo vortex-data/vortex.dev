@@ -1,29 +1,37 @@
+import LFLogo from "@/assets/lf_white.svg";
 import SpiralLogo from "@/assets/spiral.svg";
 import Image from "next/image";
 import NextLink from "next/link";
 import { Link } from "../link";
+
 export const Footer = () => {
   return (
-    <div className="flex flex-col-reverse md:flex-row justify-between items-center m-4 mt-2 md:mt-4 md:m-10 dashed-top dashed-bottom after:hidden md:after:block md:h-[84px]">
-      <div className="flex items-center gap-4 dashed-right after:hidden lg:after:block h-full md:pl-2 lg:px-10 py-4 pb-4 md:py-0">
-        <span className="text-sm font-mono text-white">
-          Copyright © Vortex a Series of{" "}
-          <Link href="https://lfprojects.org" target="_blank">
-            LF Projects, LLC
-          </Link>
-          .
-        </span>
-      </div>
-      <div className="dashed-top md:hidden w-full"></div>
-      <div className="dashed-right h-full lg:hidden"></div>
-      <div className="flex items-center gap-8 dashed-left before:hidden lg:before:block h-full lg:px-10">
-        <div className="flex flex-col md:flex-row items-center gap-2 py-4 md:py-0">
-          <span className="text-white font-mono text-sm flex gap-3 items-center">
-            <NextLink
-              href="https://spiraldb.com"
-              target="_blank"
-              className="uppercase text-white font-mono text-sm"
-            >
+    <div className="flex flex-col m-4 mb-2 md:m-10">
+      <div className="flex flex-col sm:flex-row justify-center items-center px-4 sm:px-0 gap-4 md:gap-16 dashed-top dashed-bottom after:hidden md:after:block py-4 md:py-0 md:h-[84px]">
+        <div className="flex items-center h-full lg:px-10">
+          <div className="flex flex-col md:flex-row items-center gap-2">
+            <span className="text-sm font-mono text-white items-center gap-2">
+              Incubating @{" "}
+              <Image
+                src={LFLogo}
+                alt="Linux Foundation logo"
+                height={10}
+                className="inline"
+              />
+            </span>
+          </div>
+        </div>
+        <div className="flex items-center h-full lg:px-10">
+          <span className="text-white font-mono text-sm items-center gap-1 text-center sm:text-left">
+            Copyright © Vortex a Series of{" "}
+            <Link href="https://lfprojects.org" target="_blank">
+              LF Projects, LLC.
+            </Link>
+          </span>
+        </div>
+        <div className="flex items-center h-full lg:px-10">
+          <span className="text-xs font-mono text-white items-center gap-2 flex">
+            <NextLink href="https://spiraldb.com" target="_blank">
               <Image
                 src={SpiralLogo}
                 alt="Spiral Logo"
@@ -31,16 +39,18 @@ export const Footer = () => {
                 height={18}
               />
             </NextLink>
-            <span>
-              Donated by{" "}
-              <Link href="https://spiraldb.com" target="_blank">
-                Spiral
-              </Link>
-              .
-            </span>
+            Donated by{" "}
+            <Link href="https://spiraldb.com" target="_blank">
+              Spiral.
+            </Link>
           </span>
         </div>
       </div>
+      {/* <div className="py-6 flex justify-center">
+        <div className="w-full max-w-md">
+          <NewsletterForm />
+        </div>
+      </div> */}
     </div>
   );
 };

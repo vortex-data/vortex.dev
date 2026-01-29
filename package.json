@@ -9,24 +9,31 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@vercel/analytics": "^1.5.0",
-    "next": "15.2.4",
-    "next-plausible": "^3.12.4",
+    "@mdx-js/react": "^3.1.1",
+    "@next/mdx": "^16.0.7",
+    "@tailwindcss/typography": "^0.5.19",
+    "@vercel/analytics": "^1.6.1",
+    "next": "16.0.11",
+    "next-plausible": "^3.12.5",
     "ogl": "^1.0.11",
-    "prettier": "^3.5.3",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "use-scramble": "^2.2.15"
+    "prettier": "^3.7.4",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "react-markdown": "^10.1.0",
+    "rehype-pretty-code": "^0.14.1",
+    "resend": "^6.6.0",
+    "use-scramble": "^2.2.15",
+    "velite": "^0.3.1"
   },
   "devDependencies": {
-    "@eslint/eslintrc": "^3",
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "15.2.4",
-    "tailwindcss": "^4",
-    "typescript": "^5"
+    "@eslint/eslintrc": "^3.3.3",
+    "@tailwindcss/postcss": "^4.1.17",
+    "@types/node": "^24.10.1",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "eslint": "^9.39.1",
+    "eslint-config-next": "16.0.11",
+    "tailwindcss": "^4.1.17",
+    "typescript": "^5.9.3"
   }
 }

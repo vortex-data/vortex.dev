@@ -22,7 +22,7 @@ export const metadata: Metadata = {
 
 export default function Home() {
   return (
-    <div className="h-full w-full relative">
+    <div className="h-full w-full relative overflow-hidden">
       <HeroASCII />
     </div>
   );
