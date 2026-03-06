@@ -1,0 +1,247 @@
+---
+title: "Have your cake and decompress it too"
+date: "2026-02-26"
+authors: ["Nicholas Gates"]
+excerpt: "How Vortex uses BtrBlocks-style codec selection to beat Parquet+ZSTD on both size and speed."
+published: true
+---
+
+> This blogpost was originally posted on the [SpiralDB blog](https://spiraldb.com/post/cascading-compression-with-btrblocks).
+
+We've written about individual compression codecs in Vortex before: [FastLanes](https://blog.spiraldb.com/life-in-the-fastlanes/) for bit-packing integers, [FSST](https://blog.spiraldb.com/compressing-strings-with-fsst/) for strings, and [ALP](https://blog.spiraldb.com/alp-rust-is-faster-than-c/) for floating point. But we've never explained how Vortex decides _which_ codec to use for a given column, or how it layers multiple codecs on top of each other.
+
+On TPC-H at scale factor 10, Vortex files are **38% smaller** and decompress **10–25x faster** than Parquet with ZSTD, without using any general-purpose compression. The difference comes down to how the codecs are selected and composed, a framework inspired by the BtrBlocks paper from TU Munich.
+
+> 🎓
+> Maximilian Kuschewski, David Sauerwein, Adnan Alhomssi, and Viktor Leis. 2023. BtrBlocks: Efficient Columnar Compression for Data Lakes.
+> _Proc. ACM Manag. Data 1, 2, Article 118 (June 2023)._ > _[https://doi.org/10.1145/3589263](https://doi.org/10.1145/3589263)_
+
+The core idea: don't pick one codec. Try them all, and let the data decide.
+
+# How Parquet does it
+
+Parquet has two separate compression layers. First, a _lightweight encoding_ transforms column values into a more compact representation: dictionary encoding, delta encoding, byte-stream-split, and so on. Then a _general-purpose compression codec_ (ZSTD, LZ4, Snappy) is applied on top. The encoding is specified per data page, while the compression codec is fixed per column chunk.
+
+Mainstream Parquet writers use a simple strategy: try dictionary encoding first, and if the dictionary grows too large (typically >1 MB), fall back to PLAIN encoding for the remaining pages. More advanced writers (like Spark's V2 writer) use `DELTA_BINARY_PACKED` for integers and `DELTA_BYTE_ARRAY` for strings instead of PLAIN, but the overall decision tree is the same.
+
+This is a form of adaptive compression. The writer _does_ respond to the data by falling back when the dictionary overflows. There's even a small amount of cascading: dictionary-encoded pages use the RLE/bit-packing hybrid to encode the integer codes, which is dictionary → RLE → bit-packing if you squint. But it's a single hard-coded cascade path, not a general mechanism.
+
+The real cost is in the second layer. ZSTD decompresses at roughly 1–2 GB/s. FastLanes bit-unpacking decodes at **100+ billion integers per second**. Two orders of magnitude. And general-purpose compression is opaque: once ZSTD or LZ4 is applied, you must decompress an entire page to read a single value. Random access is gone. [Push-down compute](https://blog.spiraldb.com/what-if-we-just-didnt-decompress-it/) is gone.
+
+This matters for two reasons. First, sparse lookups: a point query that touches a handful of rows out of millions. With lightweight encoding, you jump straight to the values you need. With ZSTD, you decompress an entire page to read one. Second, late materialization: the query engine evaluates filter predicates to produce a row mask, then materializes only matching rows from the projected columns. If columns are lightweight-encoded, the engine can evaluate filters and project values directly from the compressed representation. With opaque compression, every column touched by the query must be fully decompressed up front, regardless of selectivity.
+
+Parquet relies on this heavyweight second layer because its lightweight encoding repertoire is limited. No [ALP](https://blog.spiraldb.com/alp-rust-is-faster-than-c/) for floating-point data, no [FSST](https://blog.spiraldb.com/compressing-strings-with-fsst/) for strings, and no general mechanism for chaining encodings. Adding new encodings requires updating the specification and coordinating across [sixteen-plus reader implementations](https://en.wikipedia.org/wiki/Apache_Parquet#Implementations). There are [active discussions](https://lists.apache.org/list.html?dev@parquet.apache.org) about adding encodings like ALP, so the ecosystem is not standing still.
+
+BtrBlocks takes a different approach: chain multiple lightweight encodings, each fast and each preserving random access, until the data is as small as it's going to get.
+
+# From hard-coded to recursive cascading
+
+Parquet's dictionary → RLE → bit-packing pipeline is a hard-coded cascade: "if dictionary encoding, then RLE-encode the codes." It works for that specific path but can't generalize. What if FSST would compress a string column better than dictionary? What if dictionary codes should be bit-packed rather than run-length encoded?
+
+BtrBlocks turns this into a recursive process. After any scheme compresses an array, its child arrays are fed back into the compressor for another round of scheme selection. Dictionary encoding produces a codes array and a values array. Each child gets independently evaluated against all available schemes. The winners compress them, producing their own children, which are evaluated again.
+
+The recursion needs a stopping condition. In Vortex, the `CompressorContext` tracks depth:
+
+```rust
+struct CompressorContext {
+    is_sample: bool,
+    allowed_cascading: usize, // Starts at MAX_CASCADE = 3
+}
+```
+
+Each time we descend into a child array, `allowed_cascading` decrements. At zero, only terminal schemes (like BitPacking) are allowed. Most columns converge in 2–3 levels.
+
+Not all combinations make sense. You wouldn't dictionary-encode the output of another dictionary encoding. When a scheme compresses a child, it passes an _exclusion list_ of schemes to skip in the next round:
+
+```rust
+// Don't re-apply dictionary to the codes, and Sequence adds indirection without compressing.
+let new_excludes = vec![IntCode::Dict, IntCode::Sequence];
+let compressed_codes = compressor.compress(codes, ctx.descend(), &new_excludes);
+```
+
+Dictionary can cascade into REE or bit-packing, but not into another dictionary.
+
+## A concrete cascade
+
+A column of 32-bit integers with values clustered around 1,000,000:
+
+```plainText
+[1000042, 1000017, 1000042, 1000042, 1000042, 1000017, ...]
+```
+
+No single codec handles this well. A cascade of three does:
+
+1. **Dictionary** spots two distinct values. It produces a dictionary `[1000042, 1000017]` and a codes array `[0, 1, 0, 0, 0, 1, ...]`.
+
+2. The codes are fed back into the compressor. **REE** wins because the codes have long runs. It collapses `[0, 1, 0, 0, 0, 1, ...]` into run ends and values.
+
+3. The REE values are fed back in. **BitPacking** wins since the values are all 0 or 1, packing into a single bit each.
+
+Result: 32-bit integers compressed to roughly 1 bit per element (plus small dictionary overhead), all lightweight encodings, full random access.
+
+# Sampling
+
+The obvious problem with "try them all" is cost. Ten candidate codecs and a million-row column means you don't want to compress a million rows ten times to find the winner.
+
+BtrBlocks uses sampling. We draw a small _stratified_ sample and compress that instead. Stratified sampling divides the array into equal-sized regions and draws a random contiguous slice from each, ensuring every part of the data is represented. The key word is _contiguous_: we draw adjacent values, not scattered individuals. If the data has runs of repeated values, the sample preserves that structure. A random scatter would destroy run-length patterns and mislead the REE estimator.
+
+The original BtrBlocks paper draws a fixed sample of 640 values. We target ~1% of the data with a minimum of 1,024 values, so for a 10-million-row column we sample ~100,000 values. The 1,024-value floor ensures samples are large enough for FastLanes compression; below that, padding bytes dominate the measurement.
+
+> 💡 The sampling RNG is seeded with a fixed value, making compression fully deterministic. Same input, same output.
+
+Not all schemes need sampling. Some estimate their compression ratio analytically. Frame-of-Reference computes its ratio from the min, max, and bit-width. Dictionary estimates from cardinality and average run length. Sparse estimates its ratio from null frequency. Only schemes where the ratio is hard to predict (like REE, where the benefit depends on actual run structure) fall back to trial compression on the sample.
+
+We compress the sample through the full cascade, not just the top-level scheme. When evaluating dictionary encoding, we dictionary-encode the sample, recursively compress the resulting codes, and measure total output size. The estimated ratio accounts for downstream compression. When we're already operating on a sample (the `is_sample` flag is set), we skip re-sampling and compress as-is.
+
+# Scheme evaluation
+
+We evaluate every available scheme and pick the one with the highest compression ratio. The algorithm is greedy: each scheme's `expected_compression_ratio` accounts for the cascading it does internally.
+
+A ratio of 1.0 means "no benefit." If nothing beats 1.0, we store the data uncompressed. After compression, there's a safety check: if the compressed output is actually _larger_ than the input (the sample was misleading), we fall back to uncompressed. No point making things worse.
+
+One subtlety: constant encoding is never chosen on a sample. If we sample 1% of the data and all 1,024 values happen to be the same, that doesn't mean the whole column is constant. We only apply constant encoding when full array statistics confirm it.
+
+> 🤔 We currently optimize purely for compressed size. But you might prefer a slightly larger encoding that's 5x faster to decode. This is already implicit: the default compressor excludes opaque codecs like ZSTD and PCodec that sacrifice random access, while the Compact compressor includes them for maximum compression (more below). We may explore explicit size-vs-speed cost functions in the future.
+
+# Type-specific compressors
+
+You can't ALP-encode a string or FSST-compress an integer. The codecs are defined over specific value domains, so the compressor dispatches to type-specific sub-compressors, each with its own menu of schemes.
+
+## Integers
+
+The integer compressor has the largest menu:
+
+| Scheme                 | What it does                          | Key threshold                                |
+| ---------------------- | ------------------------------------- | -------------------------------------------- |
+| **Constant**           | Stores a single scalar + length       | Exactly 1 distinct value                     |
+| **Frame-of-Reference** | Subtract minimum, then bit-pack       | min ≠ 0, and FoR reduces bit-width vs direct |
+| **ZigZag**             | Map signed → unsigned for bit-packing | Has negative values                          |
+| **BitPacking**         | Reduce bit width of unsigned integers | No negative values                           |
+| **Sparse**             | Store a fill value + exceptions       | >90% null, or >90% one value                 |
+| **Dictionary**         | De-duplicate into codes + values      | ≤50% distinct values                         |
+| **REE**                | Run-end encode consecutive runs       | Average run length ≥ 4                       |
+| **Sequence**           | Arithmetic progression `a*i + b`      | All values unique, no nulls, linear          |
+
+> 👀 Several schemes require `allowed_cascading > 0` because they only make sense as intermediate steps. Frame-of-Reference without bit-packing downstream is just overhead. ZigZag without anything downstream is pointless; it just rotates bits.
+
+## Floats
+
+- **ALP** — Adaptive Lossless Floating-Point, encodes decimal-like floats as integers. Cascades into the integer compressor.
+- **ALP-RD** — A variant for high-precision doubles via right-digit decomposition.
+- **Dictionary**, **Sparse**, **Constant**, **REE** — same as for integers.
+
+## Strings
+
+- **FSST** — [Fast Static Symbol Table](https://blog.spiraldb.com/compressing-strings-with-fsst/). Trains a symbol table on the data, then compresses strings into 1-byte symbol codes.
+- **Dictionary** — De-duplicate into values + codes. Codes are recursively compressed.
+- **Sparse**, **Constant** — for null-dominated or uniform columns.
+- **Zstd** — Not in the default compressor, but available in the _compact_ strategy.
+
+## Temporal
+
+Timestamps get special treatment. Rather than compressing raw `i64` nanoseconds, the temporal compressor decomposes them into days, seconds, and subsecond components, each with a much smaller range. We'll cover this in a future post on domain-specific encodings.
+
+# Results
+
+Vortex ships two built-in compression strategies. The **default** strategy uses only lightweight encodings: fast to decode, full random access. The **compact** strategy adds PCodec for numerics and ZSTD for strings, trading decode speed and random access for maximum compression.
+
+```rust
+// Default: lightweight encodings only
+let default = WriteStrategyBuilder::default().build();
+
+// Compact: adds PCodec + ZSTD for maximum compression
+let compact = WriteStrategyBuilder::default()
+    .with_compact_encodings()
+    .build();
+```
+
+On TPC-H at scale factor 10:
+
+| Table     | Parquet (ZSTD) | Vortex (default)     | Vortex (compact)     |
+| --------- | -------------- | -------------------- | -------------------- |
+| lineitem  | 3,103 MB       | 1,759 MB             | 1,306 MB             |
+| orders    | 696 MB         | 484 MB               | 339 MB               |
+| partsupp  | 435 MB         | 365 MB               | 254 MB               |
+| customer  | 136 MB         | 106 MB               | 75 MB                |
+| part      | 79 MB          | 55 MB                | 37 MB                |
+| supplier  | 16 MB          | 7 MB                 | 5 MB                 |
+| **Total** | **4,465 MB**   | **2,776 MB** (0.62x) | **2,016 MB** (0.45x) |
+
+The _default_ strategy produces files **38% smaller** than Parquet with ZSTD using only lightweight encodings. The _compact_ strategy goes further: **55% smaller**.
+
+We have found decompression is 10–25x faster than Parquet+ZSTD, depending on the dataset. No ZSTD decode tax on every read.
+
+To trace one column: `l_discount` from TPC-H contains 8.3 million f64 discount percentages. The Vortex CLI shows the encoding tree:
+
+```
+root: vortex.alp(f64, len=8388608) nbytes=4.19 MB
+  metadata: ALPMetadata { exponents: Exponents { e: 14, f: 12 } }
+  encoded: fastlanes.bitpacked(i64, len=8388608) nbytes=4.19 MB
+    metadata: BitPackedMetadata { bit_width: 4, offset: 0, patches: None }
+    buffer (align=8): 4.19 MB
+```
+
+ALP won the float evaluation because values like `0.04` and `0.09` round-trip perfectly through ALP's decimal scaling. The resulting integers (4, 9, 1, ...) all fit in 0–10, so BitPacking won with a bit-width of 4. ALP → BitPacking. Two lightweight layers, 15x compression ratio, full random access.
+
+# Per-column configurability
+
+Vortex lets you assign different compression strategies to individual columns via `TableStrategy`:
+
+```rust
+use vortex_layout::layouts::{TableStrategy, FlatLayoutStrategy};
+use vortex_array::field_path;
+
+let default_strategy = WriteStrategyBuilder::default().build();
+let compact_strategy = WriteStrategyBuilder::default()
+    .with_compact_encodings()
+    .build();
+
+// Use default compression for most columns, but compact for "raw_json"
+let strategy = TableStrategy::new(
+    Arc::new(FlatLayoutStrategy::default()),  // validity
+    default_strategy,                          // fallback for all columns
+)
+.with_field_writer(field_path!(raw_json), compact_strategy);
+```
+
+We know of users who use the _default_ strategy for most columns but opt into Zstd for a column of JSON strings from which the other columns were eagerly parsed. The JSON column is accessed infrequently and Zstd gets excellent ratios on JSON, so the tradeoff makes sense even though it sacrifices random access and push-down compute.
+
+# Where Vortex diverges from the BtrBlocks paper
+
+Our compressor is _inspired by_ BtrBlocks, not a port of it. We've made different design choices in several places.
+
+## Statistics are computed lazily
+
+The original BtrBlocks computes full statistics over the entire array in a single pass, including a complete `std::map` of every distinct value and its frequency. Thorough, but expensive. O(n) with significant constant factors, especially for strings where each value must be hashed and stored.
+
+Vortex computes distinct value counts _conditionally_. If dictionary encoding is disabled (excluded from the scheme set), we skip cardinality computation entirely. For strings, we use an approximate distinct count based on hashing the first 8 bytes (length + 4-byte prefix) of each string view rather than building a full set. Cheaper, but can overcount when strings share a common prefix. We also don't track a sortedness flag, which the original does.
+
+## Larger, adaptive samples
+
+The original BtrBlocks draws a fixed 640-value sample regardless of data size. Vortex targets ~1% with a 1,024-value floor. The larger sample helps for schemes like dictionary and REE where the benefit depends on data distribution rather than just min/max statistics.
+
+## Different scheme menus
+
+Vortex adds several schemes not in the original:
+
+- **ALP** and **ALP-RD** for floating-point (replacing BtrBlocks' Pseudodecimal scheme)
+- **ZigZag** for signed-to-unsigned transformation
+- **Sparse** for null-dominated or single-value-dominated arrays
+- **Sequence** for arithmetic progressions
+- **Temporal decomposition** for timestamps (not in the original at all)
+
+## Cascade estimation through the full tree
+
+When evaluating a scheme on a sample, Vortex compresses the sample through the full cascade, including recursive child compression. The original BtrBlocks has two modes: SAMPLE (similar to ours) and TRY_ALL (compresses the full data with every scheme). Vortex only has the sampling mode but compensates with larger samples and analytical estimates for simple schemes.
+
+# What's next
+
+Upcoming posts:
+
+- **Domain-specific encodings** — how Vortex decomposes timestamps, decimals, and other structured data into components that each compress better individually.
+
+- **PCodec** — a byte-scale numerical compressor that forms the backbone of Vortex's _compact_ strategy. We're exploring how to integrate PCodec's encoding decisions as first-class Vortex encodings.
+
+Further out: **cross-column compression**. Everything here treats each column independently, but real data has inter-column correlations. Dates that differ by a few days, zip codes determined by city, totals that are sums of other columns. [Corra](https://arxiv.org/abs/2403.17229) shows that encoding a column as a residual relative to a correlated reference column can compress 50–85% smaller than per-column encoding alone. This is orthogonal to cascading; Corra-style transforms would run _before_ the per-column compressor, shrinking value domains so the cascade can be even more effective.
+
+All of this code is open source under Apache license.
