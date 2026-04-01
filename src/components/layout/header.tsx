@@ -9,6 +9,7 @@ import { Link } from "../link";
 const NAV = [
   { href: "https://github.com/vortex-data/vortex", label: "GitHub", external: true },
   { href: "https://docs.vortex.dev", label: "Docs", external: true },
+  { href: "https://explore.vortex.dev", label: "Explorer", external: true },
   { href: "https://bench.vortex.dev", label: "Bench", external: true },
   { href: "https://vortex.dev/slack", label: "Slack", external: true },
   { href: "/blog", label: "Blog", external: false },
