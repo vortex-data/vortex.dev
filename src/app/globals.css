@@ -90,6 +90,11 @@ body {
   border-left-color: var(--color-spiral-grey-dark);
 }
 
+.prose.prose-grey blockquote p::before,
+.prose.prose-grey blockquote p::after {
+  content: none;
+}
+
 /* Custom prose styles for blog content */
 @layer components {
   .prose-grey {
@@ -162,4 +167,5 @@ body {
   .prose-grey blockquote {
     @apply border-l-spiral-blue text-grey italic;
   }
+
 }
