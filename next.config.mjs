@@ -26,7 +26,15 @@ const csp = [
   "form-action 'self'"
 ].join("; ");
 
-const nextConfig = withPlausibleProxy()({
+// next-plausible v4 requires a `src` URL for the v2 Plausible script. When
+// the env var is unset (e.g. local dev), skip the proxy wrapper entirely —
+// `<PlausibleProvider>` in the app tree is also gated on the same env var.
+const plausibleScriptSrc = process.env.NEXT_PUBLIC_PLAUSIBLE_SCRIPT_SRC;
+const wrapWithPlausible = plausibleScriptSrc
+  ? withPlausibleProxy({ src: plausibleScriptSrc })
+  : (config) => config;
+
+const nextConfig = wrapWithPlausible({
   turbopack: {
     root: import.meta.dirname
   },

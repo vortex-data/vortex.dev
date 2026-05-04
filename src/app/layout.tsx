@@ -43,22 +43,28 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const content = (
+    <>
+      <Header />
+      <main className="w-full h-auto mx-auto">
+        <div className="flex flex-col mx-auto relative justify-center items-center">
+          {children}
+        </div>
+      </main>
+      <Footer />
+    </>
+  );
+
   return (
     <html lang="en">
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${funnelDisplay.variable} antialiased`}
       >
-        <PlausibleProvider
-          domain={process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN ?? ""}
-        >
-          <Header />
-          <main className="w-full h-auto mx-auto">
-            <div className="flex flex-col mx-auto relative justify-center items-center">
-              {children}
-            </div>
-          </main>
-          <Footer />
-        </PlausibleProvider>
+        {process.env.NEXT_PUBLIC_PLAUSIBLE_SCRIPT_SRC ? (
+          <PlausibleProvider>{content}</PlausibleProvider>
+        ) : (
+          content
+        )}
         <Analytics />
       </body>
     </html>
