@@ -1,5 +1,5 @@
+import type { Metadata } from "next";
 import { HeroASCII } from "@/components/hero";
-import { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Vortex | An extensible, SOTA columnar file format",

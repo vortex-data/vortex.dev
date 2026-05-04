@@ -1,18 +1,22 @@
 "use client";
 
-import LogoMobile from "@/assets/logo-mobile.svg";
-import Logo from "@/assets/logo.svg";
 import Image from "next/image";
 import NextLink from "next/link";
+import Logo from "@/assets/logo.svg";
+import LogoMobile from "@/assets/logo-mobile.svg";
 import { Link } from "../link";
 
 const NAV = [
-  { href: "https://github.com/vortex-data/vortex", label: "GitHub", external: true },
+  {
+    href: "https://github.com/vortex-data/vortex",
+    label: "GitHub",
+    external: true
+  },
   { href: "https://docs.vortex.dev", label: "Docs", external: true },
   { href: "https://explore.vortex.dev", label: "Explorer", external: true },
   { href: "https://bench.vortex.dev", label: "Bench", external: true },
   { href: "https://vortex.dev/slack", label: "Slack", external: true },
-  { href: "/blog", label: "Blog", external: false },
+  { href: "/blog", label: "Blog", external: false }
 ] as const;
 
 export const Header = () => {
@@ -74,7 +78,9 @@ export const Header = () => {
                 <li key={href}>
                   <a
                     href={href}
-                    {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                    {...(external
+                      ? { target: "_blank", rel: "noopener noreferrer" }
+                      : {})}
                     className="block w-full px-3 py-2 rounded-lg uppercase text-white font-mono text-sm hover:bg-white/10"
                   >
                     {label}

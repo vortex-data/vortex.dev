@@ -1,6 +1,3 @@
 {
-  "recommendations": [
-    "tailwindcss.tailwindcss-intellisense",
-    "esbenp.prettier-vscode"
-  ]
+  "recommendations": ["tailwindcss.tailwindcss-intellisense", "biomejs.biome"]
 }
