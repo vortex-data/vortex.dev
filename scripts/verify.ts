@@ -4,7 +4,8 @@
  *
  * Runs against a live server (default http://localhost:3000, override with
  * `BASE`). Designed to be run after `bun run start` — checks sitemap, robots,
- * RSS feeds, OG images, canonicals, JSON-LD on posts, and internal links.
+ * RSS feeds, OG images, canonicals, JSON-LD on posts, internal links, and
+ * theme-token parity between `src/lib/theme.ts` and `src/app/globals.css`.
  *
  * Usage:
  *   bun run start &
@@ -12,6 +13,10 @@
  *
  * Exits 1 if any check fails.
  */
+
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+import { THEME } from "../src/lib/theme";
 
 const BASE = process.env.BASE ?? "http://localhost:3000";
 
@@ -369,6 +374,41 @@ async function checkInternalLinks(
   pass("internal links", `${targets.size} checked`);
 }
 
+// Asserts that the TS-side palette in `src/lib/theme.ts` matches the
+// CSS-side declarations in `globals.css`. Drift here would mean OG image
+// generation paints with one shade and the site renders with another —
+// exactly the bug this check is here to catch. Currently only
+// `THEME.background` has a corresponding CSS variable (`--background` in
+// `:root`); `THEME.foreground` is white-on-dark and uses Tailwind's
+// built-in `text-white`, so there's nothing to assert against in CSS.
+async function checkThemeParity(): Promise<void> {
+  let css: string;
+  try {
+    css = await readFile(
+      path.join(process.cwd(), "src", "app", "globals.css"),
+      "utf-8"
+    );
+  } catch (err) {
+    fail(
+      "theme parity",
+      `failed to read globals.css: ${err instanceof Error ? err.message : String(err)}`
+    );
+    return;
+  }
+  const re = new RegExp(
+    `--background:\\s*${THEME.background.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&")};`,
+    "i"
+  );
+  if (!re.test(css)) {
+    fail(
+      "theme parity",
+      `--background in globals.css does not match THEME.background (${THEME.background})`
+    );
+    return;
+  }
+  pass("theme parity", `--background = ${THEME.background}`);
+}
+
 // The /api/subscribe handler instantiates `new Resend(...)` *inside* the
 // request handler so the build doesn't fail when RESEND_API_KEY is unset.
 // When the env var is missing it returns 503 with a JSON error body. We
@@ -435,6 +475,7 @@ async function main(): Promise<void> {
   await checkRssXml();
   await checkRssJson();
   await checkRssAtom();
+  await checkThemeParity();
   await checkSubscribe();
 
   const htmlByPath = new Map<string, string>();
