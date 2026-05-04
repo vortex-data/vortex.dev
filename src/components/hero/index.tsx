@@ -227,8 +227,10 @@ void main() {
         e.preventDefault();
       }
 
-      const touchX = e.touches[0].clientX;
-      const touchY = e.touches[0].clientY;
+      const touch = e.touches[0];
+      if (!touch) return;
+      const touchX = touch.clientX;
+      const touchY = touch.clientY;
 
       const x = (touchX / window.innerWidth) * 2 - 1;
       const y = (touchY / window.innerHeight) * 2 - 1;
