@@ -1,9 +1,26 @@
+import { Analytics } from "@vercel/analytics/react";
+import type { Metadata } from "next";
+import { Funnel_Display, Geist, Geist_Mono } from "next/font/google";
+import PlausibleProvider from "next-plausible";
 import { Footer } from "@/components/layout/footer";
 import { Header } from "@/components/layout/header";
-import { Analytics } from "@vercel/analytics/react";
-import PlausibleProvider from "next-plausible";
-import { Funnel_Display, Geist, Geist_Mono } from "next/font/google";
+import { baseUrl } from "@/lib/constants";
 import "./globals.css";
+
+export const metadata: Metadata = {
+  metadataBase: new URL(baseUrl),
+  alternates: {
+    types: {
+      "application/rss+xml": [
+        { url: "/rss/feed.xml", title: "Vortex Blog (RSS)" },
+        { url: "/rss/feed.atom", title: "Vortex Blog (Atom)" }
+      ],
+      "application/feed+json": [
+        { url: "/rss/feed.json", title: "Vortex Blog (JSON Feed)" }
+      ]
+    }
+  }
+};
 
 const geistSans = Geist({
   variable: "--font-geist-sans",

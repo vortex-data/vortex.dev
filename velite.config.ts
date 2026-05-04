@@ -12,6 +12,7 @@ const blog = defineCollection({
       authors: s.array(s.string()),
       excerpt: s.string().optional(),
       published: s.boolean().default(true),
+      metadata: s.metadata(),
       body: s.mdx({
         rehypePlugins: [
           [

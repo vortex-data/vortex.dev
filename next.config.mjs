@@ -9,25 +9,50 @@ if (!process.env.VELITE_STARTED && (isDev || isBuild)) {
   await build({ watch: isDev, clean: !isDev });
 }
 
+// MDXRenderer compiles velite-emitted JSX via `new Function(code)`, but it's
+// a server component — the eval happens at build/SSR time on the server, so
+// the browser never sees the dynamic code and CSP doesn't need 'unsafe-eval'.
+const csp = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline' plausible.io",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob:",
+  "font-src 'self' data:",
+  "connect-src 'self' plausible.io vitals.vercel-insights.com",
+  "worker-src 'self' blob:",
+  "child-src 'self' blob:",
+  "frame-ancestors 'none'",
+  "base-uri 'self'",
+  "form-action 'self'"
+].join("; ");
+
 const nextConfig = withPlausibleProxy()({
+  turbopack: {
+    root: import.meta.dirname
+  },
+  images: {
+    formats: ["image/avif", "image/webp"]
+  },
   async headers() {
     return [
       {
         source: "/(.*)",
         headers: [
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "X-Frame-Options", value: "DENY" },
           {
-            key: "X-Content-Type-Options",
-            value: "nosniff"
+            key: "Strict-Transport-Security",
+            value: "max-age=63072000; includeSubDomains; preload"
           },
           {
-            key: "X-Frame-Options",
-            value: "DENY"
+            key: "Referrer-Policy",
+            value: "strict-origin-when-cross-origin"
           },
           {
-            key: "Content-Security-Policy",
-            value:
-              "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' plausible.io; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' plausible.io vitals.vercel-insights.com; worker-src 'self' blob:; child-src 'self' blob:;"
-          }
+            key: "Permissions-Policy",
+            value: "camera=(), microphone=(), geolocation=(), payment=()"
+          },
+          { key: "Content-Security-Policy", value: csp }
         ]
       }
     ];

@@ -1,7 +1,7 @@
-import LFLogo from "@/assets/lf_white.svg";
-import SpiralLogo from "@/assets/spiral.svg";
 import Image from "next/image";
 import NextLink from "next/link";
+import LFLogo from "@/assets/lf_white.svg";
+import SpiralLogo from "@/assets/spiral.svg";
 import { Link } from "../link";
 
 export const Footer = () => {
