@@ -95,6 +95,51 @@ jobs:
       - name: Verify endpoints
         run: bun run verify
 
+      # Hard-gates on vulnerable direct/transitive deps. Two advisories are
+      # ignored because they're upstream-blocked (both via @lhci/cli@0.15.1
+      # and resend's transitive svix; both dev-/server-side with no
+      # exploitable code path) — see CLAUDE.md "Audit advisories" for
+      # context and removal triggers. Any new advisory fails the job.
+      - name: Dependency audit
+        run: bun audit --ignore=GHSA-w5hq-g745-h8pq --ignore=GHSA-52f5-9888-hmc6
+
+      # Playwright browsers are ~250 MB. Cache them keyed on the
+      # @playwright/test version pinned in package.json — invalidates on
+      # bumps, hits otherwise. System deps (apt packages) aren't covered by
+      # the cache, so install those separately even on cache hit (~10s vs
+      # ~3min for the full install).
+      - name: Get Playwright version
+        id: playwright-version
+        run: |
+          VERSION=$(grep -oE '"@playwright/test": "[^"]+"' package.json | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5.0.5
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ steps.playwright-version.outputs.version }}
+
+      - name: Install Playwright browsers (cache miss)
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: bunx playwright install --with-deps chromium webkit
+
+      - name: Install Playwright system deps (cache hit)
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: bunx playwright install-deps chromium webkit
+
+      - name: Browser smoke tests
+        run: bun run test:e2e
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
       - name: Stop server
         if: always()
         run: |
@@ -105,14 +150,6 @@ jobs:
       - name: Server logs (on failure)
         if: failure()
         run: cat /tmp/server.log || true
-
-      # Hard-gates on vulnerable direct/transitive deps. Two advisories are
-      # ignored because they're upstream-blocked (both via @lhci/cli@0.15.1
-      # and resend's transitive svix; both dev-/server-side with no
-      # exploitable code path) — see CLAUDE.md "Audit advisories" for
-      # context and removal triggers. Any new advisory fails the job.
-      - name: Dependency audit
-        run: bun audit --ignore=GHSA-w5hq-g745-h8pq --ignore=GHSA-52f5-9888-hmc6
 
   # Runs only on PRs (no baseline diff to compute on a push to main).
   # Compares the PR's dependency manifest against main and flags
