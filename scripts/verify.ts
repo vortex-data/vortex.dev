@@ -18,7 +18,7 @@ const BASE = process.env.BASE ?? "http://localhost:3000";
 type CheckResult = {
   name: string;
   ok: boolean;
-  msg?: string;
+  msg?: string | undefined;
 };
 
 const results: CheckResult[] = [];
