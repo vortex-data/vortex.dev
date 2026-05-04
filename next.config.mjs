@@ -12,18 +12,26 @@ if (!process.env.VELITE_STARTED && (isDev || isBuild)) {
 // MDXRenderer compiles velite-emitted JSX via `new Function(code)`, but it's
 // a server component — the eval happens at build/SSR time on the server, so
 // the browser never sees the dynamic code and CSP doesn't need 'unsafe-eval'.
+//
+// vercel.live (+ vercel.com / assets.vercel.com / wss://ws-us3.pusher.com) is
+// the Vercel Live feedback toolbar, injected on preview deploys only. It's
+// not loaded in production, so widening these directives doesn't broaden the
+// prod attack surface — and a single static CSP is simpler than swapping
+// headers per environment.
 const csp = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' plausible.io",
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob:",
-  "font-src 'self' data:",
-  "connect-src 'self' plausible.io vitals.vercel-insights.com",
+  "script-src 'self' 'unsafe-inline' plausible.io va.vercel-scripts.com vercel.live",
+  "style-src 'self' 'unsafe-inline' vercel.live",
+  "img-src 'self' data: blob: vercel.live vercel.com",
+  "font-src 'self' data: vercel.live assets.vercel.com",
+  "connect-src 'self' plausible.io vitals.vercel-insights.com vercel.live wss://ws-us3.pusher.com",
   "worker-src 'self' blob:",
   "child-src 'self' blob:",
+  "frame-src 'self' vercel.live",
   "frame-ancestors 'none'",
   "base-uri 'self'",
-  "form-action 'self'"
+  "form-action 'self'",
+  "object-src 'none'"
 ].join("; ");
 
 // next-plausible v4 requires a `src` URL for the v2 Plausible script. When
@@ -58,7 +66,8 @@ const nextConfig = wrapWithPlausible({
           },
           {
             key: "Permissions-Policy",
-            value: "camera=(), microphone=(), geolocation=(), payment=()"
+            value:
+              "camera=(), microphone=(), geolocation=(), gyroscope=(), payment=(), usb=(), magnetometer=(), accelerometer=()"
           },
           { key: "Content-Security-Policy", value: csp }
         ]
