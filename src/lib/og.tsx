@@ -6,8 +6,8 @@ export const OG_CONTENT_TYPE = "image/png";
 
 export function renderOgImage(props: {
   title: string;
-  description?: string;
-  eyebrow?: string;
+  description?: string | undefined;
+  eyebrow?: string | undefined;
 }) {
   return new ImageResponse(
     <OgCard
@@ -25,8 +25,8 @@ function OgCard({
   eyebrow
 }: {
   title: string;
-  description?: string;
-  eyebrow?: string;
+  description?: string | undefined;
+  eyebrow?: string | undefined;
 }) {
   return (
     <div
