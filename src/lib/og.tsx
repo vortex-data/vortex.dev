@@ -1,5 +1,6 @@
 import { ImageResponse } from "next/og";
 import { siteName } from "@/lib/constants";
+import { THEME } from "@/lib/theme";
 
 export const OG_SIZE = { width: 1200, height: 630 } as const;
 export const OG_CONTENT_TYPE = "image/png";
@@ -37,8 +38,8 @@ function OgCard({
         flexDirection: "column",
         justifyContent: "space-between",
         padding: "80px",
-        backgroundColor: "#0a0a0a",
-        color: "#ffffff",
+        backgroundColor: THEME.background,
+        color: THEME.foreground,
         fontFamily: "sans-serif"
       }}
     >
@@ -69,7 +70,7 @@ function OgCard({
             fontWeight: 300,
             lineHeight: 1.08,
             letterSpacing: "-0.02em",
-            color: "#ffffff"
+            color: THEME.foreground
           }}
         >
           {title}
