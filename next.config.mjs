@@ -14,7 +14,7 @@ if (!process.env.VELITE_STARTED && (isDev || isBuild)) {
 // the browser never sees the dynamic code and CSP doesn't need 'unsafe-eval'.
 const csp = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' plausible.io",
+  "script-src 'self' 'unsafe-inline' plausible.io va.vercel-scripts.com",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self' data:",
@@ -23,7 +23,8 @@ const csp = [
   "child-src 'self' blob:",
   "frame-ancestors 'none'",
   "base-uri 'self'",
-  "form-action 'self'"
+  "form-action 'self'",
+  "object-src 'none'"
 ].join("; ");
 
 // next-plausible v4 requires a `src` URL for the v2 Plausible script. When
@@ -58,7 +59,8 @@ const nextConfig = wrapWithPlausible({
           },
           {
             key: "Permissions-Policy",
-            value: "camera=(), microphone=(), geolocation=(), payment=()"
+            value:
+              "camera=(), microphone=(), geolocation=(), gyroscope=(), payment=(), usb=(), magnetometer=(), accelerometer=()"
           },
           { key: "Content-Security-Policy", value: csp }
         ]
