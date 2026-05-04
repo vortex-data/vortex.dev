@@ -369,6 +369,62 @@ async function checkInternalLinks(
   pass("internal links", `${targets.size} checked`);
 }
 
+// The /api/subscribe handler instantiates `new Resend(...)` *inside* the
+// request handler so the build doesn't fail when RESEND_API_KEY is unset.
+// When the env var is missing it returns 503 with a JSON error body. We
+// assert that contract here so a regression (e.g. moving the Resend
+// constructor to module scope, or removing the env-gate) surfaces in CI.
+//
+// In environments where RESEND_API_KEY *is* set (e.g. a dev with .env.local
+// + the var exported into the verify shell), the test is skipped rather
+// than calling the real Resend API.
+async function checkSubscribe(): Promise<void> {
+  if (process.env.RESEND_API_KEY) {
+    pass("/api/subscribe", "skipped (RESEND_API_KEY is set in this shell)");
+    return;
+  }
+  let res: Response;
+  try {
+    res = await fetch(`${BASE}/api/subscribe`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: "verify-suite@example.com" })
+    });
+  } catch (err) {
+    fail(
+      "/api/subscribe",
+      `request failed: ${err instanceof Error ? err.message : String(err)}`
+    );
+    return;
+  }
+  if (res.status !== 503) {
+    fail(
+      "/api/subscribe",
+      `expected 503 with RESEND_API_KEY unset, got ${res.status}`
+    );
+    return;
+  }
+  let body: unknown;
+  try {
+    body = await res.json();
+  } catch {
+    fail("/api/subscribe", "response was not JSON");
+    return;
+  }
+  if (
+    typeof body !== "object" ||
+    body === null ||
+    typeof (body as { error?: unknown }).error !== "string"
+  ) {
+    fail("/api/subscribe", `response shape mismatch: ${JSON.stringify(body)}`);
+    return;
+  }
+  pass(
+    "/api/subscribe",
+    `503 with error="${(body as { error: string }).error}"`
+  );
+}
+
 // === Run ===============================================================
 
 async function main(): Promise<void> {
@@ -379,6 +435,7 @@ async function main(): Promise<void> {
   await checkRssXml();
   await checkRssJson();
   await checkRssAtom();
+  await checkSubscribe();
 
   const htmlByPath = new Map<string, string>();
   for (const path of sitemapPaths) {

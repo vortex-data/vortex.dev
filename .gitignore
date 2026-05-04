@@ -49,3 +49,8 @@ public/static
 
 # lighthouse-ci output
 .lighthouseci
+
+# playwright
+/playwright-report/
+/playwright/.cache/
+/test-results/
