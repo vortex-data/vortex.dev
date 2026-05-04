@@ -43,3 +43,6 @@ next-env.d.ts
 #velite generated files
 .velite
 public/static
+
+# claude code local settings (per-machine tool allowlists)
+.claude
