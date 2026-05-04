@@ -1,0 +1,67 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":automergeStableNonMajor",
+    ":automergePr",
+    ":automergeRequireAllStatusChecks",
+    ":combinePatchMinorReleases",
+    ":dependencyDashboard",
+    ":separateMultipleMajorReleases",
+    ":configMigration",
+    "schedule:earlyMondays",
+    "helpers:pinGitHubActionDigests"
+  ],
+  "lockFileMaintenance": {
+    "enabled": true
+  },
+  "automergeStrategy": "squash",
+  "rebaseWhen": "conflicted",
+  "platformAutomerge": true,
+  "labels": ["dependencies"],
+  "patch": {
+    "groupName": "all patch updates"
+  },
+  "packageRules": [
+    {
+      "groupName": "Next.js",
+      "matchPackageNames": ["next", "@next/**"]
+    },
+    {
+      "groupName": "React",
+      "matchPackageNames": [
+        "react",
+        "react-dom",
+        "@types/react",
+        "@types/react-dom"
+      ]
+    },
+    {
+      "groupName": "TailwindCSS",
+      "matchPackageNames": ["tailwindcss", "@tailwindcss/**"]
+    },
+    {
+      "groupName": "MDX content pipeline",
+      "matchPackageNames": [
+        "@mdx-js/**",
+        "react-markdown",
+        "remark-**",
+        "rehype-**",
+        "velite"
+      ]
+    },
+    {
+      "groupName": "Analytics",
+      "matchPackageNames": ["@vercel/analytics", "next-plausible"]
+    },
+    {
+      "groupName": "Biome",
+      "matchPackageNames": ["@biomejs/**"]
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "groupName": "GitHub Actions",
+      "addLabels": ["github-actions"]
+    }
+  ]
+}
