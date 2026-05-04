@@ -1,0 +1,132 @@
+name: Lighthouse
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+# Including `github.workflow` in the key keeps this from colliding with any
+# other workflow that happens to share a ref-based group prefix.
+concurrency:
+  group: lighthouse-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lighthouse:
+    name: Lighthouse audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6  # v2.2.0
+        with:
+          bun-version: 1.3.13
+
+      # Bun is the package manager and script runner, but Next.js (and the
+      # lhci binary) run on Node. Pin Node via .nvmrc so a future GitHub
+      # bump can't break the audit silently.
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6.4.0
+        with:
+          node-version-file: .nvmrc
+
+      # Cache Bun's resolved package store keyed on the lockfile hash.
+      - name: Cache Bun install cache
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5.0.5
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
+      # Cache Next.js's incremental build output. Keyed on lockfile + commit
+      # SHA so the exact-key match is always per-commit fresh; restore-keys
+      # fall back to any previous build on the same lockfile so most CI runs
+      # hit a cache and skip rebuilding unchanged webpack modules.
+      - name: Cache Next.js build cache
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5.0.5
+        with:
+          path: ${{ github.workspace }}/.next/cache
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('bun.lock') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-nextjs-${{ hashFiles('bun.lock') }}-
+            ${{ runner.os }}-nextjs-
+
+      - name: Install
+        run: bun install --frozen-lockfile
+
+      - name: Build
+        run: bun run build
+
+      # The action handles starting the server (per lighthouserc.cjs's
+      # `startServerCommand`), running Lighthouse against each URL, asserting
+      # the thresholds, and uploading reports to temporary public storage.
+      # Threshold rationale lives in lighthouserc.cjs alongside the values.
+      - name: Lighthouse CI
+        id: lighthouse
+        uses: treosh/lighthouse-ci-action@512cc908a55bfb0ad231facca52adf3d3a651df4  # v12
+        with:
+          configPath: ./lighthouserc.cjs
+          uploadArtifacts: true
+          temporaryPublicStorage: true
+
+      # Build a markdown table from the .lighthouseci/lhr-*.json reports.
+      # `unique_by(.url)` collapses duplicate rows if `numberOfRuns > 1`
+      # (the action writes the median LHR per URL, but be defensive);
+      # `sort_by(.url)` keeps row order deterministic across runs.
+      # `if: always()` so the PR comment still posts when assertions fail —
+      # reviewers can see *which* category regressed without digging through
+      # the workflow log.
+      #
+      # Per-cell emoji follows Lighthouse's own scoring buckets: 🟢 ≥90,
+      # 🟡 50–89, 🔴 <50. Floor thresholds in lighthouserc.cjs are below
+      # the 🟢 cutoff, so a cell can pass assertions and still show 🟡 — the
+      # visual signals "we locked this in but it's improvable."
+      - name: Format PR comment
+        if: always() && github.event_name == 'pull_request' && steps.lighthouse.outputs.links != ''
+        id: lh-comment
+        env:
+          LINKS_JSON: ${{ steps.lighthouse.outputs.links }}
+        run: |
+          {
+            echo 'body<<COMMENT_EOF'
+            echo '## 🔦 Lighthouse audit'
+            echo ''
+            echo '| URL | Perf | A11y | Best practices | SEO | Report |'
+            echo '|---|:---:|:---:|:---:|:---:|---|'
+            jq -s --argjson links "$LINKS_JSON" -r '
+              def emo(s): if s >= 90 then "🟢" elif s >= 50 then "🟡" else "🔴" end;
+              def cell(s): emo(s) + " " + (s | tostring);
+              map({
+                url: .finalUrl,
+                perf: (.categories.performance.score * 100 | floor),
+                a11y: (.categories.accessibility.score * 100 | floor),
+                bp: (.categories["best-practices"].score * 100 | floor),
+                seo: (.categories.seo.score * 100 | floor)
+              })
+              | unique_by(.url)
+              | sort_by(.url)
+              | map(
+                  "| `" + (.url | sub("^https?://[^/]+"; "")) + "`"
+                  + " | " + cell(.perf)
+                  + " | " + cell(.a11y)
+                  + " | " + cell(.bp)
+                  + " | " + cell(.seo)
+                  + " | [report](" + ($links[.url] // "#") + ") |"
+                )
+              | join("\n")
+            ' .lighthouseci/lhr-*.json
+            echo ''
+            echo "_Run [\`${GITHUB_RUN_ID}\`](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}) · $(date -u +'%Y-%m-%d %H:%M UTC')_"
+            echo 'COMMENT_EOF'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Post or update PR comment
+        if: github.event_name == 'pull_request' && steps.lh-comment.outputs.body != ''
+        uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0  # v3.0.4
+        with:
+          header: lighthouse
+          message: ${{ steps.lh-comment.outputs.body }}
