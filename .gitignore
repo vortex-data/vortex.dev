@@ -46,3 +46,6 @@ public/static
 
 # claude code local settings (per-machine tool allowlists)
 .claude
+
+# lighthouse-ci output
+.lighthouseci

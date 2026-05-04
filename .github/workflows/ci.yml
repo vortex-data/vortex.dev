@@ -106,13 +106,13 @@ jobs:
         if: failure()
         run: cat /tmp/server.log || true
 
-      # Hard-gates on vulnerable direct/transitive deps. One advisory is
-      # ignored because it's upstream-blocked (uuid <14.0.0 via
-      # resend → svix@1.90.0, dev-/server-side, no exploitable code path) —
-      # see CLAUDE.md "Audit advisories" for context and removal triggers.
-      # Any new advisory fails the job.
+      # Hard-gates on vulnerable direct/transitive deps. Two advisories are
+      # ignored because they're upstream-blocked (both via @lhci/cli@0.15.1
+      # and resend's transitive svix; both dev-/server-side with no
+      # exploitable code path) — see CLAUDE.md "Audit advisories" for
+      # context and removal triggers. Any new advisory fails the job.
       - name: Dependency audit
-        run: bun audit --ignore=GHSA-w5hq-g745-h8pq
+        run: bun audit --ignore=GHSA-w5hq-g745-h8pq --ignore=GHSA-52f5-9888-hmc6
 
   # Runs only on PRs (no baseline diff to compute on a push to main).
   # Compares the PR's dependency manifest against main and flags
