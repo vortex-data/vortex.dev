@@ -1,35 +1,44 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# vortex.dev
 
-## Getting Started
+Source for [vortex.dev](https://vortex.dev), the marketing site for [Vortex](https://github.com/vortex-data/vortex) — an extensible, state-of-the-art columnar file format. Vortex is a [Linux Foundation](https://www.linuxfoundation.org/) incubating project, a Series of LF Projects, LLC.
 
-Start by install the [bun](https://bun.sh/) package manager.
+## Local development
 
-Then, install dependencies and run the development server:
+Prerequisites: [Bun](https://bun.sh) ≥ 1.3.13 and Node ≥ 22. Bun is the package manager and script runner; Next.js itself runs on Node.
 
 ```bash
+git clone git@github.com:vortex-data/vortex.dev.git
+cd vortex.dev
 bun install
-bun dev
+bun dev          # Turbopack dev server on http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Scripts
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Command | What it does |
+| --- | --- |
+| `bun dev` | Next.js dev server with Turbopack |
+| `bun run build` | Production build. Also runs velite to populate `.velite/` and emits `next-env.d.ts` |
+| `bun run start` | Production server (run after `build`) |
+| `bun run check` | Biome lint + format + import-organize, with auto-fix |
+| `bun run check:ci` | Biome no-write check — what CI runs |
+| `bun run typecheck` | `tsc --noEmit`. Must run after `bun run build` because velite populates `.velite/` and Next emits `next-env.d.ts` during build |
+| `bun run verify` | HTTP suite against a running server: sitemap, robots, RSS, OG, canonicals, JSON-LD, theme parity, `/api/subscribe`, internal links |
+| `bun run test:e2e` | Playwright browser smoke (Chromium desktop + WebKit iPhone-13). One-time setup: `bun run test:e2e:install` |
+| `bun run lighthouse` | Local Lighthouse CI run against `bun run start` |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+CI runs `check:ci → build → typecheck → start → verify → audit → playwright` on every PR via [.github/workflows/ci.yml](.github/workflows/ci.yml), plus an independent Lighthouse audit via [.github/workflows/lighthouse.yml](.github/workflows/lighthouse.yml) that posts a sticky score table.
 
-**Note:** The deployment is managed by `bun`, so any dependency change should be managed by it and reflected in `bun.lock`.
+## Contributing
 
-## Learn More
+The Developer Certificate of Origin is enforced on every commit. Sign off with:
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+git commit -s
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+CI rejects PRs whose commits don't have a `Signed-off-by:` trailer (DCO probot check).
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+For architectural context — content pipeline, design tokens, audit advisories, deployment quirks — see [CLAUDE.md](CLAUDE.md).
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+For the Vortex file format itself and its tooling, see [github.com/vortex-data/vortex](https://github.com/vortex-data/vortex).
