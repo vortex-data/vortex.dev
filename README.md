@@ -1,5 +1,7 @@
 # vortex.dev
 
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/vortex-data/vortex.dev/badge)](https://scorecard.dev/viewer/?uri=github.com/vortex-data/vortex.dev)
+
 Source for [vortex.dev](https://vortex.dev), the marketing site for [Vortex](https://github.com/vortex-data/vortex) — an extensible, state-of-the-art columnar file format. Vortex is a [Linux Foundation](https://www.linuxfoundation.org/) incubating project, a Series of LF Projects, LLC.
 
 ## Local development
