@@ -170,3 +170,30 @@ jobs:
         with:
           fail-on-severity: high
           comment-summary-in-pr: on-failure
+
+  # Defense-in-depth on top of GitHub's push protection. Push protection
+  # covers high-entropy / known-provider patterns at push time; TruffleHog
+  # re-scans diffs on PRs + push to main, catching secrets that slipped
+  # past push protection (low-entropy formats, detector patterns added
+  # after the secret was committed, or push-protection bypass via the
+  # "I'll fix it later" allow path).
+  secret-scan:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          # TruffleHog diffs base..head and needs the full history present.
+          fetch-depth: 0
+      - name: TruffleHog scan
+        uses: trufflesecurity/trufflehog@17456f8c7d042d8c82c9a8ca9e937231f9f42e26  # v3.95.2
+        with:
+          # On PRs: scan the diff between base and head. On push to main:
+          # scan the previous commit to HEAD. The action infers both from
+          # the event context.
+          # --results=verified,unknown drops trufflehog's "unverified" tier
+          # (pattern-matched but couldn't reach the verifier endpoint) to
+          # keep noise down without losing coverage of secrets whose
+          # verifiers don't recognize them yet.
+          extra_args: --results=verified,unknown
