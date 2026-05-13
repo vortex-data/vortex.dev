@@ -17,6 +17,13 @@ name: Scorecard
 #     dependencies and Actions versions drift)
 #   - push to main (catches workflow changes immediately)
 #   - workflow_dispatch (manual re-run when investigating a finding)
+#
+# Note on PRs: Scorecard is intentionally NOT triggered on `pull_request`.
+# Every check Scorecard runs (branch protection state, pinned dependencies
+# in main, code-review-coverage history, vulnerability backlog) reflects
+# `main` as it currently sits — running on a PR would just re-grade main,
+# not preview the PR's effect. The weekly schedule + push-to-main triggers
+# are the right cadence.
 
 on:
   branch_protection_rule:
