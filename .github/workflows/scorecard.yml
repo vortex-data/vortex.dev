@@ -1,0 +1,88 @@
+name: Scorecard
+
+# OpenSSF Scorecard — weekly supply-chain hygiene grade for this repo.
+# Checks include: branch protection, pinned dependencies, signed releases,
+# token permissions, dangerous workflow patterns, dependency-update
+# tooling, vulnerability backlog, and code review coverage. Results post
+# to GitHub's Security tab as SARIF and (when publish_results is on) get
+# published to the public Scorecard registry at https://scorecard.dev.
+#
+# Required setup (one-time):
+#   - Settings → Code security → Enable "Code scanning" so the SARIF
+#     upload has somewhere to land. Without it the upload step no-ops.
+#
+# Runs on:
+#   - branch_protection_rule events (re-grades whenever protection changes)
+#   - schedule (weekly Monday 08:00 UTC — keeps the grade current as
+#     dependencies and Actions versions drift)
+#   - push to main (catches workflow changes immediately)
+#   - workflow_dispatch (manual re-run when investigating a finding)
+#
+# Note on PRs: Scorecard is intentionally NOT triggered on `pull_request`.
+# Every check Scorecard runs (branch protection state, pinned dependencies
+# in main, code-review-coverage history, vulnerability backlog) reflects
+# `main` as it currently sits — running on a PR would just re-grade main,
+# not preview the PR's effect. The weekly schedule + push-to-main triggers
+# are the right cadence.
+
+on:
+  branch_protection_rule:
+  schedule:
+    - cron: "0 8 * * 1"
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Cancel an in-flight schedule/push run if a new one starts on the same ref.
+concurrency:
+  group: scorecard-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Least-privilege default; the job opts up explicitly for SARIF upload +
+# OIDC publish.
+permissions: read-all
+
+jobs:
+  analysis:
+    name: Scorecard analysis
+    runs-on: ubuntu-24.04
+    permissions:
+      # Needed by github/codeql-action/upload-sarif to write Security tab
+      # entries.
+      security-events: write
+      # Needed by scorecard's `publish_results: true` — OIDC token proves
+      # to scorecard.dev that the run came from this repo.
+      id-token: write
+      contents: read
+      # Required for org-level scorecard repo discovery (no-op for a
+      # single-repo case, but the action documents it as required).
+      actions: read
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Run Scorecard
+        uses: ossf/scorecard-action@4eaacf0543bb3f2c246792bd56e8cdeffafb205a  # v2.4.3
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          # Publish to https://scorecard.dev so the badge + history are
+          # visible. Set to false to keep results private to the
+          # Security tab.
+          publish_results: true
+
+      # Retained for 7 days as a fallback when the Security tab view is
+      # truncated or the SARIF upload fails.
+      - name: Upload artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: SARIF file
+          path: results.sarif
+          retention-days: 7
+
+      - name: Upload to code-scanning
+        uses: github/codeql-action/upload-sarif@95e58e9a2cdfd71adc6e0353d5c52f41a045d225  # v4.35.2
+        with:
+          sarif_file: results.sarif

@@ -16,6 +16,7 @@
     "enabled": true
   },
   "automergeStrategy": "squash",
+  "minimumReleaseAge": "14 days",
   "rebaseWhen": "conflicted",
   "platformAutomerge": true,
   "labels": ["dependencies"],

@@ -1,0 +1,16 @@
+# Bun configuration. Project-scoped — Bun merges this with $HOME/.bunfig.toml.
+
+[install]
+# Refuse to install package versions younger than 14 days. Mirrors the
+# Renovate minimumReleaseAge in renovate.json so a local `bun install`,
+# `bun add`, `bun update`, or a Vercel build can't pull a freshly
+# published (and potentially compromised) version that Renovate would
+# have held back.
+#
+# The window matters because npm worms (Shai-Hulud, mini-Shai-Hulud, the
+# May 2026 TanStack incident) propagate, get detected, and get yanked
+# within hours-to-days; 14 days is the observed safe horizon for those
+# events to have surfaced.
+#
+# Units: seconds. 14 * 86400 = 1209600.
+minimumReleaseAge = 1209600
