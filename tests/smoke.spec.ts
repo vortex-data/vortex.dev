@@ -99,6 +99,36 @@ test.describe("blog post", () => {
   });
 });
 
+test.describe("footer", () => {
+  test("custom Link scramble settles back to original on hover", async ({
+    page
+  }) => {
+    await page.goto("/");
+    const link = page.locator('a[href="https://lfprojects.org"]').first();
+    await expect(link).toBeVisible();
+    const original = (await link.textContent()) ?? "";
+
+    // Trigger a real pointer enter — the scramble fires on hover.
+    await link.hover();
+
+    // Sample intermediate frames: the in-flight animation must produce at
+    // least one text snapshot that differs from the static text. Without
+    // the in-flight guard in the Link component, the scramble would loop
+    // forever because mutating textContent re-fires mouseover.
+    const observed = new Set<string>();
+    for (let i = 0; i < 30; i++) {
+      observed.add((await link.textContent()) ?? "");
+      await page.waitForTimeout(20);
+    }
+
+    // Wait for the animation to settle, then assert it returned to the
+    // original string (regression check for the textContent-refire loop).
+    await page.waitForTimeout(800);
+    expect(await link.textContent()).toBe(original);
+    expect([...observed].some((s) => s !== original)).toBe(true);
+  });
+});
+
 test.describe("mobile layout", () => {
   test.use({ viewport: { width: 375, height: 812 } });
 
