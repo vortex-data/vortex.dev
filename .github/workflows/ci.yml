@@ -153,9 +153,9 @@ jobs:
 
   # Runs only on PRs (no baseline diff to compute on a push to main).
   # Compares the PR's dependency manifest against main and flags
-  # high-severity advisories or license incompatibilities. Posts a summary
-  # comment on the PR when it finds something. continue-on-error while we
-  # establish a baseline of acceptable findings.
+  # high-severity advisories or license incompatibilities. Hard-gated to
+  # match the `bun audit` posture: a PR introducing a new high-severity
+  # advisory must block merge, not just post a comment.
   dependency-review:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
@@ -166,7 +166,6 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
       - name: Dependency Review
         uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48  # v4.9.0
-        continue-on-error: true
         with:
           fail-on-severity: high
           comment-summary-in-pr: on-failure

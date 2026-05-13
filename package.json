@@ -50,6 +50,10 @@
     "tailwindcss": "4.2.3",
     "typescript": "^6.0.3"
   },
+  "trustedDependencies": [
+    "esbuild",
+    "sharp"
+  ],
   "overrides": {
     "postcss": "8.5.10",
     "mdast-util-to-hast": "^13.2.1"
