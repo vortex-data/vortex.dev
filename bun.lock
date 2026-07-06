@@ -15,7 +15,7 @@
         "react-dom": "^19.2.5",
         "rehype-pretty-code": "^0.14.3",
         "resend": "^6.12.2",
-        "velite": "^0.3.1",
+        "velite": "^0.4.0",
       },
       "devDependencies": {
         "@biomejs/biome": "^2.4.13",
@@ -1097,7 +1097,7 @@
 
     "vary": ["vary@1.1.2", "", {}, "sha512-BNGbWLfd0eUPabhkXUVm0j8uuvREyTh5ovRa/dyow/BqAbZJyC+5fU+IzQOzmAKzYqYRAISoRhdQr3eIZ/PXqg=="],
 
-    "velite": ["velite@0.3.1", "", { "dependencies": { "@mdx-js/mdx": "^3.1.1", "esbuild": "^0.25.12", "sharp": "^0.34.5", "terser": "^5.44.1" }, "bin": { "velite": "bin/velite.js" } }, "sha512-w0NoBZtSEtRAJE+OwGU2HFu8ttZqfqN2HQRqU/7Q71wuM6LYzkbwlebsH5JsljMLNhB0njZwKGupnZAFri2A1w=="],
+    "velite": ["velite@0.4.0", "", { "dependencies": { "@mdx-js/mdx": "^3.1.1", "esbuild": "^0.25.12", "sharp": "^0.34.5", "terser": "^5.44.1" }, "bin": { "velite": "bin/velite.js" } }, "sha512-F7eatRsbm9RQ2d43YYufiS729USvE4BAkw9yNB4iuFUSfrY9bFGe6/lrY6OpgiyOL8BT9hVd1JoRfyotjPOGpQ=="],
 
     "vfile": ["vfile@6.0.3", "", { "dependencies": { "@types/unist": "^3.0.0", "vfile-message": "^4.0.0" } }, "sha512-KzIbH/9tXat2u30jf+smMwFCsno4wHVdNmzFyL+T/L3UGqqk6JKfVqOFOZEpZSHADH1k40ab6NUIXZq422ov3Q=="],
 
