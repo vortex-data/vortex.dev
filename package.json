@@ -39,11 +39,11 @@
     "@biomejs/biome": "^2.4.13",
     "@lhci/cli": "^0.15.1",
     "@playwright/test": "^1.59.1",
-    "@tailwindcss/postcss": "4.2.3",
+    "@tailwindcss/postcss": "4.3.3",
     "@types/node": "^25.6.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "tailwindcss": "4.2.3",
+    "tailwindcss": "4.3.3",
     "typescript": "^6.0.3"
   },
   "trustedDependencies": [
