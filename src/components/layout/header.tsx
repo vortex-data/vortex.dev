@@ -16,6 +16,11 @@ const NAV = [
   { href: "https://explore.vortex.dev", label: "Explorer", external: true },
   { href: "https://bench.vortex.dev", label: "Bench", external: true },
   { href: "https://vortex.dev/slack", label: "Slack", external: true },
+  {
+    href: "https://zoom-lfx.platform.linuxfoundation.org/meetings/vortex",
+    label: "Calendar",
+    external: true
+  },
   { href: "/blog", label: "Blog", external: false }
 ] as const;
 
