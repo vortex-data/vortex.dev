@@ -51,7 +51,7 @@
     "sharp"
   ],
   "overrides": {
-    "postcss": "8.5.13",
+    "postcss": "8.5.26",
     "mdast-util-to-hast": "^13.2.1"
   }
 }
