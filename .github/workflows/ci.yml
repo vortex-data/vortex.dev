@@ -96,14 +96,6 @@ jobs:
       - name: Verify endpoints
         run: bun run verify
 
-      # Hard-gates on vulnerable direct/transitive deps. Two advisories are
-      # ignored because they're upstream-blocked (both via @lhci/cli@0.15.1
-      # and resend's transitive svix; both dev-/server-side with no
-      # exploitable code path) — see CLAUDE.md "Audit advisories" for
-      # context and removal triggers. Any new advisory fails the job.
-      - name: Dependency audit
-        run: bun audit --ignore=GHSA-w5hq-g745-h8pq --ignore=GHSA-52f5-9888-hmc6
-
       # Playwright browsers are ~250 MB. Cache them keyed on the
       # @playwright/test version pinned in package.json — invalidates on
       # bumps, hits otherwise. System deps (apt packages) aren't covered by
@@ -152,11 +144,64 @@ jobs:
         if: failure()
         run: cat /tmp/server.log || true
 
+  # Reports dependency advisories WITHOUT gating merges. A new advisory can
+  # surface at any time from an upstream publish, with no change on our
+  # side, so a hard gate here blocks unrelated PRs on work we often cannot
+  # do (see CLAUDE.md "Audit advisories" for the upstream-blocked ones).
+  # `continue-on-error` on the step keeps the job green while still marking
+  # the step red and posting the full advisory list to the job summary, so
+  # the status stays visible on every run. Nothing is `--ignore`d: with no
+  # gate to keep green, suppressing advisories only hides information.
+  audit:
+    name: Dependency audit (non-blocking)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6  # v2.2.0
+        with:
+          bun-version: 1.3.13
+
+      - name: Cache Bun install cache
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5.0.5
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
+      - name: Install
+        run: bun install --frozen-lockfile
+
+      - name: Dependency audit
+        continue-on-error: true
+        run: |
+          bun audit | tee /tmp/audit.log
+          status=${PIPESTATUS[0]}
+
+          {
+            echo "## Dependency audit"
+            echo
+            if [ "$status" -eq 0 ]; then
+              echo "No advisories reported."
+            else
+              echo "Advisories reported. Informational only — this does not block merge."
+              echo
+              echo '```'
+              cat /tmp/audit.log
+              echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          exit "$status"
+
   # Runs only on PRs (no baseline diff to compute on a push to main).
   # Compares the PR's dependency manifest against main and flags
-  # high-severity advisories or license incompatibilities. Hard-gated to
-  # match the `bun audit` posture: a PR introducing a new high-severity
-  # advisory must block merge, not just post a comment.
+  # high-severity advisories or license incompatibilities. Hard-gated: the
+  # `bun audit` job is informational, so this is the one advisory check
+  # that blocks merge, and it is scoped to what the PR itself introduces
+  # (severity `high` and above) rather than the whole pre-existing tree.
   dependency-review:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-24.04
