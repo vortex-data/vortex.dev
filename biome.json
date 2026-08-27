@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.4.14/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.5.8/schema.json",
   "vcs": {
     "enabled": true,
     "clientKind": "git",
@@ -17,7 +17,8 @@
       "!out",
       "!build",
       "!next-env.d.ts",
-      "!src/app/globals.css"
+      "!src/app/globals.css",
+      "!**/*.svg"
     ]
   },
   "formatter": {
@@ -48,7 +49,7 @@
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true,
+      "preset": "recommended",
       "suspicious": {
         "noExplicitAny": "off",
         "noArrayIndexKey": "off",
