@@ -224,7 +224,7 @@ variable.
 | `VERCEL_TOKEN` (secret) | `web-deploy.yml` |
 | `VERCEL_ORG_ID` | `web-deploy.yml` |
 | `VERCEL_PROJECT_ID` | `web-deploy.yml` |
-| `BENCH_SITE_BASE_URL` | `web-keep-warm.yml` |
+| `BENCH_SITE_BASE_URL` | `web-keep-warm.yml`, production verification in `web-deploy.yml` |
 | `GH_BENCH_SCHEMA_ROLE_ARN` | `schema-deploy.yml` |
 | `RDS_BENCH_REGION` | `schema-deploy.yml` |
 | `RDS_BENCH_INSTANCE_ENDPOINT` | `schema-deploy.yml` |
@@ -355,6 +355,8 @@ export VERCEL_ORG_ID="<org id from Section A>"          # the value you set as t
 export VERCEL_PROJECT_ID="<project id from Section A>"
 read -rs VERCEL_TOKEN && export VERCEL_TOKEN            # paste at the prompt; never echoed, never recorded in shell history
 # Run from the REPO ROOT (not web/) to match the workflow's project-resolution path:
+BENCH_BUILD_SHA="$(git rev-parse HEAD)"
+export BENCH_BUILD_SHA
 vercel pull --yes --environment=preview --token="$VERCEL_TOKEN" && vercel build --token="$VERCEL_TOKEN"
 unset VERCEL_TOKEN                                      # drop the secret from the environment when done
 ```

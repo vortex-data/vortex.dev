@@ -54,10 +54,14 @@ warmth:
   on those routes: that header is consumed (and stripped) by Vercel's CDN alone at the highest
   precedence, so the CDN caches the rendered pages while browsers still revalidate every load.
 
-Verify on a live deployment with `curl -sI <url> | grep -i x-vercel-cache` (expect `MISS` then
-`HIT` within the five-minute fresh window). No workflow runs this check, so run it by hand after a
-deploy that changes caching. Deployment URLs sit behind Vercel Authentication, so check a preview
-through `vercel curl` and production on the public domain. One deliberate
+The deploy workflow verifies the expected build SHA through `/api/health`, a representative group
+and chart JSON response, the landing and chart pages, and a CDN `HIT` on repeated landing/chart-API
+requests. The probe has a three-minute deadline. Production uses the public `BENCH_SITE_BASE_URL`
+and fails verification on authentication errors or redirects. A protected preview reports
+verification as blocked, with no claim that its health, build identity, or caching passed. To check
+a protected preview by hand, use `vercel curl`.
+
+One deliberate
 divergence from the API routes: the `vercel.json` header rules apply to every response status,
 so an unknown `/chart/:slug` 404 follows the HTML page rule: five minutes fresh and then eligible
 for Vercel's one-day stale-while-revalidate window. That is acceptable for opaque, never-linked
@@ -68,10 +72,17 @@ were, the same HTML page rule would bound it).
 ## Deploys
 
 `.github/workflows/bench-ci.yml` runs the check suite on every PR touching `bench/`, including
-`migrations/**` (the integration suite applies that DDL to its testcontainer).
-`.github/workflows/bench-deploy.yml` deploys via the Vercel CLI (`vercel pull` / `vercel build` /
-`vercel deploy --prebuilt`): a preview deployment per same-repo PR that touches `bench/`, and a
-production deployment on each push to `main` that does.
+`migrations/**` (the integration suite applies that DDL to its testcontainer). It is a required
+check on `main`. `.github/workflows/bench-deploy.yml` deploys via the Vercel CLI (`vercel pull` /
+`vercel build` / `vercel deploy --prebuilt`): a preview deployment per same-repo PR that touches
+`bench/`, and a production deployment on each push to `main` that does. Fork PRs run CI but do
+not receive deployment credentials.
+
+The `bench-production` environment limits manual production runs to `main`. Push and manual
+production runs share one production queue and let an active deploy finish verification. New
+preview runs can cancel older previews of the same event and ref. The Vercel CLI builds on the
+runner and uploads the prebuilt output. `BENCH_BUILD_SHA` is embedded in that output so the
+uncached health endpoint identifies the checked-out build.
 
 One-time operator setup:
 
@@ -81,7 +92,10 @@ One-time operator setup:
 2. Set the repo variables `VERCEL_ORG_ID` + `BENCH_VERCEL_PROJECT_ID` (from the Vercel project
    settings), and the secret `VERCEL_TOKEN` (a deploy token scoped to this Vercel project) in
    both the `bench-preview` and `bench-production` GitHub environments. Limit
-   `bench-production` to `main`.
+   `bench-production` to `main`. Set the repo variable `BENCH_SITE_BASE_URL` to the public
+   production URL as `https://<domain>`. The keep-warm workflow uses the same variable.
+   Production deployment requires it before uploading and verifies the public domain after
+   deployment.
 3. Configure `BENCH_DB_*` on the Vercel project (Production and Preview environments). Two open
    wiring choices are deliberately left to this step, per environment:
    - **Endpoint**: the public RDS instance endpoint (the same endpoint CI writers use). There is
