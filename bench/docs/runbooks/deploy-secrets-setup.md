@@ -136,7 +136,8 @@ team's secret store. **Never paste a value into this document.**
 | `BENCH_DB_SSL` | TLS verification mode (`verify-full` for RDS production, `disable` for local dev only) | Existing monorepo Vercel project env |
 | `BENCH_DB_CA` | RDS CA bundle PEM content or mode; required for `verify-full` — Node does not include Amazon RDS roots in its trust store | Existing monorepo Vercel project env or [Amazon RDS CA bundle](https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem) |
 | `BENCH_DB_POOL_MAX` | Max connections in the pg pool (default `8`; omit to use default) | Existing monorepo Vercel project env |
-| `BENCH_DB_IDLE_TIMEOUT_MS` | Pool idle-connection timeout in ms (default `300000` = 5 min; omit to use default) | Existing monorepo Vercel project env |
+| `BENCH_DB_IDLE_TIMEOUT_MS` | Pool idle-connection timeout in ms (default `5000`; positive integer; omit to use default) | Existing monorepo Vercel project env |
+| `BENCH_DB_CONNECTION_TIMEOUT_MS` | New-connection and pool-slot timeout in ms (default `5000`; positive integer; omit to use default) | Existing monorepo Vercel project env |
 | `BENCH_REVALIDATE_TOKEN` | Bearer token for `POST /api/revalidate` — must match the value the monorepo's emitter caller (`post-ingest.py`) sends | Existing monorepo Vercel project env; coordinate with the monorepo caller (see note below) |
 
 > **`BENCH_REVALIDATE_TOKEN` coordination:** this token authenticates the monorepo's `post-ingest.py`

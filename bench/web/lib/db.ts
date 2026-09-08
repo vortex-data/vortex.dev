@@ -3,6 +3,7 @@
 
 import { Pool, type PoolConfig, type QueryResultRow } from 'pg';
 import { Signer } from '@aws-sdk/rds-signer';
+import { attachDatabasePool } from '@vercel/functions';
 
 /**
  * Resolved Postgres connection settings for the benchmarks read service.
@@ -30,6 +31,8 @@ export interface DbConfig {
   poolMax: number;
   /** Idle-connection timeout (ms) for the pg pool; see `resolveIdleTimeoutMillis`. */
   idleTimeoutMillis: number;
+  /** Timeout (ms) for establishing a connection or waiting for a pool slot. */
+  connectionTimeoutMillis: number;
   /** Per-statement server timeout (ms); see `resolveStatementTimeoutMillis`. */
   statementTimeoutMillis: number;
   /** When defined, IAM token generation is bypassed in favor of this password. */
@@ -77,36 +80,36 @@ export function resolveSsl(): PoolConfig['ssl'] {
   return { rejectUnauthorized: true, ...(ca ? { ca } : {}) };
 }
 
-/** Default pg pool idle-connection timeout: 5 minutes, see `resolveIdleTimeoutMillis`. */
-const DEFAULT_IDLE_TIMEOUT_MS = 300_000;
+const DEFAULT_POOL_TIMEOUT_MS = 5_000;
 const DEFAULT_STATEMENT_TIMEOUT_MS = 30_000;
 
-/**
- * Resolves the pool's idle-connection timeout in milliseconds from
- * `BENCH_DB_IDLE_TIMEOUT_MS`. An unset OR empty/whitespace-only value uses the
- * default `DEFAULT_IDLE_TIMEOUT_MS` (5 minutes) so a pooled connection survives
- * the keep-warm cron's two-minute ping gap instead of pg's 10s default, which
- * would otherwise drop the connection between pings and make the next request
- * re-pay the RDS IAM-token + TLS connect even on a warm function instance. `0`
- * is accepted and means pg never times out an idle client. A non-empty,
- * non-numeric, or negative value fails loudly rather than silently becoming
- * `NaN`. Exported for unit testing the parsing and default.
- */
-export function resolveIdleTimeoutMillis(): number {
-  const raw = process.env.BENCH_DB_IDLE_TIMEOUT_MS;
-  // Treat unset OR empty/whitespace-only as "use the default". This is an
-  // optional tuning knob, so an accidentally-cleared value falls back to the
-  // safe default rather than silently becoming `Number('')` === 0 (no timeout).
+/** Read a positive timeout that fits Node's signed 32-bit timer range. */
+function resolvePoolTimeoutMillis(name: string): number {
+  const raw = process.env[name];
   if (raw === undefined || raw.trim() === '') {
-    return DEFAULT_IDLE_TIMEOUT_MS;
+    return DEFAULT_POOL_TIMEOUT_MS;
   }
   const value = Number(raw);
-  if (!Number.isFinite(value) || value < 0) {
+  if (!Number.isInteger(value) || value <= 0 || value > 2_147_483_647) {
     throw new Error(
-      `Invalid \`BENCH_DB_IDLE_TIMEOUT_MS\` \`${raw}\`; expected a non-negative number of milliseconds.`,
+      `Invalid \`${name}\` \`${raw}\`; expected an integer from 1 to 2147483647 milliseconds.`,
     );
   }
   return value;
+}
+
+/**
+ * Resolve the idle timeout from `BENCH_DB_IDLE_TIMEOUT_MS` (default 5 seconds).
+ * Vercel keeps the invocation alive until pg's idle timer can close clients.
+ * A short, nonzero timeout allows cleanup before the function suspends.
+ */
+export function resolveIdleTimeoutMillis(): number {
+  return resolvePoolTimeoutMillis('BENCH_DB_IDLE_TIMEOUT_MS');
+}
+
+/** Resolve the connection and pool acquisition timeout (default 5 seconds). */
+export function resolveConnectionTimeoutMillis(): number {
+  return resolvePoolTimeoutMillis('BENCH_DB_CONNECTION_TIMEOUT_MS');
 }
 
 /**
@@ -139,6 +142,7 @@ function readConfig(): DbConfig {
     ssl: resolveSsl(),
     poolMax: Number(process.env.BENCH_DB_POOL_MAX ?? '8'),
     idleTimeoutMillis: resolveIdleTimeoutMillis(),
+    connectionTimeoutMillis: resolveConnectionTimeoutMillis(),
     statementTimeoutMillis: resolveStatementTimeoutMillis(),
     staticPassword: staticPassword === '' ? undefined : staticPassword,
   };
@@ -181,8 +185,10 @@ function createPool(config: DbConfig = readConfig()): Pool {
     ssl: config.ssl,
     max: config.poolMax,
     idleTimeoutMillis: config.idleTimeoutMillis,
+    connectionTimeoutMillis: config.connectionTimeoutMillis,
     statement_timeout: config.statementTimeoutMillis,
   });
+  attachDatabasePool(pool);
   // pg emits idle-client connection failures on the pool. Without this
   // listener, EventEmitter turns a recoverable disconnect into an uncaught
   // exception. The pool removes the failed client and replaces it on demand.
