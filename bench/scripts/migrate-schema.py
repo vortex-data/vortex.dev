@@ -28,10 +28,10 @@ APIs itself.
 
 Exit codes
 ----------
-- `apply`  : 0 on success (zero or more migrations applied).
+- `apply`  : 0 on success, 2 on operational or usage failure.
 - `status` : 0 when the on-disk migration set matches the ledger;
              1 when there is drift (pending files OR applied-but-deleted
-             files). CI uses this for clean-tree gates.
+             files), 2 on operational or usage failure. CI must not treat 2 as drift.
 """
 
 import argparse
@@ -308,10 +308,7 @@ def main() -> int:
                 print(f"{count} migration(s) applied", file=sys.stderr)
                 return 0
             return status(conn, args.migrations)
-    except FileNotFoundError as e:
-        # Translate the typed exception from `discover` into a clean CLI
-        # error; callers that import this module get the original exception
-        # via `discover` instead of an opaque SystemExit.
+    except (psycopg.Error, OSError, ValueError) as e:
         print(str(e), file=sys.stderr)
         return 2
 
