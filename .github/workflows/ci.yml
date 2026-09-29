@@ -28,7 +28,7 @@ jobs:
 
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6  # v2.2.0
         with:
-          bun-version: 1.4.0
+          bun-version: 1.4.2
 
       # Bun is the package manager and script runner, but Next.js (and tsc)
       # run on Node. The runner image is pinned (ubuntu-24.04) but Node
@@ -161,7 +161,7 @@ jobs:
 
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6  # v2.2.0
         with:
-          bun-version: 1.4.0
+          bun-version: 1.4.2
 
       - name: Cache Bun install cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
@@ -232,7 +232,7 @@ jobs:
           # TruffleHog diffs base..head and needs the full history present.
           fetch-depth: 0
       - name: TruffleHog scan
-        uses: trufflesecurity/trufflehog@20652fbbdefffcdaa493a5bf57ab2ac6b1db715b  # v3.97.1
+        uses: trufflesecurity/trufflehog@363923b901c911a9164f50b6c423f47c15372b1c  # v3.97.4
         with:
           # On PRs: scan the diff between base and head. On push to main:
           # scan the previous commit to HEAD. The action infers both from
