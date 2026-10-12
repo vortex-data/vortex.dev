@@ -232,7 +232,7 @@ jobs:
           # TruffleHog diffs base..head and needs the full history present.
           fetch-depth: 0
       - name: TruffleHog scan
-        uses: trufflesecurity/trufflehog@f714bf454f350590f4a24c3ddb1aef02c35bf5b6  # v3.97.5
+        uses: trufflesecurity/trufflehog@4dd8831c5f12599465d4d45c3c447b4018a34c85  # v3.97.9
         with:
           # On PRs: scan the diff between base and head. On push to main:
           # scan the previous commit to HEAD. The action infers both from
