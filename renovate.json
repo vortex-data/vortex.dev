@@ -10,7 +10,8 @@
     ":separateMultipleMajorReleases",
     ":configMigration",
     "schedule:earlyMondays",
-    "helpers:pinGitHubActionDigests"
+    "helpers:pinGitHubActionDigests",
+    "customManagers:githubActionsVersions"
   ],
   "lockFileMaintenance": {
     "enabled": true
@@ -66,7 +67,7 @@
     },
     {
       "description": "Keep bench's updates apart from the marketing site's, and don't automerge them while bench CI is not a required check: platform automerge waits only for required checks.",
-      "matchFileNames": ["bench/**"],
+      "matchFileNames": ["bench/**", ".github/workflows/bench-*.yml"],
       "additionalBranchPrefix": "bench-",
       "commitMessageSuffix": "(bench)",
       "addLabels": ["bench"],

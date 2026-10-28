@@ -60,6 +60,8 @@ env:
   # pnpm to install + build bench/web. Keep in lockstep with `packageManager` in
   # bench/web/package.json.
   PNPM_VERSION: "11.5.2"
+  # renovate: datasource=npm depName=vercel
+  VERCEL_CLI_VERSION: "64.0.2"
 
 jobs:
   deploy:
@@ -100,17 +102,19 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: pnpm
-          cache-dependency-path: |
-            bench/web/pnpm-lock.yaml
-            bench/vercel-cli/pnpm-lock.yaml
+          cache-dependency-path: bench/web/pnpm-lock.yaml
 
-      # The CLI and its whole dependency tree come from bench/vercel-cli's
-      # lockfile, so this job, which holds VERCEL_TOKEN, never resolves a
-      # freshly published version. Renovate bumps it like any other dependency.
+      # An exact version, and `--before` gives the CLI's whole dependency tree
+      # the repository's 14-day cooldown, so this job, which holds VERCEL_TOKEN,
+      # never installs a freshly published package. There's no lockfile: the
+      # CLI pins vulnerable versions of its own dependencies that nothing here
+      # can patch (see CLAUDE.md "bench advisories"), and a lockfile would put
+      # them in front of dependency review on every PR.
       - name: Install Vercel CLI
         run: |
-          pnpm install --frozen-lockfile --dir bench/vercel-cli
-          echo "${GITHUB_WORKSPACE}/bench/vercel-cli/node_modules/.bin" >> "${GITHUB_PATH}"
+          npm install -g --ignore-scripts --no-audit --no-fund \
+            --before="$(date -u -d '14 days ago' +%Y-%m-%dT%H:%M:%SZ)" \
+            "vercel@${VERCEL_CLI_VERSION}"
 
       - name: Pull Vercel project settings
         env:

@@ -1,8 +1,0 @@
-# Refuse to resolve package versions younger than 14 days (the value is in
-# minutes). Mirrors `minimumReleaseAge` in the root bunfig.toml and
-# renovate.json.
-minimumReleaseAge: 20160
-allowBuilds:
-  # esbuild's postinstall only verifies its platform binary, which pnpm installs
-  # from the matching optional @esbuild/* package regardless.
-  esbuild: false

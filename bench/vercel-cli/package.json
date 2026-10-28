@@ -1,9 +1,0 @@
-{
-  "name": "bench-vercel-cli",
-  "private": true,
-  "description": "The Vercel CLI that .github/workflows/bench-deploy.yml deploys bench with, pinned with its whole dependency tree.",
-  "devDependencies": {
-    "vercel": "64.0.2"
-  },
-  "packageManager": "pnpm@11.5.2"
-}
