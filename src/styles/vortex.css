@@ -46,7 +46,8 @@
   transition: color 150ms ease-out;
 }
 .vx-nav-link:hover,
-.vx-nav-link[aria-current="page"] {
+.vx-nav-link[aria-current="page"],
+.vx-nav-link[aria-current="true"] {
   color: var(--ink);
 }
 .vx-nav-link svg {
@@ -155,7 +156,7 @@
 .vx-btn-secondary:hover { border-color: var(--ink); }
 .vx-btn-ghost:hover { background: var(--raised); }
 .vx-btn.is-mono { padding: 0 var(--space-12); font: 400 13px/1 var(--font-mono); }
-.vx-btn-count { padding-left: var(--space-12); border-left: 1px solid var(--edge); color: var(--ink-muted); }
+.vx-btn-count { display: inline-flex; align-items: center; gap: var(--space-4); padding-left: var(--space-12); border-left: 1px solid var(--edge); color: var(--ink-muted); }
 
 /* The header: the wordmark, then either the site's navigation or the docs' label and search,
    then the end group. */
@@ -169,7 +170,7 @@
   border-bottom: 1px solid var(--line);
   background: var(--ground);
 }
-.vx-header-start { display: flex; align-items: center; gap: var(--space-12); }
+.vx-header-start { display: flex; flex-shrink: 0; align-items: center; gap: var(--space-12); }
 .vx-header-mark { height: 24px; width: auto; display: block; }
 .vx-header-mark.is-light, [data-theme="light"] .vx-header-mark.is-dark { display: none; }
 [data-theme="light"] .vx-header-mark.is-light { display: block; }
@@ -204,9 +205,14 @@
   .vx-search { flex: 0 0 auto; width: var(--control-md); justify-content: center; margin: 0 0 0 auto; padding: 0; }
   .vx-search-text, .vx-search-keys { display: none; }
 }
-@media (max-width: 640px) {
+/* The site header needs about 790px on one row: the wordmark, five links and the GitHub button
+   with its count. Below 800px the nav takes a second row, and the end group stays on the right. */
+@media (max-width: 800px) {
   .vx-header.has-nav { flex-wrap: wrap; height: auto; padding-block: var(--space-12); row-gap: var(--space-12); }
-  .vx-header-nav { order: 3; width: 100%; margin-left: 0; gap: var(--space-20); overflow-x: auto; }
+  .vx-header.has-nav .vx-header-nav { order: 3; width: 100%; margin-left: 0; gap: var(--space-20); overflow-x: auto; }
+  .vx-header.has-nav .vx-header-end { margin-left: auto; }
+}
+@media (max-width: 640px) {
   .vx-header-label, .vx-header-end .is-wide { display: none; }
 }
 
@@ -224,7 +230,7 @@
 .vx-footer-mark { height: 12px; width: auto; opacity: 0.85; }
 [data-theme="light"] .vx-footer-mark { filter: invert(1); }
 .vx-footer-text { flex: 1 1 420px; min-width: 0; margin: 0; }
-.vx-footer-nav { display: flex; gap: var(--space-16); }
+.vx-footer-nav { display: flex; flex-wrap: wrap; gap: var(--space-8) var(--space-16); }
 
 .vx-eyebrow { display: inline-flex; align-items: center; gap: var(--space-8); }
 .vx-eyebrow::before { content: ""; width: 6px; height: 6px; background: var(--accent); flex: none; }

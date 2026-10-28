@@ -2,15 +2,16 @@
 
 import NextLink from "next/link";
 import { usePathname } from "next/navigation";
+import { blogCurrent } from "@/lib/nav";
 
 /**
  * The header's primary nav. It is a client component only to mark the
- * current section: the blog's link takes `aria-current="page"` on the index
- * and on every post.
+ * current place: the blog's link takes `aria-current="page"` on the index
+ * and `"true"` (the current section) on a post.
  */
 export function HeaderNav() {
   const pathname = usePathname();
-  const onBlog = pathname === "/blog" || pathname.startsWith("/blog/");
+  const current = blogCurrent(pathname);
   return (
     <nav className="vx-header-nav" aria-label="Primary">
       <a className="vx-label vx-nav-link" href="https://docs.vortex.dev">
@@ -25,7 +26,7 @@ export function HeaderNav() {
       <NextLink
         className="vx-label vx-nav-link"
         href="/blog"
-        {...(onBlog ? { "aria-current": "page" as const } : {})}
+        {...(current ? { "aria-current": current } : {})}
       >
         Blog
       </NextLink>

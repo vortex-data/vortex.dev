@@ -39,6 +39,7 @@
   --accent-soft: rgba(110, 92, 255, 0.16);
   --primary: var(--grey-50);
   --on-primary: var(--black);
+  --on-accent: var(--white);
   --focus-ring: var(--accent);
   --error-ink: #f26a6b;
   --syntax-plain: var(--grey-400);
@@ -77,6 +78,7 @@
   --accent-soft: rgba(29, 15, 237, 0.1);
   --primary: var(--black);
   --on-primary: var(--white);
+  --on-accent: var(--white);
   --focus-ring: var(--accent);
   --error-ink: #c42b2e;
   --syntax-plain: var(--grey-600);

@@ -68,35 +68,6 @@ body {
   flex: 1 0 auto;
 }
 
-/* Two fixes to the system's site header, until the system takes them:
-   - One row needs about 790px (wordmark, five links, the button with its
-     count), but the system wraps the nav only below 640px. In between, flex
-     shrinks the wordmark to a speck. Wrap below 800px, and never shrink it.
-   - Its `.vx-header-nav + .vx-header-end` rule zeroes the end group's margin,
-     so on two rows the GitHub button would sit against the wordmark. */
-.vx-header-start {
-  flex-shrink: 0;
-}
-
-@media (max-width: 800px) {
-  .vx-header.has-nav {
-    flex-wrap: wrap;
-    height: auto;
-    padding-block: var(--space-12);
-    row-gap: var(--space-12);
-  }
-  .vx-header.has-nav .vx-header-nav {
-    order: 3;
-    width: 100%;
-    margin-left: 0;
-    gap: var(--space-20);
-    overflow-x: auto;
-  }
-  .vx-header.has-nav .vx-header-end {
-    margin-left: auto;
-  }
-}
-
 @layer utilities {
   .dashed-all {
     @apply relative after:absolute after:inset-0;

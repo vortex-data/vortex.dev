@@ -37,9 +37,9 @@ export async function getStarCount(
   }
 }
 
-/** "★ 950", "★ 3.3k", "★ 12k": one decimal below 10k, none above. */
+/** "950", "3.3k", "12k": one decimal below 10k, none above. The header sets it beside the star icon. */
 export function formatStars(n: number): string {
-  if (n < 1000) return `★ ${n}`;
+  if (n < 1000) return `${n}`;
   const k = n < 9950 ? Math.round(n / 100) / 10 : Math.round(n / 1000);
-  return `★ ${k}k`;
+  return `${k}k`;
 }

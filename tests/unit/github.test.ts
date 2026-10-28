@@ -19,17 +19,17 @@ const json = (body: unknown, status = 200) =>
   });
 
 describe("formatStars", () => {
-  it("writes the count as the header's GitHub button shows it", () => {
+  it("writes the count as the header's GitHub button shows it, beside the star icon", () => {
     const CASES: [number, string][] = [
-      [0, "★ 0"],
-      [950, "★ 950"],
-      [999, "★ 999"],
-      [1000, "★ 1k"],
-      [3286, "★ 3.3k"],
-      [3312, "★ 3.3k"],
-      [9960, "★ 10k"],
-      [12000, "★ 12k"],
-      [12600, "★ 13k"]
+      [0, "0"],
+      [950, "950"],
+      [999, "999"],
+      [1000, "1k"],
+      [3286, "3.3k"],
+      [3312, "3.3k"],
+      [9960, "10k"],
+      [12000, "12k"],
+      [12600, "13k"]
     ];
     for (const [n, want] of CASES) assert.equal(formatStars(n), want, `${n}`);
   });
