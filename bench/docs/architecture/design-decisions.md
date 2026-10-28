@@ -258,10 +258,11 @@ RDS is publicly reachable on 5432; the access control is the IAM token signature
 serverless callers with dynamic egress IPs working without an allow-list.
 → `infra/provision.sh`.
 
-**The Vercel reader connects directly to the instance, not via the RDS Proxy.**
-A proxy was provisioned for connection pooling, but it is VPC-internal and
+**The Vercel reader connects directly to the instance; there is no RDS Proxy.**
+A proxy was provisioned for connection pooling, but it was VPC-internal and
 unreachable from Vercel's off-VPC serverless functions (and from off-VPC CI
-runners). Reads therefore go to the public instance endpoint as `bench_read`,
+runners). It had no client connections in five months and was deleted on
+2026-10-28. Reads go to the public instance endpoint as `bench_read`,
 and the CDN + Data Cache absorb nearly all read load; a managed pooler is
 revisited only if connection exhaustion actually surfaces.
 → `web/lib/db.ts`, `infra/provision.sh`.

@@ -25,7 +25,7 @@ Vercel project env, GitHub Actions secrets, or AWS — this document lists names
 values from, never values themselves.
 
 **Related documentation (cross-reference — do not duplicate):**
-- [`infra/README.md`](../../infra/README.md) — RDS Postgres + RDS Proxy + OIDC provisioning
+- [`infra/README.md`](../../infra/README.md) — RDS Postgres, backups, alarms and OIDC provisioning
   history and bootstrap procedure for account `245040174862`.
 - [`migrations/README.md`](../../migrations/README.md) — schema migration bootstrap ordering,
   `requires-superuser` marker contract, and `migrator` role history.
@@ -127,7 +127,7 @@ team's secret store. **Never paste a value into this document.**
 
 | Name | Purpose | Copy value from |
 |---|---|---|
-| `BENCH_DB_HOST` | RDS instance (or proxy) hostname for the read pool | Existing monorepo Vercel project env, or `infra/README.md` "After provisioning" section |
+| `BENCH_DB_HOST` | RDS instance hostname for the read pool | Existing monorepo Vercel project env, or `infra/README.md` "After provisioning" section |
 | `BENCH_DB_NAME` | Postgres database name (`vortex_bench`) | Existing monorepo Vercel project env |
 | `BENCH_DB_USER` | Postgres username for the read role (`bench_read`) | Existing monorepo Vercel project env |
 | `BENCH_DB_PASSWORD` | Static password for the `bench_read` role (IAM auth bypass for Vercel) | Existing monorepo Vercel project env or your secret store |
