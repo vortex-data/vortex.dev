@@ -6,13 +6,16 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const revalidateTag = vi.fn();
-vi.mock('next/cache', () => ({ revalidateTag: (tag: string) => revalidateTag(tag) }));
+vi.mock('next/cache', () => ({
+  revalidateTag: (tag: string, profile: unknown) => revalidateTag(tag, profile),
+}));
 
 // Mock data-cache so the module-level `unstable_cache` calls in that file do not
 // execute during this test (which only mocks `revalidateTag`, not `unstable_cache`).
 vi.mock('@/lib/data-cache', () => ({ BENCH_DATA_TAG: 'bench-data' }));
 
 import { POST } from '@/app/api/revalidate/route';
+import { BENCH_DATA_TAG } from '@/lib/data-cache';
 
 function post(token: string | null): Request {
   const headers = new Headers();
@@ -58,7 +61,16 @@ describe('POST /api/revalidate', () => {
     process.env.BENCH_REVALIDATE_TOKEN = 'secret-token-value';
     const res = await POST(post('secret-token-value'));
     expect(res.status).toBe(200);
-    expect(revalidateTag).toHaveBeenCalledWith('bench-data');
+    expect(revalidateTag).toHaveBeenCalledOnce();
+    expect(revalidateTag.mock.lastCall?.[0]).toBe('bench-data');
     expect(res.headers.get('cache-control')).toBeNull();
+  });
+
+  it('expires the tag at once, so the next read after an ingest is fresh', async () => {
+    // `{ expire: 0 }` keeps the one-argument behavior from before Next.js 16. The
+    // `'max'` profile would serve the stale entry once while it refreshes.
+    process.env.BENCH_REVALIDATE_TOKEN = 'secret-token-value';
+    await POST(post('secret-token-value'));
+    expect(revalidateTag).toHaveBeenCalledWith(BENCH_DATA_TAG, { expire: 0 });
   });
 });

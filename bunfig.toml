@@ -36,10 +36,14 @@ minimumReleaseAge = 1209600
 # - react / react-dom 19.3.1 (2026-10-14) harden the Server Components transport.
 #   React shipped the change on every supported line at once (19.0.9, 19.1.10,
 #   19.2.9).
-# - undici 7.30.1 (2026-10-15 14:18 UTC) fixes the dev-only advisories that
-#   reach bench through testcontainers and jsdom. Only bench uses undici.
+# - undici 7.30.1 and 8.12.2 (2026-10-15 14:18 and 15:05 UTC) fix the dev-only
+#   advisories that reach bench through testcontainers (7.x) and jsdom (8.x).
+#   8.12.1, the newest 8.x past the window, has four high advisories
+#   (GHSA-4w7w-5xrc-9h26, GHSA-2m5v-pch6-74hx, GHSA-qrxm-fqhp-jwvm,
+#   GHSA-xjj6-f33q-929c). The lockfile pins 8.12.2, not the newer 8.12.3 this
+#   exemption would also allow. Only bench uses undici.
 #
-# Remove all entries after 2026-10-29 14:18 UTC.
+# Remove all entries after 2026-10-29 15:06 UTC.
 minimumReleaseAgeExcludes = [
   "next",
   "@next/env",
