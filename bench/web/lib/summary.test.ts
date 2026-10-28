@@ -390,7 +390,7 @@ describe('timing summaries (shared ranking model)', () => {
       ],
     });
 
-    const summary = await collectGroupSummary({ k: 'RandomAccessGroup' });
+    const summary = await collectGroupSummary({ k: 'RandomAccessGroup', storage: 'nvme' });
     if (summary === null || summary.type !== 'randomAccess') {
       throw new Error('expected a randomAccess summary');
     }
@@ -431,7 +431,7 @@ describe('timing summaries (shared ranking model)', () => {
       ],
     });
 
-    const summary = await collectGroupSummary({ k: 'RandomAccessGroup' });
+    const summary = await collectGroupSummary({ k: 'RandomAccessGroup', storage: 'nvme' });
     if (summary === null || summary.type !== 'randomAccess') {
       throw new Error('expected a randomAccess summary');
     }
