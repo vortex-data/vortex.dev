@@ -1,5 +1,6 @@
 {
   "framework": "nextjs",
   "installCommand": "bun install --frozen-lockfile",
-  "buildCommand": "bun run build"
+  "buildCommand": "bun run build",
+  "ignoreCommand": "bash scripts/vercel-ignore-build.sh"
 }
