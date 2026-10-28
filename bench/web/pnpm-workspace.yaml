@@ -43,3 +43,7 @@ overrides:
   # next accepts ^0.34.3 || ^0.35.4, so pnpm keeps a vulnerable 0.34.x
   # (GHSA-f88m-g3jw-g9cj, GHSA-rgj7-g3m4-5g8c, GHSA-wq5f-xc86-pv6w).
   sharp: ^0.35.5
+  # @vercel/functions > @vercel/oidc > @vercel/cli-config pins zod 4.1.11
+  # exactly (GHSA-mrhx-c7xc-m3w5). bench only imports attachDatabasePool, which
+  # does not load the OIDC code that uses zod.
+  zod: ^4.6.7

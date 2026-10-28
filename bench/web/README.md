@@ -36,6 +36,8 @@ Connection config is read by `lib/db.ts`:
 | `BENCH_DB_SSL`                  | no (`verify-full`) | `verify-full` validates the certificate chain and hostname; `disable` is for local non-TLS containers only. Any other value fails loudly.     |
 | `BENCH_DB_CA`                   | prod               | PEM contents of the Amazon RDS CA bundle; Node's trust store does not include the RDS roots, so `verify-full` against RDS fails without it.   |
 | `BENCH_DB_POOL_MAX`             | no (8)             | Max pool connections per serverless instance; the per-render summary fan-out (`SUMMARY_CONCURRENCY`) is sized to this default.                |
+| `BENCH_DB_IDLE_TIMEOUT_MS`      | no (5000)          | Idle connection timeout in ms. Must be a positive integer within Node's timer range. |
+| `BENCH_DB_CONNECTION_TIMEOUT_MS` | no (5000)          | Timeout in ms for a new connection or a free pool slot. Must be a positive integer within Node's timer range. |
 | `BENCH_DB_STATEMENT_TIMEOUT_MS` | no (30000)         | PostgreSQL server-side timeout for each web statement. `0` disables the timeout.                                                              |
 
 ## CDN caching

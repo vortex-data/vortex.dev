@@ -806,6 +806,49 @@ describe.skipIf(!dockerAvailable())('summary math fidelity (testcontainers Postg
     expect(summary.rankings[0].score).toBeCloseTo(1.414143, 5);
     expect(summary.rankings[1].score).toBeCloseTo(1.732022, 5);
   });
+
+  // A cold group fill runs one chart query per chart. pg fails a query that
+  // waits BENCH_DB_CONNECTION_TIMEOUT_MS for a free pool slot, so the fill must
+  // keep its fan-out below the pool size. Otherwise a large group (99 TPC-DS
+  // charts) fails on a healthy database. The bound is 7: one below the default
+  // pool size of 8, because a cached fill holds one connection for its lock.
+  it('keeps a group fill within the pool size', async () => {
+    const sha = 'b'.repeat(40);
+    await insertCommit(sha, '2026-04-23T12:00:00Z');
+    for (let queryIdx = 1; queryIdx <= 12; queryIdx += 1) {
+      await insertQuery(sha, queryIdx, 'datafusion', 'parquet', 100_000);
+    }
+
+    const pool = getPool();
+    const original = pool.query;
+    let inFlight = 0;
+    let peak = 0;
+    pool.query = (async (...args: unknown[]) => {
+      inFlight += 1;
+      peak = Math.max(peak, inFlight);
+      try {
+        return await (original as (...a: unknown[]) => Promise<unknown>).apply(pool, args);
+      } finally {
+        inFlight -= 1;
+      }
+    }) as typeof pool.query;
+    try {
+      const bundle = await collectGroupCharts(
+        {
+          k: 'QueryGroup',
+          dataset: 'tpch',
+          dataset_variant: null,
+          scale_factor: '1',
+          storage: 'nvme',
+        },
+        parseCommitWindow(null),
+      );
+      expect(bundle?.charts).toHaveLength(12);
+    } finally {
+      pool.query = original;
+    }
+    expect(peak).toBeLessThanOrEqual(7);
+  });
 });
 
 // PR-5.1.5 read-path skip-scan fidelity. The canonical fixture above cannot
