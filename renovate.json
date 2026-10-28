@@ -71,11 +71,16 @@
       "addLabels": ["github-actions"]
     },
     {
-      "description": "Keep bench's updates apart from the marketing site's, and don't automerge them while bench CI is not a required check: platform automerge waits only for required checks.",
+      "description": "Keep bench's updates apart from the marketing site's.",
       "matchFileNames": ["bench/**", ".github/workflows/bench-*.yml"],
       "additionalBranchPrefix": "bench-",
       "commitMessageSuffix": "(bench)",
-      "addLabels": ["bench"],
+      "addLabels": ["bench"]
+    },
+    {
+      "description": "No required check runs a deploy, so review Vercel CLI bumps for bench-deploy.yml by hand.",
+      "matchManagers": ["custom.regex"],
+      "matchDepNames": ["vercel"],
       "automerge": false
     }
   ]

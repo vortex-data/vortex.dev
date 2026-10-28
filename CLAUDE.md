@@ -106,7 +106,7 @@ bench is on pnpm, so the Bun layers above don't reach it. Its equivalents:
 - **Cooldown:** `minimumReleaseAge: 20160` (14 days, in minutes) in `bench/web/pnpm-workspace.yaml`. Exemptions go in `minimumReleaseAgeExclude` in the same file, as exact `name@version` entries; pnpm rejects version-pinned name patterns, so list each `@next/*` package.
 - **Lifecycle scripts:** pnpm runs none unless `allowBuilds` in the same file allows them.
 - **Deploy CLI:** `bench-deploy.yml` installs an exact Vercel CLI version (`VERCEL_CLI_VERSION`, which Renovate bumps via the `# renovate:` comment), never `vercel@latest`, with `npm install --before` set to 14 days ago, so the whole tree gets the cooldown. That job holds `VERCEL_TOKEN`. It deliberately has no lockfile; see "bench advisories".
-- **Renovate** keeps bench's updates in their own `bench-` branches and doesn't automerge them. Platform automerge waits only for required checks, and `Bench: format, lint, build, test` isn't one yet. Drop `automerge: false` from the bench rule in `renovate.json` once it is.
+- **Renovate** keeps bench's updates in their own `bench-` branches. They automerge like the site's (patch and minor), because `Bench: format, lint, build, test` is a required check. The exception is the Vercel CLI (`VERCEL_CLI_VERSION`): no required check runs a deploy, so its bumps wait for review.
 - **Node:** `bench-ci.yml` and `bench-deploy.yml` read `.nvmrc`. Keep `@types/node` in `bench/web/package.json` and the `benchmarks-website` Vercel project's Node version on the same major.
 - **Audit:** `bun audit` doesn't cover bench. Run `pnpm audit` in `bench/web`; see "bench advisories" below.
 
