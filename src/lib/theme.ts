@@ -33,6 +33,45 @@ export function themeFor(
   return "dark";
 }
 
+/** What `applyRouteTheme` needs from `window`, so it can be tested without a DOM. */
+export interface ThemeWindow {
+  localStorage: Pick<Storage, "getItem">;
+  matchMedia(query: string): {
+    readonly matches: boolean;
+    addEventListener(type: "change", listener: () => void): void;
+    removeEventListener(type: "change", listener: () => void): void;
+  };
+  document: { documentElement: { dataset: DOMStringMap } };
+}
+
+/**
+ * Sets `<html data-theme>` for `pathname` and keeps it in step with the OS
+ * while the page stays open, which a blog set to "system" needs. Returns a
+ * function that stops listening.
+ */
+export function applyRouteTheme(
+  pathname: string,
+  win: ThemeWindow
+): () => void {
+  const media = win.matchMedia("(prefers-color-scheme: dark)");
+  const apply = () => {
+    let stored: string | null = null;
+    try {
+      stored = win.localStorage.getItem("vx-theme");
+    } catch {
+      // Blocked storage means the default theme.
+    }
+    win.document.documentElement.dataset.theme = themeFor(
+      pathname,
+      stored,
+      media.matches
+    );
+  };
+  apply();
+  media.addEventListener("change", apply);
+  return () => media.removeEventListener("change", apply);
+}
+
 /**
  * `themeFor` in plain ES5, for an inline classic script in `<head>` so the
  * theme lands on `<html>` before first paint. It is a constant: it reads the
