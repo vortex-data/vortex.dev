@@ -83,7 +83,8 @@ export async function mountAsciiMark(host, opts = {}) {
     renderer.forceContextLoss();
   });
 
-  await document.fonts.load(`${o.size}px ${o.font}`);
+  // The grid's font is a nicety: if it fails to download, draw with the fallback rather than not at all.
+  await document.fonts.load(`${o.size}px ${o.font}`).catch(() => {});
   const cv = document.createElement("canvas");
   cv.style.cssText = "position:absolute;inset:0;width:100%;height:100%;display:block";
   // The dot field fades out toward the host's edges instead of ending in a hard rectangle.
