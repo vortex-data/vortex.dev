@@ -15,7 +15,7 @@ Single one-shot script. Provisions, in order:
 
 1. The default-VPC subnet group covering every default subnet in `us-east-1` (`vortex-bench-subnet-group`).
 2. A security group `vortex-bench-sg` with inbound TCP 5432 from `0.0.0.0/0` — IAM auth is the gate, not network ACLs.
-3. A DB parameter group `vortex-bench-pg16` (family `postgres16`) that sets `work_mem` to 32 MiB.
+3. A DB parameter group `vortex-bench-pg16` (family `postgres16`) that sets `work_mem` to 32 MiB and turns on `log_connections` and `log_disconnections`, and the CloudWatch log group `/aws/rds/instance/vortex-bench-prod/postgresql` with 30-day retention. The instance exports its Postgres log there. See [Logs](#logs).
 4. An RDS Postgres instance `vortex-bench-prod` on `db.t4g.micro`, Postgres 16, 20 GiB GP3 storage that autoscales to 100 GiB, IAM auth enabled, RDS-managed master password (auto-rotated, stored in Secrets Manager), publicly accessible, single-AZ, deletion protection, automatic minor upgrades, 35-day backup window. On an instance that already exists, the script sets deletion protection, the storage ceiling, the backup window and automatic minor upgrades; these apply without a restart. It does not move an existing instance to another parameter group or change an existing backup replication, because a parameter group needs a restart and a new replication starts a new off-region copy. It prints the commands instead.
 5. Replication of the automated backups (daily snapshots and WAL) to `us-west-2`, with 14 days of point-in-time recovery there. See [Backups](#backups).
 6. An SNS topic `vortex-bench-alarms`, three CloudWatch alarms and an RDS event subscription. See [Alarms](#alarms).
@@ -225,6 +225,35 @@ recovers. Each alarm needs three 5-minute periods (15 minutes) in breach.
 The RDS event subscription `vortex-bench-prod-events` forwards `failure` and
 `low storage` events for `vortex-bench-prod`.
 
+## Logs
+
+The instance is reachable from the internet, so Postgres logs every connection
+and disconnection: who connected, from which address, and whether the login
+worked. The log goes to the CloudWatch log group
+`/aws/rds/instance/vortex-bench-prod/postgresql` and is kept for 30 days
+(`DB_LOG_RETENTION_DAYS`). To see the failed logins of the last day:
+
+```sh
+aws logs filter-log-events --log-group-name /aws/rds/instance/vortex-bench-prod/postgresql \
+  --start-time $(( ($(date +%s) - 86400) * 1000 )) --filter-pattern '"authentication failed"'
+```
+
+## Account security
+
+These are set for the whole AWS account, not only for bench, so `provision.sh`
+does not manage them and a bench tear-down must not remove them. All were added
+on 2026-10-28.
+
+- **CloudTrail:** the trail `account-trail` records management events in every
+  region to the private bucket `aws-cloudtrail-logs-245040174862`, with log-file
+  validation.
+- **GuardDuty** in us-east-1, with RDS login monitoring, so it reports unusual
+  logins to `vortex-bench-prod`. S3 data-event monitoring is off, because the
+  CI cache buckets are busy. Check the cost before the 30-day trial ends
+  (2026-11-27).
+- **IAM Access Analyzer:** `account-external-access` in us-east-1 lists the
+  resources that are shared outside the account.
+
 ## Upgrades
 
 Automatic minor version upgrades are on. RDS applies a new Postgres 16.x
@@ -285,6 +314,7 @@ aws rds delete-db-instance --db-instance-identifier vortex-bench-prod \
   --final-db-snapshot-identifier vortex-bench-prod-final --delete-automated-backups
 aws rds wait db-instance-deleted --db-instance-identifier vortex-bench-prod
 aws rds delete-db-parameter-group --db-parameter-group-name vortex-bench-pg16
+aws logs delete-log-group --log-group-name /aws/rds/instance/vortex-bench-prod/postgresql
 aws iam delete-role-policy --role-name GitHubBenchmarkSchemaRole --policy-name rds-db-connect-migrator
 aws iam delete-role --role-name GitHubBenchmarkSchemaRole
 aws iam delete-role-policy --role-name GitHubBenchmarkIngestRole --policy-name rds-db-connect-ingest
@@ -312,6 +342,7 @@ was added in October 2026. NOTE: prod `vortex-bench-prod` was upsized to
 | Backup storage in us-east-1 beyond the free 20 GiB (35-day window, ~140 GB-month in total) | ~$11 |
 | Backup replica in us-west-2 (14-day window: ~66 GB-month at $0.095, plus ~120 GB a month of transfer at $0.02) | ~$9, estimate |
 | CloudWatch alarms (3) | $0.30 |
+| CloudWatch Logs (Postgres log, 30 days) | <$1, estimate |
 | Secrets Manager (1 secret) | ~$0.40 |
 | Data transfer (CI ingests + reader fetches) | <$1 |
 | **Total** | **~$196/month** |
