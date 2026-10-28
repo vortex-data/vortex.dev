@@ -5,6 +5,11 @@ SPDX-FileCopyrightText: Copyright the Vortex contributors
 
 # benchmarks-website
 
+> This lives in [`vortex-data/vortex.dev`](https://github.com/vortex-data/vortex.dev) under
+> `bench/`. It used to be the standalone `vortex-data/benchmarks-website` repository, which is
+> archived and keeps the history before the move. Its workflows are the `bench-*.yml` files in
+> the repository's `.github/workflows/`, and `main` is the production branch.
+
 The public home for **Vortex benchmark results** — and the data pipeline behind it. Benchmark jobs
 in the [`vortex-data/vortex`](https://github.com/vortex-data/vortex) monorepo emit one measurement
 per commit; this repo stores those measurements in Postgres and renders them as time-series

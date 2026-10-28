@@ -31,8 +31,8 @@
 #   7. Creates the RDS Proxy `vortex-bench-proxy` in front of the RDS
 #      instance, also with IAM auth.
 #   8. Creates two GitHub Actions OIDC IAM roles trusted to
-#      `token.actions.githubusercontent.com`, each scoped to its repository
-#      develop branch and one instance dbuser:
+#      `token.actions.githubusercontent.com`, each scoped to one branch of its
+#      repository and one instance dbuser:
 #        - `GitHubBenchmarkSchemaRole`: `rds-db:connect` on the `migrator`
 #          Postgres user (schema deploys; migration 002 in PR-1.3).
 #        - `GitHubBenchmarkIngestRole`: `rds-db:connect` on the `bench_ingest`
@@ -69,8 +69,10 @@ readonly DB_MASTER_USERNAME="${DB_MASTER_USERNAME:-postgres}"
 readonly SCHEMA_ROLE_NAME="${SCHEMA_ROLE_NAME:-GitHubBenchmarkSchemaRole}"
 readonly INGEST_ROLE_NAME="${INGEST_ROLE_NAME:-GitHubBenchmarkIngestRole}"
 readonly PROXY_ROLE_NAME="${PROXY_ROLE_NAME:-vortex-bench-proxy-role}"
-readonly SCHEMA_GITHUB_REPO="${SCHEMA_GITHUB_REPO:-vortex-data/benchmarks-website}"
+readonly SCHEMA_GITHUB_REPO="${SCHEMA_GITHUB_REPO:-vortex-data/vortex.dev}"
+readonly SCHEMA_GITHUB_BRANCH="${SCHEMA_GITHUB_BRANCH:-main}"
 readonly INGEST_GITHUB_REPO="${INGEST_GITHUB_REPO:-vortex-data/vortex}"
+readonly INGEST_GITHUB_BRANCH="${INGEST_GITHUB_BRANCH:-develop}"
 # Postgres role created by migrations/002 in PR-1.3; the OIDC role's
 # rds-db:connect permission is scoped to this user. NOT overridable (unlike the
 # other names above): the role name is hardcoded in migrations/002
@@ -413,7 +415,7 @@ ensure_oidc_provider() {
 # Exact subjects deliberately exclude PRs, tags, and retired migration branches.
 # Reprovisioning replaces trust with this declared policy, including on existing roles.
 github_trust_policy() {
-    jq -n --arg account "$TARGET_ACCOUNT" --arg repo "$1" '{
+    jq -n --arg account "$TARGET_ACCOUNT" --arg repo "$1" --arg branch "$2" '{
       Version: "2012-10-17",
       Statement: [{
         Effect: "Allow",
@@ -421,7 +423,7 @@ github_trust_policy() {
         Action: "sts:AssumeRoleWithWebIdentity",
         Condition: {StringEquals: {
           "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
-          "token.actions.githubusercontent.com:sub": ("repo:" + $repo + ":ref:refs/heads/develop")
+          "token.actions.githubusercontent.com:sub": ("repo:" + $repo + ":ref:refs/heads/" + $branch)
         }}
       }]
     }'
@@ -432,7 +434,7 @@ ensure_schema_role() {
     ensure_oidc_provider
 
     local trust_policy
-    trust_policy=$(github_trust_policy "$SCHEMA_GITHUB_REPO")
+    trust_policy=$(github_trust_policy "$SCHEMA_GITHUB_REPO" "$SCHEMA_GITHUB_BRANCH")
 
     if SCHEMA_ROLE_ARN=$(aws iam get-role --role-name "$SCHEMA_ROLE_NAME" \
             --query 'Role.Arn' --output text 2>/dev/null); then
@@ -488,7 +490,7 @@ ensure_ingest_role() {
     ensure_oidc_provider
 
     local trust_policy
-    trust_policy=$(github_trust_policy "$INGEST_GITHUB_REPO")
+    trust_policy=$(github_trust_policy "$INGEST_GITHUB_REPO" "$INGEST_GITHUB_BRANCH")
 
     if INGEST_ROLE_ARN=$(aws iam get-role --role-name "$INGEST_ROLE_NAME" \
             --query 'Role.Arn' --output text 2>/dev/null); then
@@ -608,8 +610,8 @@ main() {
     if [ "$#" -gt 0 ]; then
         if [ "$#" -eq 2 ] && [ "$1" = "--print-trust" ]; then
             case "$2" in
-                schema) github_trust_policy "$SCHEMA_GITHUB_REPO" ;;
-                ingest) github_trust_policy "$INGEST_GITHUB_REPO" ;;
+                schema) github_trust_policy "$SCHEMA_GITHUB_REPO" "$SCHEMA_GITHUB_BRANCH" ;;
+                ingest) github_trust_policy "$INGEST_GITHUB_REPO" "$INGEST_GITHUB_BRANCH" ;;
                 *) die "Expected schema or ingest." ;;
             esac
             return

@@ -64,7 +64,7 @@ previous generations survive only until their teardown finishes (see
 |---|---|---|---|
 | **v2** | Node `server.js` + Vite/React SPA, on Cloudflare | A static `data.json.gz` dump in public S3, aggregated in memory at read time | Retired from serving; its S3 dump still receives CI uploads. To be torn down. |
 | **v3** | `vortex-bench-server` (Rust, `axum` + `maud`), on an EC2 host | DuckDB file on local disk | **Fully decommissioned 2026-07-08** — infrastructure and code deleted. |
-| **v4** | `web/` (Next.js App Router) on Vercel | AWS RDS Postgres | **Live production** at `bench.vortex.dev`; `develop` = production. |
+| **v4** | `web/` (Next.js App Router) on Vercel | AWS RDS Postgres | **Live production** at `bench.vortex.dev`; `main` = production. |
 
 Why three? Each generation traded the previous one's main weakness:
 

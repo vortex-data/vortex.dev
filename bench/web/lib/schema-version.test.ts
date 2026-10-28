@@ -11,7 +11,7 @@ import { SCHEMA_VERSION } from './schema-version';
 // Anchored declaration for the in-repo SCHEMA_VERSION lockstep site. The
 // canonical contract lives in `CONTRACT.md`; this test reads the doc at test
 // time and asserts its quoted anchor agrees with the TS `SCHEMA_VERSION`
-// const, so drift between the doc and the code fails web-ci loudly instead of
+// const, so drift between the doc and the code fails bench CI loudly instead of
 // only surfacing at ingest. The cross-repo sites (the monorepo's
 // `vortex-bench/src/v3.rs` and `scripts/post-ingest.py`) are documented in
 // CONTRACT.md but cannot be verified from this repo.

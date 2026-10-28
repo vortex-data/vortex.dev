@@ -37,7 +37,7 @@ lexicographic order, which equals numeric order under this convention.
 - `001_initial_schema.sql` — six tables plus dim-leading composite indexes
   following the read-path chart-query filter columns (PR-1.3).
 - `002_iam_db_user.sql` — `CREATE ROLE` for the `migrator` IAM-auth user that
-  the schema-deploy workflow (`.github/workflows/schema-deploy.yml`, PR-1.4)
+  the schema-deploy workflow (`.github/workflows/bench-schema-deploy.yml`, PR-1.4)
   assumes into via direct IAM to the public instance endpoint (PR-1.3).
 - `003_migrator_ledger_grant.sql` — grants `migrator` `SELECT, INSERT` (only,
   no `DELETE`/`UPDATE`) on `public._applied_migrations` so a migrator-role
@@ -118,7 +118,7 @@ master-owned-table DDL statements.
 The ordering contract this enforces: **apply every marked migration as the RDS
 master before any `migrator`-role deploy.** Migration `008` transfers the
 existing objects to `migrator`, so later object DDL needs no master role. The `migrator` IAM user that
-`schema-deploy.yml` assumes into is itself created by `002` and is not
+`bench-schema-deploy.yml` assumes into is itself created by `002` and is not
 master-capable, so it cannot apply the marked files; those must land first
 under the master. `001` (plain DDL) and `003` (a ledger grant) carry no marker
 and apply under either role. A future migration that needs a master-capable

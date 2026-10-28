@@ -3,7 +3,7 @@ SPDX-License-Identifier: Apache-2.0
 SPDX-FileCopyrightText: Copyright the Vortex contributors
 -->
 
-# AGENTS.md - `benchmarks-website/`
+# AGENTS.md - `bench/`
 
 Read [`README.md`](README.md) first for the architecture. Then this file. The web app has its own
 deep-dive in [`web/README.md`](web/README.md).

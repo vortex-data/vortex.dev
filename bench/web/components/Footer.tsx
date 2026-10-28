@@ -14,7 +14,7 @@
 export function Footer() {
   const fullSha = process.env.VERCEL_GIT_COMMIT_SHA ?? 'unknown';
   const shortSha = fullSha.slice(0, 7);
-  const commitUrl = `https://github.com/vortex-data/benchmarks-website/commit/${fullSha}`;
+  const commitUrl = `https://github.com/vortex-data/vortex.dev/commit/${fullSha}`;
   return (
     <footer className="site-footer">
       <span className="site-footer-label">build </span>

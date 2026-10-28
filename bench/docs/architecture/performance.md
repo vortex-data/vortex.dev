@@ -83,14 +83,14 @@ gap, which is the dominant cost on this site. Two crons keep the hot path warm:
   [`web/lib/db.ts`](../../web/lib/db.ts)) — comfortably longer than the 2-minute
   ping gap, so a connection minted by one ping survives to serve a visitor who
   lands between pings, rather than re-paying the IAM-token + TLS connect.
-- **The GitHub `web-keep-warm` workflow** (see
+- **The GitHub `bench-keep-warm` workflow** (see
   [deploy-and-infra.md](deploy-and-infra.md)) pings the public read
   surface on its own schedule and doubles as a lightweight uptime check
   (`curl --fail`).
 
 **Why two crons.** GitHub *scheduled* workflows only fire from the default
-branch, so the `web-keep-warm` workflow is dormant on any feature branch and
-only becomes active once merged to `develop`. The Vercel cron, by contrast, runs
+branch, so the `bench-keep-warm` workflow is dormant on any feature branch and
+only becomes active once merged to `main`. The Vercel cron, by contrast, runs
 against production deployments — and because this repo deploys with
 `vercel deploy --prebuilt --prod` (git integration off), it fires even from a
 feature-branch deploy. The Vercel-native warmer is therefore the one that works

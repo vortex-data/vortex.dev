@@ -61,7 +61,7 @@ during bootstrap (the role-management and ownership DDL the `migrator` role
 deliberately can't run). Steady-state CI then runs as `migrator` against
 already-applied files (no-ops per the ledger).
 
-## Schema deploy (`.github/workflows/schema-deploy.yml`)
+## Schema deploy (`.github/workflows/bench-schema-deploy.yml`)
 
 ```
 operator clicks "Run workflow"
@@ -76,21 +76,21 @@ scripts/migrate-schema.py  ──IAM token, verify-full TLS──▶  RDS as `mi
    └─ status: report applied / pending / orphaned (drift); exit 1 if any drift
 ```
 
-- **Manual trigger** (`workflow_dispatch`) is the deploy gate — there is a marked
-  TODO to auto-apply on push to `develop` now that the OIDC trust exists, left as
-  an operator's-call follow-up.
+- **Manual trigger** (`workflow_dispatch`) from `main` is the deploy gate; the
+  role trusts only `main` of `vortex-data/vortex.dev`. Auto-applying on push to
+  `main` is left as an operator's-call follow-up.
 - `dry_run: true` runs `status` only: it reports drift and exits 0 (drift is
   informational in dry-run); a real apply still fails on post-apply drift.
 - Serialized concurrency (`cancel-in-progress: false`) prevents two operators
   racing an apply against the same database.
 - `migrate-schema.py` is a self-contained PEP 723 script run via `uv run
-  --no-project` (this repo has no `pyproject.toml`, so `setup-uv` is configured
-  with `sync: false`).
+  --no-project` (bench has no `pyproject.toml`, so the workflow only installs
+  uv).
 
-## Web deploy (`.github/workflows/web-deploy.yml`)
+## Web deploy (`.github/workflows/bench-deploy.yml`)
 
 ```
-push to develop  ──▶  production deploy
+push to main     ──▶  production deploy
 workflow_dispatch ──▶  preview or production (input)
    │
    ▼
@@ -100,17 +100,18 @@ runner: pnpm install + `vercel build [--prod]`   (builds web/ ON THE RUNNER)
 `vercel deploy --prebuilt [--prod]`              (uploads the prebuilt output)
 ```
 
-- The Vercel project is **independently owned** by this repo: keyed by
-  `VERCEL_ORG_ID` + `VERCEL_PROJECT_ID` (GitHub *variables*) and `VERCEL_TOKEN` (a
-  *secret*), with **git integration turned off**. That keeps this repo's deploys
-  from racing the monorepo's deploys to its own Vercel project.
+- The Vercel project `benchmarks-website` is keyed by `VERCEL_ORG_ID` +
+  `BENCH_VERCEL_PROJECT_ID` (GitHub *variables*) and `VERCEL_TOKEN` (a token
+  scoped to that project, in the `bench-preview` and `bench-production`
+  environments), with **git integration turned off**. Bench deploys never touch
+  the `vortex` project that serves the marketing site.
 - The build runs **on the GitHub runner** (not Vercel's builders), so the workflow
   installs pnpm + Node to match `web/package.json` before `vercel build`; the
   prebuilt output is then uploaded, eliminating a build race.
-- `develop` **is** production — there is no staging gate. The per-PR CI
-  (including a testcontainer migration test) is the gate; a merge to `develop`
+- `main` **is** production — there is no staging gate. The per-PR CI
+  (including a testcontainer migration test) is the gate; a merge to `main`
   ships straight to the v4 production domain.
-- A `web-keep-warm` scheduled workflow pings the production deployment so the RDS
+- A `bench-keep-warm` scheduled workflow pings the production deployment so the RDS
   connection pool and Data Cache stay warm between visits.
 
 ## Legacy v3 host deploy (`ops/`) — decommissioned 2026-07-08
@@ -135,8 +136,8 @@ The host, its backups, and the `ops/` scripts are all gone (see
 
 | Thing | Where |
 |---|---|
-| Vercel project IDs | `VERCEL_ORG_ID` / `VERCEL_PROJECT_ID` GitHub variables; `web/.vercel/project.json` (gitignored) |
-| Vercel deploy token | `VERCEL_TOKEN` GitHub secret |
+| Vercel project IDs | `VERCEL_ORG_ID` / `BENCH_VERCEL_PROJECT_ID` GitHub variables in `vortex-data/vortex.dev` |
+| Vercel deploy token | `VERCEL_TOKEN` secret in the `bench-preview` and `bench-production` GitHub environments |
 | Schema-deploy role ARN, RDS region/db/endpoint | `GH_BENCH_SCHEMA_ROLE_ARN`, `RDS_BENCH_REGION`, `RDS_BENCH_DB_NAME`, `RDS_BENCH_INSTANCE_ENDPOINT` GitHub variables |
 | v4 DB connection (reader) | `BENCH_DB_*` Vercel environment variables (Production/Preview) |
 | Revalidate token | `BENCH_REVALIDATE_TOKEN` Vercel env (deferred until emitter cutover) |

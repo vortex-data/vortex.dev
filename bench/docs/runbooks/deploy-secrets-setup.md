@@ -5,6 +5,13 @@ SPDX-FileCopyrightText: Copyright the Vortex contributors
 
 # Deploy & secrets ownership setup (benchmarks-website)
 
+> **Historical.** This is the one-time setup from when bench was the standalone
+> `vortex-data/benchmarks-website` repository, and "this repo" below means that repository. Since
+> the move into `vortex-data/vortex.dev`, the variables, secrets and environments live there, the
+> workflows are `.github/workflows/bench-*.yml`, and the schema role trusts `vortex.dev`'s `main`.
+> The cutover checklist in the pull request that imported bench replaces the GitHub, Vercel and
+> AWS steps here.
+
 ## Overview
 
 This runbook is the one-time external setup that lets `vortex-data/benchmarks-website` own its own

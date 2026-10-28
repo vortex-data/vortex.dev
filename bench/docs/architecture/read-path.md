@@ -20,7 +20,7 @@ over the Vortex commit history (the x-axis). A *group* bundles related charts
 ## v4 — Next.js read service (`web/`)
 
 A Next.js App Router app of **server components** that query RDS directly and
-stream HTML. `develop` is the production branch (see
+stream HTML. `main` is the production branch (see
 [deploy-and-infra.md](deploy-and-infra.md)).
 
 ### Rendering: `force-dynamic`

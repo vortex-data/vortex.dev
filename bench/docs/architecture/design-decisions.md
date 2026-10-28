@@ -197,7 +197,7 @@ Caches handle repeat reads but not the first read after idle. A Vercel-native
 cron pings `/api/health` every 2 minutes (warming the function instance and
 several pooled connections), and the `pg` idle timeout is raised to 5 minutes so
 a pooled connection survives between pings. A Vercel-native cron is used (not
-only the GitHub `web-keep-warm` workflow) because GitHub scheduled workflows fire
+only the GitHub `bench-keep-warm` workflow) because GitHub scheduled workflows fire
 only from the default branch, whereas the Vercel cron also runs against the
 feature-branch production deploy.
 → `web/vercel.json`, `web/lib/db.ts`.
@@ -224,7 +224,7 @@ nothing for the cold read; it only shrinks the wire payload.
 **OIDC, not long-lived AWS keys.**
 CI exchanges a short-lived, repo+branch-scoped GitHub OIDC token for AWS
 credentials. No AWS secret is ever stored in GitHub.
-→ `infra/provision.sh`, `.github/workflows/schema-deploy.yml`.
+→ `infra/provision.sh`, `.github/workflows/bench-schema-deploy.yml`.
 
 **Least-privilege, separated DB roles.**
 `migrator` (DDL, no data writes), `bench_ingest` (data writes, no DDL),
@@ -244,13 +244,13 @@ integration off, and the build runs on the GitHub runner via `vercel build` +
 `vercel deploy --prebuilt`. Both choices stop this repo's deploys from racing the
 monorepo's deploys to its project, and give this repo full control of the build
 environment.
-→ `.github/workflows/web-deploy.yml`.
+→ `.github/workflows/bench-deploy.yml`.
 
-**`develop` is production; per-PR CI is the gate.**
-No staging environment. A merge to `develop` ships straight to the v4 production
+**`main` is production; per-PR CI is the gate.**
+No staging environment. A merge to `main` ships straight to the v4 production
 domain; the testcontainer migration test and the rest of CI are what gate the
 merge.
-→ `.github/workflows/web-deploy.yml`.
+→ `.github/workflows/bench-deploy.yml`.
 
 **Open security group, IAM/password as the gate.**
 RDS is publicly reachable on 5432; the access control is the IAM token signature

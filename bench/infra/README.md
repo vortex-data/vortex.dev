@@ -18,7 +18,7 @@ Single one-shot script. Provisions, in order:
 3. An RDS Postgres instance `vortex-bench-prod` on `db.t4g.micro`, Postgres 16, 20 GiB GP3 storage, IAM auth enabled, RDS-managed master password (auto-rotated, stored in Secrets Manager), publicly accessible, single-AZ, 35-day backup window.
 4. An RDS Proxy `vortex-bench-proxy` in front of the instance, `IAMAuth=REQUIRED`, TLS required, pulling the master credential from the Secrets-Manager-managed secret via a service-linked IAM role.
 5. The GitHub OIDC provider `token.actions.githubusercontent.com` (account-scoped — created once if not present).
-6. An IAM role `GitHubBenchmarkSchemaRole` trusted to GitHub Actions OIDC for `vortex-data/benchmarks-website` on `develop` with `sts:AssumeRoleWithWebIdentity`. Permission policy: `rds-db:connect` scoped to the `migrator` Postgres user on the **instance** resource only (CI schema deploys connect to the public instance endpoint). The dead proxy grant this role carried through PR-1.6 was dropped in PR-2.1's least-privilege cleanup; the VPC-internal proxy serves only the Vercel reader.
+6. An IAM role `GitHubBenchmarkSchemaRole` trusted to GitHub Actions OIDC for `vortex-data/vortex.dev` on `main` with `sts:AssumeRoleWithWebIdentity`. Permission policy: `rds-db:connect` scoped to the `migrator` Postgres user on the **instance** resource only (CI schema deploys connect to the public instance endpoint). The dead proxy grant this role carried through PR-1.6 was dropped in PR-2.1's least-privilege cleanup; the VPC-internal proxy serves only the Vercel reader.
 7. An IAM role `GitHubBenchmarkIngestRole` (PR-2.1) trusted to the same OIDC provider for `vortex-data/vortex` on `develop`. Permission policy: `rds-db:connect` scoped to the `bench_ingest` Postgres user on the instance resource only. This is the dedicated least-privilege identity for the Phase-2 CI dual-write ingest path, deliberately separate from the schema-deploy `migrator` identity so the high-frequency ingest path can write data but never run DDL or migrations.
 
 The `migrator` Postgres user is created by `migrations/002_iam_db_user.sql` (PR-1.3) and the `bench_ingest` user by `migrations/004_ingest_role.sql` (PR-2.1); each OIDC role's permission ARN is pre-scoped to its user. `002` is applied as the RDS master because it creates a role (it needs `CREATEROLE` and grants the `rds_iam` / schema privileges the master holds), while `003` and `004` are applied as the master because they additionally grant on master-owned objects (the ledger and the six data tables, respectively). All three run during the one-time bootstrap; the migrator-run `schema-deploy` path then records them as already-applied.
@@ -73,10 +73,10 @@ The script prints the exact `gh variable set` commands; copy them from its outpu
 
 | Variable | Value | Consumed by |
 |---|---|---|
-| `RDS_BENCH_INSTANCE_ENDPOINT` | the public RDS **instance** hostname | CI writers — PR-1.4 schema-deploy.yml; PR-2.4 ingest workflows (direct IAM) |
+| `RDS_BENCH_INSTANCE_ENDPOINT` | the public RDS **instance** hostname | CI writers — PR-1.4 bench-schema-deploy.yml; PR-2.4 ingest workflows (direct IAM) |
 | `RDS_BENCH_REGION` | `us-east-1` (or override) | All AWS-CLI invocations from CI |
 | `RDS_BENCH_DB_NAME` | `vortex_bench` | All Postgres connections |
-| `GH_BENCH_SCHEMA_ROLE_ARN` | the schema-deploy OIDC role ARN | `.github/workflows/schema-deploy.yml` |
+| `GH_BENCH_SCHEMA_ROLE_ARN` | the schema-deploy OIDC role ARN | `.github/workflows/bench-schema-deploy.yml` |
 | `GH_BENCH_INGEST_ROLE_ARN` | the ingest OIDC role ARN | PR-2.4 dual-write ingest workflows (`bench.yml` / `sql-benchmarks.yml` / `v3-commit-metadata.yml`) |
 
 The RDS Proxy hostname is deliberately **not** a GitHub Actions variable: it is
@@ -91,7 +91,7 @@ No secrets are needed — IAM auth is the credential. The master password is RDS
 ## Schema deploys + one-time bootstrap
 
 Schema migrations under `migrations/` are applied by
-`.github/workflows/schema-deploy.yml` (wired in PR-1.4). The workflow is
+`.github/workflows/bench-schema-deploy.yml` (wired in PR-1.4). The workflow is
 `workflow_dispatch` only: an operator triggers it manually from the GitHub
 Actions UI, optionally with `dry_run: true` to report drift via
 `migrate-schema.py status` without applying. That manual trigger is the deploy
@@ -246,10 +246,11 @@ Steady-state monthly bill once provisioned (rough). NOTE: prod `vortex-bench-pro
 
 ## OIDC trust inputs
 
-`SCHEMA_GITHUB_REPO` defaults to `vortex-data/benchmarks-website` and
-`INGEST_GITHUB_REPO` defaults to `vortex-data/vortex`. Each role trusts only its repository's
-`refs/heads/develop` subject with the `sts.amazonaws.com` audience. PRs, tags, environments,
-and the retired `ct/bench-v4` branch are excluded. Manual schema deploys must select `develop`.
+`SCHEMA_GITHUB_REPO` and `SCHEMA_GITHUB_BRANCH` default to `vortex-data/vortex.dev` and
+`main`; `INGEST_GITHUB_REPO` and `INGEST_GITHUB_BRANCH` default to `vortex-data/vortex` and
+`develop`. Each role trusts only that one `refs/heads/<branch>` subject with the
+`sts.amazonaws.com` audience. PRs, tags, environments, other branches and the former
+`vortex-data/benchmarks-website` repository are excluded. Manual schema deploys must select `main`.
 The old shared `GITHUB_REPO` input is rejected to prevent an ambiguous role assignment.
 
 Reprovisioning replaces each role's trust policy with these inputs. It does not preserve manual

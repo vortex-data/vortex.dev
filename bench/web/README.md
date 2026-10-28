@@ -70,25 +70,21 @@ were, the same HTML page rule would bound it).
 
 ## Deploys
 
-`.github/workflows/web-deploy.yml` runs the check suite on every PR touching
-`benchmarks-website/web/**`, `migrations/**` (the integration suite applies that DDL to its
-testcontainer), or the deploy tooling itself (the workflow and its `verify-cdn-cache` composite
-action), then deploys via the Vercel CLI (`vercel pull` / `vercel build` /
-`vercel deploy --prebuilt`): a preview deployment per same-repo PR, and a
-production deployment on each push to the deploy branch (`ct/bench-v4` during the migration;
-flips to `develop` when the migration branch squash-merges).
+`.github/workflows/bench-ci.yml` runs the check suite on every PR touching `bench/`, including
+`migrations/**` (the integration suite applies that DDL to its testcontainer).
+`.github/workflows/bench-deploy.yml` deploys via the Vercel CLI (`vercel pull` / `vercel build` /
+`vercel deploy --prebuilt`): a preview deployment per same-repo PR that touches `bench/`, and a
+production deployment on each push to `main` that does.
 
 One-time operator setup:
 
-1. Create the Vercel project: Framework Next.js, **Root Directory `benchmarks-website/web`**,
+1. Create the Vercel project: Framework Next.js, **Root Directory `bench/web`**,
    and the GitHub integration **disabled** (deploys are CLI-driven from CI; the integration
    would double-deploy).
-2. Set the GitHub repo secret `VERCEL_TOKEN` (a Vercel deploy token) and repo variables
-   `VERCEL_ORG_ID` + `VERCEL_PROJECT_ID` (from the Vercel project settings). Optionally set the
-   repo variable `BENCHMARKS_WEB_PROD_URL` to the public production URL, as a full
-   `https://<domain>` with no trailing slash: deployment protection never covers the public
-   domain, so the post-deploy CDN probe can verify caching through it even when deployment URLs
-   are protected (and a 401/403 from it fails the deploy run rather than skipping).
+2. Set the repo variables `VERCEL_ORG_ID` + `BENCH_VERCEL_PROJECT_ID` (from the Vercel project
+   settings), and the secret `VERCEL_TOKEN` (a deploy token scoped to this Vercel project) in
+   both the `bench-preview` and `bench-production` GitHub environments. Limit
+   `bench-production` to `main`.
 3. Configure `BENCH_DB_*` on the Vercel project (Production and Preview environments). Two open
    wiring choices are deliberately left to this step, per environment:
    - **Endpoint**: the RDS Proxy (`vortex-bench-proxy.proxy-*.us-east-1.rds.amazonaws.com`) is
