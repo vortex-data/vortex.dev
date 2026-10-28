@@ -1,0 +1,80 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: Copyright the Vortex contributors
+
+name: Web CI
+
+on:
+  push:
+  pull_request:
+
+# Least privilege: correctness CI only reads the checkout — no writes, no creds.
+permissions:
+  contents: read
+
+# Cancel stale runs on the same ref: a newer push to a branch (or a newer sync
+# to a PR) supersedes the in-flight run. A push to a branch that ALSO has an open
+# PR still produces one `push` run AND one `pull_request` run — they carry
+# different refs (`refs/heads/…` vs `refs/pull/N/merge`), so they fall in
+# different groups and both complete. The group uses a stable literal slug rather
+# than `${{ github.workflow }}` so renaming the workflow's `name:` cannot orphan
+# in-flight runs.
+concurrency:
+  group: web-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Keep in lockstep with `packageManager` in web/package.json.
+  PNPM_VERSION: "11.5.2"
+
+jobs:
+  web:
+    name: format, lint, build, test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check infrastructure trust policies offline
+        working-directory: .
+        run: |
+          bash -n infra/provision.sh
+          python3 -m unittest discover -s infra/tests -v
+
+      # pnpm must exist before setup-node so its `cache: pnpm` can resolve the store.
+      - name: Install pnpm
+        run: npm install -g "pnpm@${PNPM_VERSION}"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          # Keep in lockstep with @types/node in web/package.json (Node 24 API surface).
+          node-version: "24"
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Format check
+        run: pnpm format:check
+
+      - name: Lint
+        run: pnpm lint
+
+      # `next build` must succeed without a reachable database (every page and route
+      # is request-rendered), so no BENCH_DB_* env vars are provided here on purpose.
+      - name: Build
+        run: pnpm build
+
+      # testcontainers self-skips the Postgres integration suite when no Docker daemon
+      # is available (a local-dev convenience); in CI that would silently drop the only
+      # Postgres integration coverage, so fail loudly if the daemon is missing.
+      - name: Require Docker for the integration suite
+        run: docker info > /dev/null
+
+      - name: Test
+        run: pnpm test
