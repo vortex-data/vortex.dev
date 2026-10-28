@@ -44,3 +44,7 @@ CI rejects PRs whose commits don't have a `Signed-off-by:` trailer (DCO probot c
 For architectural context — content pipeline, design tokens, audit advisories, deployment quirks — see [CLAUDE.md](CLAUDE.md).
 
 For the Vortex file format itself and its tooling, see [github.com/vortex-data/vortex](https://github.com/vortex-data/vortex).
+
+## License
+
+As the [Vortex Technical Charter](src/assets/charter.pdf) requires, code is licensed under [Apache-2.0](LICENSE), and blog posts and documentation are licensed under [CC-BY-4.0](LICENSES/CC-BY-4.0.txt). The Vortex logo files are also CC-BY-4.0, but the Vortex name and logo are trademarks of LF Projects, LLC. [REUSE.toml](REUSE.toml) records the license of every file, and CI checks it.
