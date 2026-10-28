@@ -14,8 +14,8 @@ root:
 bun install                           # installs the whole workspace from the root bun.lock
 bun run --cwd bench/web dev           # needs BENCH_DB_* pointing at a database (see below)
 
-bun run --cwd bench/web format:check  # prettier
-bun run --cwd bench/web lint          # eslint
+bun run --cwd bench/web format:check  # biome format
+bun run --cwd bench/web lint          # biome lint
 bun run --cwd bench/web build         # next build; deliberately works WITHOUT a database
 bun run --cwd bench/web test          # vitest; the Postgres integration suite needs Docker and uv
 ```

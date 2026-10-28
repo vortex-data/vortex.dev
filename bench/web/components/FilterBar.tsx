@@ -50,11 +50,11 @@ export function FilterBar({
   // Seed the tab-wide store from the server-provided universe + URL state.
   // Runs on mount (and again after a soft navigation re-mounts the header), so
   // the store tracks the most recently rendered page's URL.
+  // The arrays are fresh per render but value-stable per page; re-seeding on
+  // a literal identity change alone would clobber in-flight chip state.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: seed once per mount, not on array identity
   useEffect(() => {
     initGlobalFilter(universe, initialEngines, initialFormats);
-    // The arrays are fresh per render but value-stable per page; re-seeding on
-    // a literal identity change alone would clobber in-flight chip state.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const snapshot = useSyncExternalStore(

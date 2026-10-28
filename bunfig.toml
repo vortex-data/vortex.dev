@@ -2,16 +2,10 @@
 
 [install]
 # Give every package its own resolved dependencies, as pnpm did for bench,
-# instead of one hoisted tree. The site and bench/web each pin their own
-# Next.js, React and TypeScript; in a hoisted tree bench's tools would load
-# the site's copies (typescript-eslint would get TypeScript 7). This is also
-# Bun's default for a workspace.
+# instead of one hoisted tree. The site and bench/web share Next.js and React
+# but each pins its own TypeScript; in a hoisted tree one app's tools would
+# load the other's copy. This is also Bun's default for a workspace.
 linker = "isolated"
-# bench's ESLint config loads its plugins from bench/web, so packages named
-# like ESLint or Prettier also go in the root node_modules, where pnpm's
-# default public-hoist-pattern put them for bench. Drop this when bench stops
-# using ESLint and Prettier.
-publicHoistPattern = ["*eslint*", "*prettier*"]
 
 # Refuse to install package versions younger than 14 days. Mirrors the
 # Renovate minimumReleaseAge in renovate.json so a local `bun install`,

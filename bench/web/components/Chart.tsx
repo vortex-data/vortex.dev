@@ -858,7 +858,7 @@ class ChartController {
     }
     state.constructing = true;
     try {
-      let Chart;
+      let Chart: typeof ChartJs;
       try {
         Chart = await loadChartJs();
       } catch (err) {
@@ -1816,6 +1816,7 @@ export function Chart({ slug, name, index, groupSlug, initialPayload }: ChartIsl
     () => (groupSlug ? getGroupSnapshot(groupSlug) : emptyGroupSnapshot()),
     () => emptyGroupSnapshot(),
   );
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the filter state is the trigger; `applyFilters` reads the stores itself
   useEffect(() => {
     controllerRef.current?.applyFilters();
   }, [globalFilter, groupState.hiddenSeries, groupState.shownSeries]);
@@ -1847,6 +1848,7 @@ export function Chart({ slug, name, index, groupSlug, initialPayload }: ChartIsl
   // Mount wiring: controller construction, payload seeding, the throttled
   // slider listener, group toggle/intent listeners, and (on the permalink
   // page) intersection-based construction.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the island's identity props never change after mount
   useEffect(() => {
     const card = cardRef.current;
     if (!card) {
@@ -2024,8 +2026,6 @@ export function Chart({ slug, name, index, groupSlug, initialPayload }: ChartIsl
       // the fresh controller reconstructs.
       setConstructed(false);
     };
-    // The island's identity props never change after mount.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Auto-dismiss the transient fetch-error indicator, matching v3's 4s timer.

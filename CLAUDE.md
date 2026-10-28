@@ -6,10 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - `bun dev` - Start development server with Turbopack
 - `bun build` - Build production application
-- `bun lint` - Run ESLint
+- `bun lint` - Run Biome lint
 - `bun start` - Start production server
 
-bench is a member of the root Bun workspace. `bun install` at the root installs both apps; run bench's scripts with `bun run --cwd bench/web <script>`: `dev`, `build`, `lint`, `format:check`, `test`. The Postgres integration suite needs Docker and skips without it.
+bench is a member of the root Bun workspace. `bun install` at the root installs both apps; run bench's scripts with `bun run --cwd bench/web <script>`: `dev`, `build`, `lint`, `format`, `format:check`, `test`. `lint` and `format` are Biome, as at the root. The Postgres integration suite needs Docker and skips without it.
 
 ## Repository layout
 
@@ -20,17 +20,17 @@ The repository holds two independent apps:
 
 They share one Bun workspace and the CI policy, and deploy separately:
 
-- **Toolchain.** `bench/web` is a member of the root Bun workspace: one `bun.lock`, one `bunfig.toml`, one `bun install` at the root. Bun's isolated linker gives each package its own dependencies, so bench keeps its own TypeScript 5.9 and tools beside the site's; both apps run Next.js 16.4.1 and React 19.3. bench still uses ESLint and Prettier. The root `tsconfig.json` and `biome.json` exclude `bench/`, and `bench/web/postcss.config.mjs` keeps Next.js from picking up the root's Tailwind config.
+- **Toolchain.** `bench/web` is a member of the root Bun workspace: one `bun.lock`, one `bunfig.toml`, one `bun install` at the root. Bun's isolated linker gives each package its own dependencies, so bench keeps its own TypeScript 5.9 and tools beside the site's; both apps run Next.js 16.4.1 and React 19.3. The root `biome.json` lints and formats both apps: a `bench/**` override keeps bench's old Prettier style (single quotes, trailing commas, 100 columns) and sets bench's lint rules (see `bench/AGENTS.md`), and `bun run check:ci` at the root checks all of it. The root `tsconfig.json` excludes `bench/`, and `bench/web/postcss.config.mjs` keeps Next.js from picking up the root's Tailwind config.
 - **CI.** `.github/actions/changed-paths` reports which app a change touches. `ci.yml` skips its site jobs on bench-only changes, and `bench-ci.yml` skips on site-only changes. The workspace's root files (`package.json`, `bun.lock`, `bunfig.toml`, `biome.json`, `tsconfig*.json`) count as both. Both gate with `if:`, not `on.paths`, so a skipped required check still passes. Dependency review, the secret scan and REUSE run on every change.
 - **Deploys.** The `vortex` Vercel project builds the site through the git integration, and `scripts/vercel-ignore-build.sh` skips bench-only commits. bench deploys to the `benchmarks-website` Vercel project (Root Directory `bench/web`) from `bench-deploy.yml`, with the Vercel CLI, on changes to `bench/` and to the root `package.json`, `bun.lock` and `bunfig.toml`. Schema migrations go through `bench-schema-deploy.yml`, which only runs manually from `main` because the AWS role trusts nothing else.
 
 ## Architecture Overview
 
-This is a Next.js 15 marketing website for Vortex, a columnar file format. The site features:
+This is a Next.js 16 marketing website for Vortex, a columnar file format. The site features:
 
 ### Core Technologies
 
-- **Next.js 15** with App Router and Turbopack for development
+- **Next.js 16** with App Router and Turbopack for development
 - **React 19** with TypeScript
 - **TailwindCSS 4** for styling
 - **OGL** (WebGL library) for 3D graphics and ASCII art effect
@@ -106,8 +106,8 @@ Keep them in lockstep when bumping. Raising `.nvmrc` alone makes CI validate aga
 `bench/web` is a member of the root Bun workspace, so the layers above cover it: the cooldown and its exemptions in `bunfig.toml`, `trustedDependencies` and `overrides` in the root `package.json`, `bun audit`, and the `bun.lock (bench/web)` manifest of the dependency snapshot. What is particular to bench:
 
 - **Install at the root.** `bun install --frozen-lockfile` at the root installs both apps, and `bun run --cwd bench/web <script>` runs bench's scripts; CI and `bench-deploy.yml` do the same, and `bench/web/vercel.json` gives `vercel build` the same install command. A `bun install` in `bench/web` also finds the root's `bunfig.toml`.
-- **Linker.** `bunfig.toml` sets `linker = "isolated"`, so every package gets the dependencies it resolved, as pnpm gave bench. bench keeps its own versions (its own TypeScript today), and its tools never load the site's copies; a hoisted tree hands typescript-eslint the site's TypeScript 7, which it rejects. `publicHoistPattern = ["*eslint*", "*prettier*"]`, pnpm's default, puts those packages in the root `node_modules`, where bench's ESLint config finds its plugins. Drop it when bench leaves ESLint and Prettier.
-- **Lifecycle scripts.** pnpm's `allowBuilds` let `sharp` and `unrs-resolver` build. `trustedDependencies` already trusts `sharp`, and stays `["esbuild", "sharp"]`. Bun blocks four bench scripts: `unrs-resolver`'s postinstall only checks for its native binding, which Bun installs as an optional dependency, and `protobufjs`, `ssh2` and `cpu-features` were blocked under pnpm too. With the isolated linker, `bun pm untrusted` lists only packages linked at the top of `node_modules`, so it reports none of them; to audit, install once with `bun install --linker hoisted` in a scratch copy and run it there.
+- **Linker.** `bunfig.toml` sets `linker = "isolated"`, so every package gets the dependencies it resolved, as pnpm gave bench. bench keeps its own versions (its own TypeScript today), and its tools never load the site's copies.
+- **Lifecycle scripts.** pnpm's `allowBuilds` let `sharp` build (and `unrs-resolver`, which left with ESLint). `trustedDependencies` already trusts `sharp`, and stays `["esbuild", "sharp"]`. Bun blocks three bench scripts, `protobufjs`, `ssh2` and `cpu-features`, which pnpm blocked too. With the isolated linker, `bun pm untrusted` lists only packages linked at the top of `node_modules`, so it reports none of them; to audit, install once with `bun install --linker hoisted` in a scratch copy and run it there.
 - **Deploy CLI:** `bench-deploy.yml` installs an exact Vercel CLI version (`VERCEL_CLI_VERSION`, which Renovate bumps via the `# renovate:` comment), never `vercel@latest`, with `npm install --before` set to 14 days ago, so the whole tree gets the cooldown. That job holds `VERCEL_TOKEN`. It deliberately has no lockfile; see "bench advisories".
 - **Renovate** keeps bench's updates in their own `bench-` branches (it matches `bench/web/package.json`; the lockfile they change is the shared `bun.lock`, which lock file maintenance refreshes for both apps at once). They automerge like the site's (patch and minor), because `Bench: format, lint, build, test` is a required check. The exception is the Vercel CLI (`VERCEL_CLI_VERSION`): no required check runs a deploy, so its bumps wait for review.
 - **Node:** `bench-ci.yml` and `bench-deploy.yml` read `.nvmrc`. Keep `@types/node` in `bench/web/package.json` and the `benchmarks-website` Vercel project's Node version on the same major.
@@ -148,5 +148,5 @@ The `audit` job in `.github/workflows/ci.yml` runs a bare `bun audit` and never 
 - **Accepted, dev-only — protobufjs 7.6.2** (GHSA-f38q-mgvj-vph7, fixed in 7.6.3, and GHSA-j3f2-48v5-ccww, fixed in 7.6.5; both moderate; via testcontainers > dockerode > @grpc/proto-loader). The move to Bun kept pnpm's version. It runs only in bench's tests. Drop this entry when a lockfile refresh reaches protobufjs 7.6.5.
 - **Resolved by `overrides` in the root `package.json`:** zod (see "Audit advisories"). sharp needs no override for bench: next 16.4.1 asks for `^0.35.5` itself.
 - **Resolved in the lockfile:** @grpc/grpc-js, brace-expansion, js-yaml and source-map-js, by refreshing within their parents' ranges. vite is a direct dev dependency (`^8.3.4`): it is vitest's peer, and pnpm kept the vulnerable locked 8.0.16 even with an override.
-- **Cooldown exemptions:** `undici` in `bunfig.toml`, until 2026-10-29 15:06 UTC (see "Cooldown exemptions" above). next 16.4.1, eslint-config-next 16.4.1, their `@next/*` packages and react 19.3.1 were already past the window when bench moved to them.
+- **Cooldown exemptions:** `undici` in `bunfig.toml`, until 2026-10-29 15:06 UTC (see "Cooldown exemptions" above). next 16.4.1, its `@next/*` packages and react 19.3.1 were already past the window when bench moved to them.
 - **Accepted, the Vercel CLI (64.0.2) in `bench-deploy.yml`:** tar (one critical), undici, path-to-regexp, minimatch, js-yaml, smol-toml, zod and @fastify/busboy. The CLI and its framework builders pin these exactly; fixing undici alone means a 5 → 6 major inside the CLI's HTTP client. It runs only in CI, on our own build output. It is installed without a lockfile, so dependency review never sees it, and these advisories live only here. Re-audit when Renovate bumps `VERCEL_CLI_VERSION`: install it with `npm install --package-lock-only vercel@<version>` in a scratch directory and run `npm audit`.

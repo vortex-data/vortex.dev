@@ -9,7 +9,6 @@
     "ignoreUnknown": true,
     "includes": [
       "**",
-      "!bench",
       "!src/content",
       "!public",
       "!bun.lock",
@@ -18,6 +17,8 @@
       "!out",
       "!build",
       "!next-env.d.ts",
+      "!bench/web/.next",
+      "!bench/web/next-env.d.ts",
       "!src/app/globals.css",
       "!**/*.svg"
     ]
@@ -92,6 +93,49 @@
       }
     }
   },
+  "overrides": [
+    {
+      "includes": ["bench/**"],
+      "formatter": {
+        "lineWidth": 100
+      },
+      "javascript": {
+        "formatter": {
+          "quoteStyle": "single",
+          "jsxQuoteStyle": "double",
+          "trailingCommas": "all"
+        }
+      },
+      "css": {
+        "formatter": {
+          "quoteStyle": "single"
+        }
+      },
+      "linter": {
+        "rules": {
+          "correctness": {
+            "useExhaustiveDependencies": "error"
+          },
+          "a11y": {
+            "useAriaPropsSupportedByRole": "off",
+            "useSemanticElements": "off",
+            "useFocusableInteractive": "off",
+            "noNoninteractiveTabindex": "off"
+          },
+          "complexity": {
+            "noImportantStyles": "off"
+          }
+        }
+      },
+      "assist": {
+        "actions": {
+          "source": {
+            "organizeImports": "off"
+          }
+        }
+      }
+    }
+  ],
   "assist": {
     "enabled": true,
     "actions": {

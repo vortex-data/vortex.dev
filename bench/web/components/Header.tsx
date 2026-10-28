@@ -111,7 +111,6 @@ export function Header({
             <HamburgerIcon />
           </button>
           <Link className="logo-link" href="/" aria-label="bench.vortex.dev home">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               className="site-logo logo-light"
               src="/Vortex_Black_NoBG.svg"
@@ -119,7 +118,6 @@ export function Header({
               width={654}
               height={190}
             />
-            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               className="site-logo logo-dark"
               src="/Vortex_White_NoBG.svg"

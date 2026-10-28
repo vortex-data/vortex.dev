@@ -144,7 +144,9 @@ class SeriesAccumulator {
    * [`record`]/[`tag`] so series allocations are sized correctly. */
   seedCommits(commits: CommitPoint[]): void {
     this.commitIndex.clear();
-    commits.forEach((c, i) => this.commitIndex.set(c.sha, i));
+    commits.forEach((c, i) => {
+      this.commitIndex.set(c.sha, i);
+    });
     this.commits = commits;
   }
 

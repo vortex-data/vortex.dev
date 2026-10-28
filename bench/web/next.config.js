@@ -2,7 +2,6 @@
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
 // This config is CommonJS, so it loads modules with require().
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const path = require('node:path');
 
 /** @type {import('next').NextConfig} */
