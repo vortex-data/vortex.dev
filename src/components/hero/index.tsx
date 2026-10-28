@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 import {
-  Box,
   Camera,
   GLTFLoader,
   Mesh,
@@ -28,11 +27,16 @@ const MOBILE_HEIGHT = 200;
 const DESKTOP_CAMERA_POSITION = new Vec3(5, -5, 10);
 const MOBILE_CAMERA_POSITION = new Vec3(7, -7, 12);
 
-export const HeroASCII = () => {
-  const containerRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const container = containerRef.current;
-    const vertex = /*glsl*/ `#version 300 es
+const MAX_TILT = 0.4;
+const LERP_FACTOR = 0.05;
+// The tilt eases toward its target forever; once every axis is this close
+// (radians, far below a pixel of movement) the frame can't change, so
+// rendering stops until the pointer or the window moves again.
+const SETTLE_EPSILON = 1e-4;
+// Upper bound on waiting for the off-screen warm-up draw to finish on the GPU.
+const WARM_UP_TIMEOUT_MS = 2000;
+
+const vertex = /*glsl*/ `#version 300 es
 in vec3 position;
 in vec3 normal;
 in vec2 uv;
@@ -46,7 +50,7 @@ void main() {
   vNormal = normalize(normalMatrix * normal);
   gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
 }`;
-    const fragment = /*glsl*/ `#version 300 es
+const fragment = /*glsl*/ `#version 300 es
 precision mediump float;
 uniform float uTime;
 in vec2 vUv;
@@ -59,7 +63,7 @@ void main() {
   // Basic white color with light intensity
   fragColor = vec4(light, light, light, 1.0);
 }`;
-    const asciiVertex = /*glsl*/ `#version 300 es
+const asciiVertex = /*glsl*/ `#version 300 es
 in vec2 uv;
 in vec2 position;
 out vec2 vUv;
@@ -67,7 +71,7 @@ void main() {
   vUv = uv;
   gl_Position = vec4(position, 0., 1.);
 }`;
-    const asciiFragment = /*glsl*/ `#version 300 es
+const asciiFragment = /*glsl*/ `#version 300 es
 precision highp float;
 uniform vec2 uResolution;
 uniform sampler2D uTexture;
@@ -100,199 +104,273 @@ void main() {
   float charSize = 4.0;
   vec2 p = mod(pix / charSize, 2.0) - vec2(1.0);
   float char = character(n, p);
-  
+
   vec3 charColor = vec3(1.0);
   if (gray < 0.2) {
     charColor *= 0.4;
   }
-  
+
   fragColor = vec4(charColor, char);
 }`;
 
-    const isMobile = () => window.innerWidth < 768;
+// Runs `callback` once the main thread is idle, so WebGL setup doesn't share
+// a task with hydration. Safari has no requestIdleCallback.
+function whenIdle(callback: () => void): () => void {
+  if (typeof window.requestIdleCallback === "function") {
+    const id = window.requestIdleCallback(callback, { timeout: 1000 });
+    return () => window.cancelIdleCallback(id);
+  }
+  const id = window.setTimeout(callback, 1);
+  return () => window.clearTimeout(id);
+}
 
-    const renderer = new Renderer({
-      antialias: true,
-      alpha: true,
-      autoClear: true
+// Sets up the scene and returns a function that tears it down.
+//
+// Without a GPU (software GL, as in CI), the compositor reads the canvas back
+// on the main thread each frame the canvas changes, so that frame blocks until
+// all queued GPU work is done. The first draw with each shader is by far the
+// slowest, so it happens while the canvas is still detached from the page,
+// where nothing waits on it. The canvas goes in once that draw has finished.
+//
+// After that, frames are drawn only while the tilt is still easing toward the
+// pointer, or after a resize. The scene has no other animation, so an idle
+// page costs nothing per frame.
+function startHero(container: HTMLDivElement): () => void {
+  const isMobile = () => window.innerWidth < 768;
+
+  // No antialiasing: only the full-screen ASCII quad is drawn to the canvas,
+  // and multisampling a quad that covers every pixel changes nothing.
+  const renderer = new Renderer({
+    alpha: true,
+    autoClear: true
+  });
+  const gl = renderer.gl;
+  gl.clearColor(0.0627, 0.0627, 0.0627, 1.0);
+  const camera = new Camera(gl, { near: 0.1, far: 100, fov: 10 });
+  camera.position.set(
+    isMobile() ? MOBILE_CAMERA_POSITION : DESKTOP_CAMERA_POSITION
+  );
+  camera.lookAt(new Vec3(0, 0, 0));
+
+  const scene = new Transform();
+
+  let disposed = false;
+  let ready = false;
+  let frameId = 0;
+
+  const updateSize = () => {
+    const height = isMobile() ? MOBILE_HEIGHT : DESKTOP_HEIGHT;
+    renderer.setSize(window.innerWidth - 32, window.innerHeight - height);
+    camera.perspective({
+      aspect: (gl.canvas.width + 32) / gl.canvas.height
     });
-    const gl = renderer.gl;
-    gl.clearColor(0.0627, 0.0627, 0.0627, 1.0);
-    containerRef.current?.appendChild(gl.canvas);
-    const camera = new Camera(gl, { near: 0.1, far: 100, fov: 10 });
-    camera.position.set(
-      isMobile() ? MOBILE_CAMERA_POSITION : DESKTOP_CAMERA_POSITION
-    );
-    camera.lookAt(new Vec3(0, 0, 0));
+  };
+  updateSize();
 
-    const scene = new Transform();
+  const renderTarget = new RenderTarget(gl);
+  const asciiProgram = new Program(gl, {
+    vertex: asciiVertex,
+    fragment: asciiFragment,
+    transparent: true,
+    uniforms: {
+      uResolution: { value: [gl.canvas.width, gl.canvas.height] },
+      uTexture: { value: renderTarget.texture }
+    }
+  });
+  const asciiMesh = new Mesh(gl, {
+    geometry: new Plane(gl, { width: 2, height: 2 }),
+    program: asciiProgram
+  });
+  const asciiScene = new Transform();
+  asciiMesh.setParent(asciiScene);
 
-    let gltf: any;
-    async function loadModel() {
-      gltf = await GLTFLoader.load(gl, "/logo.glb");
+  let targetRotationX = 0;
+  let targetRotationY = 0;
+  let targetRotationZ = 0;
+  let currentRotationX = 0;
+  let currentRotationY = 0;
+  let currentRotationZ = 0;
+  let isDragging = false;
 
-      const s = gltf.scene || gltf.scenes[0];
-      s.forEach((root: any) => {
-        root.setParent(scene);
-        root.traverse((node: any) => {
-          if (node.program) {
-            node.program = createProgram();
-          }
-        });
-      });
+  function render() {
+    renderer.render({ scene, camera, target: renderTarget });
+    asciiProgram.uniforms.uResolution.value = [
+      gl.canvas.width,
+      gl.canvas.height
+    ];
+    renderer.render({ scene: asciiScene, camera });
+  }
+
+  function frame() {
+    frameId = 0;
+    currentRotationX += (targetRotationX - currentRotationX) * LERP_FACTOR;
+    currentRotationY += (targetRotationY - currentRotationY) * LERP_FACTOR;
+    currentRotationZ += (targetRotationZ - currentRotationZ) * LERP_FACTOR;
+
+    const settled =
+      Math.abs(targetRotationX - currentRotationX) < SETTLE_EPSILON &&
+      Math.abs(targetRotationY - currentRotationY) < SETTLE_EPSILON &&
+      Math.abs(targetRotationZ - currentRotationZ) < SETTLE_EPSILON;
+    if (settled) {
+      currentRotationX = targetRotationX;
+      currentRotationY = targetRotationY;
+      currentRotationZ = targetRotationZ;
     }
 
-    function createProgram() {
-      return new Program(gl, {
-        vertex,
-        fragment
-      });
+    scene.rotation.x = currentRotationX;
+    scene.rotation.y = currentRotationY;
+    scene.rotation.z = currentRotationZ;
+
+    render();
+
+    if (!settled) requestRender();
+  }
+
+  function requestRender() {
+    if (ready && !disposed && !frameId) {
+      frameId = requestAnimationFrame(frame);
     }
+  }
 
-    loadModel();
-
-    const updateSize = () => {
-      const height = isMobile() ? MOBILE_HEIGHT : DESKTOP_HEIGHT;
-      renderer.setSize(window.innerWidth - 32, window.innerHeight - height);
-      camera.perspective({
-        aspect: (gl.canvas.width + 32) / gl.canvas.height
-      });
+  function warmUp() {
+    if (disposed) return;
+    render();
+    const showFirstFrame = () => {
+      container.appendChild(gl.canvas);
+      ready = true;
+      requestRender();
     };
+    if (!renderer.isWebgl2) {
+      showFirstFrame();
+      return;
+    }
+    const gl2 = gl as unknown as WebGL2RenderingContext;
+    const sync = gl2.fenceSync(gl2.SYNC_GPU_COMMANDS_COMPLETE, 0);
+    gl2.flush();
+    const deadline = performance.now() + WARM_UP_TIMEOUT_MS;
+    const poll = () => {
+      frameId = 0;
+      if (disposed) return;
+      const done =
+        !sync ||
+        gl2.getSyncParameter(sync, gl2.SYNC_STATUS) === gl2.SIGNALED ||
+        performance.now() > deadline;
+      if (!done) {
+        frameId = requestAnimationFrame(poll);
+        return;
+      }
+      if (sync) gl2.deleteSync(sync);
+      showFirstFrame();
+    };
+    frameId = requestAnimationFrame(poll);
+  }
 
-    window.addEventListener("resize", updateSize);
+  async function loadModel() {
+    const gltf: any = await GLTFLoader.load(gl, "/logo.glb");
+    if (disposed) return;
+
+    const s = gltf.scene || gltf.scenes[0];
+    s.forEach((root: any) => {
+      root.setParent(scene);
+      root.traverse((node: any) => {
+        if (node.program) {
+          node.program = createProgram();
+        }
+      });
+    });
+  }
+
+  function createProgram() {
+    return new Program(gl, {
+      vertex,
+      fragment
+    });
+  }
+
+  // Show the background grid even if the model fails to load.
+  loadModel().catch(console.error).finally(warmUp);
+
+  function onResize() {
     updateSize();
-    const boxProgram = new Program(gl, {
-      vertex: vertex,
-      fragment: fragment,
-      uniforms: {
-        uTime: { value: 0 }
-      },
-      cullFace: false
+    requestRender();
+  }
+
+  function onMouseMove(e: MouseEvent) {
+    const x = (e.clientX / window.innerWidth) * 2 - 1;
+    const y = (e.clientY / window.innerHeight) * 2 - 1;
+
+    targetRotationX = y * MAX_TILT;
+    targetRotationY = x * MAX_TILT;
+    targetRotationZ = -y * MAX_TILT;
+    requestRender();
+  }
+
+  function onTouchStart(e: TouchEvent) {
+    isDragging = true;
+    if (e.target instanceof HTMLCanvasElement) {
+      e.preventDefault();
+    }
+  }
+
+  function onTouchMove(e: TouchEvent) {
+    if (!isDragging) return;
+
+    // Prevent default touch behavior
+    if (e.target instanceof HTMLCanvasElement) {
+      e.preventDefault();
+    }
+
+    const touch = e.touches[0];
+    if (!touch) return;
+    const touchX = touch.clientX;
+    const touchY = touch.clientY;
+
+    const x = (touchX / window.innerWidth) * 2 - 1;
+    const y = (touchY / window.innerHeight) * 2 - 1;
+
+    targetRotationX = y * MAX_TILT;
+    targetRotationY = x * MAX_TILT;
+    targetRotationZ = -y * MAX_TILT;
+    requestRender();
+  }
+
+  function onTouchEnd() {
+    isDragging = false;
+  }
+
+  window.addEventListener("resize", onResize);
+  window.addEventListener("mousemove", onMouseMove);
+  window.addEventListener("touchstart", onTouchStart, { passive: false });
+  window.addEventListener("touchmove", onTouchMove, { passive: false });
+  window.addEventListener("touchend", onTouchEnd);
+
+  return () => {
+    disposed = true;
+    window.removeEventListener("resize", onResize);
+    window.removeEventListener("mousemove", onMouseMove);
+    window.removeEventListener("touchstart", onTouchStart);
+    window.removeEventListener("touchmove", onTouchMove);
+    window.removeEventListener("touchend", onTouchEnd);
+    cancelAnimationFrame(frameId);
+    renderer.gl.getExtension("WEBGL_lose_context")?.loseContext();
+    if (container.contains(gl.canvas)) {
+      container.removeChild(gl.canvas);
+    }
+  };
+}
+
+export const HeroASCII = () => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    let stop: (() => void) | undefined;
+    const cancelIdle = whenIdle(() => {
+      stop = startHero(container);
     });
-    const boxMesh = new Mesh(gl, {
-      geometry: new Box(gl, { width: 1, height: 2, depth: 1 }),
-      program: boxProgram
-    });
-    const renderTarget = new RenderTarget(gl);
-    const asciiProgram = new Program(gl, {
-      vertex: asciiVertex,
-      fragment: asciiFragment,
-      transparent: true,
-      uniforms: {
-        uResolution: { value: [gl.canvas.width, gl.canvas.height] },
-        uTexture: { value: renderTarget.texture }
-      }
-    });
-    const asciiMesh = new Mesh(gl, {
-      geometry: new Plane(gl, { width: 2, height: 2 }),
-      program: asciiProgram
-    });
-    const boxScene = new Transform();
-    boxMesh.setParent(boxScene);
-    const asciiScene = new Transform();
-    asciiMesh.setParent(asciiScene);
-
-    const MAX_TILT = 0.4;
-    const LERP_FACTOR = 0.05;
-
-    let targetRotationX = 0;
-    let targetRotationY = 0;
-    let targetRotationZ = 0;
-    let currentRotationX = 0;
-    let currentRotationY = 0;
-    let currentRotationZ = 0;
-    let isDragging = false;
-
-    function onMouseMove(e: MouseEvent) {
-      const x = (e.clientX / window.innerWidth) * 2 - 1;
-      const y = (e.clientY / window.innerHeight) * 2 - 1;
-
-      targetRotationX = y * MAX_TILT;
-      targetRotationY = x * MAX_TILT;
-      targetRotationZ = -y * MAX_TILT;
-    }
-
-    function onTouchStart(e: TouchEvent) {
-      isDragging = true;
-      if (e.target instanceof HTMLCanvasElement) {
-        e.preventDefault();
-      }
-    }
-
-    function onTouchMove(e: TouchEvent) {
-      if (!isDragging) return;
-
-      // Prevent default touch behavior
-      if (e.target instanceof HTMLCanvasElement) {
-        e.preventDefault();
-      }
-
-      const touch = e.touches[0];
-      if (!touch) return;
-      const touchX = touch.clientX;
-      const touchY = touch.clientY;
-
-      const x = (touchX / window.innerWidth) * 2 - 1;
-      const y = (touchY / window.innerHeight) * 2 - 1;
-
-      targetRotationX = y * MAX_TILT;
-      targetRotationY = x * MAX_TILT;
-      targetRotationZ = -y * MAX_TILT;
-    }
-
-    function onTouchEnd() {
-      isDragging = false;
-    }
-
-    window.addEventListener("mousemove", onMouseMove);
-    window.addEventListener("touchstart", onTouchStart, { passive: false });
-    window.addEventListener("touchmove", onTouchMove, { passive: false });
-    window.addEventListener("touchend", onTouchEnd);
-
-    function update(time: number) {
-      // Animate model if it has animations
-      if (gltf?.animations?.length) {
-        const { animation } = gltf.animations[0];
-        animation.elapsed += 0.01;
-        animation.update();
-      }
-
-      const elapsedTime = time * 0.001;
-      boxProgram.uniforms.uTime.value = elapsedTime;
-
-      currentRotationX += (targetRotationX - currentRotationX) * LERP_FACTOR;
-      currentRotationY += (targetRotationY - currentRotationY) * LERP_FACTOR;
-      currentRotationZ += (targetRotationZ - currentRotationZ) * LERP_FACTOR;
-
-      scene.rotation.x = currentRotationX;
-      scene.rotation.y = currentRotationY;
-      scene.rotation.z = currentRotationZ;
-
-      renderer.render({ scene, camera, target: renderTarget });
-      asciiProgram.uniforms.uResolution.value = [
-        gl.canvas.width,
-        gl.canvas.height
-      ];
-      renderer.render({ scene: asciiScene, camera });
-    }
-
-    let animationId: number;
-    function animate(time: number) {
-      update(time);
-      animationId = requestAnimationFrame(animate);
-    }
-    animationId = requestAnimationFrame(animate);
     return () => {
-      window.removeEventListener("resize", updateSize);
-      window.removeEventListener("mousemove", onMouseMove);
-      window.removeEventListener("touchstart", onTouchStart);
-      window.removeEventListener("touchmove", onTouchMove);
-      window.removeEventListener("touchend", onTouchEnd);
-      cancelAnimationFrame(animationId);
-      renderer.gl.getExtension("WEBGL_lose_context")?.loseContext();
-      if (container?.contains(gl.canvas)) {
-        container.removeChild(gl.canvas);
-      }
+      cancelIdle();
+      stop?.();
     };
   }, []);
 
