@@ -218,10 +218,10 @@ start_server() {
   local label=$1 dir=$2 port=$3 next_bin
   port_busy "$port" && die "port $port is in use, so $label would not be the server that answers"
   next_bin=$(cd "$dir/bench/web" && node -p "require.resolve('next/dist/bin/next')")
-  # The Data Cache (`unstable_cache`) persists in `.next/cache/fetch-cache`, and the head's `.next`
-  # belongs to the working tree, so an earlier run's payloads could answer in place of this build's
-  # code. Start every server with an empty one.
-  rm -rf "$dir/bench/web/.next/cache/fetch-cache"
+  # The Data Cache (`unstable_cache`) persists under `.next/cache`, and the head's `.next` belongs to
+  # the working tree, so an earlier run's payloads could answer in place of this build's code. Start
+  # every server with an empty `.next/cache`, whichever part of it a Next.js version keeps them in.
+  rm -rf "$dir/bench/web/.next/cache"
   log "serving $label on port $port"
   # Job control gives the server its own process group, so one kill reaches Next.js and any child.
   # It stays off otherwise, so Ctrl-C still reaches every foreground command.

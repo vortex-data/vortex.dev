@@ -54,6 +54,13 @@ test('the plan covers every group and chart, and every 25th chart in full', () =
     '/api/chart/c50?n=all',
   ]);
 });
+test('slugs are percent-encoded in the planned URLs', () => {
+  const plan = planRequests([{ slug: 'we ird/slug?x', charts: [{ slug: 'c d#e' }] }]);
+  expect(plan).toContain('/api/group/we%20ird%2Fslug%3Fx?n=100');
+  expect(plan).toContain('/api/group/we%20ird%2Fslug%3Fx?n=50');
+  expect(plan).toContain('/api/chart/c%20d%23e?n=100');
+  expect(plan).toContain('/api/chart/c%20d%23e?n=all');
+});
 test('a chart linked from two groups is requested once', () => {
   const plan = planRequests([
     { slug: 'g0', charts: [{ slug: 'shared' }] },
@@ -98,6 +105,17 @@ test('servers that answer alike have no mismatches', async () => {
   expect(result.requests).toBe(5);
 });
 
+test('the result tallies the statuses and the body bytes that were compared', async () => {
+  const result = await compareApiDetailed(serve(api()), serve(api()));
+  expect(result.statuses).toEqual({ '200': 10 });
+  const groupsBytes = JSON.stringify(GROUPS).length;
+  const valueBytes = JSON.stringify({ value: 1 }).length;
+  expect(result.bytes).toEqual({
+    base: groupsBytes + 4 * valueBytes,
+    head: groupsBytes + 4 * valueBytes,
+  });
+});
+
 test('a different body, status, content-type and cache-control are each reported', async () => {
   const base = serve(api());
   const head = serve(
@@ -118,11 +136,64 @@ test('a different body, status, content-type and cache-control are each reported
   expect(lines).toContain('/api/chart/c?n=100: cache-control "public, s-maxage=300" != "no-store"');
 });
 
+const NOTHING_COMPARED = 'so nothing was compared for this route';
+
 test('a server error on both sides is reported, because nothing was compared', async () => {
   const failing = api(() => new Response('boom', { status: 500 }));
   const lines = await compareApi(serve(failing), serve(failing));
-  expect(lines).toContain('/api/chart/c?n=100: base answered 500, so nothing was compared');
-  expect(lines).toContain('/api/chart/c?n=100: head answered 500, so nothing was compared');
+  expect(lines).toContain(
+    `/api/chart/c?n=100: base answered 500 instead of 200, ${NOTHING_COMPARED}`,
+  );
+  expect(lines).toContain(
+    `/api/chart/c?n=100: head answered 500 instead of 200, ${NOTHING_COMPARED}`,
+  );
+});
+
+test('a 404 on both sides fails, because every planned URL comes from the base', async () => {
+  const missing = api((request) =>
+    new URL(request.url).pathname === '/api/chart/c'
+      ? json({ error: 'not_found' }, { status: 404 })
+      : json({ value: 1 }),
+  );
+  const result = await compareApiDetailed(serve(missing), serve(missing));
+  expect(result.mismatches).toContain(
+    `/api/chart/c?n=100: base answered 404 instead of 200, ${NOTHING_COMPARED}`,
+  );
+  expect(result.mismatches).toContain(
+    `/api/chart/c?n=100: head answered 404 instead of 200, ${NOTHING_COMPARED}`,
+  );
+  expect(result.mismatches.filter((line) => !line.startsWith('/api/chart/c?n='))).toEqual([]);
+  expect(result.statuses).toEqual({ '200': 6, '404': 4 });
+});
+
+test('a redirect or an empty 200 on both sides fails too', async () => {
+  const odd = api((request) =>
+    new URL(request.url).pathname === '/api/group/g'
+      ? new Response(null, { status: 307, headers: { location: '/elsewhere' } })
+      : new Response('', { status: 200, headers: { 'content-type': 'application/json' } }),
+  );
+  const lines = await compareApi(serve(odd), serve(odd));
+  expect(lines).toContain(
+    `/api/group/g?n=50: base answered 307 instead of 200, ${NOTHING_COMPARED}`,
+  );
+  expect(lines).toContain(
+    `/api/chart/c?n=all: head answered 200 with an empty body, ${NOTHING_COMPARED}`,
+  );
+});
+
+test('a slug that needs encoding reaches the servers encoded', async () => {
+  const groups = { groups: [{ slug: 'we ird/slug?x', charts: [{ slug: 'c d#e' }] }] };
+  const seen: string[] = [];
+  const handler: Handler = (request) => {
+    const { pathname, search } = new URL(request.url);
+    seen.push(pathname + search);
+    return pathname === '/api/groups' ? json(groups) : json({ value: 1 });
+  };
+  const result = await compareApi(serve(handler), serve(handler));
+  expect(result).toEqual([]);
+  expect(seen).toContain('/api/group/we%20ird%2Fslug%3Fx?n=100');
+  expect(seen).toContain('/api/chart/c%20d%23e?n=all');
+  expect(seen.filter((path) => path.includes(' ') || path.includes('#'))).toEqual([]);
 });
 
 test('an unreachable head is reported for every URL', async () => {

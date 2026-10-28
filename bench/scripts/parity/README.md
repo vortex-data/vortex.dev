@@ -15,8 +15,11 @@ bash bench/scripts/parity/run.sh origin/main ~/Backups/vortex-bench/vortex_bench
 ```
 
 The script exits 0 and prints `parity: 0 mismatches` when nothing differs. Otherwise it exits 1.
-It reports every difference and leaves a person to judge whether it matters: it has no tolerance
-for a pixel or a byte.
+It reports every difference it can see and leaves a person to judge whether it matters. API bodies
+must match byte for byte. Screenshots use Playwright's comparison with `maxDiffPixels: 0` and
+`threshold: 0`: every pixel it counts as different fails the run, but its comparator ignores pixels
+it classes as anti-aliasing. That fits a bar of no human-perceptible difference, and a real layout
+shift of 1 px or more still fails.
 
 ## Why two local servers
 
@@ -57,9 +60,11 @@ code. The check needs no token and changes no Vercel setting.
    the root and `bun run --cwd bench/web build`.
 5. Serves the base on port 3101 and the head on port 3102, both on `127.0.0.1`, with the same
    `BENCH_DB_*` variables. It refuses to start when either port is taken, because a stale server
-   would answer in place of the build. It first empties `.next/cache/fetch-cache`, where the Data
-   Cache keeps its payloads. The head's `.next` belongs to your working tree, so without this a
-   payload that an earlier run made from older code could answer in place of the current code.
+   would answer in place of the build. It first deletes the whole `.next/cache` of each side, after
+   the builds. The Data Cache keeps its payloads there, and the head's `.next` belongs to your
+   working tree, so without this a payload that an earlier run made from older code could answer in
+   place of the current code. The next `next build` in your working tree starts without its build
+   cache and takes longer.
 6. Compares the API (`compare-api.ts`), then takes baseline screenshots from the base and compares
    the head with them (`screenshots.spec.ts`). Both comparisons always run, so one run shows all
    the differences.
@@ -74,8 +79,12 @@ code. The check needs no token and changes no Vercel setting.
 - `/api/chart/{slug}?n=all` for every 25th chart.
 
 For each URL it compares the status, `content-type`, `cache-control` and the body. The body must
-match byte for byte, because clients receive bytes: key order counts. A server error (status 500 or
-more) is reported even when both servers give it, because nothing was compared.
+match byte for byte, because clients receive bytes: key order counts. Every URL comes from the
+base's own `/api/groups`, so each must answer 200 with a body on both servers. Anything else (a 404,
+a 500, a redirect, an empty body) is reported as `nothing was compared for this route`, even when
+both servers agree on it, because two equal failures would otherwise pass. The slugs are
+percent-encoded in the URLs. The summary line tallies the statuses and the body bytes that were
+compared, so you can see that real payloads were read.
 
 Requests that fill the group cache (`/api/groups` and `/api/group/{slug}?n=100`) run one at a time,
 base then head. Each fill takes one advisory lock in the shared database, and a fill that finds it
@@ -105,8 +114,11 @@ text around it. The full output is also in `$TMPDIR/bench-parity/out/api.log`.
 Charts draw only when they scroll near the viewport, so the test visits each chart of the open
 group first, and the page counts as ready when no chart shows its loading state. A chart that fails
 to load fails the test. Playwright then compares each screenshot with `maxDiffPixels: 0` and
-`threshold: 0`, so one pixel of difference fails it. Playwright also retakes a screenshot until two
-in a row agree, which covers a late redraw.
+`threshold: 0`. Its comparator, pixelmatch, is left with `includeAA` false, so it ignores pixels it
+classes as anti-aliasing: a change in how an edge is smoothed does not fail, but any other
+differing pixel does, and so does a real layout shift of 1 px or more. That matches a bar of no
+human-perceptible difference. Playwright also retakes a screenshot until two in a row agree, which
+covers a late redraw.
 
 Where a screenshot differs, Playwright keeps three images in
 `$TMPDIR/bench-parity/out/results/`: the expected one (from the base), the actual one (from the
@@ -127,8 +139,9 @@ head) and the diff. The script prints that path. The baselines are in
 
 ## Reading a failure
 
-- A line with `answered 500` or `request failed` means a server did not answer, not that the data
-  differs. Read `$TMPDIR/bench-parity/base.log` and `head.log`, the logs of the two servers.
+- A line with `instead of 200` or `request failed` means a server did not give the expected answer,
+  not that the data differs. Read `$TMPDIR/bench-parity/base.log` and `head.log`, the logs of the
+  two servers.
 - Run `run.sh` twice when a result looks odd. The same two builds must give the same answer, and
   a difference that comes and goes is a problem in the check.
 - To start the restore from nothing, stop the script and delete `$TMPDIR/bench-parity/pgdata`.

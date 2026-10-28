@@ -18,7 +18,10 @@ const out = requiredEnv('PARITY_OUT');
 /**
  * Pixel comparison of the pages of one bench server. `run.sh` runs it twice: once against the base
  * server with `--update-snapshots=all` to write the baselines, then against the head server to
- * compare with them. Nothing here allows a difference: no pixel count, no color threshold.
+ * compare with them. `maxDiffPixels: 0` and `threshold: 0` allow no differing pixel, except that
+ * Playwright's comparator (pixelmatch, with `includeAA` left false) ignores pixels it classes as
+ * anti-aliasing. That fits a bar of no human-perceptible difference, and a layout shift of 1px or
+ * more still fails.
  */
 export default defineConfig({
   testDir: '.',

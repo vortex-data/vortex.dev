@@ -22,6 +22,8 @@ interface GroupLinks {
   charts: { slug: string }[];
 }
 
+const NOTHING_COMPARED = 'so nothing was compared for this route';
+
 /** The parts of a response the parity check compares. */
 interface Captured {
   status: number;
@@ -36,6 +38,10 @@ export interface ApiComparison {
   requests: number;
   /** One line per mismatch. */
   mismatches: string[];
+  /** How many responses, from both servers together, came back with each status. */
+  statuses: Record<string, number>;
+  /** Bytes of response body received from each server, to show that real payloads were compared. */
+  bytes: { base: number; head: number };
 }
 
 /** Options for {@link compareApiDetailed}. */
@@ -164,9 +170,12 @@ function compareCaptured(path: string, base: Captured | Error, head: Captured | 
   ] as const) {
     if (result instanceof Error) {
       lines.push(`${path}: ${side} request failed: ${result.message}`);
-    } else if (result.status >= 500) {
-      // A server error on both sides would otherwise compare equal and hide that no data was read.
-      lines.push(`${path}: ${side} answered ${result.status}, so nothing was compared`);
+    } else if (result.status !== 200) {
+      // Every planned URL comes from the base's own /api/groups, so it must answer 200. Two equal
+      // 404s, 500s or redirects would otherwise match each other and hide that no data was read.
+      lines.push(`${path}: ${side} answered ${result.status} instead of 200, ${NOTHING_COMPARED}`);
+    } else if (result.body.length === 0) {
+      lines.push(`${path}: ${side} answered 200 with an empty body, ${NOTHING_COMPARED}`);
     }
   }
   if (base instanceof Error || head instanceof Error) {
@@ -205,10 +214,12 @@ async function readGroups(baseUrl: string): Promise<GroupLinks[]> {
 export function planRequests(groups: GroupLinks[]): string[] {
   const paths = ['/api/groups'];
   for (const group of groups) {
-    paths.push(`/api/group/${group.slug}?n=100`, `/api/group/${group.slug}?n=50`);
+    const slug = encodeURIComponent(group.slug);
+    paths.push(`/api/group/${slug}?n=100`, `/api/group/${slug}?n=50`);
   }
   const chartSlugs = [...new Set(groups.flatMap((group) => group.charts.map((c) => c.slug)))];
-  for (const [index, slug] of chartSlugs.entries()) {
+  for (const [index, chartSlug] of chartSlugs.entries()) {
+    const slug = encodeURIComponent(chartSlug);
     paths.push(`/api/chart/${slug}?n=100`);
     if (index % FULL_HISTORY_EVERY === 0) {
       paths.push(`/api/chart/${slug}?n=all`);
@@ -262,6 +273,8 @@ export async function compareApiDetailed(
 ): Promise<ApiComparison> {
   const paths = planRequests(await readGroups(baseUrl));
   const oneFillAtATime = serialQueue();
+  const statuses: Record<string, number> = {};
+  const bytes = { base: 0, head: 0 };
   let done = 0;
   const lines = await mapPool(paths, options.concurrency ?? DEFAULT_CONCURRENCY, async (path) => {
     const fetchBoth = async (): Promise<[Captured | Error, Captured | Error]> =>
@@ -272,17 +285,26 @@ export async function compareApiDetailed(
           ])
         : Promise.all([captureOrError(baseUrl, path), captureOrError(headUrl, path)]);
     const [base, head] = await fetchBoth();
+    for (const [side, result] of [
+      ['base', base],
+      ['head', head],
+    ] as const) {
+      const status = result instanceof Error ? 'failed' : String(result.status);
+      statuses[status] = (statuses[status] ?? 0) + 1;
+      bytes[side] += result instanceof Error ? 0 : Buffer.byteLength(result.body);
+    }
     options.onProgress?.(++done, paths.length);
     return compareCaptured(path, base, head);
   });
-  return { requests: paths.length, mismatches: lines.flat() };
+  return { requests: paths.length, mismatches: lines.flat(), statuses, bytes };
 }
 
 /**
  * Request the read API from both servers and compare status, `content-type`, `cache-control` and
  * body: `/api/groups`; `/api/group/{slug}` at `?n=100` and `?n=50` for every group;
  * `/api/chart/{slug}?n=100` for every chart; and `/api/chart/{slug}?n=all` for every 25th chart.
- * The group and chart slugs come from the base server's `/api/groups`.
+ * The group and chart slugs come from the base server's `/api/groups`, so every URL must answer 200
+ * with a body on both servers: anything else is a mismatch, even when both servers agree on it.
  *
  * @returns one line per mismatch; empty when the servers agree.
  */
@@ -297,7 +319,7 @@ if (import.meta.main) {
     process.exit(2);
   }
   const started = Date.now();
-  const { requests, mismatches } = await compareApiDetailed(baseUrl, headUrl, {
+  const { requests, mismatches, statuses, bytes } = await compareApiDetailed(baseUrl, headUrl, {
     onProgress: (done, total) => {
       if (done % 200 === 0 || done === total) {
         console.error(`compared ${done} of ${total} URLs`);
@@ -308,6 +330,13 @@ if (import.meta.main) {
     console.log(line);
   }
   const seconds = Math.round((Date.now() - started) / 1000);
-  console.log(`API: ${requests} URLs on each server, ${mismatches.length} mismatches, ${seconds}s`);
+  const tally = Object.entries(statuses)
+    .map(([status, count]) => `${status} x ${count}`)
+    .join(', ');
+  const megabytes = (count: number) => `${(count / 1_000_000).toFixed(1)} MB`;
+  console.log(
+    `API: ${requests} URLs on each server, ${mismatches.length} mismatches; ` +
+      `statuses ${tally}; bodies ${megabytes(bytes.base)} from base, ${megabytes(bytes.head)} from head; ${seconds}s`,
+  );
   process.exit(mismatches.length === 0 ? 0 : 1);
 }
