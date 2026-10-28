@@ -28,8 +28,11 @@ jobs:
   snapshot:
     name: Submit bun.lock
     # Pull requests from forks get a read-only token, which the submission API
-    # rejects, so they are skipped. Dependency review waits out its retry
-    # window for such a pull request, then proceeds with a snapshot warning.
+    # rejects, so they are skipped. Dependency review then fails such a pull
+    # request if it changes bun.lock; with bun.lock unchanged, it adds no
+    # locked package. For every other pull request, dependency review waits
+    # for this job by its name and fails unless it succeeded, so rename both
+    # together.
     if: ${{ github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -37,11 +40,12 @@ jobs:
       # The submission API wants `contents: write`; nothing else.
       contents: write
     steps:
-      # A pull request run checks out the merge commit: the lock that would
-      # land, filed below under the head commit that dependency-review
-      # compares.
+      # A pull request run checks out the head commit, not the merge commit,
+      # so the snapshot it files under that head commit (below) holds the
+      # head's own bun.lock, the one dependency-review compares with main's.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
 
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6  # v2.2.0
