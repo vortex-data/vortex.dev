@@ -62,7 +62,7 @@ export function AsciiMark({ className }: { className?: string | undefined }) {
     };
     // If mounting throws, the page still gets the static symbol, and the
     // host says so, so a test reports the failure instead of an empty box.
-    const fallBack = () => {
+    const fallBack = (err: unknown) => {
       if (!mounted) return;
       const img = document.createElement("img");
       img.src = symbol.src;
@@ -71,6 +71,9 @@ export function AsciiMark({ className }: { className?: string | undefined }) {
         "position:absolute;inset:0;margin:auto;width:40%;height:auto;opacity:0.85";
       el.appendChild(img);
       el.dataset.markMode = "error";
+      el.dataset.markError = String(
+        err instanceof Error ? err.message : err
+      ).slice(0, 200);
       destroy = () => img.remove();
     };
     const cancel = whenIdle(() => {
