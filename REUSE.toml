@@ -73,3 +73,59 @@ SPDX-License-Identifier = "LicenseRef-Third-Party"
 path = "src/assets/lf_white.svg"
 SPDX-FileCopyrightText = "The Linux Foundation"
 SPDX-License-Identifier = "LicenseRef-Third-Party"
+
+# Adopters' logos for the homepage's logo banner, used only to show who builds on Vortex. Each
+# belongs to its owner and is not relicensed. The owners come from each owner's own repository
+# (its LICENSE or NOTICE) or its GitHub organization.
+[[annotations]]
+path = "src/assets/logos/microsoft.svg"
+SPDX-FileCopyrightText = "Microsoft Corporation"
+SPDX-License-Identifier = "LicenseRef-Third-Party"
+
+[[annotations]]
+path = "src/assets/logos/palantir.svg"
+SPDX-FileCopyrightText = "Palantir Technologies Inc."
+SPDX-License-Identifier = "LicenseRef-Third-Party"
+
+[[annotations]]
+path = "src/assets/logos/firebolt.svg"
+SPDX-FileCopyrightText = "Firebolt Analytics, Inc."
+SPDX-License-Identifier = "LicenseRef-Third-Party"
+
+[[annotations]]
+path = "src/assets/logos/langchain.svg"
+SPDX-FileCopyrightText = "LangChain, Inc."
+SPDX-License-Identifier = "LicenseRef-Third-Party"
+
+[[annotations]]
+path = "src/assets/logos/polar-signals.svg"
+SPDX-FileCopyrightText = "Polar Signals, Inc."
+SPDX-License-Identifier = "LicenseRef-Third-Party"
+
+# Milvus is an LF AI & Data Foundation project, which holds the project's trademark.
+[[annotations]]
+path = "src/assets/logos/milvus.svg"
+SPDX-FileCopyrightText = "The Linux Foundation (LF AI & Data Foundation)"
+SPDX-License-Identifier = "LicenseRef-Third-Party"
+
+[[annotations]]
+path = "src/assets/logos/duckdb.svg"
+SPDX-FileCopyrightText = "Stichting DuckDB Foundation"
+SPDX-License-Identifier = "LicenseRef-Third-Party"
+
+[[annotations]]
+path = "src/assets/logos/clickhouse.svg"
+SPDX-FileCopyrightText = "ClickHouse, Inc."
+SPDX-License-Identifier = "LicenseRef-Third-Party"
+
+# Apache DataFusion, Apache Spark, Apache Hudi and Apache Paimon, and their logos, are trademarks
+# of The Apache Software Foundation.
+[[annotations]]
+path = [
+  "src/assets/logos/datafusion.svg",
+  "src/assets/logos/spark.svg",
+  "src/assets/logos/hudi.png",
+  "src/assets/logos/paimon.png",
+]
+SPDX-FileCopyrightText = "The Apache Software Foundation"
+SPDX-License-Identifier = "LicenseRef-Third-Party"

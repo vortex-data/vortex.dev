@@ -114,28 +114,82 @@ test.describe("home", () => {
     );
   });
 
-  test("the ASCII mark mounts, or shows the symbol without WebGL", async ({
+  test("the ASCII mark draws the canvas, or the symbol where it can't", async ({
     page
   }) => {
     await page.goto("/");
-    // three.js needs WebGL 2. Headless WebKit doesn't always have it, and
-    // then the mark falls back to the static symbol. Chromium has the
-    // SwiftShader fallback, so the canvas case runs there.
-    const hasWebGL2 = await page.evaluate(() => {
-      try {
-        return !!document.createElement("canvas").getContext("webgl2");
-      } catch {
-        return false;
-      }
-    });
-    const hero = page.locator("main section").first();
-    if (hasWebGL2) {
-      await expect(hero.locator("canvas")).toBeAttached({ timeout: 10000 });
+    const host = page.locator("[data-mark-mode]");
+    await expect(host).toHaveCount(1, { timeout: 15000 });
+    const mode = await host.getAttribute("data-mark-mode");
+    test
+      .info()
+      .annotations.push({ type: "mark-mode", description: String(mode) });
+    if (mode === "live" || mode === "reduced") {
+      await expect(host.locator("canvas")).toBeAttached();
     } else {
-      await expect(hero.locator('img[src*="vortex_symbol"]')).toBeAttached({
-        timeout: 10000
-      });
+      await expect(host.locator('img[src*="vortex_symbol"]')).toBeAttached();
     }
+    expect(
+      mode,
+      "mounting the mark threw; the page fell back to the symbol"
+    ).not.toBe("error");
+  });
+});
+
+test.describe("home bands", () => {
+  test("the benchmark card shows six panels with a source link, or is absent", async ({
+    page
+  }) => {
+    await page.goto("/");
+    // The figures are read from bench.vortex.dev at build time. When that
+    // read fails the page leaves the whole card out, never part of it.
+    const card = page.getByRole("region", { name: "Benchmark summary" });
+    if ((await card.count()) === 0) {
+      await expect(page.locator(".vx-bench-panel")).toHaveCount(0);
+      return;
+    }
+    await expect(card).toBeVisible();
+    await expect(card.locator(".vx-bench-panel")).toHaveCount(6);
+    await expect(card.locator(".vx-bench-big")).toHaveCount(6);
+    const source = card.locator('a[href="https://bench.vortex.dev"]');
+    await expect(source).toBeVisible();
+    await expect(source).toContainText(
+      /bench\.vortex\.dev · read \d+ \w{3} \d{4}/i
+    );
+    await expect(card.locator(".vx-bar.is-ours")).toHaveCount(6);
+  });
+
+  test("the logo banner shows the twelve cleared logos", async ({ page }) => {
+    await page.goto("/");
+    const banner = page.getByRole("region", { name: "Who builds on Vortex" });
+    await expect(banner).toBeVisible();
+    // Only the first set is named; the loop's copies are hidden.
+    const names = await banner
+      .getByRole("img")
+      .evaluateAll((imgs) => imgs.map((i) => i.getAttribute("alt")));
+    expect(names).toEqual([
+      "Microsoft",
+      "Palantir",
+      "Firebolt",
+      "LangChain",
+      "Polar Signals",
+      "Milvus",
+      "DuckDB",
+      "Apache DataFusion",
+      "Apache Spark",
+      "ClickHouse",
+      "Apache Hudi",
+      "Apache Paimon"
+    ]);
+    // Every mark loads.
+    for (const img of await banner.getByRole("img").all())
+      await expect
+        .poll(() =>
+          img.evaluate((i: HTMLImageElement) =>
+            i.complete ? i.naturalWidth : 0
+          )
+        )
+        .toBeGreaterThan(0);
   });
 });
 

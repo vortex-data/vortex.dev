@@ -1,0 +1,361 @@
+{
+  "groups": [
+    {
+      "name": "Compression",
+      "summary": {
+        "type": "compression",
+        "title": "Write Throughput",
+        "rankings": [
+          {
+            "name": "vortex-file-compressed",
+            "operation": "encode",
+            "ratio": 1.5744172249047315,
+            "throughputGbS": 2.126803164522734
+          },
+          {
+            "name": "parquet",
+            "operation": "encode",
+            "ratio": 1,
+            "throughputGbS": 1.4890905627917235
+          },
+          {
+            "name": "lance",
+            "operation": "encode",
+            "ratio": 0.5357674304281903,
+            "throughputGbS": 0.7544222237550358
+          },
+          {
+            "name": "vortex-file-compressed",
+            "operation": "decode",
+            "ratio": 5.11549948136936,
+            "throughputGbS": 52.80140431414844
+          },
+          {
+            "name": "parquet",
+            "operation": "decode",
+            "ratio": 1,
+            "throughputGbS": 10.352550037395476
+          },
+          {
+            "name": "lance",
+            "operation": "decode",
+            "ratio": 0.9003144780651322,
+            "throughputGbS": 8.055826318938774
+          }
+        ],
+        "explanation": "Geomean throughput ratio to Parquet | Aggregate throughput (higher is better)"
+      }
+    },
+    {
+      "name": "Compression Size",
+      "summary": {
+        "type": "compressionSize",
+        "title": "Compression Size Summary",
+        "rankings": [
+          {
+            "name": "parquet",
+            "minRatio": 1,
+            "ratio": 1,
+            "maxRatio": 1,
+            "compressionRatio": 6.135440534312841
+          },
+          {
+            "name": "vortex-file-compressed",
+            "minRatio": 0.5511873951225692,
+            "ratio": 1.0679702496972,
+            "maxRatio": 1.4642021627506534,
+            "compressionRatio": 5.744954539747161
+          },
+          {
+            "name": "lance",
+            "minRatio": 1.2877627254757935,
+            "ratio": 1.9857446360880464,
+            "maxRatio": 2.5880461369806818,
+            "compressionRatio": 3.089742972389325
+          },
+          {
+            "name": "arrow-ipc",
+            "minRatio": 2.6379924271013806,
+            "ratio": 5.590366300370603,
+            "maxRatio": 8.58267083920947,
+            "compressionRatio": 1.0975024183846598
+          }
+        ],
+        "explanation": "Geometric means of compressed sizes versus Arrow (higher is better) and versus Parquet-zstd (lower is better)"
+      }
+    },
+    {
+      "name": "Random Access (NVMe)",
+      "summary": {
+        "type": "randomAccess",
+        "hotRankings": [
+          {
+            "name": "vortex-file-compressed",
+            "score": 1.0380063644862614,
+            "totalRuntime": 1425424.75,
+            "measured": 4,
+            "total": 4
+          },
+          {
+            "name": "litdata",
+            "score": 1.5687819129274079,
+            "totalRuntime": 1896326.25,
+            "measured": 4,
+            "total": 4
+          },
+          {
+            "name": "lance",
+            "score": 1.8615821755090924,
+            "totalRuntime": 3165986,
+            "measured": 4,
+            "total": 4
+          },
+          {
+            "name": "arrow-ipc",
+            "score": 3.235469257337775,
+            "totalRuntime": 14406927.5,
+            "measured": 4,
+            "total": 4
+          },
+          {
+            "name": "parquet",
+            "score": 61.01314806437712,
+            "totalRuntime": 79905333.75,
+            "measured": 4,
+            "total": 4
+          }
+        ],
+        "coldRankings": [
+          {
+            "name": "vortex-file-compressed",
+            "score": 1.181104702076434,
+            "totalRuntime": 2714824.5,
+            "measured": 4,
+            "total": 4
+          },
+          {
+            "name": "lance",
+            "score": 1.8986894799471206,
+            "totalRuntime": 4562481.25,
+            "measured": 4,
+            "total": 4
+          },
+          {
+            "name": "arrow-ipc",
+            "score": 2.103207656693982,
+            "totalRuntime": 14339875.25,
+            "measured": 4,
+            "total": 4
+          },
+          {
+            "name": "litdata",
+            "score": 28.223442400722597,
+            "totalRuntime": 63135111.25,
+            "measured": 4,
+            "total": 4
+          },
+          {
+            "name": "parquet",
+            "score": 38.20111652800704,
+            "totalRuntime": 79664887.75,
+            "measured": 4,
+            "total": 4
+          }
+        ],
+        "explanation": "Geomean of take time ratio to fastest across every dataset (lower is better)"
+      }
+    },
+    {
+      "name": "Random Access (S3)",
+      "summary": {
+        "type": "randomAccess",
+        "hotRankings": [
+          {
+            "name": "vortex-file-compressed",
+            "score": 1.1024240747348775,
+            "totalRuntime": 164221038.25,
+            "measured": 4,
+            "total": 4
+          },
+          {
+            "name": "lance",
+            "score": 1.2857022823837823,
+            "totalRuntime": 219300404.5,
+            "measured": 4,
+            "total": 4
+          },
+          {
+            "name": "parquet",
+            "score": 3.3198676269810226,
+            "totalRuntime": 507338101.75,
+            "measured": 4,
+            "total": 4
+          }
+        ],
+        "coldRankings": [
+          {
+            "name": "vortex-file-compressed",
+            "score": 1,
+            "totalRuntime": 267387075.75,
+            "measured": 4,
+            "total": 4
+          },
+          {
+            "name": "lance",
+            "score": 2.184430006681497,
+            "totalRuntime": 611145129.5,
+            "measured": 4,
+            "total": 4
+          },
+          {
+            "name": "parquet",
+            "score": 2.5452014906806983,
+            "totalRuntime": 702031921.25,
+            "measured": 4,
+            "total": 4
+          }
+        ],
+        "explanation": "Geomean of take time ratio to fastest across every dataset (lower is better)"
+      }
+    },
+    {
+      "name": "Clickbench",
+      "summary": {
+        "type": "queryBenchmark",
+        "title": "Performance Summary",
+        "rankings": [
+          {
+            "name": "duckdb:vortex-file-compressed",
+            "score": 1.1159217840835205,
+            "totalRuntime": 3686992217,
+            "measured": 43,
+            "total": 43
+          },
+          {
+            "name": "datafusion:vortex-file-compressed",
+            "score": 1.2606848438809655,
+            "totalRuntime": 3860580527,
+            "measured": 43,
+            "total": 43
+          },
+          {
+            "name": "duckdb:vortex-compact",
+            "score": 1.292412269991545,
+            "totalRuntime": 4145895176,
+            "measured": 43,
+            "total": 43
+          },
+          {
+            "name": "datafusion:vortex-compact",
+            "score": 1.398654491927235,
+            "totalRuntime": 4201525638,
+            "measured": 43,
+            "total": 43
+          },
+          {
+            "name": "datafusion:parquet",
+            "score": 2.0073889499374,
+            "totalRuntime": 5906166895,
+            "measured": 43,
+            "total": 43
+          },
+          {
+            "name": "duckdb:duckdb",
+            "score": 2.133145967500041,
+            "totalRuntime": 5527507882,
+            "measured": 43,
+            "total": 43
+          },
+          {
+            "name": "duckdb:parquet",
+            "score": 2.2171236939560814,
+            "totalRuntime": 5886508639,
+            "measured": 43,
+            "total": 43
+          },
+          {
+            "name": "datafusion:lance",
+            "score": 17.499514076001677,
+            "totalRuntime": 48019835749,
+            "measured": 43,
+            "total": 43
+          }
+        ],
+        "explanation": "Geomean of query time ratio to fastest (lower is better)"
+      }
+    },
+    {
+      "name": "TPC-H (NVMe) (SF=1)",
+      "summary": {
+        "type": "queryBenchmark",
+        "title": "Performance Summary",
+        "rankings": [
+          {
+            "name": "duckdb:duckdb",
+            "score": 1.0990362801964775,
+            "totalRuntime": 340845291,
+            "measured": 22,
+            "total": 22
+          },
+          {
+            "name": "duckdb:vortex-file-compressed",
+            "score": 1.2559054464204034,
+            "totalRuntime": 375371679,
+            "measured": 22,
+            "total": 22
+          },
+          {
+            "name": "duckdb:vortex-compact",
+            "score": 1.4151693511470236,
+            "totalRuntime": 424827178,
+            "measured": 22,
+            "total": 22
+          },
+          {
+            "name": "datafusion:vortex-file-compressed",
+            "score": 1.892740370249623,
+            "totalRuntime": 580754597,
+            "measured": 22,
+            "total": 22
+          },
+          {
+            "name": "datafusion:vortex-compact",
+            "score": 1.9583882906329597,
+            "totalRuntime": 597801206,
+            "measured": 22,
+            "total": 22
+          },
+          {
+            "name": "datafusion:arrow",
+            "score": 3.190673476046675,
+            "totalRuntime": 1083823908,
+            "measured": 22,
+            "total": 22
+          },
+          {
+            "name": "duckdb:parquet",
+            "score": 4.6086393406383355,
+            "totalRuntime": 1403674678,
+            "measured": 22,
+            "total": 22
+          },
+          {
+            "name": "datafusion:lance",
+            "score": 6.034202016890389,
+            "totalRuntime": 2021410254,
+            "measured": 22,
+            "total": 22
+          },
+          {
+            "name": "datafusion:parquet",
+            "score": 6.4264110875771125,
+            "totalRuntime": 1896612240,
+            "measured": 22,
+            "total": 22
+          }
+        ],
+        "explanation": "Geomean of query time ratio to fastest (lower is better)"
+      }
+    }
+  ]
+}

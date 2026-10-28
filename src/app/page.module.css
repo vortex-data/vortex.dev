@@ -57,21 +57,10 @@
   margin: auto 0;
 }
 
-/* The BenchmarkCard and the LogoBanner fill these bands next. Until then each
-   one reserves the height the Home card gives its card at 1440 × 900, so the
-   one-screen fit holds now. Content-box, as in the card, so the padding adds
-   to the height (the site's Tailwind reset makes every box border-box). */
+/* The BenchmarkCard's and the LogoBanner's bands, padded as in the Home card
+   so the cards share the headline's left edge. */
 .band {
-  box-sizing: content-box;
   padding: 0 var(--page-pad) var(--space-24);
-}
-
-.benchSlot {
-  height: 250px;
-}
-
-.logoSlot {
-  height: 56px;
 }
 
 /* Below 1100px the text column would drop under about 640px and the mark

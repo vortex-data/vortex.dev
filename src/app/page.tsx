@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { AsciiMark } from "@/components/ascii-mark";
+import { BenchmarkCard } from "@/components/benchmark-card";
 import { InstallTabs } from "@/components/install-tabs";
+import { LogoBanner } from "@/components/logo-banner";
+import { getBenchSummary } from "@/lib/bench-summary";
 import { getSparkVersion } from "@/lib/maven";
 import styles from "./page.module.css";
 
@@ -27,11 +30,16 @@ export const metadata: Metadata = {
 
 /**
  * The design system's Home card: the hero (Eyebrow, headline, InstallTabs
- * and the AsciiMark), then the benchmark and logo bands. The Spark version is
- * read at build time and again at most once a day, so the page stays static.
+ * and the AsciiMark), then the BenchmarkCard and the LogoBanner. The Spark
+ * version and the benchmark figures are read at build time and again at most
+ * once a day, so the page stays static. Without the figures the page leaves
+ * the BenchmarkCard out.
  */
 export default async function Home() {
-  const sparkVersion = await getSparkVersion();
+  const [sparkVersion, bench] = await Promise.all([
+    getSparkVersion(),
+    getBenchSummary()
+  ]);
   return (
     <div className={styles.home}>
       <section className={styles.hero}>
@@ -46,15 +54,12 @@ export default async function Home() {
           <AsciiMark className={styles.markHost} />
         </div>
       </section>
-      {/* Empty bands that the BenchmarkCard and the LogoBanner fill next. */}
-      <div
-        className={`${styles.band} ${styles.benchSlot}`}
-        data-slot="benchmark-card"
-      />
-      <div
-        className={`${styles.band} ${styles.logoSlot}`}
-        data-slot="logo-banner"
-      />
+      {bench && (
+        <div className={styles.band}>
+          <BenchmarkCard panels={bench.panels} readAt={bench.readAt} />
+        </div>
+      )}
+      <LogoBanner className={styles.band} />
     </div>
   );
 }
