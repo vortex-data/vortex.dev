@@ -4,7 +4,6 @@ import { type KeyboardEvent, useEffect, useId, useRef, useState } from "react";
 import { CheckIcon, ContentCopyIcon } from "@/components/icons";
 import { copyText, installTabs } from "@/lib/install";
 import { nextIndex } from "@/lib/roving";
-import styles from "./install-tabs.module.css";
 
 const DONE_MS = 1500;
 
@@ -77,17 +76,15 @@ export function InstallTabs({ sparkVersion }: { sparkVersion: string | null }) {
           </button>
         ))}
       </div>
-      <div className={`vx-tabs-code ${styles.code}`}>
-        <div className={styles.panels}>
+      <div className="vx-tabs-code">
+        <div className="vx-tabs-panels">
           {tabs.map((tab, i) => (
             <pre
               key={tab.key}
               ref={(el) => {
                 panelRefs.current[i] = el;
               }}
-              className={
-                i === active ? "vx-tabs-pre" : `vx-tabs-pre ${styles.idle}`
-              }
+              className={i === active ? "vx-tabs-pre" : "vx-tabs-pre is-idle"}
               role="tabpanel"
               id={`${id}-panel-${tab.key}`}
               aria-labelledby={`${id}-tab-${tab.key}`}
@@ -113,7 +110,7 @@ export function InstallTabs({ sparkVersion }: { sparkVersion: string | null }) {
           <ContentCopyIcon className="is-copy" />
           <CheckIcon className="is-check" />
         </button>
-        <span className={styles.status} role="status">
+        <span className="vx-sr-only" role="status">
           {done ? "Copied" : ""}
         </span>
       </div>

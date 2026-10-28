@@ -2,7 +2,7 @@
 // The pointer leaves a short Blue trail in which the characters become flickering hex bytes.
 // Under reduced motion it draws one still frame and ignores the pointer. Without WebGL, or when
 // three.js cannot load, it shows the static symbol.
-import { brushStrength, hexDigit, rampChar } from "./ascii-core.js";
+import { brushStrength, fitFov, hexDigit, rampChar } from "./ascii-core.js";
 import { decode } from "./vortex-mark-geometry.js";
 
 const SCALE = 3.0;
@@ -22,15 +22,19 @@ const THREE_URL = "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module
 /**
  * Mounts the mark in `host` (positioned, sized by the caller).
  * Options: patch (brush reach in px, 44), lean (follow the pointer, false), size and lineHeight
- * of the character grid (12, 14), fallbackSrc (the symbol image for the static mode), three (a
- * three.js module the site bundles, for pages whose CSP blocks the CDN), threeUrl (where to load
- * three.js otherwise), exposure (how bright the lit faces read on the ramp, 2.5).
+ * of the character grid (12, 14), font (the grid's family; the host's --font-mono token by
+ * default), fallbackSrc (the symbol image for the static mode), mode ("auto", or "static" for the
+ * still symbol whatever the browser can do), three (a three.js module the site bundles, for pages
+ * whose CSP blocks the CDN), threeUrl (where to load three.js otherwise), exposure (how bright the
+ * lit faces read on the ramp, 2.5). The mark is decorative: keep the host aria-hidden.
  * Resolves to { mode: "live" | "reduced" | "static", destroy() }. Call destroy() when the host
  * leaves the page: it stops the loop, removes the listeners and frees the WebGL context.
  */
 export async function mountAsciiMark(host, opts = {}) {
+  const hostCss = getComputedStyle(host);
   const o = {
-    font: '"Geist Mono", ui-monospace, monospace',
+    font: hostCss.getPropertyValue("--font-mono").trim() || '"Geist Mono", ui-monospace, monospace',
+    mode: "auto",
     size: 12,
     lineHeight: 14,
     patch: 44,
@@ -45,7 +49,7 @@ export async function mountAsciiMark(host, opts = {}) {
   const destroy = () => {
     while (cleanups.length) cleanups.pop()();
   };
-  const css = getComputedStyle(host);
+  const css = hostCss;
   const inks = ["--grey-600", "--grey-500", "--grey-400", "--grey-50"].map((v) => css.getPropertyValue(v).trim() || "#888");
   const field = css.getPropertyValue("--grey-700").trim() || "#2b2b29";
   const brush = [css.getPropertyValue("--blue-bright").trim() || "#6e5cff", css.getPropertyValue("--blue-soft").trim() || "#a5a0f8"];
@@ -55,7 +59,7 @@ export async function mountAsciiMark(host, opts = {}) {
     if (o.fallbackSrc) {
       const img = document.createElement("img");
       img.src = o.fallbackSrc;
-      img.alt = "Vortex";
+      img.alt = "";
       img.style.cssText = "position:absolute;inset:0;margin:auto;width:40%;height:auto;opacity:0.85";
       host.appendChild(img);
       cleanups.push(() => img.remove());
@@ -63,10 +67,12 @@ export async function mountAsciiMark(host, opts = {}) {
     return { mode: "static", destroy };
   };
 
+  if (o.mode === "static") return still();
   let THREE;
   let renderer;
   try {
-    THREE = o.three || (await import(o.threeUrl));
+    // A bundler must not try to resolve the CDN URL: sites under a CSP pass `three` instead.
+    THREE = o.three || (await import(/* webpackIgnore: true */ /* turbopackIgnore: true */ /* @vite-ignore */ o.threeUrl));
     renderer = new THREE.WebGLRenderer({ antialias: false });
   } catch {
     renderer = null;
@@ -148,6 +154,7 @@ export async function mountAsciiMark(host, opts = {}) {
     target = new THREE.WebGLRenderTarget(cols * SUB, rows * SUB);
     pixels = new Uint8Array(cols * SUB * rows * SUB * 4);
     camera.aspect = (cols * cw) / (rows * o.lineHeight);
+    camera.fov = fitFov(30, camera.aspect);
     camera.updateProjectionMatrix();
   };
   layout();

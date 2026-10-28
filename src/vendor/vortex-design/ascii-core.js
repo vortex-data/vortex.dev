@@ -38,3 +38,13 @@ export function copiesNeeded(setWidth, viewWidth) {
   const n = Math.max(2, Math.ceil((2 * viewWidth) / Math.max(1, setWidth)));
   return n % 2 ? n + 1 : n;
 }
+
+/**
+ * The camera's vertical field of view (degrees) for a host of `aspect` (width / height). The mark
+ * is framed for a square: a wide host keeps `base` and shows more around it, and a tall host opens
+ * the vertical field until the horizontal one equals `base`, so the mark's sides are never cropped.
+ */
+export function fitFov(base, aspect) {
+  if (aspect >= 1) return base;
+  return (2 * Math.atan(Math.tan((base * Math.PI) / 360) / aspect) * 180) / Math.PI;
+}

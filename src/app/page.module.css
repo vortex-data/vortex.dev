@@ -81,12 +81,6 @@
 }
 
 @media (max-width: 640px) {
-  /* At vx-display's 76px the headline takes five lines on a phone. At 48px,
-     vx-h1's size, it takes three. */
-  .text h1 {
-    font-size: 48px;
-  }
-
   .mark {
     height: 240px;
   }

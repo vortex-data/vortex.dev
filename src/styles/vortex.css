@@ -2,6 +2,21 @@
    Edit the system, then run tools/site-styles.mjs; do not edit here. */
 
 /* ------------------------------------------------------------------ base */
+/* Every component sizes with border-box, so it draws the same under a site's reset or none. */
+:where([class*="vx-"]),
+:where([class*="vx-"])::before,
+:where([class*="vx-"])::after {
+  box-sizing: border-box;
+}
+/* Text for screen readers only, such as a copy button's "Copied". */
+.vx-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
 .vx-card {
   background: var(--surface);
   border: 1px solid var(--line);
@@ -214,6 +229,10 @@
 @media (max-width: 640px) {
   .vx-header-label, .vx-header-end .is-wide { display: none; }
 }
+/* The homepage headline sets at the h1 size on phones, where 76px would take five lines. */
+@media (max-width: 640px) {
+  .vx-display { font-size: 48px; }
+}
 
 .vx-footer {
   display: flex;
@@ -248,8 +267,13 @@
 }
 .vx-tabs-list button:hover { color: var(--ink-body); }
 .vx-tabs-list button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
-.vx-tabs-code { display: flex; align-items: flex-start; gap: var(--space-12); padding: var(--space-16); min-height: 80px; }
-.vx-tabs-pre { margin: 0; flex: 1; min-width: 0; font: 400 13px/1.6 var(--font-mono); color: var(--ink-body); white-space: pre-wrap; }
+.vx-tabs-code { display: flex; align-items: flex-start; gap: var(--space-12); padding: var(--space-16); }
+/* Every panel shares one grid cell and only the selected one shows, so the block is always the
+   tallest panel's height and switching tabs never moves the page. */
+.vx-tabs-panels { display: grid; flex: 1; min-width: 0; }
+.vx-tabs-panels > .vx-tabs-pre { grid-area: 1 / 1; }
+.vx-tabs-pre { margin: 0; flex: 1; min-width: 0; font: 400 13px/1.6 var(--font-mono); color: var(--ink-body); white-space: pre-wrap; overflow-wrap: anywhere; }
+.vx-tabs-pre.is-idle { visibility: hidden; }
 .vx-prompt { color: var(--ink-muted); user-select: none; }
 .vx-copy { all: unset; cursor: pointer; color: var(--ink-muted); padding: 2px; }
 .vx-copy:hover { color: var(--ink); }
