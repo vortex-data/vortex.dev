@@ -1,8 +1,8 @@
 name: Bench checks
 description: >-
-  bench's full check suite: infrastructure trust policies, format, lint, build,
-  the migration-runner and deployment-verification tests, and the web tests with
-  their Postgres integration suite. Bench CI runs it on every change to bench,
+  bench's full check suite: infrastructure trust policies, the parity check's
+  tests, format, lint, build, the migration-runner and deployment-verification
+  tests, and the web tests with their Postgres integration suite. Bench CI runs it on every change to bench,
   and bench-deploy runs it on the exact commit it deploys. Run it after a
   checkout.
 
@@ -31,17 +31,35 @@ runs:
         # @types/node in bench/web/package.json on the same major.
         node-version-file: .nvmrc
 
+    # Bun's package store, keyed on the lockfile, as in ci.yml. The restore
+    # key falls back to any earlier cache from this OS.
+    - name: Cache Bun install cache
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+      with:
+        path: ~/.bun/install/cache
+        key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-bun-
+
     # At the root, where bun.lock and bunfig.toml live. This installs both apps.
     - name: Install dependencies
       shell: bash
       run: bun install --frozen-lockfile
 
+    # The parity check's own logic: request planning, the expected statuses
+    # and the comparisons. The explicit path keeps `bun test` from also
+    # collecting bench's Vitest files.
+    - name: Test the parity check
+      shell: bash
+      run: bun test bench/scripts/parity/compare-api.test.ts
+
     # Biome over all of bench (web, scripts, parity harness) with the root
-    # biome.json, in CI mode: format, lint and import checks, no writes. It
-    # replaces the bench/web `format:check` and `lint` scripts, which cover only
-    # bench/web and would leave bench/scripts unchecked on bench-only changes,
-    # where ci.yml skips the root `check:ci`. `bun run` uses the workspace's
-    # pinned Biome and never downloads one.
+    # biome.json, in CI mode: format and lint, no writes. Import sorting is off
+    # for bench (see bench/AGENTS.md). It replaces the bench/web `format:check`
+    # and `lint` scripts, which cover only bench/web and would leave
+    # bench/scripts unchecked on bench-only changes, where ci.yml skips the
+    # root `check:ci`. `bun run` uses the workspace's pinned Biome and never
+    # downloads one.
     - name: Format and lint
       shell: bash
       run: bun run biome ci bench
