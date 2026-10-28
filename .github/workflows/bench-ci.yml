@@ -1,10 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: Copyright the Vortex contributors
 
-name: Web CI
+name: Bench CI
 
 on:
   push:
+    branches: [main]
   pull_request:
 
 # Least privilege: correctness CI only reads the checkout — no writes, no creds.
@@ -12,34 +13,51 @@ permissions:
   contents: read
 
 # Cancel stale runs on the same ref: a newer push to a branch (or a newer sync
-# to a PR) supersedes the in-flight run. A push to a branch that ALSO has an open
-# PR still produces one `push` run AND one `pull_request` run — they carry
-# different refs (`refs/heads/…` vs `refs/pull/N/merge`), so they fall in
-# different groups and both complete. The group uses a stable literal slug rather
-# than `${{ github.workflow }}` so renaming the workflow's `name:` cannot orphan
-# in-flight runs.
+# to a PR) supersedes the in-flight run. The group uses a stable literal slug
+# rather than `${{ github.workflow }}` so renaming the workflow's `name:` cannot
+# orphan in-flight runs.
 concurrency:
-  group: web-ci-${{ github.ref }}
+  group: bench-ci-${{ github.ref }}
   cancel-in-progress: true
 
 env:
-  # Keep in lockstep with `packageManager` in web/package.json.
+  # Keep in lockstep with `packageManager` in bench/web/package.json.
   PNPM_VERSION: "11.5.2"
 
 jobs:
+  changes:
+    name: Detect changed paths
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      bench: ${{ steps.paths.outputs.bench }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - id: paths
+        uses: ./.github/actions/changed-paths
+
   web:
-    name: format, lint, build, test
-    runs-on: ubuntu-latest
+    name: "Bench: format, lint, build, test"
+    needs: changes
+    # Skipped, which counts as passing, when nothing under bench/ changed. If
+    # the path check itself fails, run anyway rather than skip.
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.bench == 'true') }}
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     defaults:
       run:
-        working-directory: web
+        working-directory: bench/web
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Check infrastructure trust policies offline
-        working-directory: .
+        working-directory: bench
         run: |
           bash -n infra/provision.sh
           python3 -m unittest discover -s infra/tests -v
@@ -49,12 +67,13 @@ jobs:
         run: npm install -g "pnpm@${PNPM_VERSION}"
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
         with:
-          # Keep in lockstep with @types/node in web/package.json (Node 24 API surface).
-          node-version: "24"
+          # The repository-wide Node pin (see CLAUDE.md "Node version"). Keep
+          # @types/node in bench/web/package.json on the same major.
+          node-version-file: .nvmrc
           cache: pnpm
-          cache-dependency-path: web/pnpm-lock.yaml
+          cache-dependency-path: bench/web/pnpm-lock.yaml
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile

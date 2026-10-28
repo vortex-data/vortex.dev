@@ -1,0 +1,153 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: Copyright the Vortex contributors
+#
+# Deploy bench (bench/web) to its own Vercel project, `benchmarks-website`,
+# with the Vercel CLI. Git integration is off on that project, so these runs
+# are its only deploys, and they never touch the `vortex` project that serves
+# the marketing site. The project's Root Directory must be `bench/web`: the CLI
+# runs from the repository root and uses the pulled project settings to find
+# the app.
+#
+# Triggers: a production deploy on every push to main that touches bench/; a
+# preview deploy on every same-repo pull request that does, with the preview URL
+# posted back to the PR as a sticky comment; and `workflow_dispatch` for manual
+# preview or production runs. Fork PRs are skipped, since they can't read
+# VERCEL_TOKEN.
+#
+# The job runs in the `bench-production` or `bench-preview` GitHub environment.
+# Each holds VERCEL_TOKEN, a token scoped to the `benchmarks-website` project,
+# and `bench-production` only accepts runs from main. The environment also gives
+# the PR its "View deployment" button. The job is skipped while the
+# BENCH_VERCEL_PROJECT_ID variable is unset.
+
+name: Bench Deploy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'bench/**'
+      - '.github/workflows/bench-deploy.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'bench/**'
+      - '.github/workflows/bench-deploy.yml'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Vercel target environment"
+        type: choice
+        options: [preview, production]
+        default: preview
+
+concurrency:
+  # Include the event name so a manual workflow_dispatch (e.g. a preview deploy) on
+  # main does NOT land in the same group as — and thus cancel — an in-flight
+  # push-triggered production deploy on the same ref.
+  group: bench-deploy-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  # The sticky preview-URL comment.
+  pull-requests: write
+
+env:
+  VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ vars.BENCH_VERCEL_PROJECT_ID }}
+  # `vercel build` runs on the runner (not Vercel's builders), so it shells out to
+  # pnpm to install + build bench/web. Keep in lockstep with `packageManager` in
+  # bench/web/package.json.
+  PNPM_VERSION: "11.5.2"
+
+jobs:
+  deploy:
+    name: Build & deploy to Vercel
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    # Fork PRs have no access to VERCEL_TOKEN, and we do not auto-deploy untrusted
+    # code; same-repo PRs, pushes, and manual dispatches run normally. Until the
+    # bench Vercel project is configured here, the job stays off.
+    if: >-
+      vars.BENCH_VERCEL_PROJECT_ID != '' && (
+        github.event_name != 'pull_request' ||
+        github.event.pull_request.head.repo.full_name == github.repository
+      )
+    # push to main => production; pull_request => preview; manual dispatch => the
+    # input. `environment` can't read the job's `env`, so TARGET repeats this
+    # expression; keep the two in step.
+    environment:
+      name: bench-${{ (github.event_name == 'push' || inputs.environment == 'production') && 'production' || 'preview' }}
+      url: ${{ steps.deploy.outputs.url }}
+    env:
+      TARGET: ${{ (github.event_name == 'push' || inputs.environment == 'production') && 'production' || 'preview' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      # `vercel build` below builds ON THE RUNNER (not Vercel's infra), so it shells out
+      # to pnpm to install bench/web's deps and run `next build`. Without pnpm + Node on
+      # PATH it fails with `spawn pnpm ENOENT`. Mirror bench-ci.yml's setup.
+      # pnpm must exist before setup-node so its `cache: pnpm` can resolve the store.
+      - name: Install pnpm
+        run: npm install -g "pnpm@${PNPM_VERSION}"
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: |
+            bench/web/pnpm-lock.yaml
+            bench/vercel-cli/pnpm-lock.yaml
+
+      # The CLI and its whole dependency tree come from bench/vercel-cli's
+      # lockfile, so this job, which holds VERCEL_TOKEN, never resolves a
+      # freshly published version. Renovate bumps it like any other dependency.
+      - name: Install Vercel CLI
+        run: |
+          pnpm install --frozen-lockfile --dir bench/vercel-cli
+          echo "${GITHUB_WORKSPACE}/bench/vercel-cli/node_modules/.bin" >> "${GITHUB_PATH}"
+
+      - name: Pull Vercel project settings
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: vercel pull --yes --environment="${TARGET}"
+
+      - name: Build
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          set -Eeuo pipefail
+          if [ "${TARGET}" = "production" ]; then
+            vercel build --prod
+          else
+            vercel build
+          fi
+
+      - name: Deploy (prebuilt)
+        id: deploy
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          set -Eeuo pipefail
+          if [ "${TARGET}" = "production" ]; then
+            url="$(vercel deploy --prebuilt --prod | tail -n1)"
+          else
+            url="$(vercel deploy --prebuilt | tail -n1)"
+          fi
+          echo "url=${url}" >> "$GITHUB_OUTPUT"
+          printf 'Deployed: %s\n' "$url"
+
+      # On a pull_request, post the preview URL back to the PR as a single sticky
+      # comment (edited in place on each push) so the preview is one click from the PR.
+      # The header keeps it apart from the Lighthouse comment, which the same bot posts.
+      - name: Comment preview URL on the PR
+        if: github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88  # v3.0.5
+        with:
+          header: bench-preview
+          message: "Bench preview for `${{ github.event.pull_request.head.sha }}`: ${{ steps.deploy.outputs.url }}"
