@@ -42,8 +42,27 @@ const THEME_BOOTSTRAP = `(function(){try{var t=localStorage.getItem("bench-theme
 const FUNNEL_DISPLAY_CSS =
   'https://fonts.googleapis.com/css2?family=Funnel+Display:wght@400;500;600;700&display=swap';
 
+const UNSAFE_SCRIPT_CHAR_MAP: Record<string, string> = {
+  '<': '\\u003C',
+  '>': '\\u003E',
+  '/': '\\u002F',
+  '\\': '\\\\',
+  '\b': '\\b',
+  '\f': '\\f',
+  '\n': '\\n',
+  '\r': '\\r',
+  '\t': '\\t',
+  '\0': '\\0',
+  '\u2028': '\\u2028',
+  '\u2029': '\\u2029',
+};
+
+function escapeUnsafeScriptChars(str: string): string {
+  return str.replace(/[<>/\\\b\f\n\r\t\0\u2028\u2029]/g, (ch) => UNSAFE_SCRIPT_CHAR_MAP[ch]);
+}
+
 // This is a hack to load Funnel font without blocking page paint
-const FONT_BOOTSTRAP = `(function(){var l=document.createElement("link");l.rel="stylesheet";l.href=${JSON.stringify(FUNNEL_DISPLAY_CSS)};document.head.appendChild(l);})();`;
+const FONT_BOOTSTRAP = `(function(){var l=document.createElement("link");l.rel="stylesheet";l.href=${escapeUnsafeScriptChars(JSON.stringify(FUNNEL_DISPLAY_CSS))};document.head.appendChild(l);})();`;
 
 /**
  * Root layout: the `<html>`/`<body>` shell plus the global stylesheet, the
