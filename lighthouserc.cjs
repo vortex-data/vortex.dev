@@ -50,19 +50,35 @@ const baseUrls = ["http://localhost:3000/", "http://localhost:3000/blog"];
 const seed = pickSeedSlug();
 if (seed) baseUrls.push(`http://localhost:3000/blog/${seed}`);
 
-// Assertion thresholds. Calibrated against an actual local `bun run start`
-// baseline on 2026-05-04 with the deps as of branch time:
+// Assertion thresholds. The first calibration (local `bun run start`,
+// 2026-05-04) had every URL at perf 1.00 and set a flat 0.9 floor on every
+// category. CI runners don't reproduce that for `/`. Across the 95 archived
+// CI runs from 2026-08-04 to 2026-10-28:
 //
-//   /                              perf 1.00 · a11y 1.00 · bp 0.96 · seo 1.00
-//   /blog                          perf 1.00 · a11y 1.00 · bp 0.96 · seo 1.00
-//   /blog/<seed>                   perf 1.00 · a11y 0.96 · bp 0.96 · seo 1.00
+//   /                  perf 0.69–1.00, median 0.90 · 45 of 95 below 0.9
+//   /blog              perf never below 0.95
+//   /blog/<seed>       perf never below 0.95
+//   a11y · bp · seo    never below 0.9 on any URL
 //
-// The WebGL hero on `/` doesn't drag perf down under desktop simulation —
-// every category clears 0.9 with comfortable headroom across all three URLs.
-// A flat 0.9 floor is what willmanning uses; a per-URL matrix would be dead
-// scaffolding here. Tighten via a separate PR if a category drifts up enough
-// that 0.9 stops catching real regressions; don't relax to mask a regression
-// without a separate PR.
+// All of the swing on `/` is Total Blocking Time. FCP, LCP and CLS scored
+// 0.98 or better in every run, while TBT ranged from 0 to 2382 ms. The page's
+// startup JS (React hydration plus the WebGL hero, which runs on the CPU
+// because runners have no GPU) stretches into long tasks whenever the shared
+// runner is busy. More runs don't fix it: the 0.9 floor sits on the median,
+// so the median of 3 or 5 runs fails about as often as a single run.
+//
+// So on `/` the category score is advisory (`warn` still prints it in the
+// log and the PR comment) and the metrics that hold steady on CI hard-fail
+// instead: FCP, LCP and CLS at a 0.9 audit score. Speed Index follows TBT
+// (correlation 0.89) and peaked at 1286 ms, just inside its 0.9 line at
+// 1311 ms, so it gets a 2000 ms cap instead, about the same headroom over
+// the worst run that LCP has under its 0.9 line. TBT gets a 1000 ms cap as a
+// backstop against a large JS regression, not as a target: the median run
+// was 264 ms, but the two slowest runners went past it (1755 and 2382 ms), so
+// expect an occasional re-run. Every other URL keeps the 0.9 performance
+// floor; its pattern matches any non-root path, so a new URL gets the floor
+// by default. Don't relax a threshold to mask a regression without a separate
+// PR.
 module.exports = {
   ci: {
     collect: {
@@ -77,12 +93,34 @@ module.exports = {
       }
     },
     assert: {
-      assertions: {
-        "categories:performance": ["error", { minScore: 0.9 }],
-        "categories:accessibility": ["error", { minScore: 0.9 }],
-        "categories:best-practices": ["error", { minScore: 0.9 }],
-        "categories:seo": ["error", { minScore: 0.9 }]
-      }
+      // LHCI applies every entry whose pattern matches a URL's finalUrl.
+      assertMatrix: [
+        {
+          matchingUrlPattern: ".*",
+          assertions: {
+            "categories:accessibility": ["error", { minScore: 0.9 }],
+            "categories:best-practices": ["error", { minScore: 0.9 }],
+            "categories:seo": ["error", { minScore: 0.9 }]
+          }
+        },
+        {
+          matchingUrlPattern: "^https?://[^/]+/$",
+          assertions: {
+            "categories:performance": ["warn", { minScore: 0.9 }],
+            "first-contentful-paint": ["error", { minScore: 0.9 }],
+            "largest-contentful-paint": ["error", { minScore: 0.9 }],
+            "cumulative-layout-shift": ["error", { minScore: 0.9 }],
+            "speed-index": ["error", { maxNumericValue: 2000 }],
+            "total-blocking-time": ["error", { maxNumericValue: 1000 }]
+          }
+        },
+        {
+          matchingUrlPattern: "^https?://[^/]+/.",
+          assertions: {
+            "categories:performance": ["error", { minScore: 0.9 }]
+          }
+        }
+      ]
     },
     upload: {
       target: "temporary-public-storage"
