@@ -36,13 +36,15 @@ runs:
       shell: bash
       run: bun install --frozen-lockfile
 
-    - name: Format check
+    # Biome over all of bench (web, scripts, parity harness) with the root
+    # biome.json, in CI mode: format, lint and import checks, no writes. It
+    # replaces the bench/web `format:check` and `lint` scripts, which cover only
+    # bench/web and would leave bench/scripts unchecked on bench-only changes,
+    # where ci.yml skips the root `check:ci`. `bun run` uses the workspace's
+    # pinned Biome and never downloads one.
+    - name: Format and lint
       shell: bash
-      run: bun run --cwd bench/web format:check
-
-    - name: Lint
-      shell: bash
-      run: bun run --cwd bench/web lint
+      run: bun run biome ci bench
 
     # `next build` must succeed without a reachable database (every page and route
     # is request-rendered), so no BENCH_DB_* env vars are provided here on purpose.
