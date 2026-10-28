@@ -8,9 +8,8 @@ import { Signer } from '@aws-sdk/rds-signer';
  * Resolved Postgres connection settings for the benchmarks read service.
  *
  * In production the read service runs on Vercel; the endpoint and auth choice
- * (the public RDS instance endpoint unless the Vercel project gains VPC
- * connectivity to the VPC-internal RDS Proxy, IAM tokens or a static reader
- * password) is configured per environment, see the README's "Database
+ * (the public RDS instance endpoint, IAM tokens or a static reader password)
+ * is configured per environment, see the README's "Database
  * environment" and "Deploys" sections. On the IAM path, RDS IAM auth tokens
  * are valid for only ~15 minutes, so a fresh token is minted for every new
  * pool connection (see [`passwordProvider`]); that is the
