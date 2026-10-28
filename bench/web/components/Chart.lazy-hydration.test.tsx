@@ -8,6 +8,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Chart } from '@/components/Chart';
+import { FETCH_TIMEOUT_MS } from '@/lib/chart-format';
 import { bundleQueue, hydrationQueue, resetPayloadCache } from '@/lib/chart-store';
 
 vi.mock('@/lib/chart-js', () => ({
@@ -84,10 +85,14 @@ describe('PR-5.0.95 landing-page lazy hydration', () => {
   beforeEach(() => {
     (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
     fetchCalls = [];
+    resetPayloadCache();
     MockIO.instances = [];
     vi.stubGlobal('IntersectionObserver', MockIO);
     vi.stubGlobal('fetch', (url: string | URL) => {
       fetchCalls.push(String(url));
+      if (String(url).includes('/api/group/')) {
+        return Promise.resolve({ ok: false, status: 404 } as Response);
+      }
       return Promise.resolve(jsonResponse(windowedPayload(3572)));
     });
     container = document.createElement('div');
@@ -304,6 +309,9 @@ describe('PR-5.0.95 landing-page lazy hydration', () => {
     const signals: AbortSignal[] = [];
     vi.stubGlobal('fetch', (url: string | URL, init?: { signal?: AbortSignal }) => {
       fetchCalls.push(String(url));
+      if (String(url).includes('/api/group/')) {
+        return Promise.resolve({ ok: false, status: 404 } as Response);
+      }
       if (init?.signal) {
         signals.push(init.signal);
       }
@@ -440,6 +448,60 @@ describe('PR-5.0.97 group-bundle hydration', () => {
     expect(MockIO.instances[0].disconnected).toBe(true);
     expect(chartFetchCount()).toBe(0);
   });
+
+  it.each(['500', '503', 'network', 'timeout', 'null response'])(
+    'a bundle %s offers a shared retry without per-chart fanout or passive retries',
+    async (failure) => {
+      vi.useFakeTimers();
+      let attempts = 0;
+      vi.stubGlobal('fetch', (url: string | URL, init?: RequestInit) => {
+        fetchCalls.push(String(url));
+        attempts += 1;
+        if (attempts > 1) {
+          return Promise.resolve(bundleResponse(['s0', 's1', 's2']));
+        }
+        if (failure === 'null response') {
+          return Promise.resolve(jsonResponse(null));
+        }
+        if (failure === 'network') {
+          return Promise.reject(new TypeError('network unavailable'));
+        }
+        if (failure === 'timeout') {
+          return new Promise<Response>((_resolve, reject) => {
+            init?.signal?.addEventListener('abort', () => reject(init.signal?.reason));
+          });
+        }
+        return Promise.resolve({ ok: false, status: Number(failure) } as Response);
+      });
+      await renderGroup(3);
+      await act(async () => {
+        MockIO.instances[0].fire();
+        MockIO.instances[1].fire();
+        await vi.advanceTimersByTimeAsync(FETCH_TIMEOUT_MS);
+      });
+      expect(container.querySelectorAll('[data-role="fetch-retry"]')).toHaveLength(2);
+      expect(bundleFetchCount()).toBe(1);
+      expect(chartFetchCount()).toBe(0);
+
+      // A later card sees the same failure without starting another request.
+      await act(async () => {
+        MockIO.instances[2].fire();
+        await vi.advanceTimersByTimeAsync(FETCH_TIMEOUT_MS * 2);
+      });
+      expect(container.querySelectorAll('[data-role="fetch-retry"]')).toHaveLength(3);
+      expect(bundleFetchCount()).toBe(1);
+      const retries = container.querySelectorAll<HTMLButtonElement>('[data-role="fetch-retry"]');
+      await act(async () => {
+        retries[0].click();
+        retries[1].click();
+      });
+      expect(bundleFetchCount()).toBe(2);
+      expect(chartFetchCount()).toBe(0);
+      expect(container.querySelectorAll('.chart-error')).toHaveLength(0);
+      const chips = container.querySelectorAll<HTMLButtonElement>('[data-role="window-chip"]');
+      expect([...chips].every((chip) => chip.dataset.state === 'windowed')).toBe(true);
+    },
+  );
 
   it('closing the group aborts the in-flight bundle (its fetch signal aborts)', async () => {
     const signals: AbortSignal[] = [];
@@ -633,8 +695,8 @@ describe('PR-5.0.97 group-bundle hydration', () => {
   });
 
   it('reopen after a bundle 404 re-issues the group bundle fetch', async () => {
-    // A 404 leaves `completedBundles` unset; `abortGroupBundle` (on close) clears
-    // `attemptedBundles`, so a reopen must re-attempt the bundle rather than
+    // Closing clears the settled unavailable outcome, so a reopen must
+    // re-attempt the bundle rather than
     // short-circuit. This pins that re-attempt behavior.
     vi.stubGlobal('fetch', (url: string | URL) => {
       fetchCalls.push(String(url));

@@ -14,7 +14,7 @@ pnpm dev          # needs BENCH_DB_* pointing at a database (see below)
 pnpm format:check # prettier
 pnpm lint         # eslint
 pnpm build        # next build; deliberately works WITHOUT a database
-pnpm test         # vitest; the Postgres integration suite needs a Docker daemon
+pnpm test         # vitest; the Postgres integration suite needs Docker and uv
 ```
 
 `next build` never touches the database: every page and route is request-rendered

@@ -95,5 +95,21 @@ jobs:
       - name: Require Docker for the integration suite
         run: docker info > /dev/null
 
+      # The migration-runner tests and the web integration suite both run
+      # bench/scripts/migrate-schema.py through uv.
+      - name: Install uv
+        uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884  # v10.3.0
+        with:
+          enable-cache: false
+
+      # uv resolves the runner's Python dependencies when it runs. Give them the
+      # repository's 14-day cooldown (see CLAUDE.md "Supply chain hardening").
+      - name: Set the uv cooldown
+        run: echo "UV_EXCLUDE_NEWER=$(date -u -d '14 days ago' +%Y-%m-%dT%H:%M:%SZ)" >> "${GITHUB_ENV}"
+
+      - name: Test migration runner
+        working-directory: bench
+        run: uv run --no-project --with 'psycopg[binary]>=3.2' python -m unittest discover -s scripts/tests -v
+
       - name: Test
         run: pnpm test

@@ -241,10 +241,9 @@ interface SeriesSample<K> {
  *
  * The `(10 + value) / (10 + best)` ratio (rather than `value / best`) is v2's,
  * damping sub-10ns noise; it is preserved because the shipped query scores are
- * pinned to it. Random-access and vector-search summaries also set a 2x floor
- * for a missing bucket. The floor prevents a penalty derived from a fast bucket
- * from beating a real measurement on a slower bucket. Query summaries keep a
- * zero floor to preserve the shipped v2 scores.
+ * pinned to it. All timing summaries set a 2x floor for a missing bucket. The floor prevents
+ * a penalty derived from a fast bucket from beating the observed best on a slower bucket.
+ * A known bucket with no complete measurement contributes the same floor to every series.
  */
 function rankSeries<K>(
   samples: readonly SeriesSample<K>[],
@@ -252,8 +251,9 @@ function rankSeries<K>(
   penaltyFloorNs: number,
   missingRatioFloor: number,
   knownSeries: readonly string[] = [],
+  knownBuckets: readonly K[] = [],
 ): SeriesRanking[] {
-  const buckets = new Map<string, K>();
+  const buckets = new Map<string, K>(knownBuckets.map((bucket) => [String(bucket), bucket]));
   const valuesBySeries = new Map<string, Map<string, number>>();
   for (const series of knownSeries) {
     valuesBySeries.set(series, new Map<string, number>());
@@ -316,6 +316,7 @@ function rankSeries<K>(
     for (const [bucketKey] of sortedBuckets) {
       const base = bestByBucket.get(bucketKey);
       if (base === undefined) {
+        ratios.push(missingRatioFloor);
         continue;
       }
       const measuredValue = bucketValues.get(bucketKey);
@@ -346,11 +347,13 @@ function rankSeries<K>(
  * Correlated and uniform charts contribute to one dataset total. The legacy
  * `taxi` chart contributes to the same total as `taxi/correlated` and
  * `taxi/uniform`. A format must cover every chart in a dataset before that
- * dataset contributes to its score. Coverage describes complete datasets.
+ * dataset contributes a measured time. Incomplete datasets remain in the bucket universe
+ * for scoring and coverage, even when no format completes them.
  */
-function groupRandomAccessSamples(
-  samples: readonly SeriesSample<string>[],
-): SeriesSample<string>[] {
+function groupRandomAccessSamples(samples: readonly SeriesSample<string>[]): {
+  samples: SeriesSample<string>[];
+  datasets: string[];
+} {
   const chartsByDataset = new Map<string, Set<string>>();
   const groupsBySeries = new Map<string, Map<string, { value: number; charts: Set<string> }>>();
 
@@ -389,7 +392,7 @@ function groupRandomAccessSamples(
       }
     }
   }
-  return grouped;
+  return { samples: grouped, datasets: [...chartsByDataset.keys()] };
 }
 
 /**
@@ -448,11 +451,13 @@ async function collectRandomAccessSummary(storage: RandomAccessStorage): Promise
     );
     const grouped = groupRandomAccessSamples(modeRows);
     const knownSeries = [...new Set(modeRows.map((row) => row.series))];
-    return rankSeries(grouped, compareCodeUnits, 0, 2, knownSeries).map((ranking) => ({
-      ...ranking,
-      totalRuntime:
-        ranking.measured > 0 ? ranking.totalRuntime / ranking.measured : ranking.totalRuntime,
-    }));
+    return rankSeries(grouped.samples, compareCodeUnits, 0, 2, knownSeries, grouped.datasets).map(
+      (ranking) => ({
+        ...ranking,
+        totalRuntime:
+          ranking.measured > 0 ? ranking.totalRuntime / ranking.measured : ranking.totalRuntime,
+      }),
+    );
   };
   const hotRankings = rankingsFor('cached');
   const coldRankings = rankingsFor('reopen');
@@ -1026,7 +1031,7 @@ async function collectQuerySummary(
     rows.map((row) => ({ series: row.series, bucket: row.query_idx, value: row.value_ns })),
     (a, b) => a - b,
     QUERY_PENALTY_FLOOR_NS,
-    0,
+    2,
   );
   if (rankings.length === 0) {
     return null;
