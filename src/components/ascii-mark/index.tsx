@@ -55,11 +55,26 @@ export function AsciiMark({ className }: { className?: string | undefined }) {
         fallbackSrc: symbol.src,
         ...(font ? { font } : {})
       });
-      if (mounted) destroy = mark.destroy;
-      else mark.destroy();
+      if (!mounted) return mark.destroy();
+      destroy = mark.destroy;
+      // live, reduced or static: what the browser could draw. Tests read it.
+      el.dataset.markMode = mark.mode;
+    };
+    // If mounting throws, the page still gets the static symbol, and the
+    // host says so, so a test reports the failure instead of an empty box.
+    const fallBack = () => {
+      if (!mounted) return;
+      const img = document.createElement("img");
+      img.src = symbol.src;
+      img.alt = "";
+      img.style.cssText =
+        "position:absolute;inset:0;margin:auto;width:40%;height:auto;opacity:0.85";
+      el.appendChild(img);
+      el.dataset.markMode = "error";
+      destroy = () => img.remove();
     };
     const cancel = whenIdle(() => {
-      mount().catch(() => {});
+      mount().catch(fallBack);
     });
     return () => {
       mounted = false;
