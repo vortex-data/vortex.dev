@@ -126,3 +126,22 @@ role (another `CREATE ROLE`, `ALTER DEFAULT PRIVILEGES`, DDL on master-owned
 tables, or other superuser-only DDL) should carry
 `-- migrate-schema: requires-superuser` on a comment line so the same
 preflight guards it.
+
+## Runner checks
+
+`status` returns 0 for a matching ledger, 1 for confirmed pending or orphaned filenames, and 2
+for connection, permission, filesystem, or usage failures. `apply` returns 0 on success and 2
+on failure. The schema workflow resolves Python dependencies before interpreting these codes,
+so a dependency download failure cannot appear as an informational dry-run drift result.
+
+Run the CLI integration suite with Docker available:
+
+```bash
+uv run --no-project --with 'psycopg[binary]>=3.2' python -m unittest discover -s scripts/tests -v
+```
+
+The suite applies the real migrations to disposable PostgreSQL 16, checks a second apply,
+transaction rollback, ledger drift, role permissions, and a later migration as `migrator`.
+A non-superuser CREATEROLE bootstrap role exercises the role-grant path. The local `rds_iam`
+stand-in checks membership grants only. These tests do not verify RDS IAM authentication,
+AWS trust, or RDS-specific administrative privileges.

@@ -359,6 +359,90 @@ describe('timing summaries (shared ranking model)', () => {
     expect(byName.get('partial')?.totalRuntime).toBe(0);
   });
 
+  it('counts datasets with complementary incomplete formats in each open mode', async () => {
+    query.mockResolvedValueOnce({
+      rows: [
+        { bucket: 'taxi', series: 'lance', open_mode: 'cached', value: 100_000 },
+        { bucket: 'taxi', series: 'vortex', open_mode: 'cached', value: 200_000 },
+        {
+          bucket: 'feature-vectors/correlated',
+          series: 'lance',
+          open_mode: 'cached',
+          value: 50_000,
+        },
+        {
+          bucket: 'feature-vectors/uniform',
+          series: 'vortex',
+          open_mode: 'cached',
+          value: 300_000,
+        },
+        { bucket: 'taxi', series: 'lance', open_mode: 'reopen', value: 400_000 },
+        { bucket: 'taxi', series: 'vortex', open_mode: 'reopen', value: 200_000 },
+        {
+          bucket: 'nested-structs/correlated',
+          series: 'lance',
+          open_mode: 'reopen',
+          value: 100_000,
+        },
+        { bucket: 'nested-structs/uniform', series: 'vortex', open_mode: 'reopen', value: 500_000 },
+        { bucket: 'feature-vectors', series: 'lance', open_mode: 'reopen', value: 200_000 },
+        { bucket: 'feature-vectors', series: 'vortex', open_mode: 'reopen', value: 200_000 },
+      ],
+    });
+
+    const summary = await collectGroupSummary({ k: 'RandomAccessGroup', storage: 'nvme' });
+    if (summary === null || summary.type !== 'randomAccess') {
+      throw new Error('expected a randomAccess summary');
+    }
+
+    expect(
+      summary.hotRankings.map((ranking) => [
+        ranking.name,
+        ranking.measured,
+        ranking.total,
+        ranking.totalRuntime,
+      ]),
+    ).toEqual([
+      ['lance', 1, 2, 100_000],
+      ['vortex', 1, 2, 200_000],
+    ]);
+    expect(summary.hotRankings[0].score).toBeCloseTo(Math.sqrt(2), 6);
+    expect(summary.hotRankings[1].score).toBeCloseTo(Math.sqrt(2 * (200_010 / 100_010)), 6);
+    expect(
+      summary.coldRankings.map((ranking) => [
+        ranking.name,
+        ranking.measured,
+        ranking.total,
+        ranking.totalRuntime,
+      ]),
+    ).toEqual([
+      ['vortex', 2, 3, 200_000],
+      ['lance', 2, 3, 300_000],
+    ]);
+    expect(summary.coldRankings[0].score).toBeCloseTo(Math.cbrt(2), 6);
+    expect(summary.coldRankings[1].score).toBeCloseTo(Math.cbrt(2 * (400_010 / 200_010)), 6);
+  });
+
+  it('reports zero coverage when no random-access dataset is complete', async () => {
+    query.mockResolvedValueOnce({
+      rows: [
+        { bucket: 'taxi/correlated', series: 'lance', value: 100_000 },
+        { bucket: 'taxi/uniform', series: 'vortex', value: 200_000 },
+      ],
+    });
+
+    const summary = await collectGroupSummary({ k: 'RandomAccessGroup', storage: 'nvme' });
+    if (summary === null || summary.type !== 'randomAccess') {
+      throw new Error('expected a randomAccess summary');
+    }
+
+    expect(summary.hotRankings).toEqual([
+      { name: 'lance', score: 2, measured: 0, total: 1, totalRuntime: 0 },
+      { name: 'vortex', score: 2, measured: 0, total: 1, totalRuntime: 0 },
+    ]);
+    expect(summary.coldRankings).toEqual([]);
+  });
+
   it('does not reward a series for skipping a slow bucket', async () => {
     query.mockResolvedValueOnce({
       rows: [
@@ -427,6 +511,51 @@ describe('timing summaries (shared ranking model)', () => {
     expect(summary.rankings[1].score).toBeCloseTo(Math.sqrt((2010 / 1010) * (8010 / 2010)), 6);
     expect(summary.rankings[1].totalRuntime).toBeCloseTo(10_000, 6);
   });
+
+  it.each([
+    { name: 'fast', missingQueryRuntime: 50_000, missingRatio: 600_010 / 50_010 },
+    { name: 'slow', missingQueryRuntime: 100_000_000, missingRatio: 2 },
+  ])(
+    'penalizes a missing $name query without scoring it faster than the observed best',
+    async ({ missingQueryRuntime, missingRatio }) => {
+      query.mockResolvedValueOnce({
+        rows: [
+          { query_idx: 1, series: 'datafusion:partial', value_ns: 100_000 },
+          { query_idx: 1, series: 'datafusion:complete', value_ns: 110_000 },
+          { query_idx: 2, series: 'datafusion:complete', value_ns: missingQueryRuntime },
+        ],
+      });
+
+      const summary = await collectGroupSummary({
+        k: 'QueryGroup',
+        dataset: 'tpch',
+        dataset_variant: null,
+        scale_factor: null,
+        storage: 'nvme',
+      });
+      if (summary === null || summary.type !== 'queryBenchmark') {
+        throw new Error('expected a queryBenchmark summary');
+      }
+      const byName = new Map(summary.rankings.map((ranking) => [ranking.name, ranking]));
+
+      expect(summary.rankings.map((ranking) => ranking.name)).toEqual([
+        'datafusion:complete',
+        'datafusion:partial',
+      ]);
+      expect(byName.get('datafusion:partial')?.score).toBeCloseTo(Math.sqrt(missingRatio), 6);
+      expect(byName.get('datafusion:partial')).toMatchObject({
+        measured: 1,
+        total: 2,
+        totalRuntime: 100_000,
+      });
+      expect(byName.get('datafusion:complete')?.score).toBeCloseTo(Math.sqrt(110_010 / 100_010), 6);
+      expect(byName.get('datafusion:complete')).toMatchObject({
+        measured: 2,
+        total: 2,
+        totalRuntime: 110_000 + missingQueryRuntime,
+      });
+    },
+  );
 
   it('summarizes every query group, with no dataset allowlist', async () => {
     // `spatialbench` (and every other suite outside the retired v2 five) used to

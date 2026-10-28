@@ -81,7 +81,8 @@ scripts/migrate-schema.py  ──IAM token, verify-full TLS──▶  RDS as `mi
   role trusts only `main` of `vortex-data/vortex.dev`. Auto-applying on push to
   `main` is left as an operator's-call follow-up.
 - `dry_run: true` runs `status` only: it reports drift and exits 0 (drift is
-  informational in dry-run); a real apply still fails on post-apply drift.
+  informational in dry-run), but any other failure, such as a connection or
+  permission error, fails the run. A real apply still fails on post-apply drift.
 - Serialized concurrency (`cancel-in-progress: false`) prevents two operators
   racing an apply against the same database.
 - `migrate-schema.py` is a self-contained PEP 723 script run via `uv run
