@@ -19,6 +19,8 @@
   --tooltip-fg: #fcfcf9;
   --accent: #1d0fed;
   --accent-fg: #ffffff;
+  --accent-fill: #1d0fed;
+  --accent-fill-fg: #ffffff;
 }
 :root[data-theme='light'] {
   --page-bg: #f5f5f2;
@@ -32,6 +34,8 @@
   --tooltip-fg: #fcfcf9;
   --accent: #1d0fed;
   --accent-fg: #ffffff;
+  --accent-fill: #1d0fed;
+  --accent-fill-fg: #ffffff;
 }
 
 /* Dark: bench's default when the OS asks for dark, and its explicit dark theme. Cards sit on
@@ -42,13 +46,15 @@
     --bg: #171716;
     --card-bg: #171716;
     --fg: #ffffff;
-    --muted: #bebebb;
+    --muted: #9c9c99;
     --border: #2b2b29;
     --code-bg: #0f0f0e;
     --tooltip-bg: #2b2b29;
     --tooltip-fg: #ffffff;
     --accent: #a5a0f8;
     --accent-fg: #171716;
+    --accent-fill: #6e5cff;
+    --accent-fill-fg: #ffffff;
   }
 }
 :root[data-theme='dark'] {
@@ -56,13 +62,15 @@
   --bg: #171716;
   --card-bg: #171716;
   --fg: #ffffff;
-  --muted: #bebebb;
+  --muted: #9c9c99;
   --border: #2b2b29;
   --code-bg: #0f0f0e;
   --tooltip-bg: #2b2b29;
   --tooltip-fg: #ffffff;
   --accent: #a5a0f8;
   --accent-fg: #171716;
+  --accent-fill: #6e5cff;
+  --accent-fill-fg: #ffffff;
 }
 
 /* Geist, which bench names but never loads. Load it with the site's font loader too. */
@@ -98,4 +106,29 @@ body {
 .group-docs-link,
 .filter-chip {
   border-radius: 4px;
+}
+
+/* Fills. Bench paints its one --accent as both words and fills, and the system splits them: words
+   keep --accent, fills take --accent-fill with white text. The two match in Light; in Dark, fills
+   take blue-bright. app/vortex-skin.test.ts fails if globals.css gains an accent fill not listed here. */
+.filter-badge {
+  background: var(--accent-fill);
+  color: var(--accent-fill-fg);
+}
+.filter-chip--active,
+.toolbar-btn--active {
+  background: var(--accent-fill);
+  border-color: var(--accent-fill);
+  color: var(--accent-fill-fg);
+}
+.filter-chip--active:hover,
+.toolbar-btn--active:hover {
+  border-color: var(--accent-fill);
+  color: var(--accent-fill-fg);
+}
+.toolbar-slider {
+  accent-color: var(--accent-fill);
+}
+.chart-range-strip-handle {
+  background: var(--accent-fill);
 }
