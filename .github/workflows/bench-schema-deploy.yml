@@ -1,0 +1,112 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: Copyright the Vortex contributors
+#
+# Apply Postgres schema migrations from `bench/migrations/*.sql` to the bench RDS
+# instance via `bench/scripts/migrate-schema.py`. Connects to the public RDS
+# instance endpoint as the `migrator` IAM-auth role using a short-lived token
+# generated client-side from the OIDC-assumed schema role.
+#
+# Trigger is `workflow_dispatch` ONLY: an operator runs it manually from main
+# (optionally `dry_run` for a status-only preview). The AWS role trusts exactly
+# `repo:vortex-data/vortex.dev:ref:refs/heads/main` (see bench/infra/provision.sh
+# and its test), so a run from any other ref fails at the credentials step.
+#
+# Bootstrap: CI can only IAM-auth as `migrator`; the FIRST apply must be run once by
+# the RDS master user out-of-band to create the `migrator` role + grant ledger access.
+# Every subsequent apply runs here as `migrator`. See bench/infra/README.md.
+
+name: Bench Schema Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Run `status` only (report drift, apply nothing)"
+        type: boolean
+        default: false
+
+permissions:
+  id-token: write
+  contents: read
+
+# Serialize deploys so two operators cannot race `apply` against the same
+# database. `cancel-in-progress: false` lets an in-flight apply finish.
+concurrency:
+  group: bench-schema-deploy
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    name: Apply schema migrations
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: bench
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      # migrate-schema.py is a self-contained PEP 723 script run via
+      # `uv run --no-project` (its deps resolve from the inline metadata), so this
+      # only needs uv itself. There's no lockfile or pyproject.toml to key a cache on.
+      - name: Install uv
+        uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884  # v10.3.0
+        with:
+          enable-cache: false
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd  # v6.3.0
+        with:
+          role-to-assume: ${{ vars.GH_BENCH_SCHEMA_ROLE_ARN }}
+          aws-region: ${{ vars.RDS_BENCH_REGION }}
+
+      - name: Download RDS CA bundle
+        # `sslmode=verify-full` validates the instance cert chain + hostname
+        # against Amazon's published root CAs.
+        run: |
+          set -Eeuo pipefail
+          curl -fsSL https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem \
+            -o "${RUNNER_TEMP}/rds-global-bundle.pem"
+
+      - name: Apply migrations and verify status
+        # The IAM auth token is generated client-side (SigV4, no API call) and
+        # lives only for this step. `set -x` is deliberately NOT used so the token
+        # never lands in the log. PGPASSWORD is assigned on its own line (not
+        # `export PGPASSWORD=$(...)`) so a token-command failure is not masked by
+        # `export`'s exit status under `set -e`.
+        env:
+          PGHOST: ${{ vars.RDS_BENCH_INSTANCE_ENDPOINT }}
+          PGPORT: "5432"
+          PGDATABASE: ${{ vars.RDS_BENCH_DB_NAME }}
+          PGUSER: migrator
+          PGSSLMODE: verify-full
+          AWS_REGION: ${{ vars.RDS_BENCH_REGION }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          set -Eeuo pipefail
+          PGPASSWORD="$(aws rds generate-db-auth-token \
+            --hostname "${PGHOST}" \
+            --port "${PGPORT}" \
+            --region "${AWS_REGION}" \
+            --username "${PGUSER}")"
+          export PGPASSWORD
+          export PGSSLROOTCERT="${RUNNER_TEMP}/rds-global-bundle.pem"
+          if [ "${DRY_RUN}" = "true" ]; then
+            echo "dry_run: reporting status only, applying nothing"
+            # `status` exits 1 on drift (pending/orphaned migrations). For a dry_run that
+            # is the EXPECTED, informational result — not an infra error — so don't let it
+            # fail the step under `set -e`. (The `if` condition exempts the command from
+            # set -e.) The non-dry_run branch below intentionally lets a post-apply `status`
+            # non-zero fail the step: drift after an apply IS a real problem.
+            if uv run --no-project scripts/migrate-schema.py status; then
+              echo "dry_run: no drift — migration set matches the ledger."
+            else
+              echo "dry_run: drift detected (pending or orphaned migrations) — re-run without dry_run to apply."
+            fi
+          else
+            uv run --no-project scripts/migrate-schema.py apply
+            uv run --no-project scripts/migrate-schema.py status
+          fi

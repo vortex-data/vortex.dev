@@ -9,6 +9,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `bun lint` - Run ESLint
 - `bun start` - Start production server
 
+bench has its own toolchain. Run these in `bench/web`, with pnpm: `pnpm install`, `pnpm dev`, `pnpm build`, `pnpm lint`, `pnpm format:check`, `pnpm test`. The Postgres integration suite needs Docker and skips without it.
+
+## Repository layout
+
+The repository holds two independent apps:
+
+- **The marketing site** (vortex.dev), at the root. Everything below "Architecture Overview" describes it.
+- **bench** (bench.vortex.dev), in `bench/`: the benchmark results site, its Postgres schema (`bench/migrations/`), its AWS provisioning (`bench/infra/`) and `bench/CONTRACT.md`, the ingest contract with the emitter in the `vortex-data/vortex` monorepo. Start with `bench/README.md` and `bench/AGENTS.md`. It came from the archived `vortex-data/benchmarks-website` repository, which keeps its earlier history.
+
+They share CI policy and nothing else:
+
+- **Toolchain.** bench is still on pnpm, ESLint, Prettier and Next.js 15.5. The root `tsconfig.json` and `biome.json` exclude `bench/`, and `bench/web/postcss.config.mjs` keeps Next.js from picking up the root's Tailwind config.
+- **CI.** `.github/actions/changed-paths` reports which app a change touches. `ci.yml` skips its site jobs on bench-only changes, and `bench-ci.yml` skips on site-only changes. Both gate with `if:`, not `on.paths`, so a skipped required check still passes. Dependency review, the secret scan and REUSE run on every change.
+- **Deploys.** The `vortex` Vercel project builds the site through the git integration, and `scripts/vercel-ignore-build.sh` skips bench-only commits. bench deploys to the `benchmarks-website` Vercel project (Root Directory `bench/web`) from `bench-deploy.yml`, with the Vercel CLI. Schema migrations go through `bench-schema-deploy.yml`, which only runs manually from `main` because the AWS role trusts nothing else.
+
 ## Architecture Overview
 
 This is a Next.js 15 marketing website for Vortex, a columnar file format. The site features:
@@ -50,6 +65,7 @@ The site is optimized for performance with font optimization, analytics integrat
 Section 7 of the Vortex Technical Charter (`src/assets/charter.pdf`) sets the licenses: code is Apache-2.0 and documentation is CC-BY-4.0. `REUSE.toml` maps every file to one of them, and the `reuse` CI job fails on any file it doesn't cover.
 
 - **Code** under `src/`, `scripts/`, `tests/` and `.github/`, plus root config files, is covered by extension. No per-file SPDX header is needed.
+- **bench** source files carry their own SPDX headers: Apache-2.0 for code, CC-BY-4.0 for Markdown. A header wins over `REUSE.toml`, so a new bench Markdown file must say CC-BY-4.0. `REUSE.toml` covers bench's JSON, YAML and `.gitignore` files.
 - **Blog posts** (`src/content/**.mdx`) and Markdown are CC-BY-4.0 automatically.
 - **Images and other assets** are deliberately not covered. Add an annotation for each new one: CC-BY-4.0 if the Vortex contributors made it, or `LicenseRef-Third-Party` with the owner as `SPDX-FileCopyrightText` if someone else owns it (another organization's logo, for example). Never relicense a file the project doesn't own.
 - Run `reuse lint` locally after adding files (`pipx install 'reuse[charset-normalizer]'`).
@@ -83,6 +99,17 @@ Three places must agree, and **Vercel sets the ceiling**: it offers only Node 20
 Keep them in lockstep when bumping. Raising `.nvmrc` alone makes CI validate against a runtime newer than production — APIs added after 24 would pass CI and fail in prod. Node 26 is not deployable until Vercel adds 26.x (it reaches LTS in October 2026); check https://vercel.com/docs/functions/runtimes/node-js/node-js-versions before moving.
 10. **Renovate auto-merge** is patch + minor only via `:automergeStableNonMajor`. Major bumps stay open for human review. The 14-day cooldown is the first gate; CI (lint, build, typecheck, `dependency-review`, `secret-scan`, `bun run verify`, Playwright, Lighthouse) is the second — note `bun audit` is informational and does not hold an auto-merge.
 
+### bench/ (pnpm)
+
+bench is on pnpm, so the Bun layers above don't reach it. Its equivalents:
+
+- **Cooldown:** `minimumReleaseAge: 20160` (14 days, in minutes) in `bench/web/pnpm-workspace.yaml`. Exemptions go in `minimumReleaseAgeExclude` in the same file, as exact `name@version` entries; pnpm rejects version-pinned name patterns, so list each `@next/*` package.
+- **Lifecycle scripts:** pnpm runs none unless `allowBuilds` in the same file allows them.
+- **Deploy CLI:** `bench-deploy.yml` installs an exact Vercel CLI version (`VERCEL_CLI_VERSION`, which Renovate bumps via the `# renovate:` comment), never `vercel@latest`, with `npm install --before` set to 14 days ago, so the whole tree gets the cooldown. That job holds `VERCEL_TOKEN`. It deliberately has no lockfile; see "bench advisories".
+- **Renovate** keeps bench's updates in their own `bench-` branches and doesn't automerge them. Platform automerge waits only for required checks, and `Bench: format, lint, build, test` isn't one yet. Drop `automerge: false` from the bench rule in `renovate.json` once it is.
+- **Node:** `bench-ci.yml` and `bench-deploy.yml` read `.nvmrc`. Keep `@types/node` in `bench/web/package.json` and the `benchmarks-website` Vercel project's Node version on the same major.
+- **Audit:** `bun audit` doesn't cover bench. Run `pnpm audit` in `bench/web`; see "bench advisories" below.
+
 ### Audit advisories
 
 `bun audit` is the source of truth for dependency advisories. State as of 2026-10-28 — 10 advisories, none in the client bundle or server runtime. Nine are dev-only via `@lhci/cli`; one is build-only.
@@ -109,3 +136,12 @@ Keep them in lockstep when bumping. Raising `.nvmrc` alone makes CI validate aga
 **Held back on purpose:** `@types/node` stays on `^24` to match the deployable runtime (see "Node version"); `renovate.json` caps it with `allowedVersions: "<25"` so Renovate stops opening 25.x / 26.x PRs.
 
 The `audit` job in `.github/workflows/ci.yml` runs a bare `bun audit` and never fails CI; the advisories above show in its job summary until their removal triggers land. Merge blocking on advisories is `dependency-review`'s job.
+
+#### bench advisories
+
+`pnpm audit` in `bench/web`. Dependency review reads pnpm lockfiles without telling dev dependencies from runtime ones, so any high advisory anywhere in `bench/web/pnpm-lock.yaml` blocks a PR. State as of 2026-10-28: no high or critical advisories in `bench/web`.
+
+- **Resolved by `overrides` in `bench/web/pnpm-workspace.yaml`:** postcss (next pins 8.4.31 exactly; GHSA-6g55-p6wh-862q, GHSA-r28c-9q8g-f849) and sharp (next accepts 0.34; GHSA-f88m-g3jw-g9cj and two later libvips advisories). Drop each when next's own range reaches the patch.
+- **Resolved in the lockfile:** @grpc/grpc-js, brace-expansion, js-yaml and source-map-js, by refreshing within their parents' ranges. vite is a direct dev dependency (`^8.3.4`): it is vitest's peer, and pnpm kept the vulnerable locked 8.0.16 even with an override.
+- **Cooldown exemptions** (approved on 2026-10-28): `minimumReleaseAgeExclude` in `bench/web/pnpm-workspace.yaml` lists next 15.5.28 with its `@next/*` packages and `eslint-config-next`, and undici 7.30.1. next 15.5.28 fixes GHSA-2464-fhr4-w9xw (critical) and GHSA-p3m5-59mp-jv5r; undici 7.30.1 fixes the dev-only advisories via testcontainers and jsdom. Both were inside the 14-day window when adopted. Each entry is an exact version, so it covers only that release. Remove the list after 2026-10-29 14:18 UTC.
+- **Accepted, the Vercel CLI (64.0.2) in `bench-deploy.yml`:** tar (one critical), undici, path-to-regexp, minimatch, js-yaml, smol-toml, zod and @fastify/busboy. The CLI and its framework builders pin these exactly; fixing undici alone means a 5 → 6 major inside the CLI's HTTP client. It runs only in CI, on our own build output. It is installed without a lockfile, so dependency review never sees it, and these advisories live only here. Re-audit when Renovate bumps `VERCEL_CLI_VERSION`: install it with `npm install --package-lock-only vercel@<version>` in a scratch directory and run `npm audit`.

@@ -2,6 +2,12 @@ name: Lighthouse
 
 on:
   pull_request:
+    # Lighthouse audits the marketing site only. It isn't a required check, so
+    # a workflow-level filter is enough here; ci.yml gates its required job with
+    # the changed-paths action instead.
+    paths-ignore:
+      - 'bench/**'
+      - '.github/workflows/bench-*.yml'
   workflow_dispatch:
 
 permissions:

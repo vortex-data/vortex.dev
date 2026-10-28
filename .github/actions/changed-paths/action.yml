@@ -1,0 +1,67 @@
+name: Changed paths
+description: >-
+  Report which of the repository's two apps a push or pull request touches, so
+  each app's CI can skip work a change can't affect. Run it after a checkout
+  with fetch-depth 2.
+
+# The workflows gate jobs on these outputs with `if:` instead of filtering with
+# `on.<event>.paths`. A required check whose workflow never starts stays
+# pending and blocks the merge, while a job skipped by `if:` reports success.
+
+outputs:
+  site:
+    description: '"true" if anything outside bench/ changed.'
+    value: ${{ steps.classify.outputs.site }}
+  bench:
+    description: '"true" if bench/, a bench workflow, a shared action or .nvmrc changed.'
+    value: ${{ steps.classify.outputs.bench }}
+
+runs:
+  using: composite
+  steps:
+    - id: classify
+      shell: bash
+      env:
+        EVENT_NAME: ${{ github.event_name }}
+        BEFORE: ${{ github.event.before }}
+      run: |
+        set -euo pipefail
+
+        # On pull_request the checkout is GitHub's merge of the PR into its
+        # base, so HEAD^1 is the base tip and the diff is exactly what the PR
+        # changes. On a push to main, HEAD^1 is the previous tip when the push
+        # is a single commit, which it is because main takes only squash
+        # merges. Anything else (a multi-commit push, a manual run) runs
+        # everything.
+        parent="$(git rev-parse -q --verify 'HEAD^1' || true)"
+        base=""
+        if [ "${EVENT_NAME}" = "pull_request" ]; then
+          base="${parent}"
+        elif [ "${EVENT_NAME}" = "push" ] && [ "${parent}" = "${BEFORE}" ]; then
+          base="${parent}"
+        fi
+
+        site=false
+        bench=false
+        if [ -z "${base}" ] || ! files="$(git diff --name-only "${base}" HEAD)"; then
+          echo "Can't tell what changed; running everything."
+          site=true
+          bench=true
+        else
+          while IFS= read -r file; do
+            case "${file}" in
+              "") ;;
+              bench/* | .github/workflows/bench-*) bench=true ;;
+              # Shared by both apps: these actions, and the Node pin that
+              # every workflow reads.
+              .github/actions/* | .nvmrc) site=true; bench=true ;;
+              *) site=true ;;
+            esac
+          done <<< "${files}"
+        fi
+
+        echo "site=${site} bench=${bench}"
+        {
+          echo "site=${site}"
+          echo "bench=${bench}"
+        } >> "${GITHUB_OUTPUT}"
