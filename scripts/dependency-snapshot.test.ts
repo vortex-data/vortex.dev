@@ -9,7 +9,11 @@
  */
 
 import assert from "node:assert/strict";
+import { spawn } from "node:child_process";
+import { createServer } from "node:http";
+import type { AddressInfo } from "node:net";
 import { test } from "node:test";
+import { fileURLToPath } from "node:url";
 import {
   type BunLock,
   buildSnapshot,
@@ -139,27 +143,33 @@ test("buildSnapshot makes one manifest per workspace and encodes scoped names", 
   assert.equal(x?.scope, "runtime");
 });
 
-test("a workspace's own copy of a package wins over the hoisted one", () => {
+test("a workspace's own copy is keyed by its name, not its path", () => {
   const snap = buildSnapshot(
     lockOf(
       {
-        "": { name: "root", dependencies: { b: "^1.0.0" } },
-        app: { name: "app", dependencies: { b: "^2.0.0" } }
+        "": { name: "vortex", dependencies: { zod: "^3.0.0" } },
+        "bench/web": { name: "benchmarks-web", dependencies: { zod: "^4.0.0" } }
       },
       {
-        b: ["b@1.0.0", "", {}, "sha512-b1"],
-        "app/b": ["b@2.0.0", "", {}, "sha512-b2"]
+        zod: ["zod@3.0.0", "", {}, "h"],
+        "benchmarks-web/zod": ["zod@4.0.0", "", {}, "h"],
+        // What a lookup by path would find, if the code used the path.
+        "bench/web/zod": ["zod@9.0.0", "", {}, "h"]
       }
     ),
     META
   );
+  assert.deepEqual(Object.keys(snap.manifests), [
+    "bun.lock (vortex)",
+    "bun.lock (bench/web)"
+  ]);
   assert.deepEqual(
-    Object.keys(snap.manifests["bun.lock (root)"]?.resolved ?? {}),
-    ["pkg:npm/b@1.0.0"]
+    Object.keys(snap.manifests["bun.lock (vortex)"]?.resolved ?? {}),
+    ["pkg:npm/zod@3.0.0"]
   );
   assert.deepEqual(
-    Object.keys(snap.manifests["bun.lock (app)"]?.resolved ?? {}),
-    ["pkg:npm/b@2.0.0"]
+    Object.keys(snap.manifests["bun.lock (bench/web)"]?.resolved ?? {}),
+    ["pkg:npm/zod@4.0.0"]
   );
 });
 
@@ -260,4 +270,140 @@ test("buildSnapshot skips names the lock lacks and packages with no npm purl", (
   const resolved = snap.manifests["bun.lock (w)"]?.resolved ?? {};
   assert.deepEqual(Object.keys(resolved), ["pkg:npm/a@1.0.0"]);
   assert.deepEqual(resolved["pkg:npm/a@1.0.0"]?.dependencies, []);
+});
+
+// The CLI, run as a subprocess against a local stand-in for the GitHub API.
+
+const SCRIPT = fileURLToPath(
+  new URL("./dependency-snapshot.ts", import.meta.url)
+);
+const TOKEN = "token-for-the-local-mock";
+const SUBMIT_ENV = {
+  GITHUB_REPOSITORY: "vortex-data/vortex.dev",
+  GITHUB_TOKEN: TOKEN,
+  SNAPSHOT_SHA: "c".repeat(40),
+  SNAPSHOT_REF: "refs/heads/main",
+  GITHUB_WORKFLOW: "Dependency snapshot",
+  GITHUB_JOB: "snapshot",
+  GITHUB_RUN_ID: "1",
+  SNAPSHOT_RETRY_DELAY_MS: "10"
+};
+
+type Request = { url: string; authorization: string };
+
+/**
+ * Answers the nth request with statuses[n], and the last status once they
+ * run out. Passes the API URL and the requests seen so far to `run`.
+ */
+async function withApi(
+  statuses: number[],
+  run: (apiUrl: string, requests: Request[]) => Promise<void>
+): Promise<void> {
+  const requests: Request[] = [];
+  const server = createServer((req, res) => {
+    requests.push({
+      url: req.url ?? "",
+      authorization: req.headers.authorization ?? ""
+    });
+    const status =
+      statuses[Math.min(requests.length, statuses.length) - 1] ?? 500;
+    req.resume();
+    req.on("end", () => {
+      res.writeHead(status, { connection: "close" });
+      res.end(JSON.stringify(status === 201 ? { id: 1 } : { message: "mock" }));
+    });
+  });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  try {
+    const { port } = server.address() as AddressInfo;
+    await run(`http://127.0.0.1:${port}`, requests);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+}
+
+/** Runs the script with only the given environment, and returns how it ended. */
+function runCli(
+  apiUrl: string
+): Promise<{ code: number | null; output: string }> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, [SCRIPT], {
+      env: {
+        NODE_ENV: "test",
+        PATH: process.env.PATH ?? "",
+        HOME: process.env.HOME ?? "",
+        ...SUBMIT_ENV,
+        GITHUB_API_URL: apiUrl
+      }
+    });
+    let output = "";
+    child.stdout.on("data", (chunk) => {
+      output += chunk;
+    });
+    child.stderr.on("data", (chunk) => {
+      output += chunk;
+    });
+    child.on("error", reject);
+    child.on("close", (code) => resolve({ code, output }));
+  });
+}
+
+test("the CLI submits once to the repository's snapshot endpoint", async () => {
+  await withApi([201], async (apiUrl, requests) => {
+    const { code, output } = await runCli(apiUrl);
+    assert.equal(code, 0, output);
+    assert.deepEqual(requests, [
+      {
+        url: "/repos/vortex-data/vortex.dev/dependency-graph/snapshots",
+        authorization: `Bearer ${TOKEN}`
+      }
+    ]);
+    assert.doesNotMatch(output, /Retrying/);
+  });
+});
+
+test("the CLI retries a 503 once, and succeeds if the retry does", async () => {
+  await withApi([503, 201], async (apiUrl, requests) => {
+    const { code, output } = await runCli(apiUrl);
+    assert.equal(code, 0, output);
+    assert.equal(requests.length, 2);
+    assert.ok(requests.every((r) => r.authorization === `Bearer ${TOKEN}`));
+    assert.match(output, /GitHub answered 503/);
+    assert.match(output, /Retrying once/);
+    assert.ok(!output.includes(TOKEN), "the token must not be logged");
+  });
+});
+
+test("the CLI exits 1 when the retry fails too", async () => {
+  await withApi([503], async (apiUrl, requests) => {
+    const { code, output } = await runCli(apiUrl);
+    assert.equal(code, 1, output);
+    assert.equal(requests.length, 2);
+    assert.ok(!output.includes(TOKEN), "the token must not be logged");
+  });
+});
+
+test("the CLI does not retry a 422", async () => {
+  await withApi([422], async (apiUrl, requests) => {
+    const { code, output } = await runCli(apiUrl);
+    assert.equal(code, 1, output);
+    assert.equal(requests.length, 1);
+    assert.match(output, /GitHub answered 422/);
+    assert.doesNotMatch(output, /Retrying/);
+    assert.ok(!output.includes(TOKEN), "the token must not be logged");
+  });
+});
+
+test("the CLI retries a network error once, then exits 1", async () => {
+  // A port that nothing listens on: bind one, then close it.
+  const probe = createServer();
+  await new Promise<void>((resolve) => probe.listen(0, "127.0.0.1", resolve));
+  const { port } = probe.address() as AddressInfo;
+  await new Promise((resolve) => probe.close(resolve));
+
+  const { code, output } = await runCli(`http://127.0.0.1:${port}`);
+  assert.equal(code, 1, output);
+  assert.match(output, /Request failed/);
+  assert.match(output, /Retrying once/);
+  assert.ok(!output.includes(TOKEN), "the token must not be logged");
 });

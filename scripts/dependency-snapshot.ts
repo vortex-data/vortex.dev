@@ -16,11 +16,13 @@
  *   GITHUB_WORKFLOW, GITHUB_JOB, GITHUB_RUN_ID  identify the run
  *   DRY_RUN=1          print the snapshot and submit nothing; every variable
  *                      above becomes optional
+ *   SNAPSHOT_RETRY_DELAY_MS  wait before the one retry, default 5000
  *
  * Usage:
  *   DRY_RUN=1 bun scripts/dependency-snapshot.ts
  *
- * Exits 1 on anything but a 201 from GitHub.
+ * A network error or a 5xx is retried once. Exits 1 on anything but a 201 from
+ * GitHub, after that retry if there was one.
  */
 
 import { readFile } from "node:fs/promises";
@@ -335,6 +337,30 @@ export function buildSnapshot(lock: BunLock, meta: SnapshotMeta): Snapshot {
   };
 }
 
+/** The wait before the one retry of a failed submission. */
+const RETRY_DELAY_MS = Number(process.env.SNAPSHOT_RETRY_DELAY_MS ?? 5000);
+
+type PostResult = { status: number; body: string };
+
+/** POSTs once. A network error has no status, so it comes back as status 0. */
+async function post(url: string, init: RequestInit): Promise<PostResult> {
+  try {
+    const response = await fetch(url, init);
+    return { status: response.status, body: await response.text() };
+  } catch (err) {
+    return {
+      status: 0,
+      body: err instanceof Error ? err.message : String(err)
+    };
+  }
+}
+
+function describe(result: PostResult): string {
+  return result.status === 0
+    ? `Request failed: ${result.body}`
+    : `GitHub answered ${result.status}: ${result.body}`;
+}
+
 async function main(): Promise<void> {
   const dryRun = process.env.DRY_RUN === "1";
   const env = (name: string, dryRunValue: string): string => {
@@ -375,25 +401,34 @@ async function main(): Promise<void> {
   }
 
   const api = process.env.GITHUB_API_URL ?? "https://api.github.com";
-  const response = await fetch(
-    `${api}/repos/${env("GITHUB_REPOSITORY", "")}/dependency-graph/snapshots`,
-    {
-      method: "POST",
-      headers: {
-        Accept: "application/vnd.github+json",
-        Authorization: `Bearer ${env("GITHUB_TOKEN", "")}`,
-        "Content-Type": "application/json",
-        "User-Agent": DETECTOR.name,
-        "X-GitHub-Api-Version": "2022-11-28"
-      },
-      body: JSON.stringify(snapshot)
-    }
-  );
-  const body = await response.text();
-  if (response.status !== 201) {
-    throw new Error(`GitHub answered ${response.status}: ${body}`);
+  const repository = env("GITHUB_REPOSITORY", "");
+  const url = `${api}/repos/${repository}/dependency-graph/snapshots`;
+  const init: RequestInit = {
+    method: "POST",
+    headers: {
+      Accept: "application/vnd.github+json",
+      Authorization: `Bearer ${env("GITHUB_TOKEN", "")}`,
+      "Content-Type": "application/json",
+      "User-Agent": DETECTOR.name,
+      "X-GitHub-Api-Version": "2022-11-28"
+    },
+    body: JSON.stringify(snapshot)
+  };
+
+  let result = await post(url, init);
+  if (result.status === 0 || result.status >= 500) {
+    // A network error or a 5xx is worth one more try. Anything else, such as
+    // a 401 or a 422, will not change on a second request.
+    console.error(
+      `${describe(result)}. Retrying once in ${RETRY_DELAY_MS} ms.`
+    );
+    await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+    result = await post(url, init);
   }
-  console.error(`Submitted ${snapshot.sha} on ${snapshot.ref}: ${body}`);
+  if (result.status !== 201) {
+    throw new Error(describe(result));
+  }
+  console.error(`Submitted ${snapshot.sha} on ${snapshot.ref}: ${result.body}`);
 }
 
 if (import.meta.main) {
