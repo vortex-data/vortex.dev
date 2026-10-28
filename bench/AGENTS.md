@@ -88,11 +88,12 @@ All in [`web/components/Chart.tsx`](web/components/Chart.tsx):
 ## Local dev
 
 ```bash
+# From the repository root: bench/web is a member of the root Bun workspace.
 # The web app needs BENCH_DB_* env vars for a real database — see web/README.md.
-cd web && pnpm install && pnpm dev
+bun install && bun run --cwd bench/web dev
 
-pnpm test        # vitest unit tests
-pnpm build       # deliberately works without a database, so CI needs no secrets
+bun run --cwd bench/web test    # vitest unit tests
+bun run --cwd bench/web build   # deliberately works without a database, so CI needs no secrets
 ```
 
 For the full env-var contract see [`web/README.md`](web/README.md).

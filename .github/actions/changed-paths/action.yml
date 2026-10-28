@@ -13,7 +13,7 @@ outputs:
     description: '"true" if anything outside bench/ changed.'
     value: ${{ steps.classify.outputs.site }}
   bench:
-    description: '"true" if bench/, a bench workflow, a shared action or .nvmrc changed.'
+    description: '"true" if bench/, a bench workflow, a shared action, .nvmrc or a root workspace file changed.'
     value: ${{ steps.classify.outputs.bench }}
 
 runs:
@@ -55,6 +55,9 @@ runs:
               # Shared by both apps: these actions, and the Node pin that
               # every workflow reads.
               .github/actions/* | .nvmrc) site=true; bench=true ;;
+              # The root files of the Bun workspace that both apps install
+              # and build from.
+              package.json | bun.lock | bunfig.toml | biome.json | tsconfig*.json) site=true; bench=true ;;
               *) site=true ;;
             esac
           done <<< "${files}"

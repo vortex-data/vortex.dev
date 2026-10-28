@@ -8,11 +8,12 @@
 # runs from the repository root and uses the pulled project settings to find
 # the app.
 #
-# Triggers: a production deploy on every push to main that touches bench/; a
-# preview deploy on every same-repo pull request that does, with the preview URL
-# posted back to the PR as a sticky comment; and `workflow_dispatch` for manual
-# preview or production runs. Fork PRs are skipped, since they can't read
-# VERCEL_TOKEN.
+# Triggers: a production deploy on every push to main that touches bench/ or
+# the root install files bench/web builds from (package.json, bun.lock,
+# bunfig.toml); a preview deploy on every same-repo pull request that does, with
+# the preview URL posted back to the PR as a sticky comment; and
+# `workflow_dispatch` for manual preview or production runs. Fork PRs are
+# skipped, since they can't read VERCEL_TOKEN.
 #
 # The job runs in the `bench-production` or `bench-preview` GitHub environment.
 # Each holds VERCEL_TOKEN, a token scoped to the `benchmarks-website` project,
@@ -27,11 +28,17 @@ on:
     branches: [main]
     paths:
       - 'bench/**'
+      - 'package.json'
+      - 'bun.lock'
+      - 'bunfig.toml'
       - '.github/workflows/bench-deploy.yml'
   pull_request:
     branches: [main]
     paths:
       - 'bench/**'
+      - 'package.json'
+      - 'bun.lock'
+      - 'bunfig.toml'
       - '.github/workflows/bench-deploy.yml'
   workflow_dispatch:
     inputs:
@@ -56,10 +63,6 @@ permissions:
 env:
   VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
   VERCEL_PROJECT_ID: ${{ vars.BENCH_VERCEL_PROJECT_ID }}
-  # `vercel build` runs on the runner (not Vercel's builders), so it shells out to
-  # pnpm to install + build bench/web. Keep in lockstep with `packageManager` in
-  # bench/web/package.json.
-  PNPM_VERSION: "11.5.2"
   # renovate: datasource=npm depName=vercel
   VERCEL_CLI_VERSION: "64.0.2"
 
@@ -87,8 +90,6 @@ jobs:
 
       - name: Bench checks
         uses: ./.github/actions/bench-checks
-        with:
-          pnpm-version: ${{ env.PNPM_VERSION }}
 
   deploy:
     name: Build & deploy to Vercel
@@ -117,19 +118,18 @@ jobs:
         with:
           persist-credentials: false
 
-      # `vercel build` below builds ON THE RUNNER (not Vercel's infra), so it shells out
-      # to pnpm to install bench/web's deps and run `next build`. Without pnpm + Node on
-      # PATH it fails with `spawn pnpm ENOENT`. Mirror bench-ci.yml's setup.
-      # pnpm must exist before setup-node so its `cache: pnpm` can resolve the store.
-      - name: Install pnpm
-        run: npm install -g "pnpm@${PNPM_VERSION}"
+      # `vercel build` below builds ON THE RUNNER (not Vercel's infra). It runs
+      # bench/web's install command from vercel.json and `next build`, so Bun and
+      # Node must be on PATH. Mirror the bench-checks setup.
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6  # v2.2.0
+        with:
+          bun-version: 1.4.3
 
       - name: Setup Node
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
         with:
           node-version-file: .nvmrc
-          cache: pnpm
-          cache-dependency-path: bench/web/pnpm-lock.yaml
 
       # An exact version, and `--before` gives the CLI's whole dependency tree
       # the repository's 14-day cooldown, so this job, which holds VERCEL_TOKEN,
@@ -150,6 +150,11 @@ jobs:
           PROD_URL: ${{ vars.BENCH_SITE_BASE_URL }}
         run: |
           [[ "${PROD_URL}" == https://* ]] || { echo "::error::Set BENCH_SITE_BASE_URL to the public HTTPS production URL."; exit 1; }
+
+      # bench/web is a member of the root Bun workspace, so install from the
+      # root: bun.lock is there, and bunfig.toml's cooldown and linker apply.
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
 
       - name: Pull Vercel project settings
         env:

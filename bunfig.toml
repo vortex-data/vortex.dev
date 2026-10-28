@@ -1,6 +1,18 @@
 # Bun configuration. Project-scoped — Bun merges this with $HOME/.bunfig.toml.
 
 [install]
+# Give every package its own resolved dependencies, as pnpm did for bench,
+# instead of one hoisted tree. The site and bench/web each pin their own
+# Next.js, React and TypeScript; in a hoisted tree bench's tools would load
+# the site's copies (typescript-eslint would get TypeScript 7). This is also
+# Bun's default for a workspace.
+linker = "isolated"
+# bench's ESLint config loads its plugins from bench/web, so packages named
+# like ESLint or Prettier also go in the root node_modules, where pnpm's
+# default public-hoist-pattern put them for bench. Drop this when bench stops
+# using ESLint and Prettier.
+publicHoistPattern = ["*eslint*", "*prettier*"]
+
 # Refuse to install package versions younger than 14 days. Mirrors the
 # Renovate minimumReleaseAge in renovate.json so a local `bun install`,
 # `bun add`, `bun update`, or a Vercel build can't pull a freshly
@@ -24,8 +36,10 @@ minimumReleaseAge = 1209600
 # - react / react-dom 19.3.1 (2026-10-14) harden the Server Components transport.
 #   React shipped the change on every supported line at once (19.0.9, 19.1.10,
 #   19.2.9).
+# - undici 7.30.1 (2026-10-15 14:18 UTC) fixes the dev-only advisories that
+#   reach bench through testcontainers and jsdom. Only bench uses undici.
 #
-# Remove all entries after 2026-10-29.
+# Remove all entries after 2026-10-29 14:18 UTC.
 minimumReleaseAgeExcludes = [
   "next",
   "@next/env",
@@ -39,4 +53,5 @@ minimumReleaseAgeExcludes = [
   "@next/swc-win32-x64-msvc",
   "react",
   "react-dom",
+  "undici",
 ]

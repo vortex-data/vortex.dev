@@ -6,11 +6,6 @@ description: >-
   and bench-deploy runs it on the exact commit it deploys. Run it after a
   checkout.
 
-inputs:
-  pnpm-version:
-    description: Keep in lockstep with `packageManager` in bench/web/package.json.
-    required: true
-
 runs:
   using: composite
   steps:
@@ -21,43 +16,39 @@ runs:
         bash -n infra/provision.sh
         python3 -m unittest discover -s infra/tests -v
 
-    # pnpm must exist before setup-node so its `cache: pnpm` can resolve the store.
-    - name: Install pnpm
-      shell: bash
-      env:
-        PNPM_VERSION: ${{ inputs.pnpm-version }}
-      run: npm install -g "pnpm@${PNPM_VERSION}"
+    # bench/web is a member of the root Bun workspace: Bun installs both apps
+    # from the one bun.lock and runs bench's scripts.
+    - name: Setup Bun
+      uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6  # v2.2.0
+      with:
+        bun-version: 1.4.3
 
+    # Next.js, Vitest and the deployment tests run on Node.
     - name: Setup Node
       uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
       with:
         # The repository-wide Node pin (see CLAUDE.md "Node version"). Keep
         # @types/node in bench/web/package.json on the same major.
         node-version-file: .nvmrc
-        cache: pnpm
-        cache-dependency-path: bench/web/pnpm-lock.yaml
 
+    # At the root, where bun.lock and bunfig.toml live. This installs both apps.
     - name: Install dependencies
       shell: bash
-      working-directory: bench/web
-      run: pnpm install --frozen-lockfile
+      run: bun install --frozen-lockfile
 
     - name: Format check
       shell: bash
-      working-directory: bench/web
-      run: pnpm format:check
+      run: bun run --cwd bench/web format:check
 
     - name: Lint
       shell: bash
-      working-directory: bench/web
-      run: pnpm lint
+      run: bun run --cwd bench/web lint
 
     # `next build` must succeed without a reachable database (every page and route
     # is request-rendered), so no BENCH_DB_* env vars are provided here on purpose.
     - name: Build
       shell: bash
-      working-directory: bench/web
-      run: pnpm build
+      run: bun run --cwd bench/web build
 
     # testcontainers self-skips the Postgres integration suite when no Docker daemon
     # is available (a local-dev convenience); in CI that would silently drop the only
@@ -91,5 +82,4 @@ runs:
 
     - name: Test
       shell: bash
-      working-directory: bench/web
-      run: pnpm test
+      run: bun run --cwd bench/web test

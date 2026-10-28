@@ -7,14 +7,17 @@ v4 frontend that replaced both the v2 Vite/React SPA and the v3 Axum server — 
 
 ## Local development
 
-```bash
-pnpm install
-pnpm dev          # needs BENCH_DB_* pointing at a database (see below)
+This app is a member of the repository's Bun workspace. Install and run it from the repository
+root:
 
-pnpm format:check # prettier
-pnpm lint         # eslint
-pnpm build        # next build; deliberately works WITHOUT a database
-pnpm test         # vitest; the Postgres integration suite needs Docker and uv
+```bash
+bun install                           # installs the whole workspace from the root bun.lock
+bun run --cwd bench/web dev           # needs BENCH_DB_* pointing at a database (see below)
+
+bun run --cwd bench/web format:check  # prettier
+bun run --cwd bench/web lint          # eslint
+bun run --cwd bench/web build         # next build; deliberately works WITHOUT a database
+bun run --cwd bench/web test          # vitest; the Postgres integration suite needs Docker and uv
 ```
 
 `next build` never touches the database: every page and route is request-rendered

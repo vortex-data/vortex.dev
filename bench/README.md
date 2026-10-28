@@ -97,12 +97,13 @@ retired or being decommissioned, and everything about them lives in
 ## Quick start
 
 ```bash
-# The web app needs BENCH_DB_* env vars for a real database — see web/README.md.
-cd web && pnpm install && pnpm dev
+# From the repository root. The web app needs BENCH_DB_* env vars for a real database — see
+# web/README.md.
+bun install && bun run --cwd bench/web dev
 ```
 
-`pnpm build` deliberately works without a database, so CI can build with no secrets. See
-[`AGENTS.md`](AGENTS.md) for the full local-dev and env-var contract.
+`bun run --cwd bench/web build` deliberately works without a database, so CI can build with no
+secrets. See [`AGENTS.md`](AGENTS.md) for the full local-dev and env-var contract.
 
 ## Status
 

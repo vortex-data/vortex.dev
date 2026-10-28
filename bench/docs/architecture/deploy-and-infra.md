@@ -115,8 +115,10 @@ verify build SHA + read paths + CDN HIT (bounded retries)
   environments), with **git integration turned off**. Bench deploys never touch
   the `vortex` project that serves the marketing site.
 - The build runs **on the GitHub runner** (not Vercel's builders), so the workflow
-  installs pnpm + Node to match `web/package.json` before `vercel build`; the
-  prebuilt output is then uploaded, eliminating a build race.
+  sets up Bun and Node and runs `bun install --frozen-lockfile` at the repository
+  root (`bench/web` is a member of the root Bun workspace) before `vercel build`,
+  which runs the same install command from `web/vercel.json`; the prebuilt output
+  is then uploaded, eliminating a build race.
 - `main` **is** production — there is no staging gate. The per-PR CI
   (including a testcontainer migration test) is the gate; a merge to `main`
   ships to the v4 production domain after the deploy workflow checks the same commit.

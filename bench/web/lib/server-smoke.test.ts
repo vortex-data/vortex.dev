@@ -19,7 +19,7 @@ import { dockerAvailable, seedChartFixture, startBenchContainer } from './test-h
 // markup tests.
 //
 // Skips when Docker is unavailable OR when no `.next` production build exists
-// (`pnpm build` first); both are environment, not code, conditions.
+// (`bun run --cwd bench/web build` first); both are environment, not code, conditions.
 
 const WEB_ROOT = fileURLToPath(new URL('..', import.meta.url));
 const BUILD_PRESENT = existsSync(`${WEB_ROOT}/.next/BUILD_ID`);
