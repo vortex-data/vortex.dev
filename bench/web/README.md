@@ -55,12 +55,9 @@ warmth:
   precedence, so the CDN caches the rendered pages while browsers still revalidate every load.
 
 Verify on a live deployment with `curl -sI <url> | grep -i x-vercel-cache` (expect `MISS` then
-`HIT` within the five-minute fresh window). The deploy workflow runs this probe automatically after
-each deploy.
-When deployment protection returns 401/403 on a deployment URL the probe skips with a notice;
-production avoids that blind spot automatically once `BENCHMARKS_WEB_PROD_URL` is set (the probe
-then targets the public domain, where a 401/403 fails the run instead), so the manual check is
-only needed for protected previews and for production while the var is unset. One deliberate
+`HIT` within the five-minute fresh window). No workflow runs this check, so run it by hand after a
+deploy that changes caching. Deployment URLs sit behind Vercel Authentication, so check a preview
+through `vercel curl` and production on the public domain. One deliberate
 divergence from the API routes: the `vercel.json` header rules apply to every response status,
 so an unknown `/chart/:slug` 404 follows the HTML page rule: five minutes fresh and then eligible
 for Vercel's one-day stale-while-revalidate window. That is acceptable for opaque, never-linked
