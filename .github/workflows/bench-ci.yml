@@ -111,5 +111,9 @@ jobs:
         working-directory: bench
         run: uv run --no-project --with 'psycopg[binary]>=3.2' python -m unittest discover -s scripts/tests -v
 
+      - name: Test deployment verification
+        working-directory: bench
+        run: node --test scripts/tests/verify-web-deploy.test.mjs
+
       - name: Test
         run: pnpm test

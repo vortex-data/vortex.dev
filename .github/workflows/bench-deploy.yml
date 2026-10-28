@@ -42,11 +42,11 @@ on:
         default: preview
 
 concurrency:
-  # Include the event name so a manual workflow_dispatch (e.g. a preview deploy) on
-  # main does NOT land in the same group as — and thus cancel — an in-flight
-  # push-triggered production deploy on the same ref.
-  group: bench-deploy-${{ github.event_name }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Push and manual production runs share one queue and never cancel an active
+  # run, so each promotion finishes its verification before the next starts. A
+  # newer preview run can cancel an older preview of the same event and ref.
+  group: ${{ (github.event_name == 'push' || inputs.environment == 'production') && 'bench-deploy-production' || format('bench-deploy-preview-{0}-{1}', github.event_name, github.ref) }}
+  cancel-in-progress: ${{ github.event_name != 'push' && inputs.environment != 'production' }}
 
 permissions:
   contents: read
@@ -116,6 +116,14 @@ jobs:
             --before="$(date -u -d '14 days ago' +%Y-%m-%dT%H:%M:%SZ)" \
             "vercel@${VERCEL_CLI_VERSION}"
 
+      # Production verification probes the public domain, so it has to be set.
+      - name: Require a public production verification URL
+        if: env.TARGET == 'production'
+        env:
+          PROD_URL: ${{ vars.BENCH_SITE_BASE_URL }}
+        run: |
+          [[ "${PROD_URL}" == https://* ]] || { echo "::error::Set BENCH_SITE_BASE_URL to the public HTTPS production URL."; exit 1; }
+
       - name: Pull Vercel project settings
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
@@ -124,6 +132,8 @@ jobs:
       - name: Build
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          # next.config.js embeds this, so /api/health reports the deployed commit.
+          BENCH_BUILD_SHA: ${{ github.sha }}
         run: |
           set -Eeuo pipefail
           if [ "${TARGET}" = "production" ]; then
@@ -155,3 +165,21 @@ jobs:
         with:
           header: bench-preview
           message: "Bench preview for `${{ github.event.pull_request.head.sha }}`: ${{ steps.deploy.outputs.url }}"
+
+      # Check the build commit, the read paths and CDN caching. Production is
+      # probed on the public domain, and any failure fails the run. Previews sit
+      # behind Vercel Authentication, so their verification reports as blocked.
+      - name: Verify deployed build and read paths
+        id: verify
+        timeout-minutes: 4
+        env:
+          DEPLOY_URL: ${{ steps.deploy.outputs.url }}
+          PROD_URL: ${{ vars.BENCH_SITE_BASE_URL }}
+          EXPECTED_SHA: ${{ github.sha }}
+        run: |
+          set -Eeuo pipefail
+          if [ "${TARGET}" = "production" ]; then
+            node bench/scripts/verify-web-deploy.mjs "${PROD_URL}" "${EXPECTED_SHA}" production
+          else
+            node bench/scripts/verify-web-deploy.mjs "${DEPLOY_URL}" "${EXPECTED_SHA}" preview
+          fi
