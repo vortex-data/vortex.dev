@@ -3,13 +3,16 @@ import WordmarkLight from "@/assets/vortex_wordmark.svg";
 import WordmarkDark from "@/assets/vortex_wordmark_dark_theme.svg";
 import { StarIcon } from "@/components/icons";
 import { MarkGithub } from "@/components/mark-github";
+import { ThemeSwitch } from "@/components/theme-switch";
 import { formatStars, getStarCount, REPO, REPO_URL } from "@/lib/github";
 import { HeaderNav } from "./header-nav";
 
 /**
  * The design system's Header card, site variant: the wordmark, the nav and
- * the GitHub button. The system's CSS shows the wordmark that suits the
- * theme, and below 640px moves the nav to a second row.
+ * the GitHub button, then on blog pages the ThemeSwitch, last in the end
+ * group as the card's docs variant places it. The system's CSS shows the
+ * wordmark that suits the theme, and below 800px moves the nav to a second
+ * row.
  */
 export async function Header() {
   const stars = await getStarCount();
@@ -47,7 +50,7 @@ export async function Header() {
           }
         >
           <MarkGithub />
-          <span>{REPO}</span>
+          <span className="site-header-repo">{REPO}</span>
           {stars !== null && (
             <span className="vx-btn-count">
               <StarIcon />
@@ -55,6 +58,7 @@ export async function Header() {
             </span>
           )}
         </a>
+        <ThemeSwitch />
       </div>
     </header>
   );

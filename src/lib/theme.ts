@@ -16,6 +16,44 @@ export const THEME = {
 
 export type ThemeKey = keyof typeof THEME;
 
+/** The ThemeSwitch card's three choices, in its order. */
+export const THEME_CHOICES = ["light", "dark", "system"] as const;
+
+export type ThemeChoice = (typeof THEME_CHOICES)[number];
+
+const THEME_KEY = "vx-theme";
+
+/** Whether a page carries the ThemeSwitch: the blog index and its posts. */
+export function isThemeable(pathname: string | null): boolean {
+  return (
+    pathname !== null && (pathname === "/blog" || pathname.startsWith("/blog/"))
+  );
+}
+
+/** The stored choice, or Dark when it is unset, unknown or blocked. */
+export function readChoice(
+  storage: Pick<Storage, "getItem"> | null
+): ThemeChoice {
+  try {
+    const v = storage?.getItem(THEME_KEY);
+    return THEME_CHOICES.find((c) => c === v) ?? "dark";
+  } catch {
+    return "dark";
+  }
+}
+
+/** Stores the choice. Blocked storage only costs the memory of it. */
+export function saveChoice(
+  storage: Pick<Storage, "setItem"> | null,
+  choice: ThemeChoice
+): void {
+  try {
+    storage?.setItem(THEME_KEY, choice);
+  } catch {
+    // The theme still changes for this page.
+  }
+}
+
 /**
  * Which theme a page renders in. The blog carries the design system's
  * ThemeSwitch and follows the reader's choice in `localStorage["vx-theme"]`
@@ -26,8 +64,7 @@ export function themeFor(
   stored: string | null,
   prefersDark: boolean
 ): "light" | "dark" {
-  const themeable = pathname === "/blog" || pathname.startsWith("/blog/");
-  if (!themeable) return "dark";
+  if (!isThemeable(pathname)) return "dark";
   if (stored === "light") return "light";
   if (stored === "system") return prefersDark ? "dark" : "light";
   return "dark";
@@ -45,6 +82,28 @@ export interface ThemeWindow {
 }
 
 /**
+ * The ThemeSwitch's click: stores `choice` and sets `<html data-theme>` from
+ * it at once. `applyRouteTheme`'s listener reads the stored choice again
+ * when the OS changes, so System keeps following the OS afterwards.
+ */
+export function chooseTheme(
+  pathname: string,
+  choice: ThemeChoice,
+  win: {
+    localStorage: Pick<Storage, "setItem">;
+    matchMedia(query: string): { readonly matches: boolean };
+    document: { documentElement: { dataset: DOMStringMap } };
+  }
+): void {
+  saveChoice(win.localStorage, choice);
+  win.document.documentElement.dataset.theme = themeFor(
+    pathname,
+    choice,
+    win.matchMedia("(prefers-color-scheme: dark)").matches
+  );
+}
+
+/**
  * Sets `<html data-theme>` for `pathname` and keeps it in step with the OS
  * while the page stays open, which a blog set to "system" needs. Returns a
  * function that stops listening.
@@ -55,15 +114,9 @@ export function applyRouteTheme(
 ): () => void {
   const media = win.matchMedia("(prefers-color-scheme: dark)");
   const apply = () => {
-    let stored: string | null = null;
-    try {
-      stored = win.localStorage.getItem("vx-theme");
-    } catch {
-      // Blocked storage means the default theme.
-    }
     win.document.documentElement.dataset.theme = themeFor(
       pathname,
-      stored,
+      readChoice(win.localStorage),
       media.matches
     );
   };

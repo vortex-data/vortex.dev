@@ -87,9 +87,16 @@ test.describe("home", () => {
   }) => {
     await page.goto("/");
     const block = page.locator(".vx-tabs");
+    // The Spark tab is left out when the Maven lookup fails, so take the
+    // tabs the page rendered.
+    const tabs = page
+      .getByRole("tablist", { name: "Install Vortex" })
+      .getByRole("tab");
+    const count = await tabs.count();
+    expect(count).toBeGreaterThan(1);
     const heights = new Set<number>();
-    for (const name of ["Rust", "Python", "DuckDB", "Spark", "CLI"]) {
-      await page.getByRole("tab", { name }).click();
+    for (let i = 0; i < count; i++) {
+      await tabs.nth(i).click();
       heights.add((await block.boundingBox())?.height ?? 0);
     }
     expect([...heights]).toHaveLength(1);
@@ -129,10 +136,8 @@ test.describe("home", () => {
     } else {
       await expect(host.locator('img[src*="vortex_symbol"]')).toBeAttached();
     }
-    expect(
-      mode,
-      "mounting the mark threw; the page fell back to the symbol"
-    ).not.toBe("error");
+    const error = await host.getAttribute("data-mark-error");
+    expect(mode, `mounting the mark threw: ${error}`).not.toBe("error");
   });
 });
 
@@ -249,6 +254,60 @@ test.describe("header", () => {
     );
     await expect(github).toBeVisible();
     await expect(github).toContainText("vortex-data/vortex");
+  });
+});
+
+test.describe("theme switch", () => {
+  test("sets data-theme on the blog, and the choice survives a reload", async ({
+    page
+  }) => {
+    await page.goto("/blog");
+    const html = page.locator("html");
+    const choice = (name: string) =>
+      page.getByRole("group", { name: "Theme" }).getByRole("button", { name });
+    await expect(html).toHaveAttribute("data-theme", "dark");
+    await expect(choice("Dark")).toHaveAttribute("aria-pressed", "true");
+    await choice("Light").click();
+    await expect(html).toHaveAttribute("data-theme", "light");
+    await expect(choice("Light")).toHaveAttribute("aria-pressed", "true");
+    await expect(choice("Dark")).toHaveAttribute("aria-pressed", "false");
+    await page.reload();
+    await expect(html).toHaveAttribute("data-theme", "light");
+    await expect(choice("Light")).toHaveAttribute("aria-pressed", "true");
+  });
+
+  test("System follows the OS while the page stays open", async ({ page }) => {
+    await page.emulateMedia({ colorScheme: "light" });
+    await page.goto("/blog");
+    const html = page.locator("html");
+    await page
+      .getByRole("group", { name: "Theme" })
+      .getByRole("button", { name: "System" })
+      .click();
+    await expect(html).toHaveAttribute("data-theme", "light");
+    await page.emulateMedia({ colorScheme: "dark" });
+    await expect(html).toHaveAttribute("data-theme", "dark");
+  });
+
+  test("the homepage has no switch and stays Dark with Light stored", async ({
+    page
+  }) => {
+    await page.addInitScript(() => localStorage.setItem("vx-theme", "light"));
+    await page.goto("/");
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+    await expect(page.getByRole("group", { name: "Theme" })).toHaveCount(0);
+  });
+
+  test("a client navigation from a Light blog to the homepage turns Dark", async ({
+    page
+  }) => {
+    await page.addInitScript(() => localStorage.setItem("vx-theme", "light"));
+    await page.goto("/blog");
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+    await page.getByRole("link", { name: "Vortex home" }).click();
+    await expect(page).toHaveURL(/\/$/);
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+    await expect(page.getByRole("group", { name: "Theme" })).toHaveCount(0);
   });
 });
 

@@ -68,6 +68,38 @@ body {
   flex: 1 0 auto;
 }
 
+/* The Header card has no layout for the ThemeSwitch beside the site's nav
+   and GitHub button, which adds about 104px to the end group. So a blog
+   page's header needs about 900px on one row, where the card's other pages
+   need 790px, and below 920px it takes the card's two-row layout. */
+@media (max-width: 920px) {
+  .vx-header.has-nav:has(.vx-theme-switch) {
+    flex-wrap: wrap;
+    height: auto;
+    padding-block: var(--space-12);
+    row-gap: var(--space-12);
+  }
+  .vx-header.has-nav:has(.vx-theme-switch) .vx-header-nav {
+    order: 3;
+    width: 100%;
+    margin-left: 0;
+    gap: var(--space-20);
+    overflow-x: auto;
+  }
+  .vx-header.has-nav:has(.vx-theme-switch) .vx-header-end {
+    margin-left: auto;
+  }
+}
+
+/* On a phone the wordmark, the GitHub button and the switch need about 430px
+   on one row, so below 480px the button keeps its mark and drops the
+   repository name. Its aria-label still names it. */
+@media (max-width: 480px) {
+  .vx-header-end:has(.vx-theme-switch) .site-header-repo {
+    display: none;
+  }
+}
+
 @layer utilities {
   .dashed-all {
     @apply relative after:absolute after:inset-0;
