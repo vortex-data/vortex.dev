@@ -16,7 +16,7 @@
     "@aws-sdk/rds-signer": "^3.1063.0",
     "chart.js": "^4.5.1",
     "chartjs-plugin-zoom": "^2.2.0",
-    "next": "15.5.27",
+    "next": "15.5.28",
     "pg": "^8.21.0",
     "react": "19.2.7",
     "react-dom": "19.2.7"
@@ -29,7 +29,7 @@
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "eslint": "^9.39.0",
-    "eslint-config-next": "15.5.27",
+    "eslint-config-next": "15.5.28",
     "jsdom": "^29.1.1",
     "prettier": "^3.8.0",
     "typescript": "^5.9.0",

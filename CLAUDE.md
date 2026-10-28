@@ -103,7 +103,7 @@ Keep them in lockstep when bumping. Raising `.nvmrc` alone makes CI validate aga
 
 bench is on pnpm, so the Bun layers above don't reach it. Its equivalents:
 
-- **Cooldown:** `minimumReleaseAge: 20160` (14 days, in minutes) in `bench/web/pnpm-workspace.yaml`.
+- **Cooldown:** `minimumReleaseAge: 20160` (14 days, in minutes) in `bench/web/pnpm-workspace.yaml`. Exemptions go in `minimumReleaseAgeExclude` in the same file, as exact `name@version` entries; pnpm rejects version-pinned name patterns, so list each `@next/*` package.
 - **Lifecycle scripts:** pnpm runs none unless `allowBuilds` in the same file allows them.
 - **Deploy CLI:** `bench-deploy.yml` installs an exact Vercel CLI version (`VERCEL_CLI_VERSION`, which Renovate bumps via the `# renovate:` comment), never `vercel@latest`, with `npm install --before` set to 14 days ago, so the whole tree gets the cooldown. That job holds `VERCEL_TOKEN`. It deliberately has no lockfile; see "bench advisories".
 - **Renovate** keeps bench's updates in their own `bench-` branches and doesn't automerge them. Platform automerge waits only for required checks, and `Bench: format, lint, build, test` isn't one yet. Drop `automerge: false` from the bench rule in `renovate.json` once it is.
@@ -139,10 +139,9 @@ The `audit` job in `.github/workflows/ci.yml` runs a bare `bun audit` and never 
 
 #### bench advisories
 
-`pnpm audit` in `bench/web`. Dependency review reads pnpm lockfiles without telling dev dependencies from runtime ones, so any high advisory anywhere in `bench/web/pnpm-lock.yaml` blocks a PR. State as of 2026-10-28, when bench was imported:
+`pnpm audit` in `bench/web`. Dependency review reads pnpm lockfiles without telling dev dependencies from runtime ones, so any high advisory anywhere in `bench/web/pnpm-lock.yaml` blocks a PR. State as of 2026-10-28: no high or critical advisories in `bench/web`.
 
 - **Resolved by `overrides` in `bench/web/pnpm-workspace.yaml`:** postcss (next pins 8.4.31 exactly; GHSA-6g55-p6wh-862q, GHSA-r28c-9q8g-f849) and sharp (next accepts 0.34; GHSA-f88m-g3jw-g9cj and two later libvips advisories). Drop each when next's own range reaches the patch.
 - **Resolved in the lockfile:** @grpc/grpc-js, brace-expansion, js-yaml and source-map-js, by refreshing within their parents' ranges. vite is a direct dev dependency (`^8.3.4`): it is vitest's peer, and pnpm kept the vulnerable locked 8.0.16 even with an override.
-- **Runtime, pending the cooldown:** next 15.5.27 still has GHSA-2464-fhr4-w9xw (critical, Image Optimization API with SVG) and GHSA-p3m5-59mp-jv5r (high, Server Actions DoS). Both are fixed in 15.5.28, which clears the 14-day window at 2026-10-28 17:36 UTC; bump `next` and `eslint-config-next` then. bench doesn't use `next/image`, Vercel serves `/_next/image` itself, and bench has no Server Actions.
-- **Dev-only, pending the cooldown:** undici 7.30.0 (via `@testcontainers/postgresql` and jsdom) needs 7.30.1, which clears the window at 2026-10-29 14:18 UTC. Refresh it then with `pnpm update --depth 100 undici`.
+- **Cooldown exemptions** (approved on 2026-10-28): `minimumReleaseAgeExclude` in `bench/web/pnpm-workspace.yaml` lists next 15.5.28 with its `@next/*` packages and `eslint-config-next`, and undici 7.30.1. next 15.5.28 fixes GHSA-2464-fhr4-w9xw (critical) and GHSA-p3m5-59mp-jv5r; undici 7.30.1 fixes the dev-only advisories via testcontainers and jsdom. Both were inside the 14-day window when adopted. Each entry is an exact version, so it covers only that release. Remove the list after 2026-10-29 14:18 UTC.
 - **Accepted, the Vercel CLI (64.0.2) in `bench-deploy.yml`:** tar (one critical), undici, path-to-regexp, minimatch, js-yaml, smol-toml, zod and @fastify/busboy. The CLI and its framework builders pin these exactly; fixing undici alone means a 5 → 6 major inside the CLI's HTTP client. It runs only in CI, on our own build output. It is installed without a lockfile, so dependency review never sees it, and these advisories live only here. Re-audit when Renovate bumps `VERCEL_CLI_VERSION`: install it with `npm install --package-lock-only vercel@<version>` in a scratch directory and run `npm audit`.
