@@ -17,11 +17,12 @@ Provisioned by [`infra/provision.sh`](../../infra/provision.sh) in **us-east-1**
 
 | Resource | What | Notes |
 |---|---|---|
-| RDS Postgres `vortex-bench-prod` | The v4 database (`vortex_bench`) | Postgres 16, `db.r7g.large` (16 GiB — upsized from the bootstrap default so the working set fits in cache; see [performance.md](performance.md#nall-is-io-bound-the-answer-was-ram-not-downsampling)), IAM auth enabled, managed master password in Secrets Manager (auto-rotated), publicly accessible, 35-day backups (PITR). |
-| RDS Proxy `vortex-bench-proxy` | Provisioned for pooling, but **not in the live read path** | VPC-internal (`IAMAuth=REQUIRED`, TLS required), so it is unreachable from both off-VPC CI runners and Vercel's off-VPC serverless functions; the reader connects directly to the instance endpoint (see [read-path.md](read-path.md#database-connection)). A managed pooler is revisited only if connection exhaustion surfaces. |
+| RDS Postgres `vortex-bench-prod` | The v4 database (`vortex_bench`) | Postgres 16, `db.r7g.large` (16 GiB — upsized from the bootstrap default so the working set fits in cache; see [performance.md](performance.md#nall-is-io-bound-the-answer-was-ram-not-downsampling)), IAM auth enabled, managed master password in Secrets Manager (auto-rotated), publicly accessible, 35-day backups (PITR), deletion protection, storage autoscaling to 100 GiB, automatic minor upgrades. |
+| Backup replica in `us-west-2` | Off-region copy of the automated backups | Snapshots and WAL, 14 days of point-in-time recovery. Restore procedure: [`infra/RESTORE.md`](../../infra/RESTORE.md). |
+| SNS topic `vortex-bench-alarms` | Alarms and RDS events | Three CloudWatch alarms (free storage, CPU, connections) and the `failure` / `low storage` RDS events, sent to incident.io. See [`infra/README.md`](../../infra/README.md#alarms). |
 | Security group `vortex-bench-sg` | Inbound 5432 from `0.0.0.0/0` | The network is open on purpose — the **IAM token signature (or the `bench_read` password) is the gate**, not a network ACL. |
 | GitHub OIDC provider | `token.actions.githubusercontent.com` | Account-scoped; lets GitHub Actions assume roles with no long-lived keys. |
-| `GitHubBenchmarkSchemaRole` | Role the schema-deploy workflow assumes | Trust scoped to specific repo + branches; permission is `rds-db:connect` as the `migrator` DB user on the **instance** (not the proxy). |
+| `GitHubBenchmarkSchemaRole` | Role the schema-deploy workflow assumes | Trust scoped to specific repo + branches; permission is `rds-db:connect` as the `migrator` DB user on the **instance**. |
 | `GitHubBenchmarkIngestRole` | Role the v4 ingest dual-write assumes | `rds-db:connect` as `bench_ingest`. Separated from schema DDL. Not yet wired to the live emitter. |
 
 ### Why these shapes

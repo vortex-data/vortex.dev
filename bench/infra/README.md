@@ -228,9 +228,16 @@ The RDS event subscription `vortex-bench-prod-events` forwards `failure` and
 ## Upgrades
 
 Automatic minor version upgrades are on. RDS applies a new Postgres 16.x
-release, and any pending OS update, in the weekly maintenance window, Saturday
-09:58–10:28 UTC. Single-AZ means the site and ingest are down for a few minutes
-while it restarts. To apply a pending action earlier:
+release in the weekly maintenance window, Saturday 09:58–10:28 UTC. Single-AZ
+means the site and ingest are down while it restarts: about 30 seconds for the
+16.4 to 16.15 upgrade on 2026-10-28. An ingest job that connects during the
+restart fails, because `scripts/post-ingest.py` in `vortex-data/vortex` does
+not retry.
+
+OS updates (`system-update`) are separate. A minor engine upgrade does not apply
+them, and RDS applies an optional one only when someone opts in. The OS update
+on 2026-10-28 restarted the instance twice and took about 3 minutes. To apply a
+pending action:
 
 ```sh
 aws rds describe-pending-maintenance-actions \

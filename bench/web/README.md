@@ -84,9 +84,9 @@ One-time operator setup:
    `bench-production` to `main`.
 3. Configure `BENCH_DB_*` on the Vercel project (Production and Preview environments). Two open
    wiring choices are deliberately left to this step, per environment:
-   - **Endpoint**: the RDS Proxy (`vortex-bench-proxy.proxy-*.us-east-1.rds.amazonaws.com`) is
-     VPC-internal, so plain Vercel functions cannot reach it; without VPC connectivity for the
-     Vercel project, use the public RDS instance endpoint (the same endpoint CI writers use).
+   - **Endpoint**: the public RDS instance endpoint (the same endpoint CI writers use). There is
+     no RDS Proxy: the one provisioned earlier was VPC-internal, so Vercel functions could not
+     reach it, and it was deleted on 2026-10-28.
    - **Auth**: a static `BENCH_DB_PASSWORD` for the read-only `bench_read` role. This is the
      currently supported mode: migration `005_read_role.sql` creates `bench_read` with **NO
      `rds_iam` grant** (and idempotently revokes it if a pre-existing role carries it), because
