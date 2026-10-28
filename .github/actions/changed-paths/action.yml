@@ -13,7 +13,7 @@ outputs:
     description: '"true" if anything outside bench/ changed.'
     value: ${{ steps.classify.outputs.site }}
   bench:
-    description: '"true" if bench/, a bench workflow or a shared action changed.'
+    description: '"true" if bench/, a bench workflow, a shared action or .nvmrc changed.'
     value: ${{ steps.classify.outputs.bench }}
 
 runs:
@@ -52,7 +52,9 @@ runs:
             case "${file}" in
               "") ;;
               bench/* | .github/workflows/bench-*) bench=true ;;
-              .github/actions/*) site=true; bench=true ;;
+              # Shared by both apps: these actions, and the Node pin that
+              # every workflow reads.
+              .github/actions/* | .nvmrc) site=true; bench=true ;;
               *) site=true ;;
             esac
           done <<< "${files}"
