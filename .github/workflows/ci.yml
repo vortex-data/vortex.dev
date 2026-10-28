@@ -19,8 +19,30 @@ permissions:
   contents: read
 
 jobs:
+  # Which app a change touches. The marketing-site jobs below skip on changes
+  # that only touch bench/, which has its own CI in bench-ci.yml. The
+  # repository-wide checks (dependency review, secret scan, REUSE) always run.
+  changes:
+    name: Detect changed paths
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      site: ${{ steps.paths.outputs.site }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - id: paths
+        uses: ./.github/actions/changed-paths
+
   ci:
     name: Lint, build, verify
+    needs: changes
+    # Skipped, which counts as passing for this required check, when only
+    # bench/ changed. If the path check itself fails, run anyway rather than
+    # skip a required check.
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.site == 'true') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -154,6 +176,8 @@ jobs:
   # gate to keep green, suppressing advisories only hides information.
   audit:
     name: Dependency audit (non-blocking)
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.site == 'true') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
