@@ -396,6 +396,32 @@ test.describe("theme switch", () => {
   });
 });
 
+test.describe("404", () => {
+  test("an unknown path returns 404 with the headline, the links and the mark", async ({
+    page
+  }) => {
+    const res = await page.goto("/no-such-page");
+    expect(res?.status()).toBe(404);
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Page not found." })
+    ).toBeVisible();
+    const main = page.locator("main");
+    for (const [name, href] of [
+      ["Go to the homepage", "/"],
+      ["Read the docs", "https://docs.vortex.dev"],
+      ["Read the blog", "/blog"]
+    ] as const)
+      await expect(main.getByRole("link", { name })).toHaveAttribute(
+        "href",
+        href
+      );
+    // The AsciiMark mounts once the page is idle, as on the homepage.
+    const host = main.locator("[data-mark-mode]");
+    await expect(host).toHaveCount(1, { timeout: 15000 });
+    expect(await host.getAttribute("data-mark-mode")).not.toBe("error");
+  });
+});
+
 test.describe("footer", () => {
   test("shows the LF Projects policies link and the Charter", async ({
     page
@@ -416,6 +442,15 @@ test.describe("mobile layout", () => {
 
   test("home has no horizontal scroll", async ({ page }) => {
     await page.goto("/");
+    const { scrollWidth, clientWidth } = await page.evaluate(() => ({
+      scrollWidth: document.documentElement.scrollWidth,
+      clientWidth: document.documentElement.clientWidth
+    }));
+    expect(scrollWidth).toBeLessThanOrEqual(clientWidth);
+  });
+
+  test("404 has no horizontal scroll", async ({ page }) => {
+    await page.goto("/no-such-page");
     const { scrollWidth, clientWidth } = await page.evaluate(() => ({
       scrollWidth: document.documentElement.scrollWidth,
       clientWidth: document.documentElement.clientWidth

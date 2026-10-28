@@ -1,0 +1,98 @@
+/* The 404 and error pages. The design system has no card for them, so they
+   take the homepage hero's grid (page.module.css) and its parts: the
+   Eyebrow, the headline, a sentence and buttons, with the AsciiMark beside
+   them on the 404. No bands follow, so the text sits in the middle of the
+   height that the header and footer leave. */
+
+/* The root layout's main fills the screen; here it hands that height on to
+   the page, as on the homepage. */
+:global(.site-main):has(> .page) {
+  display: flex;
+  flex-direction: column;
+}
+
+.page {
+  flex: 1 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 760px);
+  align-content: center;
+  gap: var(--space-48);
+  padding: var(--space-32) var(--page-pad);
+}
+
+/* The 404's text and mark share the hero's two columns, and its one row
+   takes the page's full height, so the mark's cell has a height to fill. */
+.page.withMark {
+  grid-template-columns: minmax(0, 760px) minmax(320px, 1fr);
+  align-content: normal;
+}
+
+.text {
+  display: grid;
+  align-content: center;
+  justify-items: start;
+  gap: var(--space-24);
+}
+
+.text h1 {
+  margin: 0;
+  color: var(--ink);
+}
+
+.sentence {
+  margin: 0;
+  color: var(--ink-body);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-12);
+}
+
+/* The mark scales with its host's height, and loses its sides in a host
+   taller than about its width, so the host is never taller than 9/10 of
+   the cell's width, as on the homepage. */
+.mark {
+  position: relative;
+  min-height: 0;
+  container-type: size;
+}
+
+.markHost {
+  position: absolute;
+  inset: 0;
+  height: min(100cqh, 90cqw);
+  margin: auto 0;
+}
+
+/* The mark is drawn in the base greys for a Dark ground. A 404 under /blog
+   follows the reader's theme, so in Light it leaves the mark out. */
+:global([data-theme="light"]) .mark {
+  display: none;
+}
+
+/* The digest that the server logged with the error, for a bug report. */
+.digest {
+  margin: 0;
+}
+
+/* Below 1100px the hero stacks, as on the homepage: the text, then the mark
+   in a band of its own, and the two sit in the middle of the page. */
+@media (max-width: 1099px) {
+  .page.withMark {
+    grid-template-columns: minmax(0, 1fr);
+    align-content: center;
+    gap: var(--space-24);
+  }
+
+  .mark {
+    height: 320px;
+  }
+}
+
+@media (max-width: 640px) {
+  .mark {
+    height: 240px;
+  }
+}

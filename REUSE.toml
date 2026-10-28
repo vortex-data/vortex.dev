@@ -50,8 +50,6 @@ path = [
   "src/assets/vortex_symbol_dark_theme.svg",
   "src/assets/vortex_wordmark.svg",
   "src/assets/vortex_wordmark_dark_theme.svg",
-  "public/logo.glb",
-  "public/404.glb",
   "bench/public/Vortex_Black_NoBG.svg",
   "bench/public/Vortex_White_NoBG.svg",
   "bench/web/public/Vortex_Black_NoBG.svg",

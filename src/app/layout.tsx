@@ -70,7 +70,7 @@ export default async function RootLayout({
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
       </head>
-      <body className="antialiased">
+      <body>
         <RouteTheme />
         {process.env.NEXT_PUBLIC_PLAUSIBLE_SCRIPT_SRC ? (
           <PlausibleProvider>{content}</PlausibleProvider>
