@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: Copyright the Vortex contributors
+// SPDX-FileCopyrightText: Copyright Google LLC
+// SPDX-License-Identifier: Apache-2.0
+
 // Material Symbols Sharp, outline, weight 400 (Apache-2.0): the Vortex design
 // system's icon set. Each path is copied from google/material-design-icons at
 // commit bd8cb85, `symbols/web/<name>/materialsymbolssharp/<name>_24px.svg`.
