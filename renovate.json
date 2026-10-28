@@ -63,6 +63,14 @@
       "matchManagers": ["github-actions"],
       "groupName": "GitHub Actions",
       "addLabels": ["github-actions"]
+    },
+    {
+      "description": "Keep bench's updates apart from the marketing site's, and don't automerge them while bench CI is not a required check: platform automerge waits only for required checks.",
+      "matchFileNames": ["bench/**"],
+      "additionalBranchPrefix": "bench-",
+      "commitMessageSuffix": "(bench)",
+      "addLabels": ["bench"],
+      "automerge": false
     }
   ]
 }
