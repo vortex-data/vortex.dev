@@ -16,7 +16,7 @@ Single one-shot script. Provisions, in order:
 1. The default-VPC subnet group covering every default subnet in `us-east-1` (`vortex-bench-subnet-group`).
 2. A security group `vortex-bench-sg` with inbound TCP 5432 from `0.0.0.0/0` — IAM auth is the gate, not network ACLs.
 3. A DB parameter group `vortex-bench-pg16` (family `postgres16`) that sets `work_mem` to 32 MiB.
-4. An RDS Postgres instance `vortex-bench-prod` on `db.t4g.micro`, Postgres 16, 20 GiB GP3 storage that autoscales to 100 GiB, IAM auth enabled, RDS-managed master password (auto-rotated, stored in Secrets Manager), publicly accessible, single-AZ, deletion protection, automatic minor upgrades, 35-day backup window. On an instance that already exists, the script sets deletion protection, the storage ceiling, the backup window and automatic minor upgrades; these apply without a restart.
+4. An RDS Postgres instance `vortex-bench-prod` on `db.t4g.micro`, Postgres 16, 20 GiB GP3 storage that autoscales to 100 GiB, IAM auth enabled, RDS-managed master password (auto-rotated, stored in Secrets Manager), publicly accessible, single-AZ, deletion protection, automatic minor upgrades, 35-day backup window. On an instance that already exists, the script sets deletion protection, the storage ceiling, the backup window and automatic minor upgrades; these apply without a restart. It does not move an existing instance to another parameter group or change an existing backup replication, because a parameter group needs a restart and a new replication starts a new off-region copy. It prints the commands instead.
 5. Replication of the automated backups (daily snapshots and WAL) to `us-west-2`, with 14 days of point-in-time recovery there. See [Backups](#backups).
 6. An SNS topic `vortex-bench-alarms`, three CloudWatch alarms and an RDS event subscription. See [Alarms](#alarms).
 7. The GitHub OIDC provider `token.actions.githubusercontent.com` (account-scoped — created once if not present).
@@ -71,7 +71,7 @@ DB_ENGINE_VERSION=17.2 \
 ./provision.sh
 ```
 
-The backup, storage and alarm settings use the same pattern: `DB_MAX_ALLOCATED_STORAGE_GB` (100), `DB_BACKUP_RETENTION_DAYS` (35), `BACKUP_REPLICA_REGION` (`us-west-2`), `BACKUP_REPLICA_RETENTION_DAYS` (14), `ALARM_TOPIC_NAME` and `EVENT_SUBSCRIPTION_NAME`. `DB_PARAMETER_GROUP_NAME` names a `postgres16` group, so a different major version also needs a different parameter group family.
+The backup, storage and alarm settings use the same pattern: `DB_MAX_ALLOCATED_STORAGE_GB` (100), `DB_BACKUP_RETENTION_DAYS` (35), `BACKUP_REPLICA_REGION` (`us-west-2`), `BACKUP_REPLICA_RETENTION_DAYS` (14), `ALARM_TOPIC_NAME` and `EVENT_SUBSCRIPTION_NAME`. The parameter group family follows the major version in `DB_ENGINE_VERSION`, and `DB_PARAMETER_GROUP_NAME` defaults to `vortex-bench-pg<major>`.
 
 ## After provisioning — set GitHub Actions repo vars
 
@@ -283,6 +283,7 @@ aws rds modify-db-instance --db-instance-identifier vortex-bench-prod \
   --no-deletion-protection --apply-immediately
 aws rds delete-db-instance --db-instance-identifier vortex-bench-prod \
   --final-db-snapshot-identifier vortex-bench-prod-final --delete-automated-backups
+aws rds wait db-instance-deleted --db-instance-identifier vortex-bench-prod
 aws rds delete-db-parameter-group --db-parameter-group-name vortex-bench-pg16
 aws iam delete-role-policy --role-name GitHubBenchmarkSchemaRole --policy-name rds-db-connect-migrator
 aws iam delete-role --role-name GitHubBenchmarkSchemaRole

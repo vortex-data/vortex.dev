@@ -34,12 +34,20 @@ aws rds describe-db-instance-automated-backups --region us-east-1 \
 
 ## 2. Restore to a new instance
 
+Set the region and the name of the new instance. The commands in steps 2, 3 and
+6 use them.
+
+```sh
+REGION=us-east-1               # us-west-2 if us-east-1 is down
+TARGET=vortex-bench-restore    # vortex-bench-prod for a restore in us-west-2
+```
+
 From us-east-1:
 
 ```sh
-aws rds restore-db-instance-to-point-in-time --region us-east-1 \
+aws rds restore-db-instance-to-point-in-time --region "$REGION" \
   --source-db-instance-identifier vortex-bench-prod \
-  --target-db-instance-identifier vortex-bench-restore \
+  --target-db-instance-identifier "$TARGET" \
   --restore-time 2026-10-28T16:00:00Z \
   --db-instance-class db.r7g.large \
   --db-subnet-group-name vortex-bench-subnet-group \
@@ -48,8 +56,8 @@ aws rds restore-db-instance-to-point-in-time --region us-east-1 \
   --publicly-accessible --no-multi-az \
   --enable-iam-database-authentication \
   --tags Key=Project,Value=vortex-benchmarks
-aws rds wait db-instance-available --region us-east-1 \
-  --db-instance-identifier vortex-bench-restore
+aws rds wait db-instance-available --region "$REGION" \
+  --db-instance-identifier "$TARGET"
 ```
 
 Use `--use-latest-restorable-time` instead of `--restore-time` for the newest
@@ -90,9 +98,10 @@ From us-west-2, if us-east-1 is down:
      --parameters "ParameterName=work_mem,ParameterValue=32768,ApplyMethod=immediate"
    ```
 
-3. Restore with `--region us-west-2`, `--vpc-security-group-ids $SG`, and
+3. Set `REGION=us-west-2` and `TARGET=vortex-bench-prod`. Restore with
+   `--vpc-security-group-ids $SG` and
    `--source-db-instance-automated-backups-arn <arn>` in place of
-   `--source-db-instance-identifier`. Name the target `vortex-bench-prod`.
+   `--source-db-instance-identifier`.
 
 A restore takes about 10 minutes for this database. After that, the first read
 of each block is slow, because RDS loads it from S3 on first access: a full
@@ -112,17 +121,18 @@ can make a token; an administrator can.
 ```sh
 curl -fsSL https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem \
   -o /tmp/rds-global-bundle.pem
-export PGHOST=$(aws rds describe-db-instances --db-instance-identifier vortex-bench-restore \
-  --query 'DBInstances[0].Endpoint.Address' --output text)
+export PGHOST=$(aws rds describe-db-instances --region "$REGION" \
+  --db-instance-identifier "$TARGET" --query 'DBInstances[0].Endpoint.Address' --output text)
 export PGPORT=5432 PGDATABASE=vortex_bench PGUSER=postgres
 export PGSSLMODE=verify-full PGSSLROOTCERT=/tmp/rds-global-bundle.pem
-PGPASSWORD=$(aws rds generate-db-auth-token --hostname "$PGHOST" --port 5432 \
-  --username postgres) || exit 1
+PGPASSWORD=$(aws rds generate-db-auth-token --region "$REGION" --hostname "$PGHOST" \
+  --port 5432 --username postgres) || exit 1
 export PGPASSWORD
 psql -c 'SELECT 1'
 ```
 
-The token is valid for 15 minutes. Make a new one when a new connection fails.
+The token is signed for `$REGION` and is valid for 15 minutes. Make a new one
+when a new connection fails.
 
 ## 4. Check the data
 
@@ -162,7 +172,7 @@ hostname comes from the name, so Vercel and the GitHub variables need no change.
    aws rds modify-db-instance --db-instance-identifier vortex-bench-prod \
      --new-db-instance-identifier vortex-bench-old --apply-immediately
    aws rds wait db-instance-available --db-instance-identifier vortex-bench-old
-   aws rds modify-db-instance --db-instance-identifier vortex-bench-restore \
+   aws rds modify-db-instance --db-instance-identifier "$TARGET" \
      --new-db-instance-identifier vortex-bench-prod --apply-immediately
    aws rds wait db-instance-available --db-instance-identifier vortex-bench-prod
    ```
@@ -188,10 +198,10 @@ the backup replica must be in a different region from the instance.
 ## 6. Clean up a test restore
 
 ```sh
-aws rds delete-db-instance --db-instance-identifier vortex-bench-restore \
+aws rds delete-db-instance --region "$REGION" --db-instance-identifier "$TARGET" \
   --skip-final-snapshot --delete-automated-backups
-aws rds wait db-instance-deleted --db-instance-identifier vortex-bench-restore
-aws ec2 delete-security-group --group-id <temporary-security-group-id>
+aws rds wait db-instance-deleted --region "$REGION" --db-instance-identifier "$TARGET"
+aws ec2 delete-security-group --region "$REGION" --group-id <temporary-security-group-id>
 ```
 
 ## Restore from a `pg_dump`

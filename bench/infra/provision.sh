@@ -70,7 +70,9 @@ readonly DB_NAME="${DB_NAME:-vortex_bench}"
 # this default applies only to a fresh provision. See `.big-plans/ct__bench-v4-loadall-scope.md`.
 readonly DB_INSTANCE_CLASS="${DB_INSTANCE_CLASS:-db.t4g.micro}"
 readonly DB_ENGINE_VERSION="${DB_ENGINE_VERSION:-16.15}"
-readonly DB_PARAMETER_GROUP_NAME="${DB_PARAMETER_GROUP_NAME:-vortex-bench-pg16}"
+# The parameter group family follows the engine's major version (postgres16, postgres17, ...).
+readonly DB_PARAMETER_GROUP_FAMILY="postgres${DB_ENGINE_VERSION%%.*}"
+readonly DB_PARAMETER_GROUP_NAME="${DB_PARAMETER_GROUP_NAME:-vortex-bench-pg${DB_ENGINE_VERSION%%.*}}"
 readonly DB_ALLOCATED_STORAGE_GB="${DB_ALLOCATED_STORAGE_GB:-20}"
 # Storage autoscaling ceiling. RDS grows the disk when free space falls below 10%.
 readonly DB_MAX_ALLOCATED_STORAGE_GB="${DB_MAX_ALLOCATED_STORAGE_GB:-100}"
@@ -251,14 +253,17 @@ ensure_security_group() {
 ensure_parameter_group() {
     log "Step 4a: DB parameter group ${DB_PARAMETER_GROUP_NAME}."
 
-    if aws rds describe-db-parameter-groups --db-parameter-group-name "$DB_PARAMETER_GROUP_NAME" \
-            >/dev/null 2>&1; then
+    local family
+    if family=$(aws rds describe-db-parameter-groups --db-parameter-group-name "$DB_PARAMETER_GROUP_NAME" \
+            --query 'DBParameterGroups[0].DBParameterGroupFamily' --output text 2>/dev/null); then
+        [ "$family" = "$DB_PARAMETER_GROUP_FAMILY" ] \
+            || die "${DB_PARAMETER_GROUP_NAME} is a ${family} group, but DB_ENGINE_VERSION=${DB_ENGINE_VERSION} needs ${DB_PARAMETER_GROUP_FAMILY}."
         log "  exists; re-applying parameters."
     else
         aws rds create-db-parameter-group \
             --db-parameter-group-name "$DB_PARAMETER_GROUP_NAME" \
-            --db-parameter-group-family postgres16 \
-            --description "vortex-benchmarks Postgres 16 parameters" \
+            --db-parameter-group-family "$DB_PARAMETER_GROUP_FAMILY" \
+            --description "vortex-benchmarks ${DB_PARAMETER_GROUP_FAMILY} parameters" \
             --tags "Key=${TAG_KEY_PROJECT},Value=${TAG_VAL_PROJECT}" \
                    "Key=${TAG_KEY_OWNER},Value=${TAG_VAL_OWNER}" \
             >/dev/null
@@ -321,6 +326,18 @@ ensure_rds_instance() {
         >/dev/null
     log "  deletion protection, storage autoscaling (${DB_MAX_ALLOCATED_STORAGE_GB} GiB), ${DB_BACKUP_RETENTION_DAYS}-day backups and automatic minor upgrades set."
 
+    # A new parameter group takes effect only after a reboot, so the script
+    # reports a different group and leaves the move and the reboot to the operator.
+    local current_pg
+    current_pg=$(aws rds describe-db-instances \
+        --db-instance-identifier "$DB_INSTANCE_IDENTIFIER" \
+        --query 'DBInstances[0].DBParameterGroups[0].DBParameterGroupName' --output text)
+    if [ "$current_pg" != "$DB_PARAMETER_GROUP_NAME" ]; then
+        warn "the instance uses parameter group ${current_pg}, not ${DB_PARAMETER_GROUP_NAME}. To move it (this restarts the instance):"
+        warn "  aws rds modify-db-instance --db-instance-identifier ${DB_INSTANCE_IDENTIFIER} --db-parameter-group-name ${DB_PARAMETER_GROUP_NAME} --apply-immediately"
+        warn "  aws rds reboot-db-instance --db-instance-identifier ${DB_INSTANCE_IDENTIFIER}"
+    fi
+
     DB_ENDPOINT=$(aws rds describe-db-instances \
         --db-instance-identifier "$DB_INSTANCE_IDENTIFIER" \
         --query 'DBInstances[0].Endpoint.Address' --output text)
@@ -346,12 +363,26 @@ ensure_backup_replication() {
 
     # An unencrypted source needs no KMS key. If the instance is ever encrypted,
     # pass --kms-key-id with a key in the destination region.
-    local replications
-    replications=$(aws rds describe-db-instances \
+    local replica_arn replica_region replica_days
+    replica_arn=$(aws rds describe-db-instances \
         --db-instance-identifier "$DB_INSTANCE_IDENTIFIER" \
-        --query 'length(DBInstances[0].DBInstanceAutomatedBackupsReplications || `[]`)' --output text)
-    if [ "$replications" -gt 0 ]; then
-        log "  already replicating; skipping."
+        --query 'DBInstances[0].DBInstanceAutomatedBackupsReplications[0].DBInstanceAutomatedBackupsArn' \
+        --output text)
+    if [ "$replica_arn" != "None" ]; then
+        replica_region=$(printf '%s' "$replica_arn" | cut -d: -f4)
+        replica_days=$(aws rds describe-db-instance-automated-backups --region "$replica_region" \
+            --db-instance-automated-backups-arn "$replica_arn" \
+            --query 'DBInstanceAutomatedBackups[0].BackupRetentionPeriod' --output text)
+        if [ "$replica_region" = "$BACKUP_REPLICA_REGION" ] \
+                && [ "$replica_days" = "$BACKUP_REPLICA_RETENTION_DAYS" ]; then
+            log "  already replicating to ${replica_region} for ${replica_days} days; skipping."
+        else
+            # RDS cannot change a replication in place, and stopping it leaves a
+            # gap in the off-region copy, so the script leaves that to the operator.
+            warn "replicating to ${replica_region} for ${replica_days} days, not ${BACKUP_REPLICA_REGION} for ${BACKUP_REPLICA_RETENTION_DAYS}."
+            warn "  To change it, stop the replication and re-run. The replicated backups stay until their retention ends."
+            warn "  aws rds stop-db-instance-automated-backups-replication --region ${replica_region} --source-db-instance-arn ${DB_INSTANCE_ARN}"
+        fi
         return 0
     fi
 
@@ -413,9 +444,23 @@ ensure_alarms() {
         "${DB_INSTANCE_IDENTIFIER} has had over 300 connections for 15 minutes."
     log "  CloudWatch alarms applied (free storage, CPU, connections)."
 
-    if aws rds describe-event-subscriptions --subscription-name "$EVENT_SUBSCRIPTION_NAME" \
-            >/dev/null 2>&1; then
-        log "  RDS event subscription exists; skipping."
+    local source_ids
+    if source_ids=$(aws rds describe-event-subscriptions --subscription-name "$EVENT_SUBSCRIPTION_NAME" \
+            --query 'EventSubscriptionsList[0].SourceIdsList' --output text 2>/dev/null); then
+        # Re-assert the topic, categories and state, and add the instance if missing.
+        aws rds modify-event-subscription \
+            --subscription-name "$EVENT_SUBSCRIPTION_NAME" \
+            --sns-topic-arn "$ALARM_TOPIC_ARN" \
+            --source-type db-instance \
+            --event-categories failure "low storage" \
+            --enabled \
+            >/dev/null
+        if ! printf '%s\n' "$source_ids" | tr '\t' '\n' | grep -qxF "$DB_INSTANCE_IDENTIFIER"; then
+            aws rds add-source-identifier-to-subscription \
+                --subscription-name "$EVENT_SUBSCRIPTION_NAME" \
+                --source-identifier "$DB_INSTANCE_IDENTIFIER" >/dev/null
+        fi
+        log "  RDS event subscription updated (failure, low storage)."
     else
         aws rds create-event-subscription \
             --subscription-name "$EVENT_SUBSCRIPTION_NAME" \
