@@ -14,3 +14,29 @@
 #
 # Units: seconds. 14 * 86400 = 1209600.
 minimumReleaseAge = 1209600
+
+# Security fixes newer than the 14-day window. Each entry exempts the whole
+# package, so remove it once its pinned version is older than 14 days.
+#
+# - next 16.4.1 (2026-10-15) fixes GHSA-2464-fhr4-w9xw and GHSA-673q-mjm6-r5xr
+#   (critical RCE) and GHSA-p3m5-59mp-jv5r (high DoS). Next pins its @next/*
+#   packages to the same version, so they need the same exemption.
+# - react / react-dom 19.3.1 (2026-10-14) harden the Server Components transport.
+#   React shipped the change on every supported line at once (19.0.9, 19.1.10,
+#   19.2.9).
+#
+# Remove all entries after 2026-10-29.
+minimumReleaseAgeExcludes = [
+  "next",
+  "@next/env",
+  "@next/swc-darwin-arm64",
+  "@next/swc-darwin-x64",
+  "@next/swc-linux-arm64-gnu",
+  "@next/swc-linux-arm64-musl",
+  "@next/swc-linux-x64-gnu",
+  "@next/swc-linux-x64-musl",
+  "@next/swc-win32-arm64-msvc",
+  "@next/swc-win32-x64-msvc",
+  "react",
+  "react-dom",
+]
