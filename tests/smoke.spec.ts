@@ -206,6 +206,24 @@ test.describe("blog index", () => {
       page.locator(`a[href="/blog/${seedPostSlug}"]`).first()
     ).toBeVisible();
   });
+
+  test("lists the posts as BlogIndex rows, with the feeds and the newsletter", async ({
+    page
+  }) => {
+    test.skip(!seedPostSlug, "no published posts");
+    await page.goto("/blog");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Blog");
+    const feeds = page.getByRole("navigation", { name: "Feeds" });
+    for (const href of ["/rss/feed.xml", "/rss/feed.atom", "/rss/feed.json"])
+      await expect(feeds.locator(`a[href="${href}"]`)).toBeVisible();
+    const row = page.locator(".vx-posts a.vx-post-row").first();
+    await expect(row.locator(".vx-post-row-title")).toBeVisible();
+    await expect(row.locator(".vx-post-row-meta time")).toHaveText(
+      /^\d{1,2} \w{3} \d{4}$/
+    );
+    await expect(page.getByLabel("Email address")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Subscribe" })).toBeVisible();
+  });
 });
 
 test.describe("blog post", () => {
@@ -213,6 +231,73 @@ test.describe("blog post", () => {
     test.skip(!seedPostSlug, "no published posts");
     await page.goto(`/blog/${seedPostSlug}`);
     await expect(page.locator("h1").first()).toBeVisible();
+  });
+
+  test("shows one h1, the byline and the More posts list", async ({ page }) => {
+    test.skip(!seedPostSlug, "no published posts");
+    await page.goto(`/blog/${seedPostSlug}`);
+    const article = page.locator("article.vx-article");
+    // The post's own top headings move to h2, so the title is the one h1.
+    await expect(page.locator("h1")).toHaveCount(1);
+    await expect(article.locator("h1")).toBeVisible();
+    await expect(article.locator(".vx-article-byline")).toHaveText(
+      /^\d{1,2} \w{3} \d{4} · .+ · \d+ min read$/
+    );
+    const more = article.locator(".vx-article-more");
+    await expect(
+      more.getByRole("heading", { name: "More posts" })
+    ).toBeVisible();
+    const rows = more.locator("a.vx-post-row");
+    const count = await rows.count();
+    expect(count).toBeGreaterThan(0);
+    expect(count).toBeLessThanOrEqual(3);
+    await expect(more.locator(`a[href="/blog/${seedPostSlug}"]`)).toHaveCount(
+      0
+    );
+    await expect(
+      page.getByRole("link", { name: "Back to blog" })
+    ).toHaveAttribute("href", "/blog");
+  });
+
+  test("code blocks take the CodeBlock card and the syntax tokens", async ({
+    page
+  }) => {
+    test.skip(!seedPostSlug, "no published posts");
+    await page.goto(`/blog/${seedPostSlug}`);
+    const block = page.locator("figure.vx-code").first();
+    await expect(block.locator(".vx-code-head .vx-label")).not.toBeEmpty();
+    await expect(
+      block.getByRole("button", { name: "Copy code" })
+    ).toBeVisible();
+    await expect(block.locator("pre.vx-code-pre")).toBeVisible();
+    // Every token takes its colour from a syntax-* token, so code follows
+    // the theme.
+    const colours = await page
+      .locator("figure.vx-code [data-line] span[style]")
+      .evaluateAll((spans) => spans.map((s) => s.getAttribute("style")));
+    expect(colours.length).toBeGreaterThan(0);
+    for (const c of colours) expect(c).toMatch(/var\(--syntax-[a-z]+\)/);
+  });
+
+  test("a code block's copy button writes its code", async ({
+    page,
+    context,
+    browserName
+  }) => {
+    test.skip(!seedPostSlug, "no published posts");
+    test.skip(
+      browserName !== "chromium",
+      "clipboard permissions are Chromium's"
+    );
+    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+    await page.goto(`/blog/${seedPostSlug}`);
+    const block = page.locator("figure.vx-code").first();
+    await block.getByRole("button", { name: "Copy code" }).click();
+    await expect(block.getByRole("status")).toHaveText("Copied");
+    const code = await block.locator("pre").evaluate((pre) => pre.textContent);
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
+      code
+    );
   });
 
   test("rehype-pretty-code syntax highlighting is rendered", async ({

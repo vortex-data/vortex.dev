@@ -112,7 +112,7 @@ bench is on pnpm, so the Bun layers above don't reach it. Its equivalents:
 
 ### Audit advisories
 
-`bun audit` is the source of truth for dependency advisories. State as of 2026-10-28 — 10 advisories, none in the client bundle or server runtime. Nine are dev-only via `@lhci/cli`; one is build-only.
+`bun audit` is the source of truth for dependency advisories. State as of 2026-10-29 — 9 advisories, none in the client bundle or server runtime, all dev-only via `@lhci/cli`.
 
 **Resolved by an `overrides` entry:**
 
@@ -121,7 +121,6 @@ bench is on pnpm, so the Bun layers above don't reach it. Its equivalents:
 **Accepted — fix exists but is inside the 14-day cooldown.** These clear on their own: Renovate's `lockFileMaintenance` (or a manual `bun update`) picks up the patched version once it is 14 days old, because each parent's range already admits it.
 
 - **body-parser `<1.20.9`** (GHSA-27r3-jxmh-p828, high DoS via trailing bytes after a compressed body) and **qs `<=6.16.0`** (GHSA-6pq8-jhm2-2vcw, moderate DoS in `stringify` with `arrayFormat: 'comma'`). Path: `@lhci/cli > express > body-parser > qs`. Express backs `lhci server`, which we never run (`lighthouserc.cjs` uploads to temporary public storage), so no request ever reaches body-parser. 1.20.9 clears the window on 2026-11-06; qs 6.16.2 on 2026-11-11. Drop these entries once `bun audit` stops reporting them.
-- **postcss-selector-parser `<6.1.5`** (GHSA-rj75-hqrm-r3gf, moderate quadratic-time parsing). Path: `@tailwindcss/typography > postcss-selector-parser@6.0.10` (an exact pin, so lockfile maintenance cannot fix it). Build-time only: it parses the selectors in our own stylesheets, never user input. Once 6.1.5 is 14 days old (2026-11-03), add `overrides["postcss-selector-parser"] = "^6.1.5"` (same major) unless `@tailwindcss/typography` has shipped a release that bumps it.
 
 **Accepted — upstream-blocked, every path is via `@lhci/cli@0.15.1`, which is dev-only and runs in CI against its own controlled inputs:**
 
@@ -130,6 +129,8 @@ bench is on pnpm, so the Bun layers above don't reach it. Its equivalents:
 - **basic-ftp `<=6.2.0`** (GHSA-c475-qrg2-pj4r, high quadratic-time directory-listing parser). Path: `@lhci/cli > proxy-agent > pac-proxy-agent > get-uri > basic-ftp@5.3.1`. Only the 6.x line is patched and get-uri declares `basic-ftp@^5.0.2`, so the fix needs a 5 → 6 major. basic-ftp runs only for `ftp://` proxy or PAC URLs, and CI configures none. Drop this entry when get-uri moves to basic-ftp 6.
 - **tmp `<0.2.6`** (GHSA-ph9p-34f9-6g65, high path traversal via unsanitized prefix/postfix) and **tmp `<=0.2.3`** (GHSA-52f5-9888-hmc6, low symlink write via the `dir` param). `@lhci/cli` pulls `tmp@0.1.0` and `tmp@0.0.33`. Overriding to `^0.2.6` crosses tmp's 0.1 → 0.2 API break (the sync/callback surface changed) inside a tool we cannot test beyond running it, so the override is not worth the risk for a CI-only dev dep. Neither traversal scenario applies: nothing passes user input to `tmp`'s prefix, postfix, or `dir`. Drop this entry when `@lhci/cli` ships a release with patched transitives.
 - **uuid `<11.1.1`** (GHSA-w5hq-g745-h8pq, moderate missing buffer bounds in v3/v5/v6 when `buf` is provided). Single path, `@lhci/cli > uuid@8.3.2`. The vulnerable code (v3/v5/v6 called with an explicit `buf`) is not reached. Drop this entry when `@lhci/cli` bumps uuid.
+
+**Cleared, for the record:** postcss-selector-parser `<6.1.5` (GHSA-rj75-hqrm-r3gf) went with `@tailwindcss/typography`, its only parent, when the blog moved to the design system's prose styles and dropped the plugin.
 
 **Cooldown exemptions.** `bunfig.toml` → `install.minimumReleaseAgeExcludes` lists `next`, its `@next/*` platform packages, `react` and `react-dom`. Next 16.4.1 fixes two critical RCEs (GHSA-2464-fhr4-w9xw, GHSA-673q-mjm6-r5xr) and a high DoS (GHSA-p3m5-59mp-jv5r), but was 13 days old when adopted. React 19.3.1 hardens the Server Components transport. An exemption covers every future version of the package, not only the one adopted, so remove the whole list after 2026-10-29, when both versions are past the window.
 

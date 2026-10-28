@@ -24,7 +24,6 @@
     "test:e2e:install": "playwright install --with-deps chromium webkit"
   },
   "dependencies": {
-    "@tailwindcss/typography": "^0.5.20",
     "@vercel/analytics": "^2.0.1",
     "feed": "^6.0.0",
     "next": "16.4.1",

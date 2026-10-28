@@ -1,7 +1,6 @@
 @import "tailwindcss";
 @import "../styles/vortex-tokens.css";
 @import "../styles/vortex.css";
-@plugin "@tailwindcss/typography";
 
 /* The design system's Dark ground. src/lib/theme.ts mirrors it (scripts/verify.ts). */
 :root {
@@ -100,121 +99,116 @@ body {
   }
 }
 
-@layer utilities {
-  .dashed-all {
-    @apply relative after:absolute after:inset-0;
-    /* Bottom dash */
-    @apply after:bg-[linear-gradient(to_right,white_12px,transparent_4px)] after:bg-bottom after:bg-[length:16px_1px] after:bg-repeat-x;
-    /* Top dash */
-    @apply after:bg-[linear-gradient(to_right,white_12px,transparent_4px)_top] after:bg-[length:16px_1px] after:bg-repeat-x;
-    /* Right dash */
-    @apply after:bg-[linear-gradient(to_bottom,white_12px,transparent_4px)_right] after:bg-[length:1px_16px] after:bg-repeat-y;
-    /* Left dash */
-    @apply after:bg-[linear-gradient(to_bottom,white_12px,transparent_4px)_left] after:bg-[length:1px_16px] after:bg-repeat-y;
-  }
+/* ------------------------------------------------------------------ blog
+   The blog's page frame, and the parts the design system has no card for. */
 
-  .dashed-bottom {
-    @apply relative after:absolute after:left-0 after:right-0 after:bottom-0 after:h-px after:bg-[length:16px_1px] after:bg-repeat-x after:bg-[linear-gradient(to_right,white_12px,transparent_4px)];
-  }
+/* One centred column for the index and the posts, as wide as the Article
+   card (68ch of 17px Geist and its padding), so the list and a post share
+   their edges. */
+.blog-page {
+  max-width: calc(68ch + 2 * var(--space-48) + 2 * var(--page-pad));
+  margin-inline: auto;
+  padding: var(--space-48) var(--page-pad) var(--space-64);
+  font-size: 17px;
+}
 
-  .dashed-top {
-    @apply relative before:absolute before:left-0 before:right-0 before:top-0 before:h-px before:bg-[length:16px_1px] before:bg-repeat-x before:bg-[linear-gradient(to_right,white_12px,transparent_4px)];
-  }
-
-  .dashed-right {
-    @apply relative after:absolute after:top-0 after:bottom-0 after:right-0 after:w-px after:bg-[length:1px_16px] after:bg-repeat-y after:bg-[linear-gradient(to_bottom,white_12px,transparent_4px)];
-  }
-
-  .dashed-left {
-    @apply relative before:absolute before:top-0 before:bottom-0 before:left-0 before:w-px before:bg-[length:1px_16px] before:bg-repeat-y before:bg-[linear-gradient(to_bottom,white_12px,transparent_4px)];
+@media (max-width: 640px) {
+  .blog-page {
+    padding-block: var(--space-24) var(--space-48);
   }
 }
 
-/* Override prose bullets - outside layer for higher specificity */
-.prose.prose-grey :where(ul > li)::marker {
-  color: var(--color-spiral-grey);
+.blog-back {
+  margin-bottom: var(--space-16);
 }
 
-.prose.prose-grey blockquote {
-  border-left-color: var(--color-spiral-grey-dark);
+/* The byline's date and reading time each stay on one line. */
+.blog-nowrap {
+  white-space: nowrap;
 }
 
-.prose.prose-grey blockquote p::before,
-.prose.prose-grey blockquote p::after {
-  content: none;
+/* A number keeps its unit on its line, and a table too wide for a phone
+   scrolls inside its vx-table-wrap instead. */
+.vx-prose .is-num {
+  white-space: nowrap;
 }
 
-/* Custom prose styles for blog content */
-@layer components {
-  .prose-grey {
-    @apply prose-invert;
-  }
+.blog-empty {
+  margin: var(--space-24) 0 0;
+  color: var(--ink-muted);
+}
 
-  .prose-grey p {
-    @apply text-grey mb-4;
-  }
+/* Tailwind's preflight removes list markers, which the Article card's prose
+   keeps and colours. */
+.vx-prose ul {
+  list-style: disc;
+}
 
-  .prose-grey ol, .prose-grey ul {
-    @apply text-white space-y-2;
-  }
+.vx-prose ol {
+  list-style: decimal;
+}
 
-  .prose-grey li {
-    @apply text-grey;
-  }
+/* The newsletter sign-up under the post list. */
+.blog-newsletter {
+  margin-top: var(--space-48);
+}
 
-  .prose.prose-grey a {
-    @apply !text-spiral-light-blue hover:!text-spiral-washed-light-blue transition-colors underline;
-  }
+.blog-newsletter-text {
+  margin: var(--space-8) 0 var(--space-12);
+  color: var(--ink-body);
+}
 
-  .prose-grey pre {
-    @apply bg-[#0d1117] border border-white/10 text-white font-mono text-sm p-4 rounded-lg overflow-x-auto;
-  }
+.blog-newsletter-form {
+  display: flex;
+  gap: var(--space-8);
+  max-width: 440px;
+}
 
-  .prose-grey pre code {
-    @apply bg-transparent p-0 rounded-none text-inherit;
-  }
+.blog-newsletter-done {
+  margin: 0;
+  color: var(--ink);
+}
 
-  .prose-grey code {
-    @apply text-white bg-white/10 px-1 py-0.5 rounded text-sm font-mono;
-  }
+.blog-newsletter-error {
+  margin: var(--space-8) 0 0;
+  color: var(--error-ink);
+}
 
-  /* Syntax highlighting line styles */
-  .prose-grey pre [data-line] {
-    @apply px-4 -mx-4 border-l-2 border-transparent;
-  }
+/* A text field from the system's tokens, because the system has no Field
+   card. It draws like the docs' search button: `raised`, at `control-md`,
+   with an `edge` border that turns `ink` on hover. */
+.site-field {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: var(--control-md);
+  padding: 0 var(--space-12);
+  font: 400 14px/1 var(--font-sans);
+  color: var(--ink);
+  background: var(--raised);
+  border: 1px solid var(--edge);
+  border-radius: var(--radius-control);
+  transition: border-color 150ms ease-out;
+}
 
-  /* Highlighted lines */
-  .prose-grey pre [data-highlighted-line] {
-    @apply bg-white/10 border-l-white/50;
-  }
+.site-field::placeholder {
+  color: var(--ink-muted);
+  opacity: 1;
+}
 
-  /* Line numbers */
-  .prose-grey pre [data-line-numbers] [data-line]::before {
-    counter-increment: line;
-    content: counter(line);
-    @apply inline-block w-8 mr-4 text-right text-white/30;
-  }
+.site-field:hover {
+  border-color: var(--ink);
+}
 
-  .prose-grey pre [data-line-numbers] {
-    counter-reset: line;
-  }
+/* The system's focus rule covers links, buttons and [tabindex] only. */
+.site-field:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
 
-  /* Highlighted words */
-  .prose-grey [data-highlighted-chars] {
-    @apply bg-white/20 rounded px-1 py-0.5;
-  }
+.site-field[aria-invalid="true"] {
+  border-color: var(--error-ink);
+}
 
-  /* Code block title/caption */
-  .prose-grey figcaption[data-rehype-pretty-code-title] {
-    @apply text-xs text-white/50 font-mono px-4 py-2 border-b border-white/10 bg-white/5 rounded-t-lg;
-  }
-
-  .prose-grey figcaption[data-rehype-pretty-code-title] + pre {
-    @apply rounded-t-none mt-0;
-  }
-
-  .prose-grey blockquote {
-    @apply border-l-spiral-blue text-grey italic;
-  }
-
+.site-field:disabled {
+  opacity: 0.45;
 }

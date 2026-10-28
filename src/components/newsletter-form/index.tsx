@@ -1,19 +1,19 @@
 "use client";
 
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useId, useState } from "react";
 
 type FormState = "idle" | "loading" | "success" | "error";
 
-interface NewsletterFormProps {
-  variant?: "default" | "compact";
-}
-
-export const NewsletterForm = ({
-  variant = "default"
-}: NewsletterFormProps) => {
+/**
+ * The blog's newsletter sign-up, in the design system's controls: the email
+ * field and the primary `vx-btn`. The system has no Field card, so the field
+ * is styled from its tokens in globals.css (`.site-field`).
+ */
+export const NewsletterForm = () => {
   const [email, setEmail] = useState("");
   const [state, setState] = useState<FormState>("idle");
   const [errorMessage, setErrorMessage] = useState("");
+  const id = useId();
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -46,52 +46,59 @@ export const NewsletterForm = ({
     }
   };
 
-  if (state === "success") {
-    return (
-      <div
-        className={`font-mono text-sm text-spiral-green ${variant === "compact" ? "" : "py-4"}`}
-      >
-        Thanks for subscribing!
-      </div>
-    );
-  }
-
   return (
-    <form
-      onSubmit={handleSubmit}
-      className={`flex flex-col ${variant === "compact" ? "gap-2" : "gap-3"}`}
-    >
-      {/* <label className="font-mono text-xs text-grey uppercase tracking-wide">
-        Get updates
-      </label> */}
-      <div
-        className={`flex ${variant === "compact" ? "flex-col sm:flex-row" : "flex-row"} gap-2`}
-      >
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => {
-            setEmail(e.target.value);
-            if (state === "error") setState("idle");
-          }}
-          placeholder="you@email.com"
-          required
-          disabled={state === "loading"}
-          className="bg-transparent border border-white/30 px-3 py-2 font-mono text-sm text-white placeholder:text-white/40 focus:outline-none focus:border-white/60 disabled:opacity-50 flex-1 min-w-0"
-        />
-        <button
-          type="submit"
-          disabled={state === "loading" || !email.trim()}
-          className="bg-spiral-light-blue text-background px-4 py-2 font-mono text-sm hover:bg-spiral-grey transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-        >
-          {state === "loading" ? "..." : "Subscribe"}
-        </button>
-      </div>
-      {state === "error" && (
-        <span className="font-mono text-xs text-spiral-red">
-          {errorMessage}
-        </span>
+    <section className="blog-newsletter" aria-labelledby={`${id}-title`}>
+      <h2 className="vx-label" id={`${id}-title`}>
+        Newsletter
+      </h2>
+      <p className="vx-small blog-newsletter-text">
+        Get each new post by email.
+      </p>
+      {state === "success" ? (
+        <p className="vx-small blog-newsletter-done" role="status">
+          You are subscribed.
+        </p>
+      ) : (
+        <form className="blog-newsletter-form" onSubmit={handleSubmit}>
+          <label className="vx-sr-only" htmlFor={`${id}-email`}>
+            Email address
+          </label>
+          <input
+            id={`${id}-email`}
+            className="site-field"
+            type="email"
+            autoComplete="email"
+            value={email}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              if (state === "error") setState("idle");
+            }}
+            placeholder="you@example.com"
+            required
+            disabled={state === "loading"}
+            aria-invalid={state === "error"}
+            {...(state === "error"
+              ? { "aria-describedby": `${id}-error` }
+              : {})}
+          />
+          <button
+            type="submit"
+            className="vx-btn vx-btn-primary"
+            disabled={state === "loading" || !email.trim()}
+          >
+            {state === "loading" ? "Subscribing" : "Subscribe"}
+          </button>
+        </form>
       )}
-    </form>
+      {state === "error" && (
+        <p
+          className="vx-small blog-newsletter-error"
+          id={`${id}-error`}
+          role="alert"
+        >
+          {errorMessage}
+        </p>
+      )}
+    </section>
   );
 };

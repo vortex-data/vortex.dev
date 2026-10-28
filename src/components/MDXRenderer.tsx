@@ -1,13 +1,11 @@
 import * as runtime from "react/jsx-runtime";
+import { mdxComponents } from "@/components/blog/mdx-components";
+import { WarningIcon } from "@/components/icons";
 
 interface MDXRendererProps {
   code: string;
   components?: Record<string, React.ComponentType>;
 }
-
-const sharedComponents = {
-  // Global components can be added here
-};
 
 const compileMDXComponent = (code: string) => {
   const fn = new Function(code);
@@ -17,19 +15,16 @@ const compileMDXComponent = (code: string) => {
 export function MDXRenderer({ code, components }: MDXRendererProps) {
   try {
     const Component = compileMDXComponent(code);
-    return <Component components={{ ...sharedComponents, ...components }} />;
+    return <Component components={{ ...mdxComponents, ...components }} />;
   } catch (error) {
     console.error("Error rendering MDX:", error);
     return (
-      <div className="text-red-400 p-4 border border-red-400/30 rounded">
-        <h3>Error rendering content</h3>
-        <p>There was an error rendering this blog post content.</p>
-        <details className="mt-2">
-          <summary className="cursor-pointer">Debug info</summary>
-          <pre className="text-xs mt-2 whitespace-pre-wrap">
-            {String(error)}
-          </pre>
-        </details>
+      <div className="vx-callout" role="alert">
+        <WarningIcon className="vx-callout-icon" />
+        <div>
+          <p className="vx-callout-title">This post did not render</p>
+          <p className="vx-callout-body">{String(error)}</p>
+        </div>
       </div>
     );
   }

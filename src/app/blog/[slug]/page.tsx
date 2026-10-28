@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import NextLink from "next/link";
 import { notFound } from "next/navigation";
+import { PostRows } from "@/components/blog/post-rows";
+import { ArrowBackIcon } from "@/components/icons";
 import { MDXRenderer } from "@/components/MDXRenderer";
-import { getAllSlugs, getPostBySlug } from "@/lib/blog";
+import { getAllPosts, getAllSlugs, getPostBySlug } from "@/lib/blog";
 import { baseUrl, siteName } from "@/lib/constants";
+import { bylineParts, morePosts } from "@/lib/posts";
 
 interface BlogPostPageProps {
   params: Promise<{ slug: string }>;
@@ -76,54 +79,42 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
     image: `${url}/opengraph-image`
   };
 
+  const more = morePosts(getAllPosts(), slug);
+  const [date, authors, readingTime] = bylineParts(post);
+
+  // The design system's Article card: the title and a mono byline, then the
+  // post in a 68ch reading column on `surface`, and "More posts" at the end.
   return (
-    <div className="min-h-screen w-full bg-background text-white">
+    <div className="blog-page">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }}
       />
-      <div className="max-w-6xl mx-auto px-4 py-16">
-        {/* Back to blog link */}
-        <Link
-          href="/blog"
-          className="inline-flex items-center gap-2 text-grey font-mono text-sm hover:text-white transition-colors mb-8"
-        >
-          ← Back to blog
-        </Link>
-
-        {/* Post header */}
-        <header className="mb-12">
-          <h1 className="text-3xl md:text-5xl font-funnel font-light text-white mb-6">
-            {post.title}
-          </h1>
-
-          <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-8 text-grey font-mono text-sm">
-            <time dateTime={post.date}>
-              {new Date(post.date).toLocaleDateString("en-US", {
-                year: "numeric",
-                month: "long",
-                day: "numeric"
-              })}
+      <NextLink href="/blog" className="vx-label vx-nav-link blog-back">
+        <ArrowBackIcon />
+        Back to blog
+      </NextLink>
+      <article className="vx-card vx-article vx-reading">
+        <header className="vx-article-head">
+          <h1 className="vx-h1 vx-article-title">{post.title}</h1>
+          <p className="vx-label vx-article-byline">
+            <time className="blog-nowrap" dateTime={post.date}>
+              {date}
             </time>
-
-            <div className="flex items-center gap-2">
-              <span>by</span>
-              <span className="text-spiral-green">
-                {post.authors.join(", ")}
-              </span>
-            </div>
-
-            <span>{post.metadata.readingTime} min read</span>
-          </div>
+            {` · ${authors} · `}
+            <span className="blog-nowrap">{readingTime}</span>
+          </p>
         </header>
-
-        {/* Post content */}
-        <article className="dashed-top p-4 md:p-6">
-          <div className="w-full max-w-none prose prose-invert prose-grey">
-            <MDXRenderer code={post.body} />
-          </div>
-        </article>
-      </div>
+        <div className="vx-prose">
+          <MDXRenderer code={post.body} />
+        </div>
+        {more.length > 0 && (
+          <footer className="vx-article-more">
+            <h2 className="vx-label">More posts</h2>
+            <PostRows posts={more} />
+          </footer>
+        )}
+      </article>
     </div>
   );
 }

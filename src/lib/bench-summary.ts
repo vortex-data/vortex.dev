@@ -1,3 +1,5 @@
+import { formatDay } from "./date";
+
 const GROUPS_URL = "https://bench.vortex.dev/api/groups";
 const DAY_SECONDS = 86400;
 const TIMEOUT_MS = 5000;
@@ -223,25 +225,7 @@ export async function getBenchSummary(
   }
 }
 
-const MONTHS = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec"
-];
-
-/**
- * "28 Oct 2026", in UTC, for the card's source line. A fixed month list,
- * because en-GB's short month for September is "Sept" in current ICU.
- */
+/** "28 Oct 2026", in UTC, for the card's source line. */
 export function formatReadDate(d: Date): string {
-  return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+  return formatDay(d);
 }

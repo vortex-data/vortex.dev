@@ -1,5 +1,11 @@
 import rehypePrettyCode from "rehype-pretty-code";
 import { defineCollection, defineConfig, s } from "velite";
+import {
+  rehypeAsides,
+  rehypeHeadingLevels,
+  rehypeTables
+} from "./src/lib/rehype-blog";
+import { syntaxTheme } from "./src/lib/syntax-theme";
 
 const blog = defineCollection({
   name: "Blog",
@@ -18,10 +24,17 @@ const blog = defineCollection({
           [
             rehypePrettyCode,
             {
-              theme: "night-owl",
-              keepBackground: false
+              // Colours from the design system's syntax-* tokens, so code
+              // follows the blog's Light and Dark themes.
+              theme: syntaxTheme,
+              keepBackground: false,
+              // A fence with no language is still a CodeBlock.
+              defaultLang: { block: "plaintext" }
             }
-          ]
+          ],
+          rehypeHeadingLevels,
+          rehypeAsides,
+          rehypeTables
         ]
       })
     })

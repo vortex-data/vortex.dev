@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { PostRows } from "@/components/blog/post-rows";
 import { NewsletterForm } from "@/components/newsletter-form";
 import { getAllPosts } from "@/lib/blog";
 
@@ -21,77 +21,37 @@ export const metadata: Metadata = {
   }
 };
 
+const FEEDS = [
+  { href: "/rss/feed.xml", label: "RSS" },
+  { href: "/rss/feed.atom", label: "Atom" },
+  { href: "/rss/feed.json", label: "JSON" }
+] as const;
+
+/**
+ * The design system's BlogIndex card: the heading with the feeds, then one
+ * row per post, newest first. The newsletter sign-up closes the list.
+ */
 export default function BlogPage() {
   const posts = getAllPosts();
 
   return (
-    <div className="h-full w-full bg-background text-white">
-      <div className="max-w-5xl mx-auto px-4 py-16">
-        <div className="mb-12 flex flex-col lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <h1 className="text-4xl md:text-6xl font-funnel font-light text-white mb-4">
-              Blog
-            </h1>
-            <p className="text-grey font-mono text-lg">
-              Updates and insights from the Vortex team
-            </p>
-          </div>
-          <div className="lg:w-80 lg:flex-shrink-0 sm:pb-2 sm:mr-1">
-            <NewsletterForm variant="compact" />
-          </div>
-        </div>
-
-        {posts.length === 0 ? (
-          <div className="dashed-top dashed-bottom p-8">
-            <p className="text-grey font-mono text-center">
-              No blog posts yet. Check back soon for updates!
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {posts.map((post) => (
-              <Link
-                key={post.slug}
-                href={`/blog/${post.slugAsParams}`}
-                className="block group"
-              >
-                <article className="dashed-top dashed-bottom p-6 hover:bg-white/5 transition-colors">
-                  <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-3">
-                    <h2 className="text-xl md:text-2xl font-sans font-medium text-white group-hover:text-grey transition-colors">
-                      {post.title}
-                    </h2>
-                    <time
-                      dateTime={post.date}
-                      className="text-grey font-mono text-sm mt-2 md:mt-0"
-                    >
-                      {new Date(post.date).toLocaleDateString("en-US", {
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric"
-                      })}
-                    </time>
-                  </div>
-
-                  <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-                    {post.excerpt && (
-                      <p className="text-grey font-sans text-base mb-3 md:mb-0 md:mr-6">
-                        {post.excerpt}
-                      </p>
-                    )}
-
-                    <div className="flex items-center gap-2">
-                      <span className="text-grey font-mono text-sm">by</span>
-                      <span className="text-white font-mono text-sm">
-                        {post.authors.join(", ")}
-                      </span>
-                    </div>
-                  </div>
-                </article>
-              </Link>
-            ))}
-          </div>
-        )}
+    <div className="blog-page">
+      <div className="vx-blog-head">
+        <h1 className="vx-h2 vx-blog-title">Blog</h1>
+        <nav className="vx-label vx-blog-feeds" aria-label="Feeds">
+          {FEEDS.map((f) => (
+            <a key={f.href} className="vx-nav-link" href={f.href}>
+              {f.label}
+            </a>
+          ))}
+        </nav>
       </div>
+      {posts.length === 0 ? (
+        <p className="vx-small blog-empty">No posts yet.</p>
+      ) : (
+        <PostRows posts={posts} />
+      )}
+      <NewsletterForm />
     </div>
   );
 }
