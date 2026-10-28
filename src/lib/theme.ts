@@ -70,6 +70,18 @@ export function themeFor(
   return "dark";
 }
 
+/**
+ * `win.localStorage`, or null where reading the property itself throws
+ * (storage blocked by the browser or a sandbox), so callers fall back.
+ */
+function storageOf<S>(win: { readonly localStorage: S }): S | null {
+  try {
+    return win.localStorage;
+  } catch {
+    return null;
+  }
+}
+
 /** What `applyRouteTheme` needs from `window`, so it can be tested without a DOM. */
 export interface ThemeWindow {
   localStorage: Pick<Storage, "getItem">;
@@ -95,7 +107,7 @@ export function chooseTheme(
     document: { documentElement: { dataset: DOMStringMap } };
   }
 ): void {
-  saveChoice(win.localStorage, choice);
+  saveChoice(storageOf(win), choice);
   win.document.documentElement.dataset.theme = themeFor(
     pathname,
     choice,
@@ -116,7 +128,7 @@ export function applyRouteTheme(
   const apply = () => {
     win.document.documentElement.dataset.theme = themeFor(
       pathname,
-      readChoice(win.localStorage),
+      readChoice(storageOf(win)),
       media.matches
     );
   };

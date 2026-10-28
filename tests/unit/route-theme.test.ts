@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { applyRouteTheme } from "@/lib/theme";
+import { applyRouteTheme, chooseTheme } from "@/lib/theme";
 
 // A fake window: stored choice, an OS preference that can change, and <html>'s dataset.
 function fakeWindow(stored: string | null, prefersDark: boolean) {
@@ -42,5 +42,37 @@ describe("applyRouteTheme", () => {
     applyRouteTheme("/", w.win);
     w.setOs(false);
     assert.equal(w.root.dataset.theme, "dark");
+  });
+});
+
+// Some contexts throw on reading `window.localStorage` itself, not on getItem.
+function blockedWindow() {
+  const root = { dataset: {} as Record<string, string> };
+  const media = {
+    matches: false,
+    addEventListener: () => {},
+    removeEventListener: () => {}
+  };
+  const win = {
+    get localStorage(): Storage {
+      throw new DOMException("blocked", "SecurityError");
+    },
+    matchMedia: () => media,
+    document: { documentElement: root }
+  };
+  return { win, root };
+}
+
+describe("blocked storage", () => {
+  it("falls back to Dark when reading localStorage itself throws", () => {
+    const { win, root } = blockedWindow();
+    assert.doesNotThrow(() => applyRouteTheme("/blog", win));
+    assert.equal(root.dataset.theme, "dark");
+  });
+
+  it("still applies a chosen theme for the page when storage is blocked", () => {
+    const { win, root } = blockedWindow();
+    assert.doesNotThrow(() => chooseTheme("/blog", "light", win));
+    assert.equal(root.dataset.theme, "light");
   });
 });
