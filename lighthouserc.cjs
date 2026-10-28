@@ -69,10 +69,13 @@ if (seed) baseUrls.push(`http://localhost:3000/blog/${seed}`);
 //
 // So on `/` the category score is advisory (`warn` still prints it in the
 // log and the PR comment) and the metrics that hold steady on CI hard-fail
-// instead. With FCP, LCP and CLS gated, TBT (30% of the desktop score) is the
-// only part of the `/` score left ungated. Every other URL keeps the 0.9
-// performance floor; its pattern matches any non-root path, so a new URL gets
-// the floor by default. Don't relax a threshold to mask a regression without
+// instead: FCP, LCP and CLS at a 0.9 audit score. Speed Index follows TBT
+// (correlation 0.89) and peaked at 1286 ms, just inside its 0.9 line at
+// 1311 ms, so it gets a 2000 ms cap instead, about the same headroom over
+// the worst run that LCP has under its 0.9 line. That leaves TBT (30% of the
+// desktop score) as the only ungated part of the `/` score. Every other URL
+// keeps the 0.9 performance floor; its pattern matches any non-root path, so
+// a new URL gets the floor by default. Don't relax a threshold to mask a regression without
 // a separate PR.
 module.exports = {
   ci: {
@@ -104,7 +107,8 @@ module.exports = {
             "categories:performance": ["warn", { minScore: 0.9 }],
             "first-contentful-paint": ["error", { minScore: 0.9 }],
             "largest-contentful-paint": ["error", { minScore: 0.9 }],
-            "cumulative-layout-shift": ["error", { minScore: 0.9 }]
+            "cumulative-layout-shift": ["error", { minScore: 0.9 }],
+            "speed-index": ["error", { maxNumericValue: 2000 }]
           }
         },
         {
