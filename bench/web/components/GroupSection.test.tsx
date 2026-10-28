@@ -60,6 +60,8 @@ describe('GroupSection', () => {
       />,
     );
     expect(html).toContain('class="group-info-icon"');
+    expect(html).toMatch(/class="group-info-icon"[^>]*><svg [^>]*viewBox="0 -960 960 960"/);
+    expect(html).not.toContain('ⓘ');
     expect(html).toContain('data-tooltip="Tests selecting arbitrary row indices on NVMe"');
     expect(html).toContain('2 charts');
   });

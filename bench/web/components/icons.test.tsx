@@ -18,6 +18,7 @@ describe('icons', () => {
       'DarkModeIcon',
       'ExpandAllIcon',
       'FilterIcon',
+      'InfoIcon',
       'LightModeIcon',
       'LinkIcon',
       'ListIcon',
@@ -41,12 +42,22 @@ describe('icons', () => {
     expect(renderToStaticMarkup(<icons.LinkIcon />)).toContain('width="16"');
   });
 
+  const dir = new URL('./', import.meta.url);
+  const sources = readdirSync(dir).filter((f) => f.endsWith('.tsx') && !f.includes('.test.'));
+
   it('replace every stroke icon in the components', () => {
-    const dir = new URL('./', import.meta.url);
-    const sources = readdirSync(dir).filter((f) => f.endsWith('.tsx') && !f.includes('.test.'));
     expect(sources.length).toBeGreaterThan(5);
     for (const f of sources) {
       expect(readFileSync(new URL(f, dir), 'utf8'), f).not.toMatch(/stroke="currentColor"/);
+    }
+  });
+
+  it('replace every text glyph that stood in for an icon', () => {
+    for (const f of sources) {
+      const code = readFileSync(new URL(f, dir), 'utf8')
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/\/\/.*$/gm, '');
+      expect(code, f).not.toMatch(/[ⓘℹ]/);
     }
   });
 });

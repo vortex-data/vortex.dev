@@ -8,7 +8,7 @@ import { BookIcon } from '@/components/icons';
 /**
  * The "what does this measure?" link in a group's summary header, pointing at
  * the benchmark's explainer doc in the monorepo (see [`@/lib/benchmark-docs`]).
- * It is the long-form counterpart to the ⓘ tooltip's one-liner, and the same
+ * It is the long-form counterpart to the info tooltip's one-liner, and the same
  * doc the monorepo's PR benchmark comment links.
  *
  * The link lives inside the disclosure's `<summary>`, where any click that
