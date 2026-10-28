@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { getGroupSnapshot } from '@/lib/chart-store';
 import { GROUP_FILTER_PARAM, HIDDEN_SERIES_PARAM, SHOWN_SERIES_PARAM } from '@/lib/group-filter';
+import { CheckIcon, LinkIcon } from '@/components/icons';
 
 /** How long the copied-confirmation state stays visible, in milliseconds. */
 const COPIED_FEEDBACK_MS = 1500;
@@ -125,46 +126,5 @@ export function GroupPermalink({
         {copied ? 'Link copied' : ''}
       </span>
     </button>
-  );
-}
-
-/** A chain-link glyph, matching the header icons' stroke style. */
-function LinkIcon() {
-  return (
-    <svg
-      className="btn-icon"
-      viewBox="0 0 24 24"
-      width="16"
-      height="16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-    </svg>
-  );
-}
-
-/** The copied-confirmation checkmark. */
-function CheckIcon() {
-  return (
-    <svg
-      className="btn-icon"
-      viewBox="0 0 24 24"
-      width="16"
-      height="16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M20 6 9 17l-5-5" />
-    </svg>
   );
 }
