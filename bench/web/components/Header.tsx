@@ -129,6 +129,7 @@ export function Header({
           <h1 className="site-title">Vortex Benchmarks</h1>
         </div>
         <div className="header-center">
+          {/* biome-ignore lint/a11y/useAriaPropsSupportedByRole: deliberate markup, as bench has always rendered the nav controls. */}
           <div
             className={`nav-controls${navOpen ? ' nav-controls--open' : ''}`}
             id="bench-nav-controls"

@@ -112,14 +112,13 @@ here:
 - `correctness/useExhaustiveDependencies` is on (the site has it off). It replaces ESLint's
   `react-hooks/exhaustive-deps`. An effect that omits dependencies on purpose carries a
   `biome-ignore` comment that says why.
-- `a11y/useAriaPropsSupportedByRole` is off: `aria-label` on a plain `div` (the header nav controls,
-  the chart toolbar) is deliberate markup.
-- `a11y/useSemanticElements` is off: the toolbars use `role="group"` on a `div`, because a `fieldset`
-  would change their layout.
-- `a11y/useFocusableInteractive` is off: the chart range strip is a pointer-driven `slider` with no
-  `tabIndex`.
-- `a11y/noNoninteractiveTabindex` is off: the group info icon takes focus so its tooltip shows for
-  keyboard users.
+- The site's `a11y` rules apply to bench unchanged. Seven places in existing markup break one of
+  them on purpose, and each carries an inline `biome-ignore` comment that says why:
+  `useAriaPropsSupportedByRole` for `aria-label` on a plain `div` (the header nav controls, the
+  chart toolbar), `useSemanticElements` for `role="group"` on a `div` in the toolbars (a `fieldset`
+  would change their layout), `useFocusableInteractive` for the pointer-driven range strip, and
+  `noNoninteractiveTabindex` for the group info icon, which takes focus so its tooltip shows for
+  keyboard users. New markup follows the rules, or carries its own `biome-ignore` with a reason.
 - `complexity/noImportantStyles` is off: `!important` overrides Chart.js's inline canvas size and the
   offscreen prebuild layout in `app/globals.css`.
 - `organizeImports` is off: Prettier never sorted bench's imports, and reordering them would rewrite

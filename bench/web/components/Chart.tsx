@@ -2092,7 +2092,9 @@ export function Chart({ slug, name, index, groupSlug, initialPayload }: ChartIsl
           onClick={() => controllerRef.current?.onWindowChipClick()}
         />
       </h3>
+      {/* biome-ignore lint/a11y/useAriaPropsSupportedByRole: deliberate markup, as bench has always rendered the chart toolbar. */}
       <div className="toolbar toolbar--card" aria-label="Chart controls">
+        {/* biome-ignore lint/a11y/useSemanticElements: a fieldset would change the toolbar's layout. */}
         <div className="toolbar-group" role="group" aria-label="Visible commits">
           <span className="toolbar-label">Show</span>
           {/* `max` and `step` are placeholders; the controller resets them
@@ -2110,6 +2112,7 @@ export function Chart({ slug, name, index, groupSlug, initialPayload }: ChartIsl
             ref={sliderRef}
           />
         </div>
+        {/* biome-ignore lint/a11y/useSemanticElements: a fieldset would change the toolbar's layout. */}
         <div className="toolbar-group" role="group" aria-label="Y-axis scale">
           <span className="toolbar-label">Y</span>
           <button
@@ -2142,6 +2145,7 @@ export function Chart({ slug, name, index, groupSlug, initialPayload }: ChartIsl
       </div>
       {/* The aria value attributes track the window's left edge as a percent
           of the full history; the strip render keeps aria-valuenow current. */}
+      {/* biome-ignore lint/a11y/useFocusableInteractive: the strip is pointer-driven and has no key handling, so a tabIndex would add a dead tab stop. */}
       <div
         className="chart-range-strip"
         data-chart-index={index}

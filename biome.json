@@ -116,12 +116,6 @@
           "correctness": {
             "useExhaustiveDependencies": "error"
           },
-          "a11y": {
-            "useAriaPropsSupportedByRole": "off",
-            "useSemanticElements": "off",
-            "useFocusableInteractive": "off",
-            "noNoninteractiveTabindex": "off"
-          },
           "complexity": {
             "noImportantStyles": "off"
           }
