@@ -64,8 +64,35 @@ env:
   VERCEL_CLI_VERSION: "64.0.2"
 
 jobs:
+  # Run bench's checks on the exact commit this run deploys. main takes squash
+  # merges and does not require a branch to be up to date before it merges, so
+  # the pushed commit itself is never checked before it lands, and Bench CI on
+  # main runs beside this workflow, not before it.
+  checks:
+    name: Check the deployed commit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    if: >-
+      vars.BENCH_VERCEL_PROJECT_ID != '' && (
+        github.event_name != 'pull_request' ||
+        github.event.pull_request.head.repo.full_name == github.repository
+      )
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Bench checks
+        uses: ./.github/actions/bench-checks
+        with:
+          pnpm-version: ${{ env.PNPM_VERSION }}
+
   deploy:
     name: Build & deploy to Vercel
+    needs: checks
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     # Fork PRs have no access to VERCEL_TOKEN, and we do not auto-deploy untrusted

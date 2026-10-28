@@ -119,7 +119,7 @@ verify build SHA + read paths + CDN HIT (bounded retries)
   prebuilt output is then uploaded, eliminating a build race.
 - `main` **is** production — there is no staging gate. The per-PR CI
   (including a testcontainer migration test) is the gate; a merge to `main`
-  ships straight to the v4 production domain.
+  ships to the v4 production domain after the deploy workflow checks the same commit.
 - Push and manual production runs share one concurrency group without cancelling an active run.
   This serializes promotion and verification across both triggers. Previews can cancel stale runs.
 - Production verification uses `BENCH_SITE_BASE_URL`. A protected preview reports verification
@@ -129,21 +129,22 @@ verify build SHA + read paths + CDN HIT (bounded retries)
 
 ### Required merge check
 
-After the first standalone Web CI run completes, configure the branch protection rule or ruleset
-for `develop` to require `format, lint, build, test`, with **GitHub Actions** as its source
-(app ID `15368`). Enable **Require branches to be up to date before merging**. These are operator
-settings. The workflows do not change repository protection.
+The `main` ruleset of `vortex-data/vortex.dev` requires `Bench: format, lint, build, test` from
+**GitHub Actions** (app ID `15368`), beside the marketing site's checks. It does not require
+branches to be up to date before merging, so a merged commit is never checked before it lands.
+That is why `bench-deploy.yml` runs the same checks (the `bench-checks` composite action) on the
+exact commit it deploys, and deploys only if they pass.
 
-From a checkout of that tested commit, verify the context and integration before saving the rule:
+To see the check for a commit:
 
 ```bash
 checked_sha="$(git rev-parse HEAD)"
-gh api "repos/vortex-data/benchmarks-website/commits/${checked_sha}/check-runs" \
-  --jq '.check_runs[] | select(.name == "format, lint, build, test") | {name, conclusion, app_id: .app.id}'
+gh api "repos/vortex-data/vortex.dev/commits/${checked_sha}/check-runs" \
+  --jq '.check_runs[] | select(.name == "Bench: format, lint, build, test") | {name, conclusion, app_id: .app.id}'
 ```
 
-The completed check must report `success` and app ID `15368`. The shared composite preserves
-this standalone check name when its internal steps change.
+A commit that changes bench must report `success` and app ID `15368`. The composite action keeps
+the check name the same when its steps change.
 
 ## Legacy v3 host deploy (`ops/`) — decommissioned 2026-07-08
 

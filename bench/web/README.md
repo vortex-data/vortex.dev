@@ -75,8 +75,9 @@ were, the same HTML page rule would bound it).
 `migrations/**` (the integration suite applies that DDL to its testcontainer). It is a required
 check on `main`. `.github/workflows/bench-deploy.yml` deploys via the Vercel CLI (`vercel pull` /
 `vercel build` / `vercel deploy --prebuilt`): a preview deployment per same-repo PR that touches
-`bench/`, and a production deployment on each push to `main` that does. Fork PRs run CI but do
-not receive deployment credentials.
+`bench/`, and a production deployment on each push to `main` that does. Before it builds, the
+deploy workflow runs the same checks (the `bench-checks` composite action) on the exact commit it
+deploys. Fork PRs run CI but do not receive deployment credentials.
 
 The `bench-production` environment limits manual production runs to `main`. Push and manual
 production runs share one production queue and let an active deploy finish verification. New
