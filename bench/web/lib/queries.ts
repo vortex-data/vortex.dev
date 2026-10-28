@@ -1098,15 +1098,16 @@ function discoverGroups(groupKind: GroupKind): Promise<Group[]> {
 }
 
 /**
- * Bound on how many per-group summary queries run concurrently in
- * [`collectGroups`] (PR-5.1.5 fix e). Kept one below the `BENCH_DB_POOL_MAX`
- * default because a cached fill holds one pool connection for its advisory
- * lock. If the pool is smaller the excess simply queues on `pg`'s acquire list
- * (no error), and if larger the cap still holds. Overlapping the N+1 summaries
- * is what turns the sequential
- * sum-of-summaries into roughly the slowest-summary wall-clock.
+ * Bound on how many queries one request runs concurrently: the per-group
+ * summaries in [`collectGroups`] (PR-5.1.5 fix e) and the per-chart payloads in
+ * [`collectGroupCharts`]. Kept one below the `BENCH_DB_POOL_MAX` default because
+ * a cached fill holds one pool connection for its advisory lock. Excess work
+ * waits here, not on `pg`'s acquire list, where a wait longer than
+ * `BENCH_DB_CONNECTION_TIMEOUT_MS` fails the query. A smaller pool still queues
+ * the excess on that list. Overlapping the queries is what turns the sequential
+ * sum of round trips into roughly the slowest query's wall-clock.
  */
-const SUMMARY_CONCURRENCY = 7;
+const QUERY_CONCURRENCY = 7;
 
 /**
  * Map `items` through `fn` with at most `limit` promises in flight, preserving
@@ -1151,7 +1152,7 @@ export async function collectGroups(): Promise<Group[]> {
   // Attach each group's summary + description with bounded concurrency instead
   // of the prior sequential await, which serialized the N+1 summary cost across
   // ~64 groups (PR-5.1.5 fix e).
-  await mapWithConcurrency(groups, SUMMARY_CONCURRENCY, async (group) => {
+  await mapWithConcurrency(groups, QUERY_CONCURRENCY, async (group) => {
     const key = groupKeyFromSlug(group.slug);
     const summary = await collectGroupSummary(key);
     if (summary !== null) {
@@ -1189,17 +1190,18 @@ export async function collectGroupCharts(
   if (group === undefined) {
     return null;
   }
-  // Fetch every chart's payload concurrently rather than in a sequential
-  // `await` loop: on a Data Cache MISS a large group otherwise pays one SQL
-  // round-trip per chart back-to-back (99 for TPC-DS), which dominates the
-  // cold-start latency. `Promise.all` over `group.charts.map(...)` preserves
-  // order, and the shared pool (`lib/db.ts`, `max: 8`) bounds concurrency so
-  // this issues at most 8 in-flight queries, not one per chart at once.
-  const settled = await Promise.all(
-    group.charts.map(async (link): Promise<NamedChartResponse | null> => {
+  // Fetch chart payloads concurrently rather than in a sequential `await` loop:
+  // on a Data Cache MISS a large group otherwise pays one SQL round-trip per
+  // chart back-to-back (99 for TPC-DS), which dominates the cold-start latency.
+  // [`QUERY_CONCURRENCY`] caps the queries in flight, so the rest wait here and
+  // not on the pool, whose acquire wait times out. The result keeps chart order.
+  const settled = await mapWithConcurrency(
+    group.charts,
+    QUERY_CONCURRENCY,
+    async (link): Promise<NamedChartResponse | null> => {
       const chart = await chartPayload(chartKeyFromSlug(link.slug), window);
       return chart === null ? null : { name: link.name, slug: link.slug, ...chart };
-    }),
+    },
   );
   const charts = settled.filter((chart): chart is NamedChartResponse => chart !== null);
   if (charts.length === 0) {

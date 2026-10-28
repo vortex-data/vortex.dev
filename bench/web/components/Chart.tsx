@@ -66,8 +66,10 @@ import {
   hydrationQueue,
   noteChartRecentData,
   noteGroupSeries,
+  retryGroupBundle,
   subscribeGlobalFilter,
   subscribeGroup,
+  subscribeGroupBundleRetry,
   type QueueEntry,
 } from '@/lib/chart-store';
 import type { ChartResponse } from '@/lib/queries';
@@ -409,6 +411,8 @@ class ChartController {
   private readonly aborter = new AbortController();
   /** Failed Chart.js dynamic-import attempts; bounds the error-dismiss retry. */
   private loadAttempts = 0;
+  private bundleFailed = false;
+  private readonly unsubscribeBundleRetry?: () => void;
 
   constructor(
     private readonly slug: string,
@@ -440,6 +444,15 @@ class ChartController {
       wheelAttached: false,
       disposed: false,
     };
+    if (groupSlug) {
+      this.unsubscribeBundleRetry = subscribeGroupBundleRetry(groupSlug, () => {
+        if (this.bundleFailed && this.groupIsOpen() && !this.state.disposed) {
+          this.bundleFailed = false;
+          this.cb.setError(null);
+          this.onGroupOpen(0);
+        }
+      });
+    }
   }
 
   /** Seed the permalink page's server-fetched payload before any fetch runs. */
@@ -499,25 +512,34 @@ class ChartController {
     }
     // On the landing page (a group slug is present), drive one bundle fetch per
     // group and hydrate from it. Only fall through to the per-chart fetch when
-    // the bundle is unavailable (404 / failed / this slug missing).
+    // the bundle is unavailable (404) or this slug is missing.
     if (this.groupSlug) {
       if (showLoading) {
+        this.cb.setError(null);
         this.cb.setLoading(true);
         this.cb.setRetryable(false);
       }
       const groupSlug = this.groupSlug;
-      return ensureGroupBundle(groupSlug, priority).then(() => {
+      this.bundleFailed = false;
+      return ensureGroupBundle(groupSlug, priority).then((result) => {
         // The group can close while this card awaits the in-flight bundle. The
         // close runs `abortInFlightFetches` + `abortGroupBundle` already, so a
         // per-chart fallback issued now would never be aborted and would defeat
         // the "closing a group frees server capacity" contract. Bail when the
         // group is no longer open.
-        if (state.disposed || state.payload || !this.groupIsOpen()) {
+        if (state.disposed || state.payload || !this.groupIsOpen() || result.status === 'aborted') {
           return;
         }
         const fromBundle = getCachedPayload(this.slug);
         if (fromBundle) {
           this.seedFromCachedPayload(fromBundle);
+          return;
+        }
+        if (result.status === 'failed') {
+          this.bundleFailed = true;
+          this.cb.setLoading(false);
+          this.cb.setError('failed to load group charts');
+          this.cb.setRetryable(true);
           return;
         }
         // Bundle did not cover this chart: fall back to the per-chart fetch.
@@ -546,6 +568,8 @@ class ChartController {
     }
     this.syncWindowChip();
     this.cb.setLoading(false);
+    this.cb.setError(null);
+    this.cb.setRetryable(false);
     if (this.groupSlug) {
       noteGroupSeries(this.groupSlug, normalized.series_meta);
     }
@@ -683,6 +707,9 @@ class ChartController {
    */
   retryInitialPayload(): void {
     if (this.state.disposed || this.state.payload) {
+      return;
+    }
+    if (this.groupSlug && this.bundleFailed && retryGroupBundle(this.groupSlug)) {
       return;
     }
     this.cb.setError(null);
@@ -1714,6 +1741,7 @@ class ChartController {
    * the mount effect constructs a fresh controller for the next mount. */
   destroy(): void {
     this.state.disposed = true;
+    this.unsubscribeBundleRetry?.();
     this.aborter.abort(new DOMException('chart controller destroyed', 'AbortError'));
     if (this.state.hoverDwellTimer !== null) {
       clearTimeout(this.state.hoverDwellTimer);

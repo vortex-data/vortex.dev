@@ -12,6 +12,7 @@ import {
   requireEnv,
   resetPool,
   resolveIdleTimeoutMillis,
+  resolveConnectionTimeoutMillis,
   resolveStatementTimeoutMillis,
   resolveSsl,
   sql,
@@ -39,12 +40,15 @@ describe.skipIf(!dockerAvailable())('db pool roundtrip (testcontainers Postgres)
   beforeAll(async () => {
     // The pool roundtrip needs no schema; the BENCH_DB_PASSWORD fixture path
     // set by the harness means IAM token generation is bypassed.
+    vi.stubEnv('BENCH_DB_POOL_MAX', '1');
+    vi.stubEnv('BENCH_DB_CONNECTION_TIMEOUT_MS', '1000');
     container = await startBenchContainer({ applySchema: false });
   });
 
   afterAll(async () => {
     await resetPool();
     await container.stop();
+    vi.unstubAllEnvs();
   });
 
   it('connects via the password fixture and roundtrips a SELECT', async () => {
@@ -54,6 +58,19 @@ describe.skipIf(!dockerAvailable())('db pool roundtrip (testcontainers Postgres)
     }>`SELECT ${1}::int AS one, ${'hi'}::text AS greeting`;
     expect(rows).toEqual([{ one: 1, greeting: 'hi' }]);
   });
+
+  it('times out waiting for a pool slot and recovers after release', async () => {
+    const pool = getPool();
+    const client = await pool.connect();
+    try {
+      await expect(pool.query('SELECT 1')).rejects.toThrow(
+        'timeout exceeded when trying to connect',
+      );
+    } finally {
+      client.release();
+    }
+    expect(await sql`SELECT 1 AS one`).toEqual([{ one: 1 }]);
+  }, 5000);
 
   it('binds interpolated values as parameters rather than concatenating them', async () => {
     const hostile = '1); DROP TABLE x; --';
@@ -73,7 +90,8 @@ describe('db IAM auth path (mocked rds-signer)', () => {
     region: 'us-east-1',
     ssl: false,
     poolMax: 4,
-    idleTimeoutMillis: 300000,
+    idleTimeoutMillis: 5000,
+    connectionTimeoutMillis: 5000,
     statementTimeoutMillis: 30000,
     staticPassword: undefined,
   };
@@ -154,40 +172,33 @@ describe('resolveSsl', () => {
   });
 });
 
-describe('resolveIdleTimeoutMillis', () => {
+describe.each([
+  ['BENCH_DB_IDLE_TIMEOUT_MS', resolveIdleTimeoutMillis],
+  ['BENCH_DB_CONNECTION_TIMEOUT_MS', resolveConnectionTimeoutMillis],
+] as const)('%s', (name, resolve) => {
   afterEach(() => {
-    delete process.env.BENCH_DB_IDLE_TIMEOUT_MS;
+    vi.unstubAllEnvs();
   });
 
-  it('defaults to 300000 ms (5 min) when unset', () => {
-    delete process.env.BENCH_DB_IDLE_TIMEOUT_MS;
-    expect(resolveIdleTimeoutMillis()).toBe(300000);
+  it('defaults to 5000 ms when unset or blank', () => {
+    for (const value of [undefined, '', '  ']) {
+      vi.stubEnv(name, value);
+      expect(resolve()).toBe(5000);
+    }
   });
 
-  it('honors a numeric override', () => {
-    process.env.BENCH_DB_IDLE_TIMEOUT_MS = '60000';
-    expect(resolveIdleTimeoutMillis()).toBe(60000);
+  it('honors a positive integer override', () => {
+    vi.stubEnv(name, '12000');
+    expect(resolve()).toBe(12000);
   });
 
-  it('throws (fails loudly) on a non-numeric value rather than silently using NaN', () => {
-    process.env.BENCH_DB_IDLE_TIMEOUT_MS = 'soon';
-    expect(() => resolveIdleTimeoutMillis()).toThrow(/BENCH_DB_IDLE_TIMEOUT_MS/);
-  });
-
-  it('throws on a negative value', () => {
-    process.env.BENCH_DB_IDLE_TIMEOUT_MS = '-1';
-    expect(() => resolveIdleTimeoutMillis()).toThrow(/BENCH_DB_IDLE_TIMEOUT_MS/);
-  });
-
-  it('falls back to the default when set but empty', () => {
-    process.env.BENCH_DB_IDLE_TIMEOUT_MS = '';
-    expect(resolveIdleTimeoutMillis()).toBe(300000);
-  });
-
-  it('accepts 0 as the never-timeout sentinel', () => {
-    process.env.BENCH_DB_IDLE_TIMEOUT_MS = '0';
-    expect(resolveIdleTimeoutMillis()).toBe(0);
-  });
+  it.each(['soon', '-1', '0', '1.5', 'Infinity', '2147483648'])(
+    'rejects %s instead of disabling the timeout or overflowing its timer',
+    (value) => {
+      vi.stubEnv(name, value);
+      expect(resolve).toThrow(name);
+    },
+  );
 });
 
 describe('resolveStatementTimeoutMillis', () => {
@@ -217,7 +228,7 @@ describe('resolveStatementTimeoutMillis', () => {
   });
 });
 
-describe('createPool threads idleTimeoutMillis into the pg Pool (via getPool)', () => {
+describe('singleton pool configuration', () => {
   const ENV_KEYS = [
     'BENCH_DB_HOST',
     'BENCH_DB_NAME',
@@ -225,6 +236,7 @@ describe('createPool threads idleTimeoutMillis into the pg Pool (via getPool)', 
     'BENCH_DB_PASSWORD',
     'BENCH_DB_SSL',
     'BENCH_DB_IDLE_TIMEOUT_MS',
+    'BENCH_DB_CONNECTION_TIMEOUT_MS',
     'BENCH_DB_STATEMENT_TIMEOUT_MS',
     'BENCH_DB_PORT',
     'BENCH_DB_REGION',
@@ -256,15 +268,33 @@ describe('createPool threads idleTimeoutMillis into the pg Pool (via getPool)', 
   it('uses the resolved timeouts as pool options', () => {
     configurePoolEnvironment();
     process.env.BENCH_DB_IDLE_TIMEOUT_MS = '123456';
+    process.env.BENCH_DB_CONNECTION_TIMEOUT_MS = '3456';
     process.env.BENCH_DB_STATEMENT_TIMEOUT_MS = '23456';
 
     // `pg`'s Pool exposes the resolved construction options at runtime but the
     // types do not surface `options`, so read it through a narrow cast.
     const pool = getPool() as unknown as {
-      options: { idleTimeoutMillis?: number; statement_timeout?: number };
+      options: {
+        idleTimeoutMillis?: number;
+        connectionTimeoutMillis?: number;
+        statement_timeout?: number;
+      };
     };
     expect(pool.options.idleTimeoutMillis).toBe(123456);
     expect(pool.options.statement_timeout).toBe(23456);
+    expect(pool.options.connectionTimeoutMillis).toBe(3456);
+  });
+
+  it('attaches one lifecycle listener per singleton pool', async () => {
+    configurePoolEnvironment();
+    const pool = getPool();
+    expect(getPool()).toBe(pool);
+    expect(pool.listenerCount('release')).toBe(1);
+
+    await resetPool();
+    const replacement = getPool();
+    expect(replacement).not.toBe(pool);
+    expect(replacement.listenerCount('release')).toBe(1);
   });
 
   it('handles idle-client errors on the shared pool', () => {
