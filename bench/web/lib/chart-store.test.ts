@@ -4,10 +4,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  abortGroupBundle,
   applyGroupMacro,
   chartIsHiddenAsEmpty,
   clearGroupSeriesFilter,
   ensureGroupBundle,
+  getCachedPayload,
   getGlobalFilterSnapshot,
   getGroupSnapshot,
   groupSeriesIsVisible,
@@ -348,5 +350,47 @@ describe('ensureGroupBundle empty-window classification', () => {
     expect(snap.emptyCharts).toEqual(['chart-stale']);
     expect(chartIsHiddenAsEmpty(snap, 'chart-stale')).toBe(true);
     expect(chartIsHiddenAsEmpty(snap, 'chart-live')).toBe(false);
+  });
+
+  it('ignores a late closed bundle without replacing the reopened request or its cached data', async () => {
+    let resolveOld!: (response: Response) => void;
+    let resolveNew!: (response: Response) => void;
+    const fetcher = vi
+      .fn()
+      .mockImplementationOnce(
+        () =>
+          new Promise<Response>((resolve) => {
+            resolveOld = resolve;
+          }),
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise<Response>((resolve) => {
+            resolveNew = resolve;
+          }),
+      );
+    vi.stubGlobal('fetch', fetcher);
+    const old = ensureGroupBundle('reopened', 0);
+    await Promise.resolve();
+    abortGroupBundle('reopened');
+    const current = ensureGroupBundle('reopened', 0);
+    await Promise.resolve();
+
+    const response = (value: number) =>
+      ({
+        ok: true,
+        status: 200,
+        json: async () => ({ charts: [{ slug: 'cached', series: { vortex: [value] } }] }),
+      }) as Response;
+    resolveOld(response(1));
+    expect(await old).toEqual({ status: 'aborted' });
+    expect(getCachedPayload('cached')).toBeUndefined();
+    expect(ensureGroupBundle('reopened', 0)).toBe(current);
+    resolveNew(response(2));
+    expect(await current).toEqual({ status: 'success' });
+    expect(getCachedPayload('cached')?.series).toEqual({ vortex: [2] });
+    abortGroupBundle('reopened');
+    expect(await ensureGroupBundle('reopened', 0)).toEqual({ status: 'success' });
+    expect(fetcher).toHaveBeenCalledTimes(2);
   });
 });
