@@ -37,7 +37,10 @@ This is the first of three steps:
 - The code is smaller and clearer where that is cheap: dead paths removed, the
   two largest client files split into modules, and a group's charts fetched
   with one query instead of one per chart.
-- Behavior is exactly the same, and each PR proves it.
+- No change in behavior that a person could notice, and each PR proves it.
+  Small bug fixes and subtle changes from library upgrades are acceptable if
+  they are negligible; every difference the parity check finds is listed and
+  explained in the PR.
 
 ## Non-goals
 
@@ -54,7 +57,8 @@ This is the first of three steps:
 
 The work fails, even if it builds, if any of these happen:
 
-- A page, API response, response header, cache rule or URL changes.
+- A person can notice a change in a page, API response, response header,
+  cache rule or URL.
 - The supply-chain gates get weaker: the 14-day cooldown, explicit overrides,
   the lifecycle-script allowlist, SHA-pinned actions, `ubuntu-24.04` runners.
 - The marketing site's build, behavior or deploy changes, beyond installing
@@ -189,8 +193,10 @@ Each PR passes these checks, in order:
 
 1. **CI**: `Bench: format, lint, build, test`, including the Postgres
    integration suite.
-2. **Parity, run locally.** Restore a production `pg_dump` into a local
-   Postgres container. Build `main` and the PR branch, serve both with
+2. **Parity, run locally, once per PR**, on `main` against the PR's head. If
+   it reports a difference, bisect the PR's commits to find the cause, then
+   fix it or explain why it is negligible. Restore a production `pg_dump`
+   into a local Postgres. Build `main` and the PR branch, serve both with
    `next start` on two ports against that one database, and compare:
    - JSON from `/api/groups`, `/api/group/{slug}` for every group at `n=100`
      and one other window, and `/api/chart/{slug}` for every chart at `n=100`

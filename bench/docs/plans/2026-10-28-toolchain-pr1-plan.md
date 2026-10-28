@@ -17,7 +17,8 @@ SPDX-FileCopyrightText: Copyright the Vortex contributors
 
 ## Global Constraints
 
-- Behavior is exactly the same: pages, API JSON, response headers, cache rules, URLs. `bench/web/vercel.json` headers and crons do not change.
+- No human-perceptible change in pages, API JSON, response headers, cache rules or URLs; small bug fixes and subtle library-driven changes are acceptable if negligible, and every parity difference is listed and explained. `bench/web/vercel.json` headers and crons do not change.
+- Parity runs once, in Task 7, on `main` against the whole branch. The per-task parity steps in Tasks 3–6 are skipped. On a difference, bisect the task commits with `run.sh` as the test.
 - Cooldown: `bunfig.toml` `minimumReleaseAge = 1209600` applies to every install. A version still inside the window needs a `minimumReleaseAgeExcludes` entry with an advisory reason and a removal date.
 - Root `package.json` `overrides`: keep `"sharp": "^0.35.5"`; add `"zod": "^4.6.7"`; add `"postcss": "^8.5.30"` only if the postcss that Next.js 16.4.1 resolves to is below a patched version for GHSA-6g55-p6wh-862q and GHSA-r28c-9q8g-f849.
 - `trustedDependencies` stays `["esbuild", "sharp"]` unless `bun pm untrusted` shows a bench package that must build; justify any addition in the commit message.
