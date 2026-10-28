@@ -18,6 +18,7 @@
     "check:ci": "biome check",
     "typecheck": "tsc --noEmit",
     "verify": "bun scripts/verify.ts",
+    "test": "bun test tests/unit",
     "lighthouse": "lhci autorun",
     "test:e2e": "playwright test",
     "test:e2e:install": "playwright install --with-deps chromium webkit"

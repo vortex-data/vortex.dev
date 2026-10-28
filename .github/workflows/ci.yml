@@ -100,6 +100,9 @@ jobs:
       - name: Type check
         run: bun run typecheck
 
+      - name: Unit tests
+        run: bun run test
+
       - name: Start server
         run: |
           bun run start > /tmp/server.log 2>&1 &

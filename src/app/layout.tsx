@@ -4,7 +4,9 @@ import { Funnel_Display, Geist, Geist_Mono } from "next/font/google";
 import PlausibleProvider from "next-plausible";
 import { Footer } from "@/components/layout/footer";
 import { Header } from "@/components/layout/header";
+import { RouteTheme } from "@/components/route-theme";
 import { baseUrl } from "@/lib/constants";
+import { THEME_BOOTSTRAP } from "@/lib/theme";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -22,19 +24,22 @@ export const metadata: Metadata = {
   }
 };
 
+// The design system's three faces, self-hosted by next/font. Its tokens read
+// them through these variables (src/styles/vortex-tokens.css), which carry
+// next/font's metrics-matched fallback faces as well as the fonts.
 const geistSans = Geist({
-  variable: "--font-geist-sans",
+  variable: "--vx-face-sans",
   subsets: ["latin"]
 });
 
 const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+  variable: "--vx-face-mono",
   subsets: ["latin"]
 });
 
 const funnelDisplay = Funnel_Display({
-  weight: ["300"],
-  variable: "--font-funnel-display",
+  weight: ["500", "600"],
+  variable: "--vx-face-display",
   subsets: ["latin"]
 });
 
@@ -55,11 +60,20 @@ export default async function RootLayout({
     </>
   );
 
+  // Dark is the server-rendered default; THEME_BOOTSTRAP corrects it before
+  // first paint on the blog, so React must not flag the attribute it changed.
   return (
-    <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} ${funnelDisplay.variable} antialiased`}
-      >
+    <html
+      lang="en"
+      data-theme="dark"
+      suppressHydrationWarning
+      className={`${geistSans.variable} ${geistMono.variable} ${funnelDisplay.variable}`}
+    >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
+      </head>
+      <body className="antialiased">
+        <RouteTheme />
         {process.env.NEXT_PUBLIC_PLAUSIBLE_SCRIPT_SRC ? (
           <PlausibleProvider>{content}</PlausibleProvider>
         ) : (

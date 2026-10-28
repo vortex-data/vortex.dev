@@ -1,0 +1,511 @@
+/* Vortex design system components for vortex.dev: the base, brand, site, docs (code and
+   callouts), blog and focus sections of the system's components/bundle.css, copied by
+   sync-site-styles. Edit the system, then sync; do not edit here. */
+
+/* ------------------------------------------------------------------ base */
+.vx-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+}
+.vx-label,
+.vx-label-sm {
+  color: var(--ink-muted);
+}
+/* Units, addresses, hashes and identifiers keep their own case inside a mono label. */
+.vx-keep-case {
+  text-transform: none;
+  letter-spacing: 0;
+}
+.vx-stat,
+.vx-num {
+  font-variant-numeric: tabular-nums;
+}
+.vx-link,
+.vx-prose a {
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-decoration-color: color-mix(in srgb, var(--ink) 30%, transparent);
+  text-underline-offset: 3px;
+  transition: color 150ms ease-out, text-decoration-color 150ms ease-out;
+}
+.vx-link:hover,
+.vx-prose a:hover {
+  color: var(--accent-ink);
+  text-decoration-color: currentColor;
+}
+/* A quiet link in mono capitals: header and footer navigation, feeds, source lines. */
+.vx-nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  color: var(--ink-muted);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color 150ms ease-out;
+}
+.vx-nav-link:hover,
+.vx-nav-link[aria-current="page"] {
+  color: var(--ink);
+}
+.vx-nav-link svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}
+/* A source line: what a figure was read from, and when. */
+.vx-source {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+}
+.vx-kbd {
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 var(--space-4);
+  font: 400 11px/1 var(--font-mono);
+  color: var(--ink-muted);
+  background: var(--ground);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+}
+@media (max-width: 640px) {
+  :root {
+    --page-pad: var(--space-16);
+  }
+}
+
+/* ------------------------------------------------------------------ brand */
+.vx-logos {
+  display: grid;
+  grid-template-columns: 170px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-24);
+}
+@media (max-width: 640px) {
+  .vx-logos {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.vx-logos-strip {
+  overflow: hidden;
+  mask-image: linear-gradient(90deg, transparent, var(--ink) 8%, var(--ink) 92%, transparent);
+}
+.vx-logos-track {
+  display: flex;
+  width: max-content;
+  animation: vx-marquee 48s linear infinite;
+}
+.vx-logos-strip:hover .vx-logos-track {
+  animation-play-state: paused;
+}
+.vx-logos-set {
+  display: flex;
+  align-items: center;
+  gap: var(--space-48);
+  padding-right: var(--space-48);
+  height: 56px;
+}
+.vx-logos-set img {
+  display: block;
+  filter: brightness(0) invert(1);
+  opacity: 0.62;
+  transition: opacity 150ms ease-out;
+}
+.vx-logos-set img:hover {
+  opacity: 1;
+}
+@keyframes vx-marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .vx-logos-track {
+    animation: none;
+  }
+}
+
+/* ------------------------------------------------------------------ site */
+.vx-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+  height: var(--control-md);
+  padding: 0 var(--space-16);
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  font: 500 14px/1 var(--font-sans);
+  color: var(--ink);
+  background: transparent;
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color 150ms ease-out, border-color 150ms ease-out;
+}
+.vx-btn svg { width: 16px; height: 16px; fill: currentColor; }
+.vx-btn[disabled], .vx-btn[aria-disabled="true"] { opacity: 0.45; cursor: default; }
+.vx-btn-primary { background: var(--primary); color: var(--on-primary); }
+.vx-btn-secondary { border-color: var(--edge); }
+.vx-btn-secondary:hover { border-color: var(--ink); }
+.vx-btn-ghost:hover { background: var(--raised); }
+.vx-btn.is-mono { padding: 0 var(--space-12); font: 400 13px/1 var(--font-mono); }
+.vx-btn-count { padding-left: var(--space-12); border-left: 1px solid var(--edge); color: var(--ink-muted); }
+
+/* The header: the wordmark, then either the site's navigation or the docs' label and search,
+   then the end group. */
+.vx-header {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: var(--space-24);
+  height: 64px;
+  padding: 0 var(--page-pad);
+  border-bottom: 1px solid var(--line);
+  background: var(--ground);
+}
+.vx-header-start { display: flex; align-items: center; gap: var(--space-12); }
+.vx-header-mark { height: 24px; width: auto; display: block; }
+.vx-header-mark.is-light, [data-theme="light"] .vx-header-mark.is-dark { display: none; }
+[data-theme="light"] .vx-header-mark.is-light { display: block; }
+.vx-header-label { padding-left: var(--space-12); border-left: 1px solid var(--edge); line-height: 16px; }
+.vx-header-nav { display: flex; gap: var(--space-24); margin-left: auto; }
+.vx-header-end { display: flex; align-items: center; gap: var(--space-16); margin-left: auto; }
+.vx-header-nav + .vx-header-end { margin-left: 0; }
+.vx-search {
+  appearance: none;
+  box-sizing: border-box;
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  max-width: 360px;
+  height: var(--control-md);
+  margin: 0 auto;
+  padding: 0 var(--space-4) 0 var(--space-12);
+  background: var(--raised);
+  border: 1px solid var(--edge);
+  border-radius: var(--radius-control);
+  font: 400 14px/1 var(--font-sans);
+  color: var(--ink-muted);
+  cursor: pointer;
+  transition: border-color 150ms ease-out;
+}
+.vx-search:hover { border-color: var(--ink); }
+.vx-search svg { width: 16px; height: 16px; flex-shrink: 0; fill: currentColor; }
+.vx-search-keys { display: flex; gap: var(--space-4); margin-left: auto; }
+@media (max-width: 760px) {
+  .vx-btn-count { display: none; }
+  .vx-search { flex: 0 0 auto; width: var(--control-md); justify-content: center; margin: 0 0 0 auto; padding: 0; }
+  .vx-search-text, .vx-search-keys { display: none; }
+}
+@media (max-width: 640px) {
+  .vx-header.has-nav { flex-wrap: wrap; height: auto; padding-block: var(--space-12); row-gap: var(--space-12); }
+  .vx-header-nav { order: 3; width: 100%; margin-left: 0; gap: var(--space-20); overflow-x: auto; }
+  .vx-header-label, .vx-header-end .is-wide { display: none; }
+}
+
+.vx-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-16) var(--space-24);
+  padding: var(--space-16) var(--page-pad);
+  border-top: 1px solid var(--line);
+  font: 400 11px/1.5 var(--font-mono);
+  letter-spacing: 0.02em;
+  color: var(--ink-muted);
+}
+.vx-footer-mark { height: 12px; width: auto; opacity: 0.85; }
+[data-theme="light"] .vx-footer-mark { filter: invert(1); }
+.vx-footer-text { flex: 1 1 420px; min-width: 0; margin: 0; }
+.vx-footer-nav { display: flex; gap: var(--space-16); }
+
+.vx-eyebrow { display: inline-flex; align-items: center; gap: var(--space-8); }
+.vx-eyebrow::before { content: ""; width: 6px; height: 6px; background: var(--accent); flex: none; }
+
+.vx-tabs { overflow: hidden; }
+.vx-tabs-list { display: flex; padding: 0 var(--space-4); border-bottom: 1px solid var(--line); overflow-x: auto; }
+.vx-tabs-list button {
+  appearance: none;
+  margin: 0 0 -1px;
+  padding: var(--space-12) var(--space-12) var(--space-8);
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  cursor: pointer;
+  color: var(--ink-muted);
+}
+.vx-tabs-list button:hover { color: var(--ink-body); }
+.vx-tabs-list button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+.vx-tabs-code { display: flex; align-items: flex-start; gap: var(--space-12); padding: var(--space-16); min-height: 80px; }
+.vx-tabs-pre { margin: 0; flex: 1; min-width: 0; font: 400 13px/1.6 var(--font-mono); color: var(--ink-body); white-space: pre-wrap; }
+.vx-prompt { color: var(--ink-muted); user-select: none; }
+.vx-copy { all: unset; cursor: pointer; color: var(--ink-muted); padding: 2px; }
+.vx-copy:hover { color: var(--ink); }
+.vx-copy svg { width: 16px; height: 16px; fill: currentColor; display: block; }
+.vx-copy .is-check, .vx-copy.is-done .is-copy { display: none; }
+.vx-copy.is-done .is-check { display: block; }
+
+.vx-bench { overflow: hidden; }
+.vx-bench-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--space-8) var(--space-16); padding: var(--space-12) var(--space-20); border-bottom: 1px solid var(--line); }
+.vx-bench-headline { margin: 0; font: 500 14px/1.3 var(--font-sans); color: var(--ink); }
+.vx-bench-sub { color: var(--ink-muted); font-weight: 400; }
+.vx-bench-panels { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+.vx-bench-panel { display: grid; gap: var(--space-12); align-content: start; padding: var(--space-16) var(--space-20); border-left: 1px solid var(--line); margin-left: -1px; }
+.vx-bench-title { display: grid; gap: 2px; }
+.vx-bench-metric { text-wrap: balance; }
+.vx-bench-big { color: var(--ink); }
+.vx-bench-note { display: block; margin-top: var(--space-4); color: var(--ink-muted); }
+
+/* A bar chart's rows: name, a bar on its track, the value. Vortex is the one Blue row. */
+.vx-bars { display: grid; gap: var(--space-8); }
+.vx-bar {
+  display: grid;
+  grid-template-columns: var(--bar-name, 56px) minmax(0, 1fr) var(--bar-value, auto);
+  gap: var(--space-8);
+  align-items: center;
+  font: 400 12px/1 var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-muted);
+}
+.vx-bar-value { text-align: right; }
+.vx-bar-extra { margin-left: var(--space-8); }
+.vx-bar-track { height: 6px; background: var(--chart-track); }
+.vx-bar-fill { display: block; height: 100%; background: var(--chart-muted); }
+.vx-bar.is-ours { color: var(--accent-ink); }
+.vx-bar.is-ours .vx-bar-fill { background: var(--chart-1); }
+.vx-bars.is-lg .vx-bar { gap: var(--space-12); font-size: 12.5px; }
+.vx-bars.is-lg .vx-bar-track { height: 10px; }
+
+/* ------------------------------------------------------------------ docs */
+.vx-theme-switch {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  background: var(--raised);
+  border: 1px solid var(--edge);
+  border-radius: var(--radius-control);
+}
+.vx-theme-switch button {
+  all: unset;
+  box-sizing: border-box;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-control);
+  color: var(--ink-muted);
+  transition: color 150ms ease-out, background-color 150ms ease-out;
+}
+.vx-theme-switch button:hover { color: var(--ink); }
+.vx-theme-switch button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
+.vx-theme-switch svg { width: 16px; height: 16px; fill: currentColor; }
+
+/* DocsNav and Toc style the lists Sphinx writes, so they select its elements. */
+.vx-docs-nav {
+  box-sizing: border-box;
+  width: 260px;
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  padding: var(--space-8) var(--space-12) var(--space-24);
+  background: var(--ground);
+  border-right: 1px solid var(--line);
+}
+.vx-docs-nav-label { margin: var(--space-16) var(--space-8) var(--space-4); }
+.vx-docs-nav a {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  min-height: var(--control-md);
+  padding: 0 var(--space-8);
+  border-radius: var(--radius-control);
+  font: 400 14px/1.3 var(--font-sans);
+  color: var(--ink-body);
+  text-decoration: none;
+  transition: background-color 150ms ease-out, color 150ms ease-out;
+}
+.vx-docs-nav a:hover { background: var(--wash); color: var(--ink); }
+.vx-docs-nav a[aria-current="page"] { background: var(--raised); color: var(--ink); font-weight: 500; }
+.vx-docs-nav a.is-nested { padding-left: var(--space-20); }
+.vx-docs-nav a svg { width: 16px; height: 16px; margin-left: auto; fill: var(--ink-muted); }
+
+.vx-toc { width: 220px; display: grid; align-content: start; gap: var(--space-12); }
+.vx-toc ul { list-style: none; margin: 0; padding: 0; border-left: 1px solid var(--line); }
+.vx-toc a {
+  display: block;
+  margin-left: -1px;
+  padding: var(--space-4) 0 var(--space-4) var(--space-16);
+  font: 400 14px/1.4 var(--font-sans);
+  color: var(--ink-muted);
+  text-decoration: none;
+  transition: color 150ms ease-out, box-shadow 150ms ease-out;
+}
+.vx-toc a:hover { color: var(--ink); }
+.vx-toc a[aria-current="true"] { color: var(--ink); box-shadow: inset 2px 0 0 var(--accent); }
+.vx-toc li.is-nested a { padding-left: calc(var(--space-16) + var(--space-12)); }
+
+.vx-code { background: var(--raised); border-radius: var(--radius-card); overflow: hidden; }
+.vx-code-head {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 36px;
+  padding: var(--space-4) var(--space-8) var(--space-4) var(--space-16);
+  border-bottom: 1px solid var(--edge);
+}
+.vx-code-pre {
+  margin: 0;
+  padding: var(--space-16);
+  overflow-x: auto;
+  font: 400 13px/1.6 var(--font-mono);
+  color: var(--syntax-plain);
+  tab-size: 4;
+}
+.vx-tok-key { color: var(--syntax-keyword); }
+.vx-tok-fn { color: var(--syntax-function); }
+.vx-tok-str { color: var(--syntax-string); }
+.vx-tok-com { color: var(--syntax-comment); font-style: italic; }
+.vx-code-inline,
+.vx-prose :not(pre) > code {
+  padding: 1px var(--space-4);
+  font: 400 0.875em/1 var(--font-mono);
+  color: var(--ink);
+  background: var(--raised);
+  border: 1px solid var(--edge);
+  border-radius: var(--radius-control);
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+.vx-callout {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  gap: var(--space-12);
+  padding: var(--space-12) var(--space-16);
+  background: var(--raised);
+  border-radius: var(--radius-card);
+  font: 400 14px/1.55 var(--font-sans);
+  color: var(--ink-body);
+}
+.vx-callout-icon { width: 20px; height: 20px; margin-top: 1px; fill: var(--ink); }
+.vx-callout-title { margin: 0 0 2px; font-weight: 600; color: var(--ink); }
+.vx-callout-body { margin: 0; }
+
+/* ------------------------------------------------------------------ blog */
+.vx-blog-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-8) var(--space-24);
+  padding-bottom: var(--space-16);
+  border-bottom: 1px solid var(--line);
+}
+.vx-blog-title { margin: 0; color: var(--ink); }
+.vx-blog-feeds { display: flex; gap: var(--space-16); }
+
+/* Post rows sit in a .vx-posts list, which they measure to decide their layout. */
+.vx-posts { container-type: inline-size; }
+.vx-post-row {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: var(--space-4) var(--space-24);
+  padding: var(--space-16) var(--space-12);
+  border-bottom: 1px solid var(--line);
+  color: inherit;
+  text-decoration: none;
+  transition: background-color 150ms ease-out;
+}
+.vx-post-row:hover { background: var(--wash); }
+.vx-post-row-meta { grid-row: span 2; display: grid; align-content: start; gap: var(--space-4); padding-top: var(--space-4); }
+.vx-post-row-title { color: var(--ink); }
+.vx-post-row-excerpt { color: var(--ink-muted); }
+@container (max-width: 560px) {
+  .vx-post-row { grid-template-columns: minmax(0, 1fr); }
+  .vx-post-row-meta { grid-row: auto; display: flex; gap: var(--space-12); padding-top: 0; }
+}
+
+.vx-article {
+  box-sizing: border-box;
+  max-width: calc(68ch + 2 * var(--space-48));
+  margin: 0 auto;
+  padding: var(--space-48) var(--space-48) var(--space-32);
+  color: var(--ink-body);
+}
+.vx-article-head { margin-bottom: var(--space-32); }
+.vx-article-title { margin: 0 0 var(--space-16); color: var(--ink); text-wrap: balance; }
+.vx-article-byline { margin: 0; }
+.vx-prose > * { margin: 0 0 1.1em; }
+.vx-prose > h2 { margin: 2em 0 0.6em; font: 500 28px/1.15 var(--font-display); letter-spacing: -0.02em; color: var(--ink); }
+.vx-prose > h3 { margin: 1.6em 0 0.5em; font: 600 22px/1.2 var(--font-display); letter-spacing: -0.02em; color: var(--ink); }
+.vx-prose strong { font-weight: 600; color: var(--ink); }
+.vx-prose ul, .vx-prose ol { padding-left: 1.4em; }
+.vx-prose li + li { margin-top: 0.4em; }
+.vx-prose li::marker { color: var(--ink-muted); }
+.vx-prose blockquote {
+  margin: 1.6em 0;
+  padding-left: var(--space-16);
+  border-left: 2px solid var(--accent);
+  font-size: 18px;
+  line-height: 1.55;
+  color: var(--ink);
+}
+.vx-prose > .vx-code, .vx-prose > .vx-callout, .vx-prose > .vx-figure, .vx-prose > .vx-table-wrap { margin: 1.9em 0; }
+.vx-article-more { margin-top: var(--space-48); padding-top: var(--space-24); border-top: 1px solid var(--line); }
+.vx-article-more > .vx-label { display: block; margin-bottom: var(--space-8); }
+@media (max-width: 640px) {
+  .vx-article { padding: var(--space-32) var(--space-20) var(--space-24); font-size: 16px; }
+  .vx-article-title { font-size: 36px; }
+}
+
+/* Tables: a post's tables, which Markdown writes, and data tables. */
+.vx-table-wrap { overflow-x: auto; }
+.vx-prose table,
+.vx-table { width: 100%; border-collapse: collapse; font: 400 14px/1.4 var(--font-sans); font-variant-numeric: tabular-nums; }
+.vx-prose th,
+.vx-table th {
+  padding: var(--space-8) var(--space-12) var(--space-8) 0;
+  text-align: left;
+  font: 500 11px/1.2 var(--font-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  border-bottom: 1px solid var(--edge);
+}
+.vx-prose td,
+.vx-table td { padding: var(--space-8) var(--space-12) var(--space-8) 0; border-bottom: 1px solid var(--line); }
+.vx-prose .is-num,
+.vx-table .is-num { text-align: right; font-family: var(--font-mono); font-size: 13px; }
+.vx-prose tr.is-total td,
+.vx-table tr.is-total td { color: var(--ink); font-weight: 600; border-bottom: 0; }
+/* Data tables: every cell in mono, rows at app height, and column names keep their case. */
+.vx-table.is-data th,
+.vx-table.is-data td { padding: var(--space-8) var(--space-12); }
+.vx-table.is-data th { text-transform: none; letter-spacing: 0; }
+.vx-table.is-data td { height: var(--app-row); box-sizing: border-box; white-space: nowrap; font-family: var(--font-mono); font-size: 13px; color: var(--ink-body); }
+.vx-table th.is-selected { color: var(--accent-ink); }
+.vx-table td.is-selected { background: var(--accent-soft); color: var(--ink); }
+
+.vx-figure { margin: 0; container-type: inline-size; }
+.vx-figure-frame { display: grid; gap: var(--space-12); padding: var(--space-20); border: 1px solid var(--line); border-radius: var(--radius-card); }
+.vx-figure-caption { margin-top: var(--space-12); font: 400 14px/1.5 var(--font-sans); color: var(--ink-muted); }
+.vx-figure-caption .vx-source { display: flex; margin-top: var(--space-4); }
+@container (max-width: 520px) {
+  .vx-figure .vx-bars { --bar-name: 96px; --bar-value: 72px; }
+  .vx-figure .vx-bar-extra { display: none; }
+}
+
+/* ------------------------------------------------------------------ focus
+   One rule for every focusable element, last so that it wins over the resets above. Rows and
+   segments inside a clipped container draw it inside their edge. */
+:where(a, button, [tabindex]):focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+:where(.vx-docs-nav a, .vx-toc a, .vx-post-row, .vx-tree-node, .vx-filemap-bar > button, .vx-tabs-list button):focus-visible { outline-offset: -2px; }

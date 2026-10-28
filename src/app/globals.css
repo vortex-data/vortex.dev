@@ -1,14 +1,15 @@
 @import "tailwindcss";
+@import "../styles/vortex-tokens.css";
+@import "../styles/vortex.css";
 @plugin "@tailwindcss/typography";
 
+/* The design system's Dark ground. src/lib/theme.ts mirrors it (scripts/verify.ts). */
 :root {
-  --background: #101010;
+  --background: #0f0f0e;
 }
 
 @theme inline {
   --color-background: var(--background);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
 
   --color-grey: #D9D9D9;
   --color-spiral-black: rgba(16, 16, 16, 1);
@@ -27,10 +28,11 @@
   --color-spiral-orange: rgba(251, 134, 61, 1);
   --color-spiral-red: rgba(204, 51, 51, 1);
 
-  /* Fonts */
-  --font-funnel: "Funnel Display", sans-serif;
-  --font-sans: "Geist", sans-serif;
-  --font-mono: "Geist Mono", monospace;
+  /* Fonts: the same values as the design system's --font-* tokens, so
+     Tailwind's font utilities use next/font's faces too. */
+  --font-funnel: var(--vx-face-display, "Funnel Display"), sans-serif;
+  --font-sans: var(--vx-face-sans, Geist), system-ui, sans-serif;
+  --font-mono: var(--vx-face-mono, "Geist Mono"), ui-monospace, monospace;
 
   /* Breakpoints */
   --breakpoint-2md: 57rem;
@@ -42,8 +44,9 @@ html {
 }
 
 body {
-  background: var(--background);
-  font-family: theme("fontFamily.sans");
+  background: var(--ground);
+  color: var(--ink-body);
+  font-family: var(--font-sans);
   text-rendering: optimizeLegibility;
 
   u {

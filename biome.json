@@ -19,6 +19,8 @@
       "!build",
       "!next-env.d.ts",
       "!src/app/globals.css",
+      "!src/styles/vortex-tokens.css",
+      "!src/styles/vortex.css",
       "!**/*.svg"
     ]
   },
