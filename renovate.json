@@ -26,6 +26,11 @@
   },
   "packageRules": [
     {
+      "description": "Hold @types/node to the deployable Node major (Vercel tops out at 24). Raise in lockstep with .nvmrc and engines.node.",
+      "matchPackageNames": ["@types/node"],
+      "allowedVersions": "<25"
+    },
+    {
       "groupName": "Next.js",
       "matchPackageNames": ["next", "@next/**"]
     },
