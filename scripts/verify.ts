@@ -360,7 +360,12 @@ async function checkInternalLinks(
   const broken: string[] = [];
   for (const href of targets) {
     try {
-      const r = await fetch(`${BASE}${href}`, { method: "HEAD" });
+      // A redirect (`/slack`, `/code` in next.config.mjs) is a live route:
+      // don't follow it off the site, where hosts like Slack answer bots 403.
+      const r = await fetch(`${BASE}${href}`, {
+        method: "HEAD",
+        redirect: "manual"
+      });
       if (r.status >= 400) broken.push(`${href} (${r.status})`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
