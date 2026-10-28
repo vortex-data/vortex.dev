@@ -8,3 +8,16 @@ allowBuilds:
   sharp: true
   ssh2: false
   unrs-resolver: true
+# Refuse to resolve package versions younger than 14 days (the value is in
+# minutes). Mirrors `minimumReleaseAge` in the root bunfig.toml and
+# renovate.json, so a local `pnpm add` or lockfile refresh can't pull a freshly
+# published, possibly compromised version.
+minimumReleaseAge: 20160
+# Force patched versions of transitive dependencies whose parents don't allow
+# them yet. Drop an entry once its parent's own range reaches the patch.
+overrides:
+  # next pins postcss 8.4.31 exactly (GHSA-6g55-p6wh-862q, GHSA-r28c-9q8g-f849).
+  postcss: ^8.5.30
+  # next accepts ^0.34.3 || ^0.35.4, so pnpm keeps a vulnerable 0.34.x
+  # (GHSA-f88m-g3jw-g9cj, GHSA-rgj7-g3m4-5g8c, GHSA-wq5f-xc86-pv6w).
+  sharp: ^0.35.5
