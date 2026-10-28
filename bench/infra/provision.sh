@@ -32,7 +32,9 @@
 #      protection, storage autoscaling to 100 GiB, automatic minor upgrades.
 #   6. Waits for the instance to reach `available`, then applies the same
 #      protection, storage, backup and upgrade settings to an instance that
-#      already existed.
+#      already existed. The Postgres log, with every connection, goes to the
+#      CloudWatch log group `/aws/rds/instance/vortex-bench-prod/postgresql`
+#      (30-day retention).
 #   7. Replicates the automated backups (snapshots and WAL) to `us-west-2`,
 #      for 14 days of point-in-time recovery there.
 #   8. Creates the SNS topic `vortex-bench-alarms`, three CloudWatch alarms
@@ -84,6 +86,8 @@ readonly BACKUP_REPLICA_REGION="${BACKUP_REPLICA_REGION:-us-west-2}"
 readonly BACKUP_REPLICA_RETENTION_DAYS="${BACKUP_REPLICA_RETENTION_DAYS:-14}"
 readonly ALARM_TOPIC_NAME="${ALARM_TOPIC_NAME:-vortex-bench-alarms}"
 readonly EVENT_SUBSCRIPTION_NAME="${EVENT_SUBSCRIPTION_NAME:-vortex-bench-prod-events}"
+# The Postgres log (with every connection and disconnection) goes to CloudWatch Logs.
+readonly DB_LOG_RETENTION_DAYS="${DB_LOG_RETENTION_DAYS:-30}"
 # The incident.io "Amazon CloudWatch" alert source URL. It carries a token, so
 # it is read from the environment only and never printed. Unset: no subscription.
 readonly ALARM_HTTPS_ENDPOINT="${ALARM_HTTPS_ENDPOINT:-}"
@@ -270,12 +274,32 @@ ensure_parameter_group() {
         log "  created."
     fi
 
-    # work_mem is in KiB. 32 MiB lets the load-all reads sort in memory.
+    # work_mem is in KiB. 32 MiB lets the load-all reads sort in memory. The
+    # instance is reachable from the internet, so log every connection.
     aws rds modify-db-parameter-group \
         --db-parameter-group-name "$DB_PARAMETER_GROUP_NAME" \
         --parameters "ParameterName=work_mem,ParameterValue=32768,ApplyMethod=immediate" \
+                     "ParameterName=log_connections,ParameterValue=1,ApplyMethod=immediate" \
+                     "ParameterName=log_disconnections,ParameterValue=1,ApplyMethod=immediate" \
         >/dev/null
-    log "  work_mem=32768 applied."
+    log "  work_mem=32768, log_connections=1 and log_disconnections=1 applied."
+}
+
+ensure_log_group() {
+    log "Step 4c: CloudWatch log group for the Postgres log."
+
+    # Made before the instance exports to it, so the retention applies from
+    # the first event. RDS writes to this exact name.
+    local group="/aws/rds/instance/${DB_INSTANCE_IDENTIFIER}/postgresql"
+    if ! aws logs describe-log-groups --log-group-name-prefix "$group" \
+            --query 'logGroups[].logGroupName' --output text | tr '\t' '\n' | grep -qxF "$group"; then
+        aws logs create-log-group --log-group-name "$group" \
+            --tags "${TAG_KEY_PROJECT}=${TAG_VAL_PROJECT},${TAG_KEY_OWNER}=${TAG_VAL_OWNER}"
+        log "  created ${group}."
+    fi
+    aws logs put-retention-policy --log-group-name "$group" \
+        --retention-in-days "$DB_LOG_RETENTION_DAYS"
+    log "  ${DB_LOG_RETENTION_DAYS}-day retention set."
 }
 
 ensure_rds_instance() {
@@ -305,6 +329,8 @@ ensure_rds_instance() {
             --no-multi-az \
             --auto-minor-version-upgrade \
             --deletion-protection \
+            --copy-tags-to-snapshot \
+            --enable-cloudwatch-logs-exports postgresql \
             --tags "Key=${TAG_KEY_PROJECT},Value=${TAG_VAL_PROJECT}" \
                    "Key=${TAG_KEY_OWNER},Value=${TAG_VAL_OWNER}" \
             >/dev/null
@@ -329,7 +355,7 @@ ensure_rds_instance() {
     fi
 
     # Re-assert the settings on an instance that existed before they were added
-    # here. All four take effect at once without a restart, and the call omits
+    # here. All of them take effect at once without a restart, and the call omits
     # --apply-immediately so it cannot pull a queued engine upgrade forward.
     aws rds modify-db-instance \
         --db-instance-identifier "$DB_INSTANCE_IDENTIFIER" \
@@ -337,8 +363,19 @@ ensure_rds_instance() {
         ${max_storage_args[@]+"${max_storage_args[@]}"} \
         --backup-retention-period "$DB_BACKUP_RETENTION_DAYS" \
         --auto-minor-version-upgrade \
+        --copy-tags-to-snapshot \
         >/dev/null
-    log "  deletion protection, storage autoscaling (${allocated} GiB allocated), ${DB_BACKUP_RETENTION_DAYS}-day backups and automatic minor upgrades set."
+    log "  deletion protection, storage autoscaling (${allocated} GiB allocated), ${DB_BACKUP_RETENTION_DAYS}-day backups, automatic minor upgrades and snapshot tags set."
+
+    if ! aws rds describe-db-instances --db-instance-identifier "$DB_INSTANCE_IDENTIFIER" \
+            --query 'DBInstances[0].EnabledCloudwatchLogsExports' --output text \
+            | tr '\t' '\n' | grep -qxF postgresql; then
+        aws rds modify-db-instance \
+            --db-instance-identifier "$DB_INSTANCE_IDENTIFIER" \
+            --cloudwatch-logs-export-configuration '{"EnableLogTypes":["postgresql"]}' \
+            >/dev/null
+        log "  Postgres log export to CloudWatch enabled."
+    fi
 
     # A new parameter group takes effect only after a reboot, so the script
     # reports a different group and leaves the move and the reboot to the operator.
@@ -712,6 +749,7 @@ main() {
     ensure_db_subnet_group
     ensure_security_group
     ensure_parameter_group
+    ensure_log_group
     ensure_rds_instance
     ensure_backup_replication
     ensure_alarms
