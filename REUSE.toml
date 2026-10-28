@@ -1,0 +1,67 @@
+version = 1
+
+# Licensing follows section 7 of the Vortex Technical Charter (src/assets/charter.pdf):
+# code is Apache-2.0 and documentation is CC-BY-4.0. When several annotations match a file,
+# the last one wins, so the specific entries come after the general ones.
+#
+# A file that matches nothing here fails the REUSE check in CI. That is deliberate for
+# images and other assets: decide who owns a new asset and annotate it before it lands.
+
+# Code: application source, tests, scripts, configuration and CI.
+[[annotations]]
+path = [
+  "src/**.ts",
+  "src/**.tsx",
+  "src/**.css",
+  "scripts/**",
+  "tests/**",
+  ".github/**",
+  ".vscode/**",
+  ".gitignore",
+  ".nvmrc",
+  "*.cjs",
+  "*.json",
+  "*.lock",
+  "*.mjs",
+  "*.toml",
+  "*.ts",
+]
+SPDX-FileCopyrightText = "Copyright the Vortex contributors"
+SPDX-License-Identifier = "Apache-2.0"
+
+# Documentation: blog posts and Markdown.
+[[annotations]]
+path = ["**.md", "src/content/**.mdx"]
+SPDX-FileCopyrightText = "Copyright the Vortex contributors"
+SPDX-License-Identifier = "CC-BY-4.0"
+
+# Vortex brand assets. The files are CC-BY-4.0, which grants no trademark rights (CC-BY-4.0
+# section 2(b)(2)). The Vortex name and logo are trademarks of LF Projects, LLC (charter
+# section 5.a).
+[[annotations]]
+path = [
+  "src/app/favicon.ico",
+  "src/assets/logo.svg",
+  "src/assets/logo-mobile.svg",
+  "public/logo.glb",
+  "public/404.glb",
+]
+SPDX-FileCopyrightText = "Copyright the Vortex contributors"
+SPDX-License-Identifier = "CC-BY-4.0"
+
+# Files the Vortex project does not own and does not license. See
+# LICENSES/LicenseRef-Third-Party.txt.
+[[annotations]]
+path = "src/assets/charter.pdf"
+SPDX-FileCopyrightText = "LF Projects, LLC"
+SPDX-License-Identifier = "LicenseRef-Third-Party"
+
+[[annotations]]
+path = "src/assets/lf_white.svg"
+SPDX-FileCopyrightText = "The Linux Foundation"
+SPDX-License-Identifier = "LicenseRef-Third-Party"
+
+[[annotations]]
+path = "src/assets/spiral.svg"
+SPDX-FileCopyrightText = "Spiral"
+SPDX-License-Identifier = "LicenseRef-Third-Party"

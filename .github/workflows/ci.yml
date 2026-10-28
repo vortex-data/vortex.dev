@@ -242,3 +242,22 @@ jobs:
           # keep noise down without losing coverage of secrets whose
           # verifiers don't recognize them yet.
           extra_args: --results=verified,unknown
+
+  # Keeps every file's license machine-readable, per section 7.d of the
+  # Vortex Technical Charter. REUSE.toml maps code to Apache-2.0 and docs to
+  # CC-BY-4.0; a file it doesn't cover (usually a new image or other asset)
+  # fails here until it's annotated. The action builds from the floating
+  # `fsfe/reuse:6` image tag, so the job gets no secrets and checkout doesn't
+  # persist the read-only token into the workspace the container mounts.
+  reuse:
+    name: REUSE compliance
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - name: REUSE lint
+        uses: fsfe/reuse-action@676e2d560c9a403aa252096d99fcab3e1132b0f5  # v6.0.0
