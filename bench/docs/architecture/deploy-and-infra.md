@@ -93,13 +93,20 @@ scripts/migrate-schema.py  ──IAM token, verify-full TLS──▶  RDS as `mi
 
 ```
 push to main     ──▶  production deploy
-workflow_dispatch ──▶  preview or production (input)
+workflow_dispatch ──▶  preview or production (production from main only)
+same-repo PR      ──▶  preview (event merge commit)
    │
    ▼
-runner: pnpm install + `vercel build [--prod]`   (builds web/ ON THE RUNNER)
+shared checks on exact SHA: format + lint + build + test
    │
    ▼
-`vercel deploy --prebuilt [--prod]`              (uploads the prebuilt output)
+runner: `vercel build [--prod]` on the same SHA
+   │
+   ▼
+`vercel deploy --prebuilt [--prod]`
+   │
+   ▼
+verify build SHA + read paths + CDN HIT (bounded retries)
 ```
 
 - The Vercel project `benchmarks-website` is keyed by `VERCEL_ORG_ID` +
@@ -112,9 +119,32 @@ runner: pnpm install + `vercel build [--prod]`   (builds web/ ON THE RUNNER)
   prebuilt output is then uploaded, eliminating a build race.
 - `main` **is** production — there is no staging gate. The per-PR CI
   (including a testcontainer migration test) is the gate; a merge to `main`
-  ships straight to the v4 production domain.
+  ships to the v4 production domain after the deploy workflow checks the same commit.
+- Push and manual production runs share one concurrency group without cancelling an active run.
+  This serializes promotion and verification across both triggers. Previews can cancel stale runs.
+- Production verification uses `BENCH_SITE_BASE_URL`. A protected preview reports verification
+  as blocked. A production authentication error or failed probe fails the workflow.
 - A `bench-keep-warm` scheduled workflow pings the production deployment so the RDS
   connection pool and Data Cache stay warm between visits.
+
+### Required merge check
+
+The `main` ruleset of `vortex-data/vortex.dev` requires `Bench: format, lint, build, test` from
+**GitHub Actions** (app ID `15368`), beside the marketing site's checks. It does not require
+branches to be up to date before merging, so a merged commit is never checked before it lands.
+That is why `bench-deploy.yml` runs the same checks (the `bench-checks` composite action) on the
+exact commit it deploys, and deploys only if they pass.
+
+To see the check for a commit:
+
+```bash
+checked_sha="$(git rev-parse HEAD)"
+gh api "repos/vortex-data/vortex.dev/commits/${checked_sha}/check-runs" \
+  --jq '.check_runs[] | select(.name == "Bench: format, lint, build, test") | {name, conclusion, app_id: .app.id}'
+```
+
+A commit that changes bench must report `success` and app ID `15368`. The composite action keeps
+the check name the same when its steps change.
 
 ## Legacy v3 host deploy (`ops/`) — decommissioned 2026-07-08
 

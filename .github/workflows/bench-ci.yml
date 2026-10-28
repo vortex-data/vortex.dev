@@ -47,69 +47,14 @@ jobs:
     if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.bench == 'true') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
-    defaults:
-      run:
-        working-directory: bench/web
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           persist-credentials: false
 
-      - name: Check infrastructure trust policies offline
-        working-directory: bench
-        run: |
-          bash -n infra/provision.sh
-          python3 -m unittest discover -s infra/tests -v
-
-      # pnpm must exist before setup-node so its `cache: pnpm` can resolve the store.
-      - name: Install pnpm
-        run: npm install -g "pnpm@${PNPM_VERSION}"
-
-      - name: Setup Node
-        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
+      # The same checks bench-deploy runs on the commit it deploys.
+      - name: Bench checks
+        uses: ./.github/actions/bench-checks
         with:
-          # The repository-wide Node pin (see CLAUDE.md "Node version"). Keep
-          # @types/node in bench/web/package.json on the same major.
-          node-version-file: .nvmrc
-          cache: pnpm
-          cache-dependency-path: bench/web/pnpm-lock.yaml
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Format check
-        run: pnpm format:check
-
-      - name: Lint
-        run: pnpm lint
-
-      # `next build` must succeed without a reachable database (every page and route
-      # is request-rendered), so no BENCH_DB_* env vars are provided here on purpose.
-      - name: Build
-        run: pnpm build
-
-      # testcontainers self-skips the Postgres integration suite when no Docker daemon
-      # is available (a local-dev convenience); in CI that would silently drop the only
-      # Postgres integration coverage, so fail loudly if the daemon is missing.
-      - name: Require Docker for the integration suite
-        run: docker info > /dev/null
-
-      # The migration-runner tests and the web integration suite both run
-      # bench/scripts/migrate-schema.py through uv.
-      - name: Install uv
-        uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884  # v10.3.0
-        with:
-          enable-cache: false
-
-      # uv resolves the runner's Python dependencies when it runs. Give them the
-      # repository's 14-day cooldown (see CLAUDE.md "Supply chain hardening").
-      - name: Set the uv cooldown
-        run: echo "UV_EXCLUDE_NEWER=$(date -u -d '14 days ago' +%Y-%m-%dT%H:%M:%SZ)" >> "${GITHUB_ENV}"
-
-      - name: Test migration runner
-        working-directory: bench
-        run: uv run --no-project --with 'psycopg[binary]>=3.2' python -m unittest discover -s scripts/tests -v
-
-      - name: Test
-        run: pnpm test
+          pnpm-version: ${{ env.PNPM_VERSION }}
