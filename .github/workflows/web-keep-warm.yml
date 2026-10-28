@@ -1,0 +1,42 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: Copyright the Vortex contributors
+#
+# External keep-warm / uptime ping for the deployed v4 site. This is an EXTERNAL
+# edge ping (from a GitHub-hosted runner) against the public production URL —
+# DISTINCT from the in-app Vercel cron in `web/vercel.json` (`/api/health` every
+# 2 min, run inside Vercel's own scheduler). The external ping additionally
+# exercises the public DNS + CDN-edge path the internal cron does not, and is
+# independent of the Vercel cron quota. The target URL is `vars.BENCH_SITE_BASE_URL`
+# (provisioned in Phase 4.2). Scheduled runs fire only on the default branch.
+
+name: Web Keep-Warm
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"   # every 10 minutes
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-keep-warm
+  cancel-in-progress: true
+
+jobs:
+  ping:
+    name: Ping production health endpoint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Curl health endpoint
+        env:
+          BASE_URL: ${{ vars.BENCH_SITE_BASE_URL }}
+        run: |
+          set -Eeuo pipefail
+          if [ -z "${BASE_URL}" ]; then
+            echo "BENCH_SITE_BASE_URL not set; skipping keep-warm ping" >&2
+            exit 0
+          fi
+          curl -fsS --max-time 30 --retry 2 "${BASE_URL%/}/api/health" -o /dev/null
+          echo "keep-warm ping OK: ${BASE_URL%/}/api/health"

@@ -1,0 +1,220 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: Copyright the Vortex contributors
+#
+# Deploy the Next.js v4 site to this repo's OWN Vercel project via the Vercel CLI
+# (git-integration is OFF on that project — Phase-4 decision (d)). The CLI is keyed
+# by VERCEL_ORG_ID + VERCEL_PROJECT_ID (vars, the NEW independently-owned project)
+# and authenticated by VERCEL_TOKEN (secret), so this repo's deploys never race the
+# monorepo's deploys to ITS project.
+#
+# The Vercel project's Root Directory must be set to `web/` (Phase-4.2 console step);
+# the CLI runs from the repo root and uses the pulled project settings to build web/.
+#
+# Triggers: production deploy on push to `develop`; a PREVIEW deploy on every
+# pull_request that touches `web/` (or this workflow), which posts the preview URL
+# back to the PR as a sticky comment; and `workflow_dispatch` for manual prod/preview
+# runs. Fork PRs are skipped (they have no access to VERCEL_TOKEN). The CLI builds on
+# the runner and deploys --prebuilt, so this repo never races the monorepo's project.
+
+name: Web Deploy
+
+on:
+  push:
+    branches: [develop]
+  pull_request:
+    branches: [develop]
+    paths:
+      - 'web/**'
+      - '.github/workflows/web-deploy.yml'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Vercel target environment"
+        type: choice
+        options: [preview, production]
+        default: preview
+
+concurrency:
+  # Include the event name so a manual workflow_dispatch (e.g. a preview deploy) on
+  # `develop` does NOT land in the same group as — and thus cancel — an in-flight
+  # push-triggered production deploy on the same ref.
+  group: web-deploy-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+  # Create the GitHub Deployment + statuses that render the native "View
+  # deployment" button and the in-progress spinner on the PR (Vercel's git
+  # integration is off here, so the workflow posts these itself).
+  deployments: write
+
+env:
+  VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+  # `vercel build` runs on the runner (not Vercel's builders), so it shells out to
+  # pnpm to install + build web/. Keep in lockstep with `packageManager` in web/package.json.
+  PNPM_VERSION: "11.5.2"
+
+jobs:
+  deploy:
+    name: Build & deploy to Vercel
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Fork PRs have no access to VERCEL_TOKEN, and we do not auto-deploy untrusted
+    # code; same-repo PRs, pushes, and manual dispatches run normally.
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Open a GitHub Deployment against the PR head commit BEFORE the build, so
+      # the PR shows an in-progress (spinner) status immediately and the later
+      # success/failure step flips it to the "View deployment" button. PR-only;
+      # `transient_environment` lets GitHub retire superseded previews. A failure
+      # to open the deployment must not fail the build, so the `id` is optional
+      # and every downstream step guards on it being non-empty.
+      - name: Start preview deployment
+        id: deployment
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -Eeuo pipefail
+          id="$(gh api "repos/${GITHUB_REPOSITORY}/deployments" --method POST --jq '.id' --input - <<EOF || true
+          {
+            "ref": "${HEAD_SHA}",
+            "environment": "preview",
+            "required_contexts": [],
+            "auto_merge": false,
+            "transient_environment": true,
+            "production_environment": false,
+            "description": "Vercel preview"
+          }
+          EOF
+          )"
+          echo "id=${id}" >> "$GITHUB_OUTPUT"
+          if [ -n "${id}" ]; then
+            gh api "repos/${GITHUB_REPOSITORY}/deployments/${id}/statuses" --method POST --input - >/dev/null <<EOF || true
+          { "state": "in_progress", "description": "Building preview…" }
+          EOF
+          fi
+
+      # `vercel build` below builds ON THE RUNNER (not Vercel's infra), so it shells out
+      # to pnpm to install web/'s deps and run `next build`. Without pnpm + Node on PATH it
+      # fails with `spawn pnpm ENOENT`. Mirror web-ci.yml's setup.
+      # pnpm must exist before setup-node so its `cache: pnpm` can resolve the store.
+      - name: Install pnpm
+        run: npm install -g "pnpm@${PNPM_VERSION}"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          # Keep in lockstep with @types/node in web/package.json (Node 24 API surface).
+          node-version: "24"
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - name: Install Vercel CLI
+        # vercel@latest is deliberately unpinned: the Vercel CLI is backward-compatible
+        # for the pull/build/deploy --prebuilt flow used here. If a CLI release ever breaks
+        # this flow, pin a specific major (e.g. vercel@<N>) here.
+        run: npm install -g vercel@latest
+
+      - name: Resolve target environment
+        id: target
+        # push to develop => production; pull_request => preview; manual dispatch =>
+        # the input. Expression context is passed through env: rather than interpolated
+        # into the shell body, so a value can never be parsed as shell (injection-safe).
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_ENV: ${{ inputs.environment }}
+        run: |
+          set -Eeuo pipefail
+          if [ "${EVENT_NAME}" = "workflow_dispatch" ]; then
+            echo "env=${INPUT_ENV}" >> "$GITHUB_OUTPUT"
+          elif [ "${EVENT_NAME}" = "pull_request" ]; then
+            echo "env=preview" >> "$GITHUB_OUTPUT"
+          else
+            echo "env=production" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Pull Vercel project settings
+        run: vercel pull --yes --environment="${{ steps.target.outputs.env }}" --token="${{ secrets.VERCEL_TOKEN }}"
+
+      - name: Build
+        run: |
+          set -Eeuo pipefail
+          if [ "${{ steps.target.outputs.env }}" = "production" ]; then
+            vercel build --prod --token="${{ secrets.VERCEL_TOKEN }}"
+          else
+            vercel build --token="${{ secrets.VERCEL_TOKEN }}"
+          fi
+
+      - name: Deploy (prebuilt)
+        id: deploy
+        run: |
+          set -Eeuo pipefail
+          if [ "${{ steps.target.outputs.env }}" = "production" ]; then
+            url="$(vercel deploy --prebuilt --prod --token="${{ secrets.VERCEL_TOKEN }}" | tail -n1)"
+          else
+            url="$(vercel deploy --prebuilt --token="${{ secrets.VERCEL_TOKEN }}" | tail -n1)"
+          fi
+          echo "url=${url}" >> "$GITHUB_OUTPUT"
+          printf 'Deployed: %s\n' "$url"
+
+      # On a pull_request, post the preview URL back to the PR as a single sticky
+      # comment (edited in place on each push) so the preview is one click from the PR.
+      - name: Comment preview URL on the PR
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          DEPLOY_URL: ${{ steps.deploy.outputs.url }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          set -Eeuo pipefail
+          gh pr comment "${PR_NUMBER}" --repo "${GITHUB_REPOSITORY}" \
+            --body "Vercel preview for \`${COMMIT_SHA}\`: ${DEPLOY_URL}" \
+            --edit-last --create-if-none
+
+      # Flip the deployment to success and attach the preview URL, which is what
+      # turns the in-progress status into the clickable "View deployment" button.
+      - name: Mark preview deployment ready
+        if: ${{ success() && github.event_name == 'pull_request' && steps.deployment.outputs.id != '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEPLOY_ID: ${{ steps.deployment.outputs.id }}
+          DEPLOY_URL: ${{ steps.deploy.outputs.url }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -Eeuo pipefail
+          gh api "repos/${GITHUB_REPOSITORY}/deployments/${DEPLOY_ID}/statuses" --method POST --input - >/dev/null <<EOF
+          {
+            "state": "success",
+            "environment_url": "${DEPLOY_URL}",
+            "log_url": "${RUN_URL}",
+            "description": "Preview ready"
+          }
+          EOF
+
+      # If the build or deploy failed, mark the deployment failed so the PR shows
+      # a red status instead of a spinner that never resolves.
+      - name: Mark preview deployment failed
+        if: ${{ failure() && github.event_name == 'pull_request' && steps.deployment.outputs.id != '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEPLOY_ID: ${{ steps.deployment.outputs.id }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -Eeuo pipefail
+          gh api "repos/${GITHUB_REPOSITORY}/deployments/${DEPLOY_ID}/statuses" --method POST --input - >/dev/null <<EOF
+          {
+            "state": "failure",
+            "log_url": "${RUN_URL}",
+            "description": "Preview deploy failed"
+          }
+          EOF
