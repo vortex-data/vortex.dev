@@ -1,10 +1,11 @@
 # Bun configuration. Project-scoped — Bun merges this with $HOME/.bunfig.toml.
 
 [install]
-# Give every package its own resolved dependencies, as pnpm did for bench,
-# instead of one hoisted tree, so one app's tools never load the other's copy
-# of a package. The site and bench/web share Next.js, React and TypeScript at
-# the same versions. This is also Bun's default for a workspace.
+# Link only the dependencies each package declares, as pnpm did for bench,
+# instead of hoisting every package to the top of node_modules: no code can
+# load a transitive dependency that its own package does not declare. This is
+# also Bun's default for a workspace; it is set here so that the install
+# layout does not change with that default.
 linker = "isolated"
 
 # Refuse to install package versions younger than 14 days. Mirrors the

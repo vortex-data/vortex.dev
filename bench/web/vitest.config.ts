@@ -5,10 +5,11 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
-  // Next.js owns tsconfig's `jsx` setting (it was `"preserve"` before Next.js 16,
-  // and Vite (rolldown/oxc) leaves preserved JSX untransformed, which fails the
-  // component tests). Transform JSX with the React automatic runtime for tests
-  // explicitly (no `import React` needed; pulls from `react/jsx-runtime`).
+  // Transform JSX with the React automatic runtime for tests explicitly (no
+  // `import React` needed; pulls from `react/jsx-runtime`), so the component
+  // tests do not depend on tsconfig's `jsx` setting. That comes from the shared
+  // `tsconfig.base.json` (`"react-jsx"`); it was `"preserve"` before Next.js 16,
+  // and Vite (rolldown/oxc) leaves preserved JSX untransformed.
   // Vite's transform option is `oxc`, not `esbuild`, under rolldown-vite; the
   // typed form of the automatic runtime is the `{ runtime: 'automatic' }`
   // object (the bare `'react-jsx'` string is runtime-valid but not in the type).
