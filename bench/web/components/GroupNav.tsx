@@ -4,6 +4,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { ListIcon } from '@/components/icons';
 
 /**
  * A group entry for the jump menu: its display name, the `data-group-slug`
@@ -190,30 +191,5 @@ export function GroupNav({ groups }: { groups: GroupNavItem[] }) {
         </ul>
       </div>
     </nav>
-  );
-}
-
-/** A list/menu glyph for the toggle, matching the header icons' stroke style. */
-function ListIcon() {
-  return (
-    <svg
-      className="btn-icon"
-      viewBox="0 0 24 24"
-      width="16"
-      height="16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M8 6h13" />
-      <path d="M8 12h13" />
-      <path d="M8 18h13" />
-      <path d="M3 6h.01" />
-      <path d="M3 12h.01" />
-      <path d="M3 18h.01" />
-    </svg>
   );
 }

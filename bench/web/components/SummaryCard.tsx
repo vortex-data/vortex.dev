@@ -131,9 +131,9 @@ export function SummaryCard({ summary }: { summary?: Summary }) {
             <div className="compression-size-panel compression-size-parquet-panel">
               <div className="compression-size-parquet-header">
                 <span className="compression-size-group">Vs Parquet</span>
-                <span className="compression-size-heading">⬇️ Min</span>
-                <span className="compression-size-heading">📊 Mean</span>
-                <span className="compression-size-heading">⬆️ Max</span>
+                <span className="compression-size-heading">Min</span>
+                <span className="compression-size-heading">Mean</span>
+                <span className="compression-size-heading">Max</span>
               </div>
               <div className="compression-size-parquet-list">
                 {summary.rankings.map((item) => {

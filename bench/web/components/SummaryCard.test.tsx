@@ -178,9 +178,10 @@ describe('SummaryCard', () => {
     expect(html).toContain('Vs Arrow');
     expect(html).toContain('Vs Parquet');
     expect(html).not.toContain('GeoMean');
-    expect(html.match(/📊 Mean/g)).toHaveLength(1);
-    expect(html).toContain('⬇️ Min');
-    expect(html).toContain('⬆️ Max');
+    expect(html.match(/>Mean</g)).toHaveLength(1);
+    expect(html).toContain('>Min<');
+    expect(html).toContain('>Max<');
+    expect(html).not.toMatch(/⬇️|📊|⬆️/);
     expect(html).toContain('class="score-value compression-size-value">8.25x</span>');
     expect(html).toContain('class="score-runtime compression-size-value">0.55x</span>');
     expect(html).toContain('class="score-value compression-size-value">0.45x</span>');

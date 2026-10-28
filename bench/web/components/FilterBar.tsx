@@ -17,6 +17,7 @@ import {
   subscribeGlobalFilter,
   toggleGlobalFilterValue,
 } from '@/lib/chart-store';
+import { FilterIcon } from '@/components/icons';
 
 /**
  * The global engine/format filter dropdown in the sticky header, the client
@@ -224,24 +225,4 @@ function syncDimensionUrl(url: URL, paramName: string, active: string[], default
   } else {
     url.searchParams.delete(paramName);
   }
-}
-
-/** Funnel icon used by the filter dropdown trigger (`render.rs::filter_icon`). */
-export function FilterIcon() {
-  return (
-    <svg
-      className="btn-icon"
-      viewBox="0 0 24 24"
-      width="16"
-      height="16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
-    </svg>
-  );
 }

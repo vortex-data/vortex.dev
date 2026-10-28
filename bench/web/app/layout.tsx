@@ -4,7 +4,11 @@
 import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
 
+import { FONTS_CSS } from '@/lib/fonts';
+
 import './globals.css';
+// The Vortex design system's skin: colours, corners and Geist over globals.css.
+import './vortex-skin.css';
 
 export const metadata: Metadata = {
   title: 'Vortex Benchmarks',
@@ -39,9 +43,6 @@ export const viewport: Viewport = {
 // silently keeping the default prefers-color-scheme theme.
 const THEME_BOOTSTRAP = `(function(){try{var t=localStorage.getItem("bench-theme");if(t==="light"||t==="dark"){document.documentElement.dataset.theme=t;}}catch(e){}})();`;
 
-const FUNNEL_DISPLAY_CSS =
-  'https://fonts.googleapis.com/css2?family=Funnel+Display:wght@400;500;600;700&display=swap';
-
 const UNSAFE_SCRIPT_CHAR_MAP: Record<string, string> = {
   '<': '\\u003C',
   '>': '\\u003E',
@@ -61,12 +62,12 @@ function escapeUnsafeScriptChars(str: string): string {
   return str.replace(/[<>/\\\b\f\n\r\t\0\u2028\u2029]/g, (ch) => UNSAFE_SCRIPT_CHAR_MAP[ch]);
 }
 
-// This is a hack to load Funnel font without blocking page paint
-const FONT_BOOTSTRAP = `(function(){var l=document.createElement("link");l.rel="stylesheet";l.href=${escapeUnsafeScriptChars(JSON.stringify(FUNNEL_DISPLAY_CSS))};document.head.appendChild(l);})();`;
+// This is a hack to load the web fonts without blocking page paint
+const FONT_BOOTSTRAP = `(function(){var l=document.createElement("link");l.rel="stylesheet";l.href=${escapeUnsafeScriptChars(JSON.stringify(FONTS_CSS))};document.head.appendChild(l);})();`;
 
 /**
  * Root layout: the `<html>`/`<body>` shell plus the global stylesheet, the
- * pre-paint theme bootstrap, and the heading web font.
+ * pre-paint theme bootstrap, and the web fonts.
  */
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
@@ -77,7 +78,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         <script dangerouslySetInnerHTML={{ __html: FONT_BOOTSTRAP }} />
         <noscript>
-          <link rel="stylesheet" href={FUNNEL_DISPLAY_CSS} />
+          <link rel="stylesheet" href={FONTS_CSS} />
         </noscript>
       </head>
       <body>{children}</body>
