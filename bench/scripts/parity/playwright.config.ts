@@ -14,6 +14,8 @@ function requiredEnv(name: string): string {
 }
 
 const out = requiredEnv('PARITY_OUT');
+const DESKTOP = { viewport: { width: 1440, height: 900 } };
+const PHONE = { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true };
 
 /**
  * Pixel comparison of the pages of one bench server. `run.sh` runs it twice: once against the base
@@ -38,17 +40,17 @@ export default defineConfig({
   use: {
     baseURL: requiredEnv('BASE_URL'),
     browserName: 'chromium',
-    colorScheme: 'light',
     deviceScaleFactor: 1,
     locale: 'en-US',
     reducedMotion: 'reduce',
     timezoneId: 'UTC',
   },
+  // Each page in both themes. bench follows `prefers-color-scheme` when no theme is stored, and
+  // the screenshots store none.
   projects: [
-    { name: 'desktop', use: { viewport: { width: 1440, height: 900 } } },
-    {
-      name: 'phone',
-      use: { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true },
-    },
+    { name: 'desktop', use: { ...DESKTOP, colorScheme: 'light' } },
+    { name: 'phone', use: { ...PHONE, colorScheme: 'light' } },
+    { name: 'desktop-dark', use: { ...DESKTOP, colorScheme: 'dark' } },
+    { name: 'phone-dark', use: { ...PHONE, colorScheme: 'dark' } },
   ],
 });

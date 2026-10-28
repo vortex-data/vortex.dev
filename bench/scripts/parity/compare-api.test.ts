@@ -2,7 +2,16 @@
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
 import { afterEach, expect, test } from 'bun:test';
-import { compareApi, compareApiDetailed, diffJson, planRequests } from './compare-api';
+import { chartKeyFromSlug, groupKeyFromSlug } from '../../web/lib/slug';
+import {
+  compareApi,
+  compareApiDetailed,
+  diffJson,
+  MALFORMED_SLUG,
+  pageTitle,
+  planRequests,
+  UNKNOWN_CHART_SLUG,
+} from './compare-api';
 
 test('identical bodies match', () => {
   expect(diffJson('{"a":[1,2]}', '{"a":[1,2]}')).toBeNull();
@@ -39,7 +48,9 @@ test('the plan covers every group and chart, and every 25th chart in full', () =
     { slug: 'g0', charts: charts.slice(0, 30) },
     { slug: 'g1', charts: charts.slice(30) },
   ];
-  const plan = planRequests(groups);
+  const plan = planRequests(groups)
+    .filter((request) => request.path.startsWith('/api/') && request.status === 200)
+    .map((request) => request.path);
   expect(plan.slice(0, 5)).toEqual([
     '/api/groups',
     '/api/group/g0?n=100',
@@ -55,18 +66,72 @@ test('the plan covers every group and chart, and every 25th chart in full', () =
   ]);
 });
 test('slugs are percent-encoded in the planned URLs', () => {
-  const plan = planRequests([{ slug: 'we ird/slug?x', charts: [{ slug: 'c d#e' }] }]);
+  const plan = planRequests([{ slug: 'we ird/slug?x', charts: [{ slug: 'c d#e' }] }]).map(
+    (request) => request.path,
+  );
   expect(plan).toContain('/api/group/we%20ird%2Fslug%3Fx?n=100');
   expect(plan).toContain('/api/group/we%20ird%2Fslug%3Fx?n=50');
   expect(plan).toContain('/api/chart/c%20d%23e?n=100');
   expect(plan).toContain('/api/chart/c%20d%23e?n=all');
+  expect(plan).toContain('/chart/c%20d%23e');
 });
 test('a chart linked from two groups is requested once', () => {
   const plan = planRequests([
     { slug: 'g0', charts: [{ slug: 'shared' }] },
     { slug: 'g1', charts: [{ slug: 'shared' }] },
-  ]);
+  ]).map((request) => request.path);
   expect(plan.filter((p) => p.startsWith('/api/chart/shared'))).toHaveLength(2);
+});
+test('every API URL from the base must answer 200, and its body is compared', () => {
+  const plan = planRequests([{ slug: 'g', charts: [{ slug: 'c' }] }]);
+  for (const path of ['/api/groups', '/api/group/g?n=100', '/api/chart/c?n=all']) {
+    expect(plan).toContainEqual({ path, status: 200, compare: 'body' });
+  }
+});
+test('the plan loads the pages the screenshots use and compares their titles', () => {
+  const groups = Array.from({ length: 7 }, (_, i) => ({
+    slug: `g${i}`,
+    charts: [{ slug: `g${i}-first` }, { slug: `g${i}-second` }],
+  }));
+  const pages = planRequests(groups).filter((request) => !request.path.startsWith('/api/'));
+  expect(pages.filter((request) => request.status === 200)).toEqual(
+    ['/', '/chart/g0-first', '/chart/g1-first', '/chart/g2-first', '/chart/g3-first']
+      .concat('/chart/g4-first')
+      .map((path) => ({ path, status: 200, compare: 'title' })),
+  );
+});
+test('the plan probes an unknown and a malformed slug and expects their error statuses', () => {
+  const probes = planRequests([{ slug: 'g', charts: [{ slug: 'c' }] }]).filter(
+    (request) => request.status !== 200,
+  );
+  expect(probes).toEqual([
+    { path: `/chart/${UNKNOWN_CHART_SLUG}`, status: 404, compare: 'title' },
+    { path: `/api/chart/${UNKNOWN_CHART_SLUG}?n=100`, status: 404, compare: 'body' },
+    { path: `/chart/${MALFORMED_SLUG}`, status: 404, compare: 'title' },
+    { path: `/api/chart/${MALFORMED_SLUG}?n=100`, status: 400, compare: 'body' },
+    { path: `/api/group/${MALFORMED_SLUG}?n=100`, status: 400, compare: 'body' },
+  ]);
+});
+test("the app's own parser accepts the unknown slug and rejects the malformed one", () => {
+  expect(chartKeyFromSlug(UNKNOWN_CHART_SLUG).k).toBe('CompressionTime');
+  expect(() => chartKeyFromSlug(MALFORMED_SLUG)).toThrow();
+  expect(() => groupKeyFromSlug(MALFORMED_SLUG)).toThrow();
+  expect(encodeURIComponent(UNKNOWN_CHART_SLUG)).toBe(UNKNOWN_CHART_SLUG);
+  expect(encodeURIComponent(MALFORMED_SLUG)).toBe(MALFORMED_SLUG);
+});
+
+test('the page title is the document title, read as a browser shows it', () => {
+  expect(pageTitle('<html><head><title>A &amp; B</title></head></html>')).toBe('A & B');
+  expect(pageTitle('<title>\n  Two   words \n</title>')).toBe('Two words');
+  expect(pageTitle('<title>it&#39;s &#x27;q&#x27; &lt;x&gt; &quot;y&quot;</title>')).toBe(
+    `it's 'q' <x> "y"`,
+  );
+  // An inline SVG's title labels the icon, not the page.
+  expect(
+    pageTitle('<body><svg><title>icon</title></svg><title data-x="1">Page</title></body>'),
+  ).toBe('Page');
+  expect(pageTitle('<title>First</title><title>Second</title>')).toBe('First');
+  expect(pageTitle('<html><head></head></html>')).toBeNull();
 });
 
 type Handler = (request: Request) => Response | Promise<Response>;
@@ -85,6 +150,8 @@ afterEach(() => {
 });
 
 const GROUPS = { groups: [{ slug: 'g', charts: [{ slug: 'c' }] }] };
+const TITLE = 'Vortex Benchmarks';
+const NOT_FOUND_TITLE = '404: This page could not be found.';
 
 function json(body: unknown, init: ResponseInit = {}): Response {
   return new Response(JSON.stringify(body), {
@@ -93,39 +160,85 @@ function json(body: unknown, init: ResponseInit = {}): Response {
   });
 }
 
-function api(overrides: Handler = () => json({ value: 1 })): Handler {
-  return (request) =>
-    new URL(request.url).pathname === '/api/groups' ? json(GROUPS) : overrides(request);
+function html(title: string | null, init: ResponseInit = {}, script = 'build-1'): Response {
+  const head = title === null ? '' : `<title>${title}</title>`;
+  return new Response(`<!DOCTYPE html><html><head>${head}<script src="/${script}.js"></script>`, {
+    headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' },
+    ...init,
+  });
 }
+
+type Override = (request: Request) => Response | undefined | Promise<Response | undefined>;
+
+/**
+ * A fake bench server. It answers `/api/groups` with `groups`; every other URL goes to `override`
+ * first and, when that returns nothing, gets the answer the app gives: 200 for the data and the
+ * pages, 404 for the unknown chart, 400 from the API and 404 from the page for the malformed slug.
+ */
+function api(override?: Override, groups: unknown = GROUPS): Handler {
+  return async (request) => {
+    const { pathname } = new URL(request.url);
+    if (pathname === '/api/groups') {
+      return json(groups);
+    }
+    const answer = await override?.(request);
+    if (answer !== undefined) {
+      return answer;
+    }
+    const isApi = pathname.startsWith('/api/');
+    if (pathname.endsWith(`/${MALFORMED_SLUG}`)) {
+      return isApi
+        ? json({ error: 'bad_request' }, { status: 400 })
+        : html(NOT_FOUND_TITLE, { status: 404 });
+    }
+    if (pathname.endsWith(`/${UNKNOWN_CHART_SLUG}`)) {
+      return isApi
+        ? json({ error: 'not_found' }, { status: 404 })
+        : html(NOT_FOUND_TITLE, { status: 404 });
+    }
+    return isApi ? json({ value: 1 }) : html(TITLE);
+  };
+}
+
+/** The data URLs, the two pages and the five error probes planned for {@link GROUPS}. */
+const PLANNED = 5 + 2 + 5;
 
 test('servers that answer alike have no mismatches', async () => {
   const result = await compareApiDetailed(serve(api()), serve(api()));
   expect(result.mismatches).toEqual([]);
-  // /api/groups, two windows for the group, and the chart at n=100 and n=all.
-  expect(result.requests).toBe(5);
+  // /api/groups, two windows for the group, the chart at n=100 and n=all, the landing page, the
+  // chart page, and the five error probes.
+  expect(result.requests).toBe(PLANNED);
 });
 
 test('the result tallies the statuses and the body bytes that were compared', async () => {
   const result = await compareApiDetailed(serve(api()), serve(api()));
-  expect(result.statuses).toEqual({ '200': 10 });
-  const groupsBytes = JSON.stringify(GROUPS).length;
-  const valueBytes = JSON.stringify({ value: 1 }).length;
-  expect(result.bytes).toEqual({
-    base: groupsBytes + 4 * valueBytes,
-    head: groupsBytes + 4 * valueBytes,
-  });
+  expect(result.statuses).toEqual({ '200': 14, '404': 6, '400': 4 });
+  const length = async (response: Response) => (await response.text()).length;
+  const perSide =
+    JSON.stringify(GROUPS).length +
+    4 * JSON.stringify({ value: 1 }).length +
+    2 * (await length(html(TITLE))) +
+    2 * (await length(html(NOT_FOUND_TITLE))) +
+    JSON.stringify({ error: 'not_found' }).length +
+    2 * JSON.stringify({ error: 'bad_request' }).length;
+  expect(result.bytes).toEqual({ base: perSide, head: perSide });
 });
 
 test('a different body, status, content-type and cache-control are each reported', async () => {
   const base = serve(api());
   const head = serve(
-    api((request) =>
-      new URL(request.url).pathname === '/api/group/g'
-        ? json({ value: 2 }, { status: 404 })
-        : new Response(JSON.stringify({ value: 1 }), {
+    api((request) => {
+      const { pathname } = new URL(request.url);
+      if (pathname === '/api/group/g') {
+        return json({ value: 2 }, { status: 404 });
+      }
+      return pathname === '/api/chart/c'
+        ? new Response(JSON.stringify({ value: 1 }), {
             headers: { 'content-type': 'text/plain', 'cache-control': 'no-store' },
-          }),
-    ),
+          })
+        : undefined;
+    }),
   );
   const lines = await compareApi(base, head);
   expect(lines).toContain('/api/group/g?n=100: status 200 != 404');
@@ -153,7 +266,7 @@ test('a 404 on both sides fails, because every planned URL comes from the base',
   const missing = api((request) =>
     new URL(request.url).pathname === '/api/chart/c'
       ? json({ error: 'not_found' }, { status: 404 })
-      : json({ value: 1 }),
+      : undefined,
   );
   const result = await compareApiDetailed(serve(missing), serve(missing));
   expect(result.mismatches).toContain(
@@ -163,7 +276,57 @@ test('a 404 on both sides fails, because every planned URL comes from the base',
     `/api/chart/c?n=100: head answered 404 instead of 200, ${NOTHING_COMPARED}`,
   );
   expect(result.mismatches.filter((line) => !line.startsWith('/api/chart/c?n='))).toEqual([]);
-  expect(result.statuses).toEqual({ '200': 6, '404': 4 });
+  expect(result.statuses).toEqual({ '200': 10, '404': 10, '400': 4 });
+});
+
+test('an expected error status passes, and any other status on that probe fails', async () => {
+  const page = `/chart/${UNKNOWN_CHART_SLUG}`;
+  const found = api((request) =>
+    new URL(request.url).pathname === page ? html(TITLE) : undefined,
+  );
+  const result = await compareApiDetailed(serve(api()), serve(found));
+  expect(result.mismatches).toEqual([
+    `${page}: head answered 200 instead of 404, ${NOTHING_COMPARED}`,
+    `${page}: status 404 != 200`,
+    `${page}: title ${JSON.stringify(NOT_FOUND_TITLE)} != ${JSON.stringify(TITLE)}`,
+  ]);
+});
+
+test('an API error probe compares its body too', async () => {
+  const path = `/api/group/${MALFORMED_SLUG}`;
+  const other = api((request) =>
+    new URL(request.url).pathname === path
+      ? json({ error: 'invalid' }, { status: 400 })
+      : undefined,
+  );
+  const lines = await compareApi(serve(api()), serve(other));
+  expect(lines).toEqual([`${path}?n=100: body differs $.error: "bad_request" != "invalid"`]);
+});
+
+test('a page compares its title, not the rest of its HTML', async () => {
+  const rebuilt = api((request) =>
+    ['/', '/chart/c'].includes(new URL(request.url).pathname)
+      ? html(TITLE, {}, 'build-2')
+      : undefined,
+  );
+  expect(await compareApi(serve(api()), serve(rebuilt))).toEqual([]);
+
+  const retitled = api((request) =>
+    new URL(request.url).pathname === '/' ? html('Benchmarks') : undefined,
+  );
+  expect(await compareApi(serve(api()), serve(retitled))).toEqual([
+    `/: title ${JSON.stringify(TITLE)} != "Benchmarks"`,
+  ]);
+});
+
+test('a page without a title fails, because nothing was compared', async () => {
+  const untitled = api((request) =>
+    new URL(request.url).pathname === '/chart/c' ? html(null) : undefined,
+  );
+  expect(await compareApi(serve(untitled), serve(untitled))).toEqual([
+    `/chart/c: base sent no <title>, ${NOTHING_COMPARED}`,
+    `/chart/c: head sent no <title>, ${NOTHING_COMPARED}`,
+  ]);
 });
 
 test('a redirect or an empty 200 on both sides fails too', async () => {
@@ -184,15 +347,17 @@ test('a redirect or an empty 200 on both sides fails too', async () => {
 test('a slug that needs encoding reaches the servers encoded', async () => {
   const groups = { groups: [{ slug: 'we ird/slug?x', charts: [{ slug: 'c d#e' }] }] };
   const seen: string[] = [];
+  const app = api(undefined, groups);
   const handler: Handler = (request) => {
     const { pathname, search } = new URL(request.url);
     seen.push(pathname + search);
-    return pathname === '/api/groups' ? json(groups) : json({ value: 1 });
+    return app(request);
   };
   const result = await compareApi(serve(handler), serve(handler));
   expect(result).toEqual([]);
   expect(seen).toContain('/api/group/we%20ird%2Fslug%3Fx?n=100');
   expect(seen).toContain('/api/chart/c%20d%23e?n=all');
+  expect(seen).toContain('/chart/c%20d%23e');
   expect(seen.filter((path) => path.includes(' ') || path.includes('#'))).toEqual([]);
 });
 
@@ -201,7 +366,7 @@ test('an unreachable head is reported for every URL', async () => {
   const head = serve(api());
   await servers[servers.length - 1].stop(true);
   const lines = await compareApi(base, head);
-  expect(lines).toHaveLength(5);
+  expect(lines).toHaveLength(PLANNED);
   expect(lines[0]).toContain('head request failed');
 });
 
@@ -209,25 +374,29 @@ test('requests that fill the group cache never overlap, even across the two serv
   const groups = {
     groups: ['g0', 'g1', 'g2'].map((slug) => ({ slug, charts: [{ slug: `${slug}-chart` }] })),
   };
+  const app = api(undefined, groups);
   let fills = 0;
   let mostFills = 0;
   let mostRequests = 0;
   let requests = 0;
   const handler: Handler = async (request) => {
     const url = new URL(request.url);
-    const fill = url.pathname === '/api/groups' || url.search === '?n=100';
-    const isGroupPath = url.pathname.startsWith('/api/group');
+    // The landing page reads every group through the same cache as /api/groups.
+    const fill =
+      url.pathname === '/' ||
+      url.pathname === '/api/groups' ||
+      (url.pathname.startsWith('/api/group/') && url.search === '?n=100');
     requests++;
     mostRequests = Math.max(mostRequests, requests);
-    if (fill && isGroupPath) {
+    if (fill) {
       mostFills = Math.max(mostFills, ++fills);
     }
     await Bun.sleep(5);
-    if (fill && isGroupPath) {
+    if (fill) {
       fills--;
     }
     requests--;
-    return url.pathname === '/api/groups' ? json(groups) : json({ value: 1 });
+    return app(request);
   };
   const result = await compareApiDetailed(serve(handler), serve(handler));
   expect(result.mismatches).toEqual([]);

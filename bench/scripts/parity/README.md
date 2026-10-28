@@ -7,8 +7,9 @@ SPDX-FileCopyrightText: Copyright the Vortex contributors
 
 This check shows that two builds of bench behave the same. It builds a base git ref and the
 working tree, serves both with `next start` against one restored production database, and compares
-what they send: the API responses, and screenshots of the pages. Use it before you merge a change
-that must not alter what visitors or API clients see, such as a toolchain or framework upgrade.
+what they send: the API responses, the status, headers and title of the pages, and screenshots of
+the pages in the light and the dark theme. Use it before you merge a change that must not alter
+what visitors or API clients see, such as a toolchain or framework upgrade.
 
 ```bash
 bash bench/scripts/parity/run.sh origin/main ~/Backups/vortex-bench/vortex_bench-20261028T171815Z
@@ -16,7 +17,7 @@ bash bench/scripts/parity/run.sh origin/main ~/Backups/vortex-bench/vortex_bench
 
 The script exits 0 and prints `parity: 0 mismatches` when nothing differs. Otherwise it exits 1.
 It reports every difference it can see and leaves a person to judge whether it matters. API bodies
-must match byte for byte. Screenshots use Playwright's comparison with `maxDiffPixels: 0` and
+must match byte for byte, and page titles exactly. Screenshots use Playwright's comparison with `maxDiffPixels: 0` and
 `threshold: 0`: every pixel it counts as different fails the run, but its comparator ignores pixels
 it classes as anti-aliasing. That fits a bar of no human-perceptible difference, and a real layout
 shift of 1 px or more still fails.
@@ -65,29 +66,39 @@ code. The check needs no token and changes no Vercel setting.
    working tree, so without this a payload that an earlier run made from older code could answer in
    place of the current code. The next `next build` in your working tree starts without its build
    cache and takes longer.
-6. Compares the API (`compare-api.ts`), then takes baseline screenshots from the base and compares
-   the head with them (`screenshots.spec.ts`). Both comparisons always run, so one run shows all
-   the differences.
+6. Compares the responses (`compare-api.ts`), then takes baseline screenshots from the base and
+   compares the head with them (`screenshots.spec.ts`). Both comparisons always run, so one run
+   shows all the differences.
 
 ## What it compares
 
-**API.** `compare-api.ts` reads `/api/groups` from the base, then requests from both servers:
+**Responses.** `compare-api.ts` reads `/api/groups` from the base, then requests from both
+servers:
 
 - `/api/groups`;
 - `/api/group/{slug}?n=100` and `?n=50` for every group;
 - `/api/chart/{slug}?n=100` for every chart;
-- `/api/chart/{slug}?n=all` for every 25th chart.
+- `/api/chart/{slug}?n=all` for every 25th chart;
+- the pages the screenshots use: `/`, and `/chart/{slug}` for the first chart of each of the first
+  five groups;
+- error probes with a slug that parses but names no chart (`/chart/…` and `/api/chart/…?n=100`,
+  404) and a slug that does not parse (`/chart/…`, 404; `/api/chart/…?n=100` and
+  `/api/group/…?n=100`, 400).
 
-For each URL it compares the status, `content-type`, `cache-control` and the body. The body must
-match byte for byte, because clients receive bytes: key order counts. Every URL comes from the
-base's own `/api/groups`, so each must answer 200 with a body on both servers. Anything else (a 404,
-a 500, a redirect, an empty body) is reported as `nothing was compared for this route`, even when
-both servers agree on it, because two equal failures would otherwise pass. The slugs are
-percent-encoded in the URLs. The summary line tallies the statuses and the body bytes that were
-compared, so you can see that real payloads were read.
+For each URL it compares the status, `content-type` and `cache-control`. For the API it also
+compares the body, which must match byte for byte, because clients receive bytes: key order counts.
+For a page it compares the title as a browser shows it (the first `<title>` outside inline SVG,
+with entities decoded and whitespace collapsed), not the rest of the HTML, which names the build's
+own script files. Every data URL and page comes from the base's own `/api/groups`, so each must
+answer 200 with a body on both servers, and each error probe must answer its own status. Anything
+else (an unexpected status, a redirect, an empty body, a page with no `<title>`) is reported as
+`nothing was compared for this route`, even when both servers agree on it, because two equal
+failures would otherwise pass. The slugs are percent-encoded in the URLs. The summary line, which
+starts with `HTTP:`, tallies the statuses and the body bytes that were compared, so you can see
+that real payloads were read.
 
-Requests that fill the group cache (`/api/groups` and `/api/group/{slug}?n=100`) run one at a time,
-base then head. Each fill takes one advisory lock in the shared database, and a fill that finds it
+Requests that fill the group cache (`/api/groups`, `/api/group/{slug}?n=100` and the landing page,
+which reads the same cache as `/api/groups`) run one at a time, base then head. Each fill takes one advisory lock in the shared database, and a fill that finds it
 taken fails with a 500 after a few retries. Two fills at once, even on different servers, would
 fail for that reason and not because the code differs. All other requests run four at a time. Run
 `bun test bench/scripts/parity/compare-api.test.ts` to test the comparison itself. Use that path:
@@ -99,13 +110,14 @@ JSON path with both values:
 ```text
 /api/group/{slug}?n=50: body differs $.charts[3].series["datafusion:parquet"][41]: 1.25 != 1.26
 /api/chart/{slug}?n=100: cache-control "public, s-maxage=300, stale-while-revalidate=3600" != "no-store"
+/chart/{slug}: title "TPC-H Q1 - Vortex Benchmarks" != "Vortex Benchmarks"
 ```
 
 When two bodies parse to the same JSON but differ in bytes, the line gives the byte offset and the
 text around it. The full output is also in `$TMPDIR/bench-parity/out/api.log`.
 
 **Pages.** `screenshots.spec.ts` captures, in Chromium at 1440×900 (`desktop`) and 390×844
-(`phone`):
+(`phone`), each in the light theme and again in the dark one (`desktop-dark`, `phone-dark`):
 
 - `/`, collapsed as it loads;
 - `/` with the first group open, after every chart in it has drawn;
@@ -129,18 +141,19 @@ head) and the diff. The script prints that path. The baselines are in
 
 - `/api/health`. It reports the database and the build identity, not benchmark data.
 - `/api/revalidate`. It writes to the cache.
-- The HTML of the pages. Only the pixels are compared.
+- The HTML of the pages beyond their status, headers and title. The pixels show the rest.
 - Anything that varies with time. Nothing needed masking: the pages and the API bodies of a frozen
   database do not depend on the time. The check makes these things fixed instead: Google Fonts
   requests are blocked, so both runs draw the fallback font and a slow network cannot split them;
-  the color scheme is light, the time zone UTC, the device scale 1 and motion reduced; and the
-  pointer is moved off the charts before each screenshot. The dark theme and the `?engine=` and
-  `?format=` filters are not covered.
+  the time zone is UTC, the device scale 1 and motion reduced; and the pointer is moved off the
+  charts before each screenshot. The theme comes from `prefers-color-scheme` alone: no theme choice
+  is stored, so the theme toggle is not exercised. The `?engine=` and `?format=` filters are not
+  covered.
 
 ## Reading a failure
 
-- A line with `instead of 200` or `request failed` means a server did not give the expected answer,
-  not that the data differs. Read `$TMPDIR/bench-parity/base.log` and `head.log`, the logs of the
+- A line with `instead of 200` (or of the status an error probe expects) or `request failed` means
+  a server did not give the expected answer, not that the data differs. Read `$TMPDIR/bench-parity/base.log` and `head.log`, the logs of the
   two servers.
 - Run `run.sh` twice when a result looks odd. The same two builds must give the same answer, and
   a difference that comes and goes is a problem in the check.

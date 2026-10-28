@@ -3,7 +3,8 @@
 # SPDX-FileCopyrightText: Copyright the Vortex contributors
 #
 # Serve two builds of bench against one restored production database, then compare their API
-# responses and their pages. Exits 0 when nothing differs.
+# responses, their pages' status, headers and titles, and screenshots of the pages in the light and
+# dark themes. Exits 0 when nothing differs.
 #
 #   bash bench/scripts/parity/run.sh <base-ref> <dump-dir>
 #
@@ -262,10 +263,10 @@ wait_ready head "$HEAD_URL" "${SERVER_PIDS[1]}"
 rm -rf "$OUT"
 mkdir -p "$OUT"
 
-log "comparing the API"
+log "comparing the API and the pages' status, headers and titles"
 api_status=0
 bun "$HERE/compare-api.ts" "$BASE_URL" "$HEAD_URL" 2>&1 | tee "$OUT/api.log" || api_status=$?
-api_mismatches=$(sed -n 's/^API: .* \([0-9][0-9]*\) mismatches.*/\1/p' "$OUT/api.log")
+api_mismatches=$(sed -n 's/^HTTP: .* \([0-9][0-9]*\) mismatches.*/\1/p' "$OUT/api.log")
 api_mismatches=${api_mismatches:-"unknown"}
 
 run_playwright() {
@@ -295,7 +296,7 @@ echo "parity: $(tail -n 1 "$OUT/api.log")"
 echo "parity: $shots_total screenshots, $shots_mismatches differ"
 echo "parity: wall time $((SECONDS / 60))m $((SECONDS % 60))s"
 if [[ $api_status -ne 0 ]]; then
-  echo "parity: API differences are listed above and in $OUT/api.log"
+  echo "parity: response differences are listed above and in $OUT/api.log"
 fi
 if [[ $shots_status -ne 0 ]]; then
   echo "parity: screenshots that differ; each folder holds the expected, actual and diff images:"
@@ -307,5 +308,5 @@ if [[ $api_status -eq 0 && $shots_status -eq 0 ]]; then
   echo "parity: 0 mismatches"
   exit 0
 fi
-echo "parity: FAILED (API mismatches: $api_mismatches, screenshots that differ: $shots_mismatches)"
+echo "parity: FAILED (response mismatches: $api_mismatches, screenshots that differ: $shots_mismatches)"
 exit 1

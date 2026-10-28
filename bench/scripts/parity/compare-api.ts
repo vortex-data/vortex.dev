@@ -2,7 +2,8 @@
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
 /**
- * Compare the read API of two bench servers that share one database.
+ * Compare the responses of two bench servers that share one database: the read API, and the
+ * status, headers and title of the pages.
  *
  * Run as `bun compare-api.ts <base-url> <head-url>`; it prints one line per mismatch and a
  * summary, and exits non-zero when anything differs. `run.sh` calls it after it starts both
@@ -15,11 +16,39 @@ const DEFAULT_CONCURRENCY = 4;
 const FULL_HISTORY_EVERY = 25;
 /** `?n=all` can read the whole history of a chart, so the deadline is generous. */
 const REQUEST_TIMEOUT_MS = 180_000;
+/** Chart pages to load: the first chart of each of the first this many groups, as the screenshots. */
+const CHART_PAGES = 5;
+
+/**
+ * A chart slug that the app parses (a compression-time chart, in the slug format of
+ * `bench/web/lib/slug.ts`) but that names no chart, so the API and the page answer 404.
+ */
+export const UNKNOWN_CHART_SLUG = `ct.${Buffer.from(
+  JSON.stringify({
+    k: 'CompressionTime',
+    dataset: 'parity-check-no-such-dataset',
+    dataset_variant: null,
+  }),
+).toString('base64url')}`;
+/** A slug the app cannot parse: the API answers 400 and the chart page 404. */
+export const MALFORMED_SLUG = 'parity-check-malformed';
 
 /** The parts of `GET /api/groups` that decide which URLs to request. */
 interface GroupLinks {
   slug: string;
   charts: { slug: string }[];
+}
+
+/** One URL to request from both servers, and what both must answer. */
+export interface PlannedRequest {
+  path: string;
+  /** The status both servers must answer. */
+  status: number;
+  /**
+   * What to compare besides the status, `content-type` and `cache-control`: the body byte for
+   * byte, or a page's `<title>` only, because its HTML names the build's own script files.
+   */
+  compare: 'body' | 'title';
 }
 
 const NOTHING_COMPARED = 'so nothing was compared for this route';
@@ -141,6 +170,33 @@ export function diffJson(base: string, head: string): string | null {
   );
 }
 
+const ENTITIES: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" };
+
+function decodeEntities(text: string): string {
+  return text.replace(/&(#x[0-9a-f]+|#[0-9]+|[a-z]+);/gi, (entity, name: string) => {
+    if (name[0] === '#') {
+      const hex = name[1] === 'x' || name[1] === 'X';
+      return String.fromCodePoint(Number.parseInt(name.slice(hex ? 2 : 1), hex ? 16 : 10));
+    }
+    return ENTITIES[name.toLowerCase()] ?? entity;
+  });
+}
+
+/**
+ * The page's title as a browser shows it: the first `<title>` outside inline SVG (an SVG's title
+ * labels the icon), with entities decoded and whitespace collapsed.
+ *
+ * @returns null when the page has no title.
+ */
+export function pageTitle(html: string): string | null {
+  const outsideSvg = html.replace(/<svg[\s>][\s\S]*?<\/svg>/gi, '');
+  const match = /<title(?:\s[^>]*)?>([\s\S]*?)<\/title>/i.exec(outsideSvg);
+  if (match === null) {
+    return null;
+  }
+  return decodeEntities(match[1]).replace(/\s+/g, ' ').trim();
+}
+
 async function capture(origin: string, path: string): Promise<Captured> {
   const response = await fetch(new URL(path, origin), {
     redirect: 'manual',
@@ -162,7 +218,12 @@ async function captureOrError(origin: string, path: string): Promise<Captured | 
   }
 }
 
-function compareCaptured(path: string, base: Captured | Error, head: Captured | Error): string[] {
+function compareCaptured(
+  planned: PlannedRequest,
+  base: Captured | Error,
+  head: Captured | Error,
+): string[] {
+  const { path } = planned;
   const lines: string[] = [];
   for (const [side, result] of [
     ['base', base],
@@ -170,12 +231,19 @@ function compareCaptured(path: string, base: Captured | Error, head: Captured | 
   ] as const) {
     if (result instanceof Error) {
       lines.push(`${path}: ${side} request failed: ${result.message}`);
-    } else if (result.status !== 200) {
-      // Every planned URL comes from the base's own /api/groups, so it must answer 200. Two equal
-      // 404s, 500s or redirects would otherwise match each other and hide that no data was read.
-      lines.push(`${path}: ${side} answered ${result.status} instead of 200, ${NOTHING_COMPARED}`);
+    } else if (result.status !== planned.status) {
+      // Every data URL comes from the base's own /api/groups, so it must answer 200, and each
+      // error probe must answer its own status. Two equal 404s, 500s or redirects would otherwise
+      // match each other and hide that nothing was read.
+      lines.push(
+        `${path}: ${side} answered ${result.status} instead of ${planned.status}, ${NOTHING_COMPARED}`,
+      );
     } else if (result.body.length === 0) {
-      lines.push(`${path}: ${side} answered 200 with an empty body, ${NOTHING_COMPARED}`);
+      lines.push(
+        `${path}: ${side} answered ${result.status} with an empty body, ${NOTHING_COMPARED}`,
+      );
+    } else if (planned.compare === 'title' && pageTitle(result.body) === null) {
+      lines.push(`${path}: ${side} sent no <title>, ${NOTHING_COMPARED}`);
     }
   }
   if (base instanceof Error || head instanceof Error) {
@@ -190,9 +258,17 @@ function compareCaptured(path: string, base: Captured | Error, head: Captured | 
   if (base.cacheControl !== head.cacheControl) {
     lines.push(`${path}: cache-control ${show(base.cacheControl)} != ${show(head.cacheControl)}`);
   }
-  const bodyDifference = diffJson(base.body, head.body);
-  if (bodyDifference !== null) {
-    lines.push(`${path}: body differs ${bodyDifference}`);
+  if (planned.compare === 'title') {
+    const baseTitle = pageTitle(base.body);
+    const headTitle = pageTitle(head.body);
+    if (baseTitle !== headTitle) {
+      lines.push(`${path}: title ${show(baseTitle)} != ${show(headTitle)}`);
+    }
+  } else {
+    const bodyDifference = diffJson(base.body, head.body);
+    if (bodyDifference !== null) {
+      lines.push(`${path}: body differs ${bodyDifference}`);
+    }
   }
   return lines;
 }
@@ -210,22 +286,41 @@ async function readGroups(baseUrl: string): Promise<GroupLinks[]> {
   return groups as GroupLinks[];
 }
 
-/** The URLs to request from each server, in a stable order. */
-export function planRequests(groups: GroupLinks[]): string[] {
-  const paths = ['/api/groups'];
+/**
+ * The URLs to request from each server, in a stable order: the read API for every group and chart,
+ * the landing page and the chart pages the screenshots use, then the error probes.
+ */
+export function planRequests(groups: GroupLinks[]): PlannedRequest[] {
+  const data = (path: string): PlannedRequest => ({ path, status: 200, compare: 'body' });
+  const page = (path: string, status = 200): PlannedRequest => ({ path, status, compare: 'title' });
+  const plan = [data('/api/groups')];
   for (const group of groups) {
     const slug = encodeURIComponent(group.slug);
-    paths.push(`/api/group/${slug}?n=100`, `/api/group/${slug}?n=50`);
+    plan.push(data(`/api/group/${slug}?n=100`), data(`/api/group/${slug}?n=50`));
   }
   const chartSlugs = [...new Set(groups.flatMap((group) => group.charts.map((c) => c.slug)))];
   for (const [index, chartSlug] of chartSlugs.entries()) {
     const slug = encodeURIComponent(chartSlug);
-    paths.push(`/api/chart/${slug}?n=100`);
+    plan.push(data(`/api/chart/${slug}?n=100`));
     if (index % FULL_HISTORY_EVERY === 0) {
-      paths.push(`/api/chart/${slug}?n=all`);
+      plan.push(data(`/api/chart/${slug}?n=all`));
     }
   }
-  return paths;
+  plan.push(page('/'));
+  for (const group of groups.slice(0, CHART_PAGES)) {
+    const first = group.charts[0];
+    if (first !== undefined) {
+      plan.push(page(`/chart/${encodeURIComponent(first.slug)}`));
+    }
+  }
+  plan.push(
+    page(`/chart/${UNKNOWN_CHART_SLUG}`, 404),
+    { path: `/api/chart/${UNKNOWN_CHART_SLUG}?n=100`, status: 404, compare: 'body' },
+    page(`/chart/${MALFORMED_SLUG}`, 404),
+    { path: `/api/chart/${MALFORMED_SLUG}?n=100`, status: 400, compare: 'body' },
+    { path: `/api/group/${MALFORMED_SLUG}?n=100`, status: 400, compare: 'body' },
+  );
+  return plan;
 }
 
 async function mapPool<T, R>(
@@ -249,10 +344,11 @@ async function mapPool<T, R>(
  * Whether a request fills the group cache. Those fills (`cachedGroups` and
  * `cachedDefaultGroupCharts` in `lib/data-cache.ts`) take one PostgreSQL advisory lock for the whole
  * database, and a fill that finds the lock taken fails with a 500 after a few retries. Both servers
- * share one database, so two fills at once, even on different servers, can fail.
+ * share one database, so two fills at once, even on different servers, can fail. The landing page
+ * reads `cachedGroups` too.
  */
 function fillsGroupCache(path: string): boolean {
-  return path === '/api/groups' || /^\/api\/group\/[^?]+\?n=100$/.test(path);
+  return path === '/' || path === '/api/groups' || /^\/api\/group\/[^?]+\?n=100$/.test(path);
 }
 
 /** Runs one piece of work at a time, in the order requested. */
@@ -271,12 +367,13 @@ export async function compareApiDetailed(
   headUrl: string,
   options: CompareOptions = {},
 ): Promise<ApiComparison> {
-  const paths = planRequests(await readGroups(baseUrl));
+  const plan = planRequests(await readGroups(baseUrl));
   const oneFillAtATime = serialQueue();
   const statuses: Record<string, number> = {};
   const bytes = { base: 0, head: 0 };
   let done = 0;
-  const lines = await mapPool(paths, options.concurrency ?? DEFAULT_CONCURRENCY, async (path) => {
+  const lines = await mapPool(plan, options.concurrency ?? DEFAULT_CONCURRENCY, async (planned) => {
+    const { path } = planned;
     const fetchBoth = async (): Promise<[Captured | Error, Captured | Error]> =>
       fillsGroupCache(path)
         ? oneFillAtATime(async () => [
@@ -293,18 +390,20 @@ export async function compareApiDetailed(
       statuses[status] = (statuses[status] ?? 0) + 1;
       bytes[side] += result instanceof Error ? 0 : Buffer.byteLength(result.body);
     }
-    options.onProgress?.(++done, paths.length);
-    return compareCaptured(path, base, head);
+    options.onProgress?.(++done, plan.length);
+    return compareCaptured(planned, base, head);
   });
-  return { requests: paths.length, mismatches: lines.flat(), statuses, bytes };
+  return { requests: plan.length, mismatches: lines.flat(), statuses, bytes };
 }
 
 /**
- * Request the read API from both servers and compare status, `content-type`, `cache-control` and
- * body: `/api/groups`; `/api/group/{slug}` at `?n=100` and `?n=50` for every group;
- * `/api/chart/{slug}?n=100` for every chart; and `/api/chart/{slug}?n=all` for every 25th chart.
- * The group and chart slugs come from the base server's `/api/groups`, so every URL must answer 200
- * with a body on both servers: anything else is a mismatch, even when both servers agree on it.
+ * Request the planned URLs ({@link planRequests}) from both servers and compare status,
+ * `content-type`, `cache-control`, and the body (API) or the `<title>` (pages): `/api/groups`;
+ * `/api/group/{slug}` at `?n=100` and `?n=50` for every group; `/api/chart/{slug}?n=100` for every
+ * chart; `/api/chart/{slug}?n=all` for every 25th chart; `/` and the first chart page of each of the
+ * first five groups; and an unknown and a malformed slug. The group and chart slugs come from the
+ * base server's `/api/groups`, so each of those URLs must answer 200 with a body on both servers,
+ * and each error probe its own status: anything else is a mismatch, even when both servers agree.
  *
  * @returns one line per mismatch; empty when the servers agree.
  */
@@ -335,7 +434,7 @@ if (import.meta.main) {
     .join(', ');
   const megabytes = (count: number) => `${(count / 1_000_000).toFixed(1)} MB`;
   console.log(
-    `API: ${requests} URLs on each server, ${mismatches.length} mismatches; ` +
+    `HTTP: ${requests} URLs on each server, ${mismatches.length} mismatches; ` +
       `statuses ${tally}; bodies ${megabytes(bytes.base)} from base, ${megabytes(bytes.head)} from head; ${seconds}s`,
   );
   process.exit(mismatches.length === 0 ? 0 : 1);
