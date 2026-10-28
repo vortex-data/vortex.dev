@@ -9,9 +9,9 @@
 # the app.
 #
 # Triggers: a production deploy on every push to main that touches bench/ or
-# the root install files bench/web builds from (package.json, bun.lock,
-# bunfig.toml); a preview deploy on every same-repo pull request that does, with
-# the preview URL posted back to the PR as a sticky comment; and
+# the root files bench/web builds from (package.json, bun.lock, bunfig.toml,
+# tsconfig.base.json); a preview deploy on every same-repo pull request that
+# does, with the preview URL posted back to the PR as a sticky comment; and
 # `workflow_dispatch` for manual preview or production runs. Fork PRs are
 # skipped, since they can't read VERCEL_TOKEN.
 #
@@ -31,6 +31,7 @@ on:
       - 'package.json'
       - 'bun.lock'
       - 'bunfig.toml'
+      - 'tsconfig.base.json'
       - '.github/workflows/bench-deploy.yml'
   pull_request:
     branches: [main]
@@ -39,6 +40,7 @@ on:
       - 'package.json'
       - 'bun.lock'
       - 'bunfig.toml'
+      - 'tsconfig.base.json'
       - '.github/workflows/bench-deploy.yml'
   workflow_dispatch:
     inputs:

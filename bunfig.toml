@@ -2,9 +2,9 @@
 
 [install]
 # Give every package its own resolved dependencies, as pnpm did for bench,
-# instead of one hoisted tree. The site and bench/web share Next.js and React
-# but each pins its own TypeScript; in a hoisted tree one app's tools would
-# load the other's copy. This is also Bun's default for a workspace.
+# instead of one hoisted tree, so one app's tools never load the other's copy
+# of a package. The site and bench/web share Next.js, React and TypeScript at
+# the same versions. This is also Bun's default for a workspace.
 linker = "isolated"
 
 # Refuse to install package versions younger than 14 days. Mirrors the
