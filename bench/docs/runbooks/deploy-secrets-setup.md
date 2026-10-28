@@ -9,8 +9,7 @@ SPDX-FileCopyrightText: Copyright the Vortex contributors
 > `vortex-data/benchmarks-website` repository, and "this repo" below means that repository. Since
 > the move into `vortex-data/vortex.dev`, the variables, secrets and environments live there, the
 > workflows are `.github/workflows/bench-*.yml`, and the schema role trusts `vortex.dev`'s `main`.
-> The cutover checklist in the pull request that imported bench replaces the GitHub, Vercel and
-> AWS steps here.
+> The cutover steps in vortex-data/vortex.dev#113 replace the GitHub, Vercel and AWS steps here.
 
 ## Overview
 
