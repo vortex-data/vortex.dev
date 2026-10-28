@@ -13,6 +13,8 @@ path = [
   "src/**.ts",
   "src/**.tsx",
   "src/**.css",
+  # The design system's modules, vendored unchanged (src/vendor/vortex-design/README.md).
+  "src/vendor/**.js",
   "scripts/**",
   "tests/**",
   ".github/**",
@@ -45,6 +47,7 @@ SPDX-License-Identifier = "CC-BY-4.0"
 [[annotations]]
 path = [
   "src/app/favicon.ico",
+  "src/assets/vortex_symbol_dark_theme.svg",
   "src/assets/vortex_wordmark.svg",
   "src/assets/vortex_wordmark_dark_theme.svg",
   "public/logo.glb",

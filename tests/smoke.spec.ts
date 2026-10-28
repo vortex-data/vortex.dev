@@ -6,7 +6,7 @@ import { expect, test } from "@playwright/test";
  * see (hydration, client-mounted WebGL canvas, mobile layout overflow,
  * client-side syntax-highlighting).
  *
- * Not pixel-diff. The 3D hero won't produce a stable WebGL output across
+ * Not pixel-diff. The ASCII mark won't produce a stable WebGL output across
  * Linux/macOS GPU stacks, so screenshots are out of scope. Promote to
  * snapshot diffs only if a regression slips through.
  *
@@ -31,37 +31,111 @@ test.beforeAll(async () => {
 });
 
 test.describe("home", () => {
-  test("hero copy is visible", async ({ page }) => {
+  test("headline is visible", async ({ page }) => {
     await page.goto("/");
     await expect(
-      page.getByText(/highly performant.*columnar data format/i)
+      page.getByRole("heading", {
+        level: 1,
+        name: "The fastest columnar file format."
+      })
     ).toBeVisible();
-    await expect(page.getByText(/100x faster random access/i)).toBeVisible();
   });
 
   test("title is correct", async ({ page }) => {
     await page.goto("/");
-    await expect(page).toHaveTitle(/Vortex/);
+    await expect(page).toHaveTitle(/The fastest columnar file format/);
   });
 
-  test("WebGL hero canvas mounts after hydration", async ({ page }) => {
+  test("install tabs open on Rust and switch on click", async ({ page }) => {
     await page.goto("/");
-    // OGL's Renderer constructor throws when WebGL context creation fails,
-    // so the canvas only gets appended if WebGL is actually available.
-    // Headless WebKit doesn't always have WebGL — skip there and rely on
-    // the hero-copy / title tests above to catch a generic page-load
-    // regression. Chromium has SwiftShader fallback so this runs there.
-    const hasWebGL = await page.evaluate(() => {
+    const panel = page.getByRole("tabpanel");
+    await expect(panel).toContainText("cargo add vortex");
+    await page.getByRole("tab", { name: "Python" }).click();
+    await expect(page.getByRole("tab", { name: "Python" })).toHaveAttribute(
+      "aria-selected",
+      "true"
+    );
+    await expect(panel).toBeVisible();
+    await expect(panel).toContainText("pip install vortex-data");
+    await expect(
+      page.getByRole("button", { name: "Copy to clipboard" })
+    ).toBeVisible();
+  });
+
+  test("install tabs are one tab stop: arrows, Home and End", async ({
+    page
+  }) => {
+    await page.goto("/");
+    const tab = (name: string) => page.getByRole("tab", { name });
+    await tab("Rust").focus();
+    await page.keyboard.press("ArrowRight");
+    await expect(tab("Python")).toBeFocused();
+    await expect(tab("Python")).toHaveAttribute("aria-selected", "true");
+    await page.keyboard.press("End");
+    await expect(tab("CLI")).toBeFocused();
+    await expect(page.getByRole("tabpanel")).toContainText(
+      "uvx --from vortex-data vx --help"
+    );
+    await page.keyboard.press("Home");
+    await expect(tab("Rust")).toBeFocused();
+    await expect(tab("Rust")).toHaveAttribute("tabindex", "0");
+    await expect(tab("CLI")).toHaveAttribute("tabindex", "-1");
+  });
+
+  test("switching install tabs never changes the block's height", async ({
+    page
+  }) => {
+    await page.goto("/");
+    const block = page.locator(".vx-tabs");
+    const heights = new Set<number>();
+    for (const name of ["Rust", "Python", "DuckDB", "Spark", "CLI"]) {
+      await page.getByRole("tab", { name }).click();
+      heights.add((await block.boundingBox())?.height ?? 0);
+    }
+    expect([...heights]).toHaveLength(1);
+  });
+
+  test("copy writes the selected commands without the prompt", async ({
+    page,
+    context,
+    browserName
+  }) => {
+    test.skip(
+      browserName !== "chromium",
+      "clipboard permissions are Chromium's"
+    );
+    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+    await page.goto("/");
+    await page.getByRole("tab", { name: "Python" }).click();
+    await page.getByRole("button", { name: "Copy to clipboard" }).click();
+    await expect(page.getByRole("status")).toHaveText("Copied");
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
+      "pip install vortex-data"
+    );
+  });
+
+  test("the ASCII mark mounts, or shows the symbol without WebGL", async ({
+    page
+  }) => {
+    await page.goto("/");
+    // three.js needs WebGL 2. Headless WebKit doesn't always have it, and
+    // then the mark falls back to the static symbol. Chromium has the
+    // SwiftShader fallback, so the canvas case runs there.
+    const hasWebGL2 = await page.evaluate(() => {
       try {
-        return !!document.createElement("canvas").getContext("webgl");
+        return !!document.createElement("canvas").getContext("webgl2");
       } catch {
         return false;
       }
     });
-    test.skip(!hasWebGL, "browser doesn't support WebGL");
-    await expect(page.locator("canvas").first()).toBeAttached({
-      timeout: 5000
-    });
+    const hero = page.locator("main section").first();
+    if (hasWebGL2) {
+      await expect(hero.locator("canvas")).toBeAttached({ timeout: 10000 });
+    } else {
+      await expect(hero.locator('img[src*="vortex_symbol"]')).toBeAttached({
+        timeout: 10000
+      });
+    }
   });
 });
 

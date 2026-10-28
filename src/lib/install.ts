@@ -1,0 +1,49 @@
+// The homepage's install commands, from docs.vortex.dev: getting-started/install,
+// user-guide/duckdb and user-guide/spark.
+
+/** One line of a command block. `prompt` is "$" for a shell command, else "". */
+export type InstallLine = { prompt: string; text: string };
+
+export type InstallTab = { key: string; label: string; lines: InstallLine[] };
+
+/** What the Spark coordinate shows when Maven Central cannot be read. */
+export const LATEST = "<latest>";
+
+const shell = (text: string): InstallLine => ({ prompt: "$", text });
+const code = (text: string): InstallLine => ({ prompt: "", text });
+
+/** The InstallTabs card's tabs, Rust first. `sparkVersion` is from `getSparkVersion`. */
+export function installTabs(sparkVersion: string | null): InstallTab[] {
+  const spark = `dev.vortex:vortex-spark_2.13:${sparkVersion ?? LATEST}:all`;
+  return [
+    { key: "rust", label: "Rust", lines: [shell("cargo add vortex")] },
+    {
+      key: "python",
+      label: "Python",
+      lines: [shell("pip install vortex-data")]
+    },
+    {
+      key: "duckdb",
+      label: "DuckDB",
+      lines: [
+        code("INSTALL vortex; LOAD vortex;"),
+        code("SELECT * FROM read_vortex('data.vortex');")
+      ]
+    },
+    {
+      key: "spark",
+      label: "Spark",
+      lines: [code(`implementation("${spark}")`)]
+    },
+    {
+      key: "cli",
+      label: "CLI",
+      lines: [shell("uvx --from vortex-data vx --help")]
+    }
+  ];
+}
+
+/** What the copy button writes: the commands, one per line, never the prompts. */
+export function copyText(tab: InstallTab): string {
+  return tab.lines.map((l) => l.text).join("\n");
+}

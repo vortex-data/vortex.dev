@@ -11,6 +11,7 @@
       "**",
       "!bench",
       "!src/content",
+      "!src/vendor",
       "!public",
       "!bun.lock",
       "!.next",

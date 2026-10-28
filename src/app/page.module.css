@@ -1,0 +1,104 @@
+/* The homepage's grid, from the design system's Home card: the hero, then the
+   benchmark and logo bands, between the root layout's header and footer. At
+   1440 × 900 it fills one screen, and the hero takes the height the bands
+   leave. Below that height, and on phones, the page scrolls. */
+
+/* The root layout's main fills the screen; here it hands that height on to
+   the page, as the Home card's 1fr row does. */
+:global(.site-main):has(> .home) {
+  display: flex;
+  flex-direction: column;
+}
+
+.home {
+  flex: 1 0 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.hero {
+  position: relative;
+  flex: 1 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 760px) minmax(320px, 1fr);
+  gap: var(--space-48);
+  /* The card pads the foot by 24px and clips 3px of it at 1440 × 900. 20px
+     draws the same page with nothing clipped. */
+  padding: var(--space-32) var(--page-pad) var(--space-20);
+}
+
+.text {
+  display: grid;
+  align-content: start;
+  gap: var(--space-24);
+}
+
+.text h1 {
+  margin: 0;
+  color: var(--ink);
+}
+
+/* The mark's cell spans the hero's full height, over its padding, as in the
+   card. It is out of flow, so only the text sets the hero's height. */
+.mark {
+  position: absolute;
+  grid-area: 1 / 2 / 2 / 3;
+  inset: calc(-1 * var(--space-32)) 0 calc(-1 * var(--space-20));
+  container-type: size;
+}
+
+/* The mark scales with its host's height, and loses its sides in a host
+   taller than about its width. So the host is never taller than 9/10 of the
+   cell's width, and sits in the cell's middle. */
+.markHost {
+  position: absolute;
+  inset: 0;
+  height: min(100cqh, 90cqw);
+  margin: auto 0;
+}
+
+/* The BenchmarkCard and the LogoBanner fill these bands next. Until then each
+   one reserves the height the Home card gives its card at 1440 × 900, so the
+   one-screen fit holds now. Content-box, as in the card, so the padding adds
+   to the height (the site's Tailwind reset makes every box border-box). */
+.band {
+  box-sizing: content-box;
+  padding: 0 var(--page-pad) var(--space-24);
+}
+
+.benchSlot {
+  height: 250px;
+}
+
+.logoSlot {
+  height: 56px;
+}
+
+/* Below 1100px the text column would drop under about 640px and the mark
+   under 320px, so the hero stacks: the text, then the mark in its own band. */
+@media (max-width: 1099px) {
+  .hero {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-24);
+    padding-bottom: var(--space-24);
+  }
+
+  .mark {
+    position: relative;
+    grid-area: auto;
+    inset: auto;
+    height: 320px;
+  }
+}
+
+@media (max-width: 640px) {
+  /* At vx-display's 76px the headline takes five lines on a phone. At 48px,
+     vx-h1's size, it takes three. */
+  .text h1 {
+    font-size: 48px;
+  }
+
+  .mark {
+    height: 240px;
+  }
+}

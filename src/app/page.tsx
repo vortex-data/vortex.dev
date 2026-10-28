@@ -1,15 +1,20 @@
 import type { Metadata } from "next";
-import { HeroASCII } from "@/components/hero";
+import { AsciiMark } from "@/components/ascii-mark";
+import { InstallTabs } from "@/components/install-tabs";
+import { getSparkVersion } from "@/lib/maven";
+import styles from "./page.module.css";
+
+const TITLE = "Vortex | The fastest columnar file format";
+const DESCRIPTION =
+  "Vortex is a columnar file format for fast scans and fast random access, with Rust, Python, DuckDB and Spark support. An Apache-2.0 project of the Linux Foundation.";
 
 export const metadata: Metadata = {
-  title: "Vortex | An extensible, SOTA columnar file format",
+  title: TITLE,
   applicationName: "Vortex",
-  description:
-    "Vortex is an extensible, state-of-the-art columnar file format, with associated tools for working with compressed Apache Arrow arrays in-memory, on-disk, and over-the-wire.",
+  description: DESCRIPTION,
   openGraph: {
-    title: "Vortex | An extensible, SOTA columnar file format",
-    description:
-      "Vortex is an extensible, state-of-the-art columnar file format, with associated tools for working with compressed Apache Arrow arrays in-memory, on-disk, and over-the-wire.",
+    title: TITLE,
+    description: DESCRIPTION,
     siteName: "Vortex",
     url: "https://vortex.dev",
     type: "website",
@@ -20,10 +25,36 @@ export const metadata: Metadata = {
   }
 };
 
-export default function Home() {
+/**
+ * The design system's Home card: the hero (Eyebrow, headline, InstallTabs
+ * and the AsciiMark), then the benchmark and logo bands. The Spark version is
+ * read at build time and again at most once a day, so the page stays static.
+ */
+export default async function Home() {
+  const sparkVersion = await getSparkVersion();
   return (
-    <div className="h-full w-full relative overflow-hidden">
-      <HeroASCII />
+    <div className={styles.home}>
+      <section className={styles.hero}>
+        <div className={styles.text}>
+          <span className="vx-label vx-eyebrow">
+            Apache-2.0 · A Linux Foundation project
+          </span>
+          <h1 className="vx-display">The fastest columnar file format.</h1>
+          <InstallTabs sparkVersion={sparkVersion} />
+        </div>
+        <div className={styles.mark}>
+          <AsciiMark className={styles.markHost} />
+        </div>
+      </section>
+      {/* Empty bands that the BenchmarkCard and the LogoBanner fill next. */}
+      <div
+        className={`${styles.band} ${styles.benchSlot}`}
+        data-slot="benchmark-card"
+      />
+      <div
+        className={`${styles.band} ${styles.logoSlot}`}
+        data-slot="logo-banner"
+      />
     </div>
   );
 }
