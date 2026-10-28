@@ -72,11 +72,13 @@ if (seed) baseUrls.push(`http://localhost:3000/blog/${seed}`);
 // instead: FCP, LCP and CLS at a 0.9 audit score. Speed Index follows TBT
 // (correlation 0.89) and peaked at 1286 ms, just inside its 0.9 line at
 // 1311 ms, so it gets a 2000 ms cap instead, about the same headroom over
-// the worst run that LCP has under its 0.9 line. That leaves TBT (30% of the
-// desktop score) as the only ungated part of the `/` score. Every other URL
-// keeps the 0.9 performance floor; its pattern matches any non-root path, so
-// a new URL gets the floor by default. Don't relax a threshold to mask a
-// regression without a separate PR.
+// the worst run that LCP has under its 0.9 line. TBT gets a 1000 ms cap as a
+// backstop against a large JS regression, not as a target: the median run
+// was 264 ms, but the two slowest runners went past it (1755 and 2382 ms), so
+// expect an occasional re-run. Every other URL keeps the 0.9 performance
+// floor; its pattern matches any non-root path, so a new URL gets the floor
+// by default. Don't relax a threshold to mask a regression without a separate
+// PR.
 module.exports = {
   ci: {
     collect: {
@@ -108,7 +110,8 @@ module.exports = {
             "first-contentful-paint": ["error", { minScore: 0.9 }],
             "largest-contentful-paint": ["error", { minScore: 0.9 }],
             "cumulative-layout-shift": ["error", { minScore: 0.9 }],
-            "speed-index": ["error", { maxNumericValue: 2000 }]
+            "speed-index": ["error", { maxNumericValue: 2000 }],
+            "total-blocking-time": ["error", { maxNumericValue: 1000 }]
           }
         },
         {
