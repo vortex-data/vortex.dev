@@ -48,16 +48,14 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // The design system's page frame (globals.css): header, main and footer in
+  // one --page-max column. Each section pads itself by --page-pad.
   const content = (
-    <>
+    <div className="site-frame">
       <Header />
-      <main className="w-full h-auto mx-auto">
-        <div className="flex flex-col mx-auto relative justify-center items-center">
-          {children}
-        </div>
-      </main>
+      <main className="site-main">{children}</main>
       <Footer />
-    </>
+    </div>
   );
 
   // Dark is the server-rendered default; THEME_BOOTSTRAP corrects it before

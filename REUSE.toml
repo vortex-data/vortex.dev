@@ -45,8 +45,8 @@ SPDX-License-Identifier = "CC-BY-4.0"
 [[annotations]]
 path = [
   "src/app/favicon.ico",
-  "src/assets/logo.svg",
-  "src/assets/logo-mobile.svg",
+  "src/assets/vortex_wordmark.svg",
+  "src/assets/vortex_wordmark_dark_theme.svg",
   "public/logo.glb",
   "public/404.glb",
   "bench/public/Vortex_Black_NoBG.svg",
@@ -69,9 +69,4 @@ SPDX-License-Identifier = "LicenseRef-Third-Party"
 [[annotations]]
 path = "src/assets/lf_white.svg"
 SPDX-FileCopyrightText = "The Linux Foundation"
-SPDX-License-Identifier = "LicenseRef-Third-Party"
-
-[[annotations]]
-path = "src/assets/spiral.svg"
-SPDX-FileCopyrightText = "Spiral"
 SPDX-License-Identifier = "LicenseRef-Third-Party"

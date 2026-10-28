@@ -1,101 +1,51 @@
-"use client";
-
-import Image from "next/image";
 import NextLink from "next/link";
-import Logo from "@/assets/logo.svg";
-import LogoMobile from "@/assets/logo-mobile.svg";
-import { Link } from "../link";
+import WordmarkLight from "@/assets/vortex_wordmark.svg";
+import WordmarkDark from "@/assets/vortex_wordmark_dark_theme.svg";
+import { formatStars, getStarCount, REPO, REPO_URL } from "@/lib/github";
+import { HeaderNav } from "./header-nav";
 
-const NAV = [
-  {
-    href: "https://github.com/vortex-data/vortex",
-    label: "GitHub",
-    external: true
-  },
-  { href: "https://docs.vortex.dev", label: "Docs", external: true },
-  { href: "https://explore.vortex.dev", label: "Explorer", external: true },
-  { href: "https://bench.vortex.dev", label: "Bench", external: true },
-  { href: "https://vortex.dev/slack", label: "Slack", external: true },
-  {
-    href: "https://zoom-lfx.platform.linuxfoundation.org/meetings/vortex",
-    label: "Calendar",
-    external: true
-  },
-  { href: "/blog", label: "Blog", external: false }
-] as const;
-
-export const Header = () => {
+/**
+ * The design system's Header card, site variant: the wordmark, the nav and
+ * the GitHub button. The system's CSS shows the wordmark that suits the
+ * theme, and below 640px moves the nav to a second row.
+ */
+export async function Header() {
+  const stars = await getStarCount();
   return (
-    <div className="flex justify-between items-center m-4 mb-2 md:m-10 md:mb-6 dashed-top dashed-bottom h-[72px] md:h-[108px]">
-      <NextLink
-        href="/"
-        className="flex items-center gap-4 dashed-right h-full px-8"
-      >
-        <Image
-          src={Logo}
-          alt="Vortex Logo"
-          width={120}
-          height={44}
-          className="hidden md:block"
-        />
-        <Image
-          src={LogoMobile}
-          alt="Vortex Logo"
-          width={40}
-          height={40}
-          className="block md:hidden w-full h-[40px]"
-        />
-      </NextLink>
-
-      {/* Desktop / tablet: original links */}
-      <div className="hidden md:flex items-center gap-8 flex-1 justify-end md:flex-none dashed-left before:hidden md:before:block h-full px-10">
-        {NAV.map(({ href, label, external }) => (
-          <Link
-            key={href}
-            href={href}
-            className="uppercase text-white font-mono text-base md:text-[18px] font-medium"
-            {...(external ? { target: "_blank" } : {})}
-          >
-            {label}
-          </Link>
-        ))}
+    <header className="vx-header has-nav">
+      <div className="vx-header-start">
+        <NextLink href="/" aria-label="Vortex home">
+          <img
+            className="vx-header-mark is-dark"
+            src={WordmarkDark.src}
+            width={WordmarkDark.width}
+            height={WordmarkDark.height}
+            alt="Vortex"
+          />
+          {/* Lazy, so Dark pages never fetch the Light mark they hide. */}
+          <img
+            className="vx-header-mark is-light"
+            src={WordmarkLight.src}
+            width={WordmarkLight.width}
+            height={WordmarkLight.height}
+            alt="Vortex"
+            loading="lazy"
+          />
+        </NextLink>
       </div>
-
-      {/* Mobile: pure-CSS hamburger (no JS, anchor tags only) */}
-      <div className="md:hidden relative flex-1 justify-end dashed-left h-full px-6 flex items-center">
-        <details className="group relative">
-          <summary
-            className="list-none flex items-center justify-center w-10 h-10 rounded-lg border border-white/20 cursor-pointer"
-            aria-label="Toggle navigation"
-          >
-            {/* hamburger icon */}
-            <div className="relative w-5 h-3.5">
-              <span className="absolute inset-x-0 top-0 h-0.5 bg-white transition-transform duration-200 group-open:translate-y-1.5 group-open:rotate-45"></span>
-              <span className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-0.5 bg-white transition-opacity duration-200 group-open:opacity-0"></span>
-              <span className="absolute inset-x-0 bottom-0 h-0.5 bg-white transition-transform duration-200 group-open:-translate-y-1.5 group-open:-rotate-45"></span>
-            </div>
-          </summary>
-
-          {/* dropdown panel */}
-          <nav className="absolute right-0 mt-3 w-48 rounded-xl border border-white/20 bg-black/90 backdrop-blur p-2 shadow-lg z-51">
-            <ul className="flex flex-col">
-              {NAV.map(({ href, label, external }) => (
-                <li key={href}>
-                  <a
-                    href={href}
-                    {...(external
-                      ? { target: "_blank", rel: "noopener noreferrer" }
-                      : {})}
-                    className="block w-full px-3 py-2 rounded-lg uppercase text-white font-mono text-sm hover:bg-white/10"
-                  >
-                    {label}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </nav>
-        </details>
+      <HeaderNav />
+      <div className="vx-header-end">
+        <a className="vx-btn vx-btn-secondary is-mono" href={REPO_URL}>
+          {/* The Octicons mark-github (primer/octicons, MIT). */}
+          <svg viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M6.766 11.328c-2.063-.25-3.516-1.734-3.516-3.656 0-.781.281-1.625.75-2.188-.203-.515-.172-1.609.063-2.062.625-.078 1.468.25 1.968.703.594-.187 1.219-.281 1.985-.281.765 0 1.39.094 1.953.265.484-.437 1.344-.765 1.969-.687.218.422.25 1.515.046 2.047.5.593.766 1.39.766 2.203 0 1.922-1.453 3.375-3.547 3.64.531.344.89 1.094.89 1.954v1.625c0 .468.391.734.86.547C13.781 14.359 16 11.53 16 8.03 16 3.61 12.406 0 7.984 0 3.563 0 0 3.61 0 8.031a7.88 7.88 0 0 0 5.172 7.422c.422.156.828-.125.828-.547v-1.25c-.219.094-.5.156-.75.156-1.031 0-1.64-.562-2.078-1.609-.172-.422-.36-.672-.719-.719-.187-.015-.25-.093-.25-.187 0-.188.313-.328.625-.328.453 0 .844.281 1.25.86.313.452.64.655 1.031.655s.641-.14 1-.5c.266-.265.47-.5.657-.656" />
+          </svg>
+          <span>{REPO}</span>
+          {stars !== null && (
+            <span className="vx-btn-count">{formatStars(stars)}</span>
+          )}
+        </a>
       </div>
-    </div>
+    </header>
   );
-};
+}

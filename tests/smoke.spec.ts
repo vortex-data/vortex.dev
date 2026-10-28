@@ -99,33 +99,43 @@ test.describe("blog post", () => {
   });
 });
 
+test.describe("header", () => {
+  test("shows the five nav links and the GitHub button", async ({ page }) => {
+    await page.goto("/");
+    const nav = page.getByRole("navigation", { name: "Primary" });
+    for (const [name, href] of [
+      ["Docs", "https://docs.vortex.dev"],
+      ["Bench", "https://bench.vortex.dev"],
+      ["Explorer", "https://explore.vortex.dev"],
+      ["Blog", "/blog"],
+      ["Slack", "/slack"]
+    ] as const) {
+      const link = nav.getByRole("link", { name, exact: true });
+      await expect(link).toBeVisible();
+      await expect(link).toHaveAttribute("href", href);
+    }
+    // The star count is left out when GitHub's API fails, so only the
+    // repository name is certain.
+    const github = page.locator(
+      'header a[href="https://github.com/vortex-data/vortex"]'
+    );
+    await expect(github).toBeVisible();
+    await expect(github).toContainText("vortex-data/vortex");
+  });
+});
+
 test.describe("footer", () => {
-  test("custom Link scramble settles back to original on hover", async ({
+  test("shows the LF Projects policies link and the Charter", async ({
     page
   }) => {
     await page.goto("/");
-    const link = page.locator('a[href="https://lfprojects.org"]').first();
-    await expect(link).toBeVisible();
-    const original = (await link.textContent()) ?? "";
-
-    // Trigger a real pointer enter — the scramble fires on hover.
-    await link.hover();
-
-    // Sample intermediate frames: the in-flight animation must produce at
-    // least one text snapshot that differs from the static text. Without
-    // the in-flight guard in the Link component, the scramble would loop
-    // forever because mutating textContent re-fires mouseover.
-    const observed = new Set<string>();
-    for (let i = 0; i < 30; i++) {
-      observed.add((await link.textContent()) ?? "");
-      await page.waitForTimeout(20);
-    }
-
-    // Wait for the animation to settle, then assert it returned to the
-    // original string (regression check for the textContent-refire loop).
-    await page.waitForTimeout(800);
-    expect(await link.textContent()).toBe(original);
-    expect([...observed].some((s) => s !== original)).toBe(true);
+    const footer = page.locator("footer");
+    await expect(
+      footer.locator('a[href="https://lfprojects.org/policies"]')
+    ).toBeVisible();
+    const charter = footer.getByRole("link", { name: "Charter", exact: true });
+    await expect(charter).toBeVisible();
+    await expect(charter).toHaveAttribute("href", "/charter.pdf");
   });
 });
 

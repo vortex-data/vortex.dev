@@ -1,56 +1,53 @@
-import Image from "next/image";
-import NextLink from "next/link";
-import LFLogo from "@/assets/lf_white.svg";
-import SpiralLogo from "@/assets/spiral.svg";
-import { Link } from "../link";
+import LFMark from "@/assets/lf_white.svg";
+import { REPO_URL } from "@/lib/github";
 
-export const Footer = () => {
+// No project code of conduct exists, so the LF Projects one applies
+// (charter section 6.b). The charter is a route (src/app/charter.pdf), so it
+// takes a plain link like the rest.
+const LINKS = [
+  { href: "/charter.pdf", label: "Charter" },
+  {
+    href: "https://lfprojects.org/policies/code-of-conduct/",
+    label: "Code of conduct"
+  },
+  { href: `${REPO_URL}/blob/develop/SECURITY.md`, label: "Security" },
+  {
+    href: "https://zoom-lfx.platform.linuxfoundation.org/meetings/vortex",
+    label: "Calendar"
+  }
+] as const;
+
+/**
+ * The design system's Footer card: The Linux Foundation's logo (the system's
+ * CSS inverts it in Light), the line LF Projects requires, and the project's
+ * links.
+ */
+export function Footer() {
   return (
-    <div className="flex flex-col m-4 mb-2 md:m-10">
-      <div className="flex flex-col sm:flex-row justify-center items-center px-4 sm:px-0 gap-4 md:gap-16 dashed-top dashed-bottom after:hidden md:after:block py-4 md:py-0 md:h-[84px]">
-        <div className="flex items-center h-full lg:px-10">
-          <div className="flex flex-col md:flex-row items-center gap-2">
-            <span className="text-sm font-mono text-white items-center gap-2">
-              Incubating @{" "}
-              <Image
-                src={LFLogo}
-                alt="Linux Foundation logo"
-                height={10}
-                className="inline"
-              />
-            </span>
-          </div>
-        </div>
-        <div className="flex items-center h-full lg:px-10">
-          <span className="text-white font-mono text-sm items-center gap-1 text-center sm:text-left">
-            Copyright © Vortex a Series of{" "}
-            <Link href="https://lfprojects.org" target="_blank">
-              LF Projects, LLC.
-            </Link>
-          </span>
-        </div>
-        <div className="flex items-center h-full lg:px-10">
-          <span className="text-xs font-mono text-white items-center gap-2 flex">
-            <NextLink href="https://spiraldb.com" target="_blank">
-              <Image
-                src={SpiralLogo}
-                alt="Spiral Logo"
-                width={15}
-                height={18}
-              />
-            </NextLink>
-            Donated by{" "}
-            <Link href="https://spiraldb.com" target="_blank">
-              Spiral.
-            </Link>
-          </span>
-        </div>
-      </div>
-      {/* <div className="py-6 flex justify-center">
-        <div className="w-full max-w-md">
-          <NewsletterForm />
-        </div>
-      </div> */}
-    </div>
+    <footer className="vx-footer">
+      <img
+        className="vx-footer-mark"
+        src={LFMark.src}
+        width={LFMark.width}
+        height={LFMark.height}
+        alt="The Linux Foundation"
+        loading="lazy"
+      />
+      <p className="vx-footer-text">
+        Copyright © Vortex a Series of LF Projects, LLC. For web site terms of
+        use, trademark policy and other project policies please see{" "}
+        <a className="vx-link" href="https://lfprojects.org/policies">
+          lfprojects.org/policies
+        </a>
+        .
+      </p>
+      <nav className="vx-footer-nav" aria-label="Project">
+        {LINKS.map(({ href, label }) => (
+          <a key={href} className="vx-label-sm vx-nav-link" href={href}>
+            {label}
+          </a>
+        ))}
+      </nav>
+    </footer>
   );
-};
+}
