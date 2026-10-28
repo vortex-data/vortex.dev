@@ -75,8 +75,8 @@ if (seed) baseUrls.push(`http://localhost:3000/blog/${seed}`);
 // the worst run that LCP has under its 0.9 line. That leaves TBT (30% of the
 // desktop score) as the only ungated part of the `/` score. Every other URL
 // keeps the 0.9 performance floor; its pattern matches any non-root path, so
-// a new URL gets the floor by default. Don't relax a threshold to mask a regression without
-// a separate PR.
+// a new URL gets the floor by default. Don't relax a threshold to mask a
+// regression without a separate PR.
 module.exports = {
   ci: {
     collect: {
