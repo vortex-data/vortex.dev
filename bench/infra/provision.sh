@@ -314,17 +314,31 @@ ensure_rds_instance() {
     aws rds wait db-instance-available --db-instance-identifier "$DB_INSTANCE_IDENTIFIER"
     log "  available."
 
+    # RDS rejects a storage ceiling less than 10% above the allocated storage,
+    # which autoscaling can pass. Keep the current ceiling then, so the other
+    # settings and the later steps still apply.
+    local allocated
+    local max_storage_args=()
+    allocated=$(aws rds describe-db-instances \
+        --db-instance-identifier "$DB_INSTANCE_IDENTIFIER" \
+        --query 'DBInstances[0].AllocatedStorage' --output text)
+    if [ $(( DB_MAX_ALLOCATED_STORAGE_GB * 10 )) -ge $(( allocated * 11 )) ]; then
+        max_storage_args=(--max-allocated-storage "$DB_MAX_ALLOCATED_STORAGE_GB")
+    else
+        warn "${allocated} GiB is allocated, so DB_MAX_ALLOCATED_STORAGE_GB=${DB_MAX_ALLOCATED_STORAGE_GB} is too low (RDS needs at least 10% more). Keeping the current ceiling; raise DB_MAX_ALLOCATED_STORAGE_GB."
+    fi
+
     # Re-assert the settings on an instance that existed before they were added
     # here. All four take effect at once without a restart, and the call omits
     # --apply-immediately so it cannot pull a queued engine upgrade forward.
     aws rds modify-db-instance \
         --db-instance-identifier "$DB_INSTANCE_IDENTIFIER" \
         --deletion-protection \
-        --max-allocated-storage "$DB_MAX_ALLOCATED_STORAGE_GB" \
+        ${max_storage_args[@]+"${max_storage_args[@]}"} \
         --backup-retention-period "$DB_BACKUP_RETENTION_DAYS" \
         --auto-minor-version-upgrade \
         >/dev/null
-    log "  deletion protection, storage autoscaling (${DB_MAX_ALLOCATED_STORAGE_GB} GiB), ${DB_BACKUP_RETENTION_DAYS}-day backups and automatic minor upgrades set."
+    log "  deletion protection, storage autoscaling (${allocated} GiB allocated), ${DB_BACKUP_RETENTION_DAYS}-day backups and automatic minor upgrades set."
 
     # A new parameter group takes effect only after a reboot, so the script
     # reports a different group and leaves the move and the reboot to the operator.

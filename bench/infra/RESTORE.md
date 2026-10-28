@@ -26,10 +26,16 @@ A restore always makes a **new** instance. It never writes over
 Pick a time (UTC) before the bad change. For a lost instance or a lost region,
 use the latest restorable time.
 
+The restore finds the backups by the instance's resource ID (`DbiResourceId`),
+because the resource ID still works after the instance is deleted and the name
+does not. On 2026-10-28 it was `db-4VPTDACTRQHOS24WEIR3TNC2M4`. It changes when
+the instance is replaced. This lists every set of automated backups, including
+backups kept after a deletion (`Status` is `retained`):
+
 ```sh
 aws rds describe-db-instance-automated-backups --region us-east-1 \
-  --db-instance-identifier vortex-bench-prod \
-  --query 'DBInstanceAutomatedBackups[].[Status,RestoreWindow]'
+  --query 'DBInstanceAutomatedBackups[].[DBInstanceIdentifier,DbiResourceId,Status,RestoreWindow]'
+SOURCE=db-4VPTDACTRQHOS24WEIR3TNC2M4
 ```
 
 ## 2. Restore to a new instance
@@ -46,7 +52,7 @@ From us-east-1:
 
 ```sh
 aws rds restore-db-instance-to-point-in-time --region "$REGION" \
-  --source-db-instance-identifier vortex-bench-prod \
+  --source-dbi-resource-id "$SOURCE" \
   --target-db-instance-identifier "$TARGET" \
   --restore-time 2026-10-28T16:00:00Z \
   --db-instance-class db.r7g.large \
@@ -101,7 +107,7 @@ From us-west-2, if us-east-1 is down:
 3. Set `REGION=us-west-2` and `TARGET=vortex-bench-prod`. Restore with
    `--vpc-security-group-ids $SG` and
    `--source-db-instance-automated-backups-arn <arn>` in place of
-   `--source-db-instance-identifier`.
+   `--source-dbi-resource-id`.
 
 A restore takes about 10 minutes for this database. After that, the first read
 of each block is slow, because RDS loads it from S3 on first access: a full
@@ -160,21 +166,23 @@ UNION ALL SELECT 'vector_search_runs', count(*), max(measurement_id)::text FROM 
 `vortex-bench-prod`, for example with `pg_dump --data-only -t <table>` and
 `psql`, then delete the restored instance.
 
-**To replace the instance,** keep the name `vortex-bench-prod`. The endpoint
-hostname comes from the name, so Vercel and the GitHub variables need no change.
+**To replace the instance after a restore in us-east-1,** keep the name
+`vortex-bench-prod`. The endpoint hostname comes from the name, so Vercel and the
+GitHub variables need no change.
 
 1. Stop writes: let running ingest jobs in `vortex-data/vortex` finish, and do
    not run a schema deploy.
 2. Rename the old instance, then the new one. Each rename takes a few minutes,
-   and the site is down between them.
+   and the site is down between them. If the old instance no longer exists,
+   do only the second rename.
 
    ```sh
-   aws rds modify-db-instance --db-instance-identifier vortex-bench-prod \
+   aws rds modify-db-instance --region us-east-1 --db-instance-identifier vortex-bench-prod \
      --new-db-instance-identifier vortex-bench-old --apply-immediately
-   aws rds wait db-instance-available --db-instance-identifier vortex-bench-old
-   aws rds modify-db-instance --db-instance-identifier "$TARGET" \
+   aws rds wait db-instance-available --region us-east-1 --db-instance-identifier vortex-bench-old
+   aws rds modify-db-instance --region us-east-1 --db-instance-identifier "$TARGET" \
      --new-db-instance-identifier vortex-bench-prod --apply-immediately
-   aws rds wait db-instance-available --db-instance-identifier vortex-bench-prod
+   aws rds wait db-instance-available --region us-east-1 --db-instance-identifier vortex-bench-prod
    ```
 
 3. The new instance has a new resource ID (`DbiResourceId`). The permission
@@ -189,11 +197,13 @@ hostname comes from the name, so Vercel and the GitHub variables need no change.
 5. Stop the old instance's backup replication, turn off its deletion
    protection and delete it, with a final snapshot.
 
-A restore from us-west-2 has a different endpoint. Set the
-`RDS_BENCH_INSTANCE_ENDPOINT` and `RDS_BENCH_REGION` GitHub variables and
-`BENCH_DB_HOST` in Vercel to match. Then run `provision.sh` with
-`TARGET_REGION=us-west-2 BACKUP_REPLICA_REGION=us-east-1` (or another region):
-the backup replica must be in a different region from the instance.
+**To switch to a restore in us-west-2,** rename nothing: the restored instance
+already has the name `vortex-bench-prod`, in its own region. It has a different
+endpoint, so set the `RDS_BENCH_INSTANCE_ENDPOINT` and `RDS_BENCH_REGION` GitHub
+variables and `BENCH_DB_HOST` in Vercel to match. Then run `provision.sh` with
+`TARGET_REGION=us-west-2 BACKUP_REPLICA_REGION=us-east-1` (or another region),
+which rewrites the CI permission policies for the new region and resource ID.
+The backup replica must be in a different region from the instance.
 
 ## 6. Clean up a test restore
 
