@@ -6,16 +6,16 @@ export type InstallLine = { prompt: string; text: string };
 
 export type InstallTab = { key: string; label: string; lines: InstallLine[] };
 
-/** What the Spark coordinate shows when Maven Central cannot be read. */
-export const LATEST = "<latest>";
-
 const shell = (text: string): InstallLine => ({ prompt: "$", text });
 const code = (text: string): InstallLine => ({ prompt: "", text });
 
-/** The InstallTabs card's tabs, Rust first. `sparkVersion` is from `getSparkVersion`. */
+/**
+ * The InstallTabs card's tabs, Rust first. `sparkVersion` is from
+ * `getSparkVersion`; without it there is no Spark tab, because a coordinate
+ * without a real version would copy a command Gradle cannot resolve.
+ */
 export function installTabs(sparkVersion: string | null): InstallTab[] {
-  const spark = `dev.vortex:vortex-spark_2.13:${sparkVersion ?? LATEST}:all`;
-  return [
+  const tabs: InstallTab[] = [
     { key: "rust", label: "Rust", lines: [shell("cargo add vortex")] },
     {
       key: "python",
@@ -30,17 +30,26 @@ export function installTabs(sparkVersion: string | null): InstallTab[] {
         code("SELECT * FROM read_vortex('data.vortex');")
       ]
     },
-    {
-      key: "spark",
-      label: "Spark",
-      lines: [code(`implementation("${spark}")`)]
-    },
+    ...(sparkVersion
+      ? [
+          {
+            key: "spark",
+            label: "Spark",
+            lines: [
+              code(
+                `implementation("dev.vortex:vortex-spark_2.13:${sparkVersion}:all")`
+              )
+            ]
+          }
+        ]
+      : []),
     {
       key: "cli",
       label: "CLI",
       lines: [shell("uvx --from vortex-data vx --help")]
     }
   ];
+  return tabs;
 }
 
 /** What the copy button writes: the commands, one per line, never the prompts. */

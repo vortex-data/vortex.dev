@@ -27,11 +27,11 @@ describe("installTabs", () => {
     assert.deepEqual(lines(cli), [["$", "uvx --from vortex-data vx --help"]]);
   });
 
-  it("writes <latest> in the Spark coordinate when the version is unknown", () => {
-    const spark = installTabs(null).find((t) => t.label === "Spark");
-    assert.deepEqual(lines(spark), [
-      ["", 'implementation("dev.vortex:vortex-spark_2.13:<latest>:all")']
-    ]);
+  it("offers no Spark tab when the version is unknown, so nothing copies a coordinate Gradle cannot resolve", () => {
+    assert.deepEqual(
+      installTabs(null).map((t) => t.key),
+      ["rust", "python", "duckdb", "cli"]
+    );
   });
 
   it("gives every tab a unique key", () => {

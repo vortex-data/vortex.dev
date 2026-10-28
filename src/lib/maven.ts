@@ -13,8 +13,8 @@ const VERSION = /^\d+(\.\d+)+$/;
  * The latest release of `dev.vortex:vortex-spark_2.13`, for the homepage's
  * Spark install command. It is read at build time and again at most once a
  * day (ISR). Any failure (a timeout, an error status, metadata without a
- * release) gives `null`, and the command then shows `<latest>`. `fetchImpl`
- * is for tests.
+ * release) gives `null`, and the homepage then leaves out the Spark tab.
+ * `fetchImpl` is for tests.
  */
 export async function getSparkVersion(
   fetchImpl: typeof fetch = fetch
