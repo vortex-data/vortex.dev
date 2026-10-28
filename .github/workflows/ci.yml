@@ -226,6 +226,13 @@ jobs:
   # `bun audit` job is informational, so this is the one advisory check
   # that blocks merge, and it is scoped to what the PR itself introduces
   # (severity `high` and above) rather than the whole pre-existing tree.
+  #
+  # GitHub's dependency graph does not read bun.lock. The dependency-snapshot
+  # workflow submits it, and that run races this job, so the retry inputs
+  # make this one wait up to five minutes for the snapshot instead of
+  # reviewing a graph without the transitive packages. `fail-on-scopes` stays
+  # at the action's default, `runtime`: a development-only advisory does not
+  # block merge and stays with `bun audit` and CLAUDE.md "Audit advisories".
   dependency-review:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-24.04
@@ -239,6 +246,8 @@ jobs:
         with:
           fail-on-severity: high
           comment-summary-in-pr: on-failure
+          retry-on-snapshot-warnings: true
+          retry-on-snapshot-warnings-timeout: 300
 
   # Defense-in-depth on top of GitHub's push protection. Push protection
   # covers high-entropy / known-provider patterns at push time; TruffleHog

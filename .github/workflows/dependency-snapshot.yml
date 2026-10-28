@@ -1,0 +1,61 @@
+name: Dependency snapshot
+
+# GitHub's dependency graph does not read bun.lock, so `dependency-review` in
+# ci.yml would see none of the transitive packages. This workflow submits the
+# lock to the graph through the Dependency Submission API, so that check can
+# compare a pull request's packages against main's. See CLAUDE.md, "Supply
+# chain hardening", layer 5.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Cancel a superseded pull request run; the newest snapshot is the one that
+# matters. A push to main is never cancelled mid-run: it queues behind the
+# one in flight, so a snapshot on main is not lost half-submitted.
+concurrency:
+  group: dependency-snapshot-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# Least-privilege default. The one job that submits asks for more.
+permissions:
+  contents: read
+
+jobs:
+  snapshot:
+    name: Submit bun.lock
+    # Pull requests from forks get a read-only token, which the submission API
+    # rejects, so they are skipped. Dependency review waits out its retry
+    # window for such a pull request, then proceeds with a snapshot warning.
+    if: ${{ github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      # The submission API wants `contents: write`; nothing else.
+      contents: write
+    steps:
+      # A pull request run checks out the merge commit: the lock that would
+      # land, filed below under the head commit that dependency-review
+      # compares.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6  # v2.2.0
+        with:
+          bun-version: 1.4.3
+
+      # No `bun install`: the script and its tests use only Bun and Node
+      # built-ins, and this job holds a write token.
+      - name: Test the snapshot builder
+        run: bun test scripts/dependency-snapshot.test.ts
+
+      # The correlator (workflow name plus job name) is the same on every run,
+      # so each snapshot replaces the previous one for its ref.
+      - name: Submit snapshot
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          SNAPSHOT_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          SNAPSHOT_REF: ${{ github.event_name == 'pull_request' && format('refs/heads/{0}', github.head_ref) || github.ref }}
+        run: bun scripts/dependency-snapshot.ts
