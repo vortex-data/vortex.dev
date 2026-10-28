@@ -1,6 +1,5 @@
-/* Vortex design system components for vortex.dev: the base, brand, site, docs (code and
-   callouts), blog and focus sections of the system's components/bundle.css, copied by
-   sync-site-styles. Edit the system, then sync; do not edit here. */
+/* Vortex design system components (sections: base, brand, site, docs, blog, focus), copied by tools/site-styles.mjs.
+   Edit the system, then run tools/site-styles.mjs; do not edit here. */
 
 /* ------------------------------------------------------------------ base */
 .vx-card {

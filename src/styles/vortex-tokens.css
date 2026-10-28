@@ -1,7 +1,5 @@
-/* Vortex design system tokens, copied from the system's tools/tokens-css/vortex-tokens.css by
-   sync-site-styles. The type styles read var(--font-*), which point at next/font's self-hosted
-   faces and their metrics-matched fallbacks (--vx-face-*, set in src/app/layout.tsx).
-   Edit the system, then sync; do not edit here. */
+/* Vortex design system tokens, copied by tools/site-styles.mjs.
+   Edit the system, then run tools/site-styles.mjs; do not edit here. */
 :root, [data-theme="dark"] {
   --white: #ffffff;
   --grey-50: #fcfcf9;
