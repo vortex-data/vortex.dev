@@ -9,6 +9,7 @@
     "ignoreUnknown": true,
     "includes": [
       "**",
+      "!bench",
       "!src/content",
       "!public",
       "!bun.lock",
