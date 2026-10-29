@@ -85,10 +85,10 @@ runs:
         enable-cache: false
 
     # uv resolves the runner's Python dependencies when it runs. Give them the
-    # repository's 14-day cooldown (see CLAUDE.md "Supply chain hardening").
+    # repository's 7-day cooldown (see CLAUDE.md "Supply chain hardening").
     - name: Set the uv cooldown
       shell: bash
-      run: echo "UV_EXCLUDE_NEWER=$(date -u -d '14 days ago' +%Y-%m-%dT%H:%M:%SZ)" >> "${GITHUB_ENV}"
+      run: echo "UV_EXCLUDE_NEWER=$(date -u -d '7 days ago' +%Y-%m-%dT%H:%M:%SZ)" >> "${GITHUB_ENV}"
 
     - name: Test migration runner
       shell: bash
