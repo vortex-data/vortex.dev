@@ -11,7 +11,9 @@ import {
   flushOpenFragmentSync,
   formatOpenFragment,
   type GroupRef,
+  listedOpenAnchors,
   OPEN_FRAGMENT_SYNC_DELAY_MS,
+  openAndScrollTo,
   openAnchors,
   openGroupSlugs,
   openGroupsFromHash,
@@ -23,7 +25,13 @@ import {
   scrollToGroup,
   setAllGroupsOpen,
   syncOpenFragment,
+  takeOpenGroupsBootstrap,
 } from '@/lib/open-groups';
+
+/** Fake the write scheduler's timers and its clock, `performance.now()`. */
+function useFakeClock(): void {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date', 'performance'] });
+}
 
 // Three groups in page order, as the landing page renders them.
 const GROUPS: GroupRef[] = [
@@ -119,7 +127,40 @@ describe('the open groups on the page', () => {
     expect(scrollToGroup(document, 'random-access')).toBe(true);
     expect(scrollSpy).toHaveBeenCalledTimes(1);
     expect(scrollSpy.mock.contexts[0]).toBe(document.getElementById('random-access'));
-    expect(scrollSpy).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' });
+    // Nobody clicked: a fresh visit, a restore's fallback or a new fragment.
+    expect(scrollSpy).toHaveBeenCalledWith({ behavior: 'instant', block: 'start' });
+  });
+
+  it.each([
+    [false, 'smooth'],
+    [true, 'auto'],
+  ])(
+    'opens and scrolls to a clicked group smoothly, unless reduced motion is %s',
+    (reduce, behavior) => {
+      const scrollSpy = vi.fn();
+      Element.prototype.scrollIntoView = scrollSpy;
+      // jsdom has no `matchMedia`.
+      window.matchMedia = vi.fn().mockReturnValue({ matches: reduce });
+      try {
+        openAndScrollTo(document.getElementById('clickbench') as HTMLElement, document);
+      } finally {
+        Reflect.deleteProperty(window, 'matchMedia');
+      }
+      expect(disclosure('clickbench').open).toBe(true);
+      expect(scrollSpy.mock.contexts[0]).toBe(document.getElementById('clickbench'));
+      expect(scrollSpy).toHaveBeenCalledWith({ behavior, block: 'start' });
+    },
+  );
+
+  it('lists the groups the fragment names that are open, in fragment order, opening nothing', () => {
+    disclosure('clickbench').open = true;
+    disclosure('tpc-h-nvme-sf-1').open = true;
+
+    expect(listedOpenAnchors(document, '#random-access,clickbench,nope,tpc-h-nvme-sf-1')).toEqual([
+      'clickbench',
+      'tpc-h-nvme-sf-1',
+    ]);
+    expect(disclosure('random-access').open).toBe(false);
   });
 
   describe('syncOpenFragment', () => {
@@ -164,7 +205,7 @@ describe('the open groups on the page', () => {
   });
 
   it('setAllGroupsOpen opens every group and writes the fragment once', () => {
-    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    useFakeClock();
     window.history.replaceState(null, '', '/?engine=duckdb');
     const replace = vi.spyOn(window.history, 'replaceState');
 
@@ -189,7 +230,7 @@ describe('the open groups on the page', () => {
   // few writes.
   describe('the fragment write scheduler', () => {
     beforeEach(() => {
-      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+      useFakeClock();
     });
 
     /** Toggle `anchor` and schedule its write, as the page's toggle listener does. */
@@ -299,6 +340,32 @@ describe('the open groups on the page', () => {
       expect(window.location.hash).toBe('#tpc-h-nvme-sf-1');
     });
 
+    it('keeps its spacing when the wall clock jumps forward', () => {
+      const replace = vi.spyOn(window.history, 'replaceState');
+      toggle('clickbench');
+      expect(replace).toHaveBeenCalledTimes(1);
+
+      // A clock sync moves `Date` an hour on; no time has passed.
+      vi.setSystemTime(Date.now() + 3_600_000);
+      toggle('random-access');
+      expect(replace).toHaveBeenCalledTimes(1);
+      vi.advanceTimersByTime(OPEN_FRAGMENT_SYNC_DELAY_MS);
+      expect(replace).toHaveBeenCalledTimes(2);
+    });
+
+    it('drops a pending write once the page has left the path it was scheduled on', () => {
+      leavePending();
+      // A client navigation away whose new URL kept the fragment.
+      window.history.replaceState(null, '', '/chart/c1#clickbench');
+      const replace = vi.spyOn(window.history, 'replaceState');
+
+      vi.advanceTimersByTime(OPEN_FRAGMENT_SYNC_DELAY_MS);
+      expect(flushOpenFragmentSync(window)).toBe(false);
+      expect(replace).not.toHaveBeenCalled();
+      expect(window.location.pathname).toBe('/chart/c1');
+      expect(window.location.hash).toBe('#clickbench');
+    });
+
     it('a write made at once leaves the pending one nothing to do', () => {
       leavePending();
       const replace = vi.spyOn(window.history, 'replaceState');
@@ -308,5 +375,53 @@ describe('the open groups on the page', () => {
       vi.advanceTimersByTime(OPEN_FRAGMENT_SYNC_DELAY_MS);
       expect(replace).toHaveBeenCalledTimes(1);
     });
+  });
+});
+
+// What the pre-paint script leaves on its document; `OpenGroupsScript.test.tsx`
+// runs the real script against this reader.
+describe('takeOpenGroupsBootstrap', () => {
+  const KEY = '__benchOpenGroups';
+  const holder = document as unknown as Record<string, unknown>;
+
+  afterEach(() => {
+    holder[KEY] = undefined;
+  });
+
+  it('finds nothing on a document the script never ran in', () => {
+    expect(takeOpenGroupsBootstrap(document)).toBeNull();
+  });
+
+  it.each([
+    [false, { input: false }],
+    [true, { input: true }],
+  ])('takes the marker once, with the input flag %s, and stops its listeners', (input, taken) => {
+    const stop = vi.fn();
+    holder[KEY] = { input, stop };
+
+    expect(takeOpenGroupsBootstrap(document)).toEqual(taken);
+    expect(stop).toHaveBeenCalledTimes(1);
+    expect(takeOpenGroupsBootstrap(document)).toBeNull();
+  });
+
+  it.each([
+    ['a value that is not an object', 1],
+    ['null', null],
+  ])('ignores %s', (_case, value) => {
+    holder[KEY] = value;
+    expect(takeOpenGroupsBootstrap(document)).toBeNull();
+  });
+
+  it('reads only a true input flag, and survives a missing or failing stop', () => {
+    holder[KEY] = { input: 'yes' };
+    expect(takeOpenGroupsBootstrap(document)).toEqual({ input: false });
+
+    holder[KEY] = {
+      input: true,
+      stop: () => {
+        throw new Error('boom');
+      },
+    };
+    expect(takeOpenGroupsBootstrap(document)).toEqual({ input: true });
   });
 });

@@ -3,17 +3,20 @@
 
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 import { groupBodiesReady } from '@/lib/group-bodies';
 import {
   cancelOpenFragmentSync,
   flushOpenFragmentSync,
+  listedOpenAnchors,
+  type OpenGroupsBootstrap,
   openGroupSlugs,
   openGroupsFromHash,
   scheduleOpenFragmentSync,
   scrollToGroup,
   syncOpenFragment,
+  takeOpenGroupsBootstrap,
 } from '@/lib/open-groups';
 import {
   navigationKind,
@@ -40,23 +43,33 @@ const CHART_LINK = 'a[href^="/chart/"]';
  *   Next.js adds one call to each of ours. Writes never add a history entry,
  *   only happen when the URL would change, and survive a browser that
  *   refuses them. The scroll save (below) keys a position by the fragment, so
- *   it makes a pending write first (see `onPageHide` for the reload case).
- * - **Fragment reader.** On mount it opens the groups the fragment lists. The
- *   pre-paint script ([`OpenGroupsScript`]) has usually done so already, and
- *   this is then a no-op; on a client navigation to `/` React never runs that
- *   script, and this opens them. A later `hashchange` (an in-page link, or a
- *   fragment typed into the address bar) first drops any pending write, so it
- *   cannot overwrite the new fragment, then opens what it lists, rewrites the
- *   fragment to the whole open set (a group that was already open fires no
- *   `toggle`, so nothing else would) and scrolls to the first listed group.
+ *   it makes a pending write first (see `saveOnLeave` for the reload case).
+ * - **Fragment reader.** On a full page load, the pre-paint script
+ *   ([`OpenGroupsScript`]) has opened the groups the fragment lists and left a
+ *   marker on the document. The first mount takes it
+ *   ([`takeOpenGroupsBootstrap`], once per document) and leaves the groups as
+ *   they are: the reader may have opened or closed some before hydration,
+ *   with nobody listening for those `toggle` events. It writes the fragment
+ *   once from what is open instead. Without the marker (a client navigation
+ *   to `/`, where React never runs that script) it opens the listed groups
+ *   itself. A later `hashchange` (an in-page link, or a fragment typed into
+ *   the address bar) first drops any pending write, so it cannot overwrite
+ *   the new fragment, then opens what it lists, rewrites the fragment to the
+ *   whole open set (a group that was already open fires no `toggle`, so
+ *   nothing else would) and scrolls to the first listed group.
  * - **Scroll** (`lib/scroll-restore.ts`). While mounted, the page sets
- *   `history.scrollRestoration = 'manual'` and puts the old mode back on
- *   unmount. On `pagehide`, and when a chart link is clicked, it saves the
+ *   `history.scrollRestoration = 'manual'`, and on unmount sets back the mode
+ *   it found (the browser's own on a fresh history entry; after a reload or
+ *   Back, it may be the `manual` this page left on the entry). On `pagehide`,
+ *   when the tab goes hidden (a mobile browser may discard a hidden tab
+ *   without a `pagehide`) and when a chart link is clicked, it saves the
  *   element nearest the top of the viewport. On mount, [`planScroll`]
  *   chooses: a reload or Back/Forward with a saved position restores that
  *   element to its offset (falling back to the fragment scroll if the element
- *   is gone); otherwise, if the fragment lists groups, it scrolls to the first
- *   one (a fresh visit ignores anything saved); otherwise it leaves the scroll
+ *   is gone), unless the pre-paint script's marker says the reader already
+ *   scrolled, touched or pressed a key, as user input after mount would stop
+ *   it; otherwise, if the fragment lists groups, it scrolls to the first one
+ *   (a fresh visit ignores anything saved); otherwise it leaves the scroll
  *   alone.
  *
  * Both scrolls wait for the open groups' bodies to mount their cards
@@ -64,6 +77,11 @@ const CHART_LINK = 'a[href^="/chart/"]';
  * mount.
  */
 export function LandingState(): null {
+  // The pre-paint script's marker, taken on the first mount. Kept here, not
+  // taken again, so a StrictMode replay of the effect reads the same value;
+  // a later client navigation mounts a new instance and finds none.
+  const bootstrap = useRef<OpenGroupsBootstrap | null | undefined>(undefined);
+
   useEffect(() => {
     let active = true;
     const { history } = window;
@@ -85,10 +103,18 @@ export function LandingState(): null {
     // was when the reload began, before this runs, so save under it first.
     // Then make any pending fragment write and save under that too: a page
     // left another way keeps the write, and Back returns to it.
-    const onPageHide = (): void => {
+    const saveOnLeave = (): void => {
       saveScroll(window, pendingRestore ?? undefined);
       if (flushOpenFragmentSync(window)) {
         saveScroll(window, pendingRestore ?? undefined);
+      }
+    };
+
+    // A hidden tab may be discarded without a `pagehide`, and is reloaded
+    // when the reader comes back to it.
+    const onVisibilityChange = (): void => {
+      if (document.visibilityState === 'hidden') {
+        saveOnLeave();
       }
     };
 
@@ -114,14 +140,29 @@ export function LandingState(): null {
       });
     };
 
+    if (bootstrap.current === undefined) {
+      bootstrap.current = takeOpenGroupsBootstrap(document);
+    }
     // Read the saved position before anything can rewrite the fragment that
     // keys it.
     const saved = readSavedScroll(window);
-    const listed = openGroupsFromHash(document, window.location.hash);
+    let listed: string[];
+    if (bootstrap.current === null) {
+      listed = openGroupsFromHash(document, window.location.hash);
+    } else {
+      // The script opened the listed groups; what is open now is the reader's.
+      listed = listedOpenAnchors(document, window.location.hash);
+      syncOpenFragment(window);
+    }
     const ready = groupBodiesReady(openGroupSlugs(document));
     const fragmentScroll = (): void => scrollToGroupAfter(ready.mounted, listed[0]);
     let cancelRestore = (): void => {};
-    const plan = planScroll(navigationKind(window), saved, listed.length > 0);
+    const plan = planScroll(
+      navigationKind(window),
+      saved,
+      listed.length > 0,
+      bootstrap.current?.input === true,
+    );
     if (plan.kind === 'restore') {
       pendingRestore = plan.saved;
       cancelRestore = restoreScroll(window, plan.saved, ready, fragmentScroll, () => {
@@ -143,7 +184,8 @@ export function LandingState(): null {
 
     document.addEventListener('toggle', onToggle, true);
     document.addEventListener('click', onClick, true);
-    window.addEventListener('pagehide', onPageHide);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('pagehide', saveOnLeave);
     window.addEventListener('hashchange', onHashChange);
     return () => {
       active = false;
@@ -153,7 +195,8 @@ export function LandingState(): null {
       cancelOpenFragmentSync(window);
       document.removeEventListener('toggle', onToggle, true);
       document.removeEventListener('click', onClick, true);
-      window.removeEventListener('pagehide', onPageHide);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('pagehide', saveOnLeave);
       window.removeEventListener('hashchange', onHashChange);
       history.scrollRestoration = previousRestoration;
     };

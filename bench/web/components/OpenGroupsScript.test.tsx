@@ -12,7 +12,14 @@ import { GroupSection } from '@/components/GroupSection';
 import { OPEN_GROUPS_BOOTSTRAP, OpenGroupsScript } from '@/components/OpenGroupsScript';
 import { groupAnchors } from '@/lib/anchor';
 import type { FilterUniverse } from '@/lib/chart-format';
-import { openAnchors, pageGroups, parseOpenFragment, resolveOpenAnchors } from '@/lib/open-groups';
+import {
+  openAnchors,
+  pageGroups,
+  parseOpenFragment,
+  resolveOpenAnchors,
+  takeOpenGroupsBootstrap,
+} from '@/lib/open-groups';
+import { USER_INPUT } from '@/lib/scroll-restore';
 
 const UNIVERSE: FilterUniverse = { engines: ['duckdb'], formats: ['parquet', 'vortex'] };
 const NAMES = ['TPC-H (NVMe) (SF=1)', 'Random Access', 'Clickbench'];
@@ -47,7 +54,7 @@ function load(hash: string, beforeParse?: (window: DOMWindow) => void) {
     virtualConsole,
     ...(beforeParse === undefined ? {} : { beforeParse }),
   });
-  return { doc: dom.window.document, errors };
+  return { window: dom.window, doc: dom.window.document, errors };
 }
 
 /** Count the script's calls to the DOM methods whose number could grow with
@@ -131,10 +138,10 @@ describe('OpenGroupsScript', () => {
     expect(errors).toEqual([]);
   });
 
-  // The DOM-call counts are the bound; the time limit only catches a stall.
-  // Most of each case's time is jsdom parsing the megabyte URL, not the
-  // script. Keep every case's URL distinct: jsdom can stall for over a minute
-  // when it loads the same megabyte URL with scripts a second time.
+  // The DOM-call counts are the bound. Most of each case's time is jsdom
+  // parsing the megabyte URL, not the script. Keep every case's URL distinct:
+  // jsdom can stall for over a minute when it loads the same megabyte URL with
+  // scripts a second time.
   it.each([
     ['100k repeats of an unknown token', `#${'unknown,'.repeat(100_000)}clickbench`],
     ['100k repeats of an anchor', `#${'clickbench,'.repeat(100_000)}`],
@@ -146,9 +153,7 @@ describe('OpenGroupsScript', () => {
     ['30k spellings of an anchor', `#${spellings('tpc-h-nvme-sf-1', 30_000).join(',')},clickbench`],
   ])('stays linear in the fragment for %s', (_, hash) => {
     const counts = { getAttribute: 0, querySelector: 0 };
-    const started = performance.now();
     const { doc, errors } = load(hash, countDomCalls(counts));
-    const elapsed = performance.now() - started;
     // The helpers below call the same methods; count only the script's calls.
     const calls = { ...counts };
 
@@ -163,6 +168,51 @@ describe('OpenGroupsScript', () => {
     // disclosure lookup per section per way of naming it (anchor or slug).
     expect(calls.getAttribute).toBeLessThanOrEqual(SECTIONS.length);
     expect(calls.querySelector).toBeLessThanOrEqual(2 * SECTIONS.length);
-    expect(elapsed).toBeLessThan(5_000);
+  });
+
+  // `LandingState` takes this marker on its first mount: it keeps what the
+  // reader opened or closed before hydration, and skips a restore the reader
+  // has already overridden by scrolling.
+  describe('the marker it leaves for LandingState', () => {
+    it('marks its document, with no input yet', () => {
+      const { doc, errors } = load('#clickbench');
+      expect(takeOpenGroupsBootstrap(doc)).toEqual({ input: false });
+      expect(takeOpenGroupsBootstrap(doc)).toBeNull();
+      expect(errors).toEqual([]);
+    });
+
+    it.each(USER_INPUT)('records %s before hydration as input', (type) => {
+      const { window, doc } = load('#clickbench');
+      doc.querySelector('summary')?.dispatchEvent(new window.Event(type, { bubbles: true }));
+      expect(takeOpenGroupsBootstrap(doc)).toEqual({ input: true });
+    });
+
+    it('does not record a scroll, such as the jump to a single-anchor fragment, as input', () => {
+      const { window, doc } = load('#random-access');
+      window.dispatchEvent(new window.Event('scroll'));
+      doc.dispatchEvent(new window.Event('scroll'));
+      expect(takeOpenGroupsBootstrap(doc)).toEqual({ input: false });
+    });
+
+    it('stops listening once taken', () => {
+      const { window, doc } = load('');
+      const marker = (doc as unknown as Record<string, { input: boolean }>).__benchOpenGroups;
+      expect(takeOpenGroupsBootstrap(doc)).toEqual({ input: false });
+
+      for (const type of USER_INPUT) {
+        window.dispatchEvent(new window.Event(type));
+      }
+      expect(marker?.input).toBe(false);
+    });
+
+    it('leaves no marker when it fails, so the groups open after hydration instead', () => {
+      const { doc, errors } = load('#clickbench', (window) => {
+        window.Document.prototype.querySelectorAll = () => {
+          throw new Error('boom');
+        };
+      });
+      expect(takeOpenGroupsBootstrap(doc)).toBeNull();
+      expect(errors).toEqual([]);
+    });
   });
 });

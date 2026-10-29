@@ -8,11 +8,13 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 
 import { LandingState } from '@/components/LandingState';
+import { OPEN_GROUPS_BOOTSTRAP } from '@/components/OpenGroupsScript';
 import { noteGroupBodyOpen, resetGroupBodies } from '@/lib/group-bodies';
 import {
   OPEN_FRAGMENT_SYNC_DELAY_MS,
   resetOpenFragmentSync,
   setAllGroupsOpen,
+  takeOpenGroupsBootstrap,
 } from '@/lib/open-groups';
 import type { NavigationKind, SavedScroll } from '@/lib/scroll-restore';
 
@@ -96,6 +98,28 @@ function openStates(): boolean[] {
   return GROUPS.map(({ anchor }) => disclosure(anchor).open);
 }
 
+/** Run the pre-paint script against the page, as the parser does before
+ * hydration. Markup set through `innerHTML` never runs its scripts. */
+function runBootstrap(): void {
+  const script = document.createElement('script');
+  script.textContent = OPEN_GROUPS_BOOTSTRAP;
+  document.body.appendChild(script);
+  script.remove();
+}
+
+/** The two ways the page is left: `pagehide`, or the tab going hidden (a
+ * mobile browser may discard a hidden tab without a `pagehide`). */
+type Leave = 'pagehide' | 'hidden';
+
+function leave(how: Leave): void {
+  if (how === 'pagehide') {
+    window.dispatchEvent(new Event('pagehide'));
+    return;
+  }
+  vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden');
+  document.dispatchEvent(new Event('visibilitychange'));
+}
+
 describe('LandingState', () => {
   let container: HTMLElement;
   let root: Root | null = null;
@@ -144,6 +168,8 @@ describe('LandingState', () => {
     });
     root = null;
     resetOpenFragmentSync(window);
+    // A test that ran the pre-paint script without mounting leaves its marker.
+    takeOpenGroupsBootstrap(document);
     window.removeEventListener('error', onError);
     vi.restoreAllMocks();
     window.scrollTo = originalScrollTo;
@@ -155,10 +181,26 @@ describe('LandingState', () => {
 
   async function mount(url: string): Promise<void> {
     window.history.replaceState(null, '', url);
+    await render();
+  }
+
+  async function render(): Promise<void> {
     root = createRoot(container);
     await act(async () => {
       root?.render(<LandingState />);
     });
+  }
+
+  /** Load `url` as a full page load does: the pre-paint script runs, the
+   * reader does `beforeHydration`, then React mounts the page. */
+  async function hydrate(url: string, beforeHydration: () => void = () => {}): Promise<void> {
+    window.history.replaceState(null, '', url);
+    runBootstrap();
+    beforeHydration();
+    // A browser fires the `toggle` events of those opens and closes before
+    // React hydrates, with nobody listening yet.
+    await new Promise((resolve) => setImmediate(resolve));
+    await render();
   }
 
   it('on a fresh visit, opens every listed group and scrolls to the first listed once the bodies mount', async () => {
@@ -213,11 +255,11 @@ describe('LandingState', () => {
 
   // Fragment writes are coalesced (`scheduleOpenFragmentSync`): a toggle after
   // a quiet spell writes at once, and the rest of a burst writes once it stops.
-  // A fake `setTimeout` and `Date` run that delay. jsdom queues `toggle` and
-  // `hashchange` with `setImmediate`, which stays real.
+  // A fake `setTimeout` and `performance.now()` run that delay. jsdom queues
+  // `toggle` and `hashchange` with `setImmediate`, which stays real.
   describe('fragment writes', () => {
     beforeEach(() => {
-      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date', 'performance'] });
     });
 
     afterEach(() => {
@@ -324,36 +366,42 @@ describe('LandingState', () => {
       expect(onError).not.toHaveBeenCalled();
     });
 
-    it('on pagehide, saves under the URL a reload loads, then writes a pending set and saves under it too', async () => {
-      await mount('/');
-      await leavePending();
-      place(chartCard('c2'), 30);
-      const replace = vi.spyOn(window.history, 'replaceState');
+    it.each(['pagehide', 'hidden'] as const)(
+      'on %s, saves under the URL a reload loads, then writes a pending set and saves under it too',
+      async (how) => {
+        await mount('/');
+        await leavePending();
+        place(chartCard('c2'), 30);
+        const replace = vi.spyOn(window.history, 'replaceState');
 
-      window.dispatchEvent(new Event('pagehide'));
-      // A reload loads the URL as it was when the reload began.
-      expect(savedAt(FIRST_KEY)).toEqual({ kind: 'chart', slug: 'c2', offset: 30 });
-      // A traversal away keeps the write, and comes back to it.
-      expect(window.location.hash).toBe(`#${FIRST},clickbench`);
-      expect(savedAt(`bench-scroll:/#${FIRST},clickbench`)).toEqual({
-        kind: 'chart',
-        slug: 'c2',
-        offset: 30,
-      });
+        leave(how);
+        // A reload loads the URL as it was when the reload began.
+        expect(savedAt(FIRST_KEY)).toEqual({ kind: 'chart', slug: 'c2', offset: 30 });
+        // A traversal away keeps the write, and comes back to it.
+        expect(window.location.hash).toBe(`#${FIRST},clickbench`);
+        expect(savedAt(`bench-scroll:/#${FIRST},clickbench`)).toEqual({
+          kind: 'chart',
+          slug: 'c2',
+          offset: 30,
+        });
 
-      afterDelay();
-      expect(replace).toHaveBeenCalledTimes(1);
-    });
+        afterDelay();
+        expect(replace).toHaveBeenCalledTimes(1);
+      },
+    );
 
-    it('on pagehide with nothing pending, saves under the current URL only', async () => {
-      await mount('/');
-      await toggle(FIRST, true);
-      place(chartCard('c2'), 30);
+    it.each(['pagehide', 'hidden'] as const)(
+      'on %s with nothing pending, saves under the current URL only',
+      async (how) => {
+        await mount('/');
+        await toggle(FIRST, true);
+        place(chartCard('c2'), 30);
 
-      window.dispatchEvent(new Event('pagehide'));
-      expect(savedAt(FIRST_KEY)).toEqual({ kind: 'chart', slug: 'c2', offset: 30 });
-      expect(sessionStorage.length).toBe(1);
-    });
+        leave(how);
+        expect(savedAt(FIRST_KEY)).toEqual({ kind: 'chart', slug: 'c2', offset: 30 });
+        expect(sessionStorage.length).toBe(1);
+      },
+    );
 
     it('writes a pending set before saving when a chart link is followed', async () => {
       await mount('/');
@@ -439,13 +487,77 @@ describe('LandingState', () => {
       expect(replace).not.toHaveBeenCalled();
 
       place(chartCard('c2'), 30);
-      window.dispatchEvent(new Event('pagehide'));
+      leave('pagehide');
+      leave('hidden');
       expect(sessionStorage.length).toBe(0);
+    });
+
+    // A full page load runs the pre-paint script, which opens the listed
+    // groups and leaves a marker; the reader may open or close groups before
+    // React hydrates. Their choice stands.
+    describe('after the pre-paint script', () => {
+      it('keeps a listed group the reader closed before hydration closed, and drops it from the fragment', async () => {
+        await hydrate(`/#${FIRST},clickbench`, () => {
+          disclosure('clickbench').open = false;
+        });
+        expect(openStates()).toEqual([true, false, false]);
+        expect(window.location.hash).toBe(`#${FIRST}`);
+
+        await tasks();
+        afterDelay();
+        expect(openStates()).toEqual([true, false, false]);
+        expect(window.location.hash).toBe(`#${FIRST}`);
+      });
+
+      it('writes a group the reader opened before hydration into the fragment, once', async () => {
+        const replace = vi.spyOn(window.history, 'replaceState');
+        await hydrate('/#clickbench', () => {
+          disclosure('random-access').open = true;
+          replace.mockClear();
+        });
+        expect(window.location.hash).toBe('#random-access,clickbench');
+
+        // The toggles from before hydration find the fragment current.
+        await tasks();
+        afterDelay();
+        expect(replace).toHaveBeenCalledTimes(1);
+        expect(openStates()).toEqual([false, true, true]);
+      });
+
+      it('writes nothing when the reader changed nothing before hydration', async () => {
+        const replace = vi.spyOn(window.history, 'replaceState');
+        await hydrate(`/#${FIRST},clickbench`, () => replace.mockClear());
+        await tasks();
+        afterDelay();
+        expect(openStates()).toEqual([true, false, true]);
+        expect(replace).not.toHaveBeenCalled();
+      });
+
+      it('on a client navigation to `/`, where the script never runs, opens the listed groups', async () => {
+        await mount('/#clickbench');
+        expect(openStates()).toEqual([false, false, true]);
+      });
+
+      it('takes the marker on its first mount only, so a later client navigation opens from the fragment', async () => {
+        await hydrate('/#clickbench', () => {
+          disclosure('clickbench').open = false;
+        });
+        expect(openStates()).toEqual([false, false, false]);
+        await act(async () => {
+          root?.unmount();
+        });
+        root = null;
+
+        // A client navigation back to `/`: React renders the page again,
+        // without running the script.
+        await mount('/#clickbench');
+        expect(openStates()).toEqual([false, false, true]);
+      });
     });
   });
 
   describe('scroll restoration', () => {
-    it('switches the page to manual scroll restoration and restores the old mode on unmount', async () => {
+    it('switches the page to manual scroll restoration and sets back the mode it found on unmount', async () => {
       await mount('/');
       expect(window.history.scrollRestoration).toBe('manual');
 
@@ -479,6 +591,19 @@ describe('LandingState', () => {
         slug: 'c2',
         offset: 30,
       });
+    });
+
+    it('saves the reading position when the tab goes hidden, and not when it shows again', async () => {
+      await mount(`/#${FIRST}`);
+      await flush();
+      place(chartCard('c2'), 30);
+
+      vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
+      document.dispatchEvent(new Event('visibilitychange'));
+      expect(sessionStorage.length).toBe(0);
+
+      leave('hidden');
+      expect(savedAt(FIRST_KEY)).toEqual({ kind: 'chart', slug: 'c2', offset: 30 });
     });
 
     it('saves nothing when a click is not on a chart link', async () => {
@@ -534,26 +659,29 @@ describe('LandingState', () => {
       expect(scrollTo).not.toHaveBeenCalled();
     });
 
-    it('keeps the saved position when the page is left before the restore applies', async () => {
-      navigation('reload');
-      sessionStorage.setItem(FIRST_KEY, JSON.stringify(SAVED));
-      place(chartCard('c2'), 900);
-      await mount(`/#${FIRST}`);
-      await flush();
+    it.each(['pagehide', 'hidden'] as const)(
+      'keeps the saved position when the page is left (%s) before the restore applies',
+      async (how) => {
+        navigation('reload');
+        sessionStorage.setItem(FIRST_KEY, JSON.stringify(SAVED));
+        place(chartCard('c2'), 900);
+        await mount(`/#${FIRST}`);
+        await flush();
 
-      // The bodies have not mounted, so the page still shows the top.
-      window.dispatchEvent(new Event('pagehide'));
-      expect(savedAt(FIRST_KEY)).toEqual(SAVED);
+        // The bodies have not mounted, so the page still shows the top.
+        leave(how);
+        expect(savedAt(FIRST_KEY)).toEqual(SAVED);
 
-      noteGroupBodyOpen('qm.tpch', Promise.resolve());
-      await nextFrame();
-      expect(scrollTo).toHaveBeenCalledWith({ top: 780, behavior: 'instant' });
-      // Applied: from now on the page saves what it shows. (`scrollTo` is a
-      // stub, so move the card where the scroll would have put it.)
-      place(chartCard('c2'), 100);
-      window.dispatchEvent(new Event('pagehide'));
-      expect(savedAt(FIRST_KEY)).toEqual({ kind: 'chart', slug: 'c2', offset: 100 });
-    });
+        noteGroupBodyOpen('qm.tpch', Promise.resolve());
+        await nextFrame();
+        expect(scrollTo).toHaveBeenCalledWith({ top: 780, behavior: 'instant' });
+        // Applied: from now on the page saves what it shows. (`scrollTo` is a
+        // stub, so move the card where the scroll would have put it.)
+        place(chartCard('c2'), 100);
+        leave(how);
+        expect(savedAt(FIRST_KEY)).toEqual({ kind: 'chart', slug: 'c2', offset: 100 });
+      },
+    );
 
     it('saves where the user scrolled once they take over from a pending restore', async () => {
       navigation('back_forward');
@@ -568,7 +696,41 @@ describe('LandingState', () => {
       expect(savedAt(FIRST_KEY)).toEqual({ kind: 'chart', slug: 'c2', offset: 40 });
     });
 
-    it('on reload, falls back to the fragment scroll when the saved element is gone', async () => {
+    it.each(['reload', 'back_forward'] as const)(
+      'on %s, skips the restore when the reader already scrolled before hydration',
+      async (type) => {
+        navigation(type);
+        sessionStorage.setItem(FIRST_KEY, JSON.stringify(SAVED));
+        place(chartCard('c2'), 900);
+        await hydrate(`/#${FIRST}`, () => {
+          window.dispatchEvent(new Event('wheel'));
+        });
+
+        noteGroupBodyOpen('qm.tpch', Promise.resolve());
+        await nextFrame();
+        expect(scrollTo).not.toHaveBeenCalled();
+        expect(scrollSpy).not.toHaveBeenCalled();
+        // As after input that stops a restore: leaving saves where they are.
+        place(chartCard('c2'), 40);
+        window.dispatchEvent(new Event('pagehide'));
+        expect(savedAt(FIRST_KEY)).toEqual({ kind: 'chart', slug: 'c2', offset: 40 });
+      },
+    );
+
+    it('still restores when the only movement before hydration was a scroll, such as the jump to an anchor', async () => {
+      navigation('reload');
+      sessionStorage.setItem(FIRST_KEY, JSON.stringify(SAVED));
+      place(chartCard('c2'), 900);
+      await hydrate(`/#${FIRST}`, () => {
+        window.dispatchEvent(new Event('scroll'));
+      });
+
+      noteGroupBodyOpen('qm.tpch', Promise.resolve());
+      await nextFrame();
+      expect(scrollTo).toHaveBeenCalledWith({ top: 780, behavior: 'instant' });
+    });
+
+    it('on reload, falls back to the fragment scroll, at once, when the saved element is gone', async () => {
       navigation('reload');
       sessionStorage.setItem(FIRST_KEY, JSON.stringify({ ...SAVED, slug: 'gone' }));
       await mount(`/#${FIRST}`);
@@ -577,6 +739,7 @@ describe('LandingState', () => {
       await nextFrame();
       expect(scrollSpy).toHaveBeenCalledTimes(1);
       expect(scrollSpy.mock.contexts[0]).toBe(document.getElementById(FIRST));
+      expect(scrollSpy).toHaveBeenCalledWith({ behavior: 'instant', block: 'start' });
       expect(scrollTo).not.toHaveBeenCalled();
     });
 

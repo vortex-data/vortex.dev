@@ -11,13 +11,15 @@ import type { GroupBodiesReady } from '@/lib/group-bodies';
  * would land against a shorter page. [`LandingState`] therefore sets
  * `history.scrollRestoration = 'manual'` on `/` and does the work here:
  *
- * - **Save.** On `pagehide`, and before a chart link is followed, it records
- *   the element nearest the top of the viewport (a chart card, or else a
- *   group section) and that element's offset from the viewport top, in
- *   `sessionStorage` under the page's path and fragment.
- * - **Plan.** On a reload or a Back/Forward with something saved, restore.
- *   Otherwise scroll to the fragment's first group, if it names one: a fresh
- *   visit always does this, whatever was saved.
+ * - **Save.** On `pagehide`, when the tab goes hidden, and before a chart
+ *   link is followed, it records the element nearest the top of the viewport
+ *   (a chart card, or else a group section) and that element's offset from
+ *   the viewport top, in `sessionStorage` under the page's path and fragment.
+ * - **Plan.** On a reload or a Back/Forward with something saved, restore,
+ *   unless the reader already scrolled, touched or pressed a key before
+ *   hydration (the pre-paint script records that). Otherwise scroll to the
+ *   fragment's first group, if it names one: a fresh visit always does this,
+ *   whatever was saved.
  * - **Restore.** Once the open groups' bodies have mounted, scroll the saved
  *   element back to its offset; once their bundles have settled (hiding empty
  *   cards can move it), do it again. Any user input in between stops it.
@@ -49,9 +51,12 @@ const CHART_CARDS = '.group-details [data-chart-slug]';
 const GROUP_SECTIONS = 'section[data-group-slug]';
 const STICKY_HEADER = '.sticky-header';
 
-// Input that means the user has taken over the scroll. Not `scroll`: the
-// restorer's own `scrollTo` fires that.
-const USER_INPUT = ['wheel', 'touchstart', 'keydown', 'pointerdown'] as const;
+/** Input that means the user has taken over the scroll. Not `scroll`: the
+ * restorer's own `scrollTo` fires that, and so does the browser's jump to a
+ * single-anchor fragment. The pre-paint script (`OPEN_GROUPS_BOOTSTRAP`)
+ * listens for the same four before hydration; its test pins the two lists
+ * together. */
+export const USER_INPUT = ['wheel', 'touchstart', 'keydown', 'pointerdown'] as const;
 
 /** The `sessionStorage` key for a page's saved position: its path and its
  * fragment (which lists the open groups), not its query. */
@@ -213,17 +218,20 @@ export function applySavedScroll(win: Window, saved: SavedScroll): boolean {
 
 /**
  * Choose what the page does with its scroll on mount. A reload or Back/Forward
- * with a saved position restores it. Otherwise, when the fragment names
- * groups, scroll to the first: a fresh visit (which ignores anything saved),
- * or a reload or Back with nothing saved. Otherwise nothing.
+ * with a saved position restores it, unless the reader gave input before
+ * hydration (`inputBeforeMount`): that stops the restore before it starts, as
+ * input after mount would, so nothing scrolls. Otherwise, when the fragment
+ * names groups, scroll to the first: a fresh visit (which ignores anything
+ * saved), or a reload or Back with nothing saved. Otherwise nothing.
  */
 export function planScroll(
   nav: NavigationKind,
   saved: SavedScroll | null,
   fragmentNamesGroups: boolean,
+  inputBeforeMount = false,
 ): ScrollPlan {
   if (nav !== 'navigate' && saved !== null) {
-    return { kind: 'restore', saved };
+    return inputBeforeMount ? { kind: 'none' } : { kind: 'restore', saved };
   }
   return fragmentNamesGroups ? { kind: 'fragment' } : { kind: 'none' };
 }

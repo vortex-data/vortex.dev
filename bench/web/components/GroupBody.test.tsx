@@ -20,6 +20,7 @@ import {
   toggleGroupSeries,
 } from '@/lib/chart-store';
 import { groupBodiesReady, resetGroupBodies } from '@/lib/group-bodies';
+import { takeOpenGroupsBootstrap } from '@/lib/open-groups';
 import type { Group } from '@/lib/queries';
 
 // The real island is covered by the `Chart.*` suites; here a bare card stands
@@ -166,6 +167,8 @@ describe('GroupBody', () => {
     script.textContent = OPEN_GROUPS_BOOTSTRAP;
     document.body.appendChild(script);
     script.remove();
+    // No `LandingState` here to take the script's marker; drop it.
+    takeOpenGroupsBootstrap(document);
     const details = container.querySelector<HTMLDetailsElement>('details.group-disclosure');
     expect(details?.hasAttribute('open')).toBe(true);
     expect(container.querySelectorAll('.chart-card')).toHaveLength(0);

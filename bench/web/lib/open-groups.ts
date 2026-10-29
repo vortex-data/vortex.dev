@@ -16,8 +16,12 @@
  * through [`scheduleOpenFragmentSync`], which coalesces a burst of them into
  * two writes (see there for why). Readers: the pre-paint
  * script ([`OpenGroupsScript`]) opens the listed groups before the first
- * paint, and [`LandingState`] does the same after hydration (for client
- * navigations, where that script never runs) and on `hashchange`.
+ * paint and leaves a marker on its document ([`takeOpenGroupsBootstrap`]).
+ * After hydration, [`LandingState`] takes that marker and writes the fragment
+ * from what is open (the reader may have opened or closed groups before
+ * hydration); without it (a client navigation, where that script never runs)
+ * it opens the listed groups itself. It also reads the fragment on
+ * `hashchange`.
  *
  * An old single-anchor permalink (`/#random-access`) is a one-item list, and
  * a fragment carrying the opaque API slug, as the first permalinks did, still
@@ -122,6 +126,17 @@ export function openGroupSlugs(doc: Document): string[] {
 }
 
 /**
+ * The anchors of the groups the fragment lists that are open now, in fragment
+ * order. Unlike [`openGroupsFromHash`], it opens nothing.
+ */
+export function listedOpenAnchors(doc: Document, hash: string): string[] {
+  const open = new Set(openAnchors(doc));
+  return resolveOpenAnchors(parseOpenFragment(hash), pageGroups(doc)).filter((anchor) =>
+    open.has(anchor),
+  );
+}
+
+/**
  * Open every group the fragment lists and return their anchors in fragment
  * order. A group that is already open stays as it is, so this is idempotent
  * with the pre-paint script and fires no `toggle` for it.
@@ -139,37 +154,35 @@ export function openGroupsFromHash(doc: Document, hash: string): string[] {
   return anchors;
 }
 
-/** Scroll a group section to the top of the viewport. The section's
- * `scroll-margin-top` keeps its title clear of the sticky header. Smooth,
- * unless the visitor prefers reduced motion. */
-function scrollSectionIntoView(section: HTMLElement, doc: Document): void {
-  const reduceMotion = doc.defaultView?.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-  section.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
-}
-
 /**
- * Open a group section's disclosure and scroll the section into view. Setting
- * `open` fires the native `toggle` event, which mounts the group's body.
+ * Open a group section's disclosure and scroll the section to the top of the
+ * viewport (its `scroll-margin-top` keeps the title clear of the sticky
+ * header). Setting `open` fires the native `toggle` event, which mounts the
+ * group's body. A click asked for this, so it scrolls smoothly, unless the
+ * visitor prefers reduced motion.
  */
 export function openAndScrollTo(section: HTMLElement, doc: Document): void {
   const disclosure = disclosureOf(section);
   if (disclosure !== null) {
     disclosure.open = true;
   }
-  scrollSectionIntoView(section, doc);
+  const reduceMotion = doc.defaultView?.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  section.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
 }
 
 /**
- * Scroll to the group section whose anchor is `anchor`. It does not open the
- * group. Returns `false` when no group section has that anchor, including an
- * id that belongs to some other element.
+ * Scroll the group section whose anchor is `anchor` to the top of the
+ * viewport, at once, as the browser jumps to a fragment: no click asked for
+ * it (a fresh visit, a restore's fallback, a new fragment). It does not open
+ * the group. Returns `false` when no group section has that anchor, including
+ * an id that belongs to some other element.
  */
 export function scrollToGroup(doc: Document, anchor: string): boolean {
   const section = groupSections(doc).find((el) => el.id === anchor);
   if (section === undefined) {
     return false;
   }
-  scrollSectionIntoView(section, doc);
+  section.scrollIntoView({ behavior: 'instant', block: 'start' });
   return true;
 }
 
@@ -195,7 +208,7 @@ export function syncOpenFragment(win: Window): boolean {
   if (target === `${pathname}${search}${hash}`) {
     return false;
   }
-  lastWrites.set(win, Date.now());
+  lastWrites.set(win, win.performance.now());
   try {
     win.history.replaceState(null, '', target);
   } catch {
@@ -211,14 +224,18 @@ export function syncOpenFragment(win: Window): boolean {
  */
 export const OPEN_FRAGMENT_SYNC_DELAY_MS = 300;
 
-/** A scheduled write: its timer, and the fragment when it was scheduled. */
+/** A scheduled write: its timer, and the path and fragment when it was
+ * scheduled. */
 interface PendingSync {
   timer: ReturnType<typeof setTimeout>;
+  pathname: string;
   hash: string;
 }
 
 const pendingSyncs = new WeakMap<Window, PendingSync>();
-// When [`syncOpenFragment`] last called `replaceState`, per window.
+// When [`syncOpenFragment`] last called `replaceState`, per window, on the
+// monotonic `performance.now()` clock: a wall clock that jumps forward would
+// let two writes come closer than the delay.
 const lastWrites = new WeakMap<Window, number>();
 
 /**
@@ -245,7 +262,7 @@ export function scheduleOpenFragmentSync(win: Window): void {
   const lastWrite = lastWrites.get(win);
   const quiet =
     !pendingSyncs.has(win) &&
-    (lastWrite === undefined || Date.now() - lastWrite >= OPEN_FRAGMENT_SYNC_DELAY_MS);
+    (lastWrite === undefined || win.performance.now() - lastWrite >= OPEN_FRAGMENT_SYNC_DELAY_MS);
   if (quiet) {
     syncOpenFragment(win);
     return;
@@ -254,7 +271,7 @@ export function scheduleOpenFragmentSync(win: Window): void {
   const timer = setTimeout(() => {
     flushOpenFragmentSync(win);
   }, OPEN_FRAGMENT_SYNC_DELAY_MS);
-  pendingSyncs.set(win, { timer, hash: win.location.hash });
+  pendingSyncs.set(win, { timer, pathname: win.location.pathname, hash: win.location.hash });
 }
 
 /**
@@ -265,6 +282,9 @@ export function scheduleOpenFragmentSync(win: Window): void {
  * or one typed into the address bar, whose `hashchange` may not have run
  * yet), so the pending write is dropped rather than written over it; the
  * `hashchange` handler reads that fragment and writes the open set itself.
+ * A path that changed means the page is another route's now (a client
+ * navigation that has not unmounted the landing page yet), so the write is
+ * dropped too.
  */
 export function flushOpenFragmentSync(win: Window): boolean {
   const pending = pendingSyncs.get(win);
@@ -272,7 +292,7 @@ export function flushOpenFragmentSync(win: Window): boolean {
     return false;
   }
   cancelOpenFragmentSync(win);
-  if (win.location.hash !== pending.hash) {
+  if (win.location.pathname !== pending.pathname || win.location.hash !== pending.hash) {
     return false;
   }
   return syncOpenFragment(win);
@@ -305,4 +325,43 @@ export function setAllGroupsOpen(win: Window, open: boolean): void {
     disclosure.open = open;
   }
   scheduleOpenFragmentSync(win);
+}
+
+/** What the pre-paint script ([`OpenGroupsScript`]) left on its document. */
+export interface OpenGroupsBootstrap {
+  /** The reader scrolled, touched, pressed a key or a pointer (wheel,
+   * touchstart, keydown, pointerdown) after the script ran and before this
+   * was taken. A scroll alone, such as the browser's own jump to a
+   * single-anchor fragment, does not count. */
+  input: boolean;
+}
+
+// The document property the pre-paint script sets. `OPEN_GROUPS_BOOTSTRAP`
+// spells it out; `OpenGroupsScript.test.tsx` runs the two together.
+const BOOTSTRAP_MARKER = '__benchOpenGroups';
+
+/**
+ * Take the marker the pre-paint script left on `doc`, once: it removes the
+ * marker, stops the script's input listeners and returns what they saw. A
+ * later call, such as one after a client navigation back to `/` (where React
+ * never runs the script), finds nothing and returns `null`, as does a document
+ * where the script never ran or failed. The marker is page data, so it is
+ * read defensively.
+ */
+export function takeOpenGroupsBootstrap(doc: Document): OpenGroupsBootstrap | null {
+  const holder = doc as unknown as Record<string, unknown>;
+  const marker = holder[BOOTSTRAP_MARKER];
+  if (typeof marker !== 'object' || marker === null) {
+    return null;
+  }
+  holder[BOOTSTRAP_MARKER] = undefined;
+  const { input, stop } = marker as { input?: unknown; stop?: unknown };
+  if (typeof stop === 'function') {
+    try {
+      stop();
+    } catch {
+      // Its listeners stay; they only set a flag on the marker taken here.
+    }
+  }
+  return { input: input === true };
 }

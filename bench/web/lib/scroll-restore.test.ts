@@ -297,6 +297,21 @@ describe('scroll restore', () => {
     it('carries the saved position into a restore plan', () => {
       expect(planScroll('reload', saved, true)).toEqual({ kind: 'restore', saved });
     });
+
+    // Input before hydration ends a restore before it starts, as input after
+    // it would: no restore, and no fallback to the fragment.
+    it.each([
+      ['reload', saved, true, 'none'],
+      ['back_forward', saved, false, 'none'],
+      ['back_forward', null, true, 'fragment'],
+      ['navigate', saved, true, 'fragment'],
+      ['navigate', null, false, 'none'],
+    ] as const)(
+      'plans %s (saved %o, fragment %s) after input before hydration as %s',
+      (nav, s, fragment, kind) => {
+        expect(planScroll(nav as NavigationKind, s, fragment, true).kind).toBe(kind);
+      },
+    );
   });
 
   describe('restoreScroll', () => {
