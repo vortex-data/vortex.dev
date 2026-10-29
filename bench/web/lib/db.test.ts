@@ -2,7 +2,6 @@
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { Signer } from '@aws-sdk/rds-signer';
 import {
   type BenchDatabase,
   integrationDatabaseAvailable,
@@ -11,7 +10,6 @@ import {
 import {
   buildQuery,
   getPool,
-  passwordProvider,
   requireEnv,
   resetPool,
   resolveIdleTimeoutMillis,
@@ -19,23 +17,7 @@ import {
   resolveStatementTimeoutMillis,
   resolveSsl,
   sql,
-  type DbConfig,
 } from './db';
-
-// A single shared getAuthToken mock so the IAM test can script distinct
-// per-call return values and assert the call count. Hoisted so it is defined
-// before the (hoisted) vi.mock factory references it.
-const { getAuthTokenMock } = vi.hoisted(() => ({ getAuthTokenMock: vi.fn() }));
-
-// Mock the RDS signer so the IAM token path is exercised without a live AWS
-// endpoint. The testcontainers roundtrip below uses a static password, so it
-// never constructs a Signer and is unaffected by this mock.
-vi.mock('@aws-sdk/rds-signer', () => ({
-  // A `function` (not an arrow) so the mock is constructable via `new Signer()`.
-  Signer: vi.fn(function MockSigner() {
-    return { getAuthToken: getAuthTokenMock };
-  }),
-}));
 
 const databaseAvailable = integrationDatabaseAvailable();
 
@@ -43,8 +25,8 @@ describe.skipIf(!databaseAvailable)('db pool roundtrip (testcontainers Postgres)
   let container: BenchDatabase;
 
   beforeAll(async () => {
-    // The pool roundtrip needs no schema; the BENCH_DB_PASSWORD fixture path
-    // set by the harness means IAM token generation is bypassed.
+    // The pool roundtrip needs no schema; the harness sets the BENCH_DB_*
+    // variables that getPool() reads.
     vi.stubEnv('BENCH_DB_POOL_MAX', '1');
     vi.stubEnv('BENCH_DB_CONNECTION_TIMEOUT_MS', '1000');
     container = await startBenchDatabase({ applySchema: false });
@@ -83,50 +65,6 @@ describe.skipIf(!databaseAvailable)('db pool roundtrip (testcontainers Postgres)
     // The hostile string round-trips verbatim as a value, proving it was bound
     // as $1 and never interpolated into the SQL text.
     expect(rows).toEqual([{ v: hostile }]);
-  });
-});
-
-describe('db IAM auth path (mocked rds-signer)', () => {
-  const iamConfig: DbConfig = {
-    host: 'proxy.example.us-east-1.rds.amazonaws.com',
-    port: 5432,
-    database: 'bench',
-    user: 'bench_reader',
-    region: 'us-east-1',
-    ssl: false,
-    poolMax: 4,
-    idleTimeoutMillis: 5000,
-    connectionTimeoutMillis: 5000,
-    statementTimeoutMillis: 30000,
-    staticPassword: undefined,
-  };
-
-  it('mints a FRESH RDS IAM token per connection (not a single cached token)', async () => {
-    vi.mocked(Signer).mockClear();
-    getAuthTokenMock.mockReset();
-    getAuthTokenMock.mockResolvedValueOnce('iam-token-1').mockResolvedValueOnce('iam-token-2');
-
-    const provider = passwordProvider(iamConfig);
-    // pg invokes the provider once per new physical connection; distinct tokens
-    // across two calls prove a fresh mint each time rather than one cached token.
-    await expect(provider()).resolves.toBe('iam-token-1');
-    await expect(provider()).resolves.toBe('iam-token-2');
-    expect(getAuthTokenMock).toHaveBeenCalledTimes(2);
-    expect(Signer).toHaveBeenCalledWith({
-      hostname: 'proxy.example.us-east-1.rds.amazonaws.com',
-      port: 5432,
-      username: 'bench_reader',
-      region: 'us-east-1',
-    });
-  });
-
-  it('uses the static password and skips IAM when one is supplied', async () => {
-    const provider = passwordProvider({ ...iamConfig, region: '', staticPassword: 'fixture-pw' });
-    await expect(provider()).resolves.toBe('fixture-pw');
-  });
-
-  it('throws when neither a static password nor a region is configured', () => {
-    expect(() => passwordProvider({ ...iamConfig, region: '' })).toThrow(/BENCH_DB_REGION/);
   });
 });
 
@@ -288,6 +226,24 @@ describe('singleton pool configuration', () => {
     expect(pool.options.idleTimeoutMillis).toBe(123456);
     expect(pool.options.statement_timeout).toBe(23456);
     expect(pool.options.connectionTimeoutMillis).toBe(3456);
+  });
+
+  it('requires BENCH_DB_PASSWORD, even when BENCH_DB_REGION is set', () => {
+    configurePoolEnvironment();
+    process.env.BENCH_DB_REGION = 'us-east-1';
+    for (const value of [undefined, '']) {
+      if (value === undefined) delete process.env.BENCH_DB_PASSWORD;
+      else process.env.BENCH_DB_PASSWORD = value;
+      expect(() => getPool()).toThrow(
+        'Missing required environment variable `BENCH_DB_PASSWORD` for the benchmarks DB connection.',
+      );
+    }
+  });
+
+  it('hands the password to pg as a string', () => {
+    configurePoolEnvironment();
+    const pool = getPool() as unknown as { options: { password?: unknown } };
+    expect(pool.options.password).toBe('fixture-pw');
   });
 
   it('attaches one lifecycle listener per singleton pool', async () => {

@@ -2,31 +2,22 @@
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
 import { Pool, type PoolConfig, type QueryResultRow } from 'pg';
-import { Signer } from '@aws-sdk/rds-signer';
 import { attachDatabasePool } from '@vercel/functions';
 
 /**
  * Resolved Postgres connection settings for the benchmarks read service.
  *
- * In production the read service runs on Vercel; the endpoint and auth choice
- * (the public RDS instance endpoint, IAM tokens or a static reader password)
- * is configured per environment, see the README's "Database
- * environment" and "Deploys" sections. On the IAM path, RDS IAM auth tokens
- * are valid for only ~15 minutes, so a fresh token is minted for every new
- * pool connection (see [`passwordProvider`]); that is the
- * token-refresh-before-expiry strategy.
- *
- * When [`DbConfig.staticPassword`] is set (local development and the
- * integration tests) the IAM token path is skipped entirely and the static
- * password is used, which keeps the test fixture free of any AWS dependency.
+ * The app signs in with a password (`BENCH_DB_PASSWORD`). In production the
+ * read service runs on Vercel and connects to the public RDS instance endpoint
+ * as the read-only `bench_read` role; the endpoint and role are configured per
+ * environment, see the README's "Database environment" and "Deploys" sections.
  */
-export interface DbConfig {
+interface DbConfig {
   host: string;
   port: number;
   database: string;
   user: string;
-  /** AWS region for IAM token generation; unused when `staticPassword` is set. */
-  region: string;
+  password: string;
   ssl: PoolConfig['ssl'];
   poolMax: number;
   /** Idle-connection timeout (ms) for the pg pool; see `resolveIdleTimeoutMillis`. */
@@ -35,8 +26,6 @@ export interface DbConfig {
   connectionTimeoutMillis: number;
   /** Per-statement server timeout (ms); see `resolveStatementTimeoutMillis`. */
   statementTimeoutMillis: number;
-  /** When defined, IAM token generation is bypassed in favor of this password. */
-  staticPassword: string | undefined;
 }
 
 /**
@@ -132,47 +121,18 @@ export function resolveStatementTimeoutMillis(): number {
 }
 
 function readConfig(): DbConfig {
-  const staticPassword = process.env.BENCH_DB_PASSWORD;
   return {
     host: requireEnv('BENCH_DB_HOST'),
     port: Number(process.env.BENCH_DB_PORT ?? '5432'),
     database: requireEnv('BENCH_DB_NAME'),
     user: requireEnv('BENCH_DB_USER'),
-    region: process.env.BENCH_DB_REGION ?? '',
+    password: requireEnv('BENCH_DB_PASSWORD'),
     ssl: resolveSsl(),
     poolMax: Number(process.env.BENCH_DB_POOL_MAX ?? '8'),
     idleTimeoutMillis: resolveIdleTimeoutMillis(),
     connectionTimeoutMillis: resolveConnectionTimeoutMillis(),
     statementTimeoutMillis: resolveStatementTimeoutMillis(),
-    staticPassword: staticPassword === '' ? undefined : staticPassword,
   };
-}
-
-/**
- * Builds the per-connection password resolver passed to [`pg.Pool`]. `pg`
- * invokes the resolver for every new physical connection, so returning a
- * freshly-minted RDS IAM token here means each connection authenticates with a
- * token comfortably inside its ~15-minute validity window.
- *
- * Exported for unit-testing the IAM token path without a live AWS endpoint.
- */
-export function passwordProvider(config: DbConfig): () => Promise<string> {
-  if (config.staticPassword !== undefined) {
-    const password = config.staticPassword;
-    return () => Promise.resolve(password);
-  }
-  if (config.region === '') {
-    throw new Error(
-      '`BENCH_DB_REGION` is required when no `BENCH_DB_PASSWORD` is set (IAM auth path).',
-    );
-  }
-  const signer = new Signer({
-    hostname: config.host,
-    port: config.port,
-    username: config.user,
-    region: config.region,
-  });
-  return () => signer.getAuthToken();
 }
 
 function createPool(config: DbConfig = readConfig()): Pool {
@@ -181,7 +141,7 @@ function createPool(config: DbConfig = readConfig()): Pool {
     port: config.port,
     database: config.database,
     user: config.user,
-    password: passwordProvider(config),
+    password: config.password,
     ssl: config.ssl,
     max: config.poolMax,
     idleTimeoutMillis: config.idleTimeoutMillis,

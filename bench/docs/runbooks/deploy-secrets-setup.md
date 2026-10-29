@@ -130,9 +130,8 @@ team's secret store. **Never paste a value into this document.**
 | `BENCH_DB_HOST` | RDS instance hostname for the read pool | Existing monorepo Vercel project env, or `infra/README.md` "After provisioning" section |
 | `BENCH_DB_NAME` | Postgres database name (`vortex_bench`) | Existing monorepo Vercel project env |
 | `BENCH_DB_USER` | Postgres username for the read role (`bench_read`) | Existing monorepo Vercel project env |
-| `BENCH_DB_PASSWORD` | Static password for the `bench_read` role (IAM auth bypass for Vercel) | Existing monorepo Vercel project env or your secret store |
+| `BENCH_DB_PASSWORD` | Password for the `bench_read` role (required) | Existing monorepo Vercel project env or your secret store |
 | `BENCH_DB_PORT` | Postgres port (default `5432`; omit to use default) | Existing monorepo Vercel project env |
-| `BENCH_DB_REGION` | AWS region for IAM token generation (e.g. `us-east-1`); required when `BENCH_DB_PASSWORD` is unset | Existing monorepo Vercel project env |
 | `BENCH_DB_SSL` | TLS verification mode (`verify-full` for RDS production, `disable` for local dev only) | Existing monorepo Vercel project env |
 | `BENCH_DB_CA` | RDS CA bundle PEM content or mode; required for `verify-full` — Node does not include Amazon RDS roots in its trust store | Existing monorepo Vercel project env or [Amazon RDS CA bundle](https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem) |
 | `BENCH_DB_POOL_MAX` | Max connections in the pg pool (default `8`; omit to use default) | Existing monorepo Vercel project env |
