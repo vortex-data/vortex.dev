@@ -8,7 +8,8 @@ const DONE_MS = 1500;
 /**
  * The CodeBlock card's copy button. It writes the block's code, shows
  * `check` for 1.5s, and selects the code instead if the clipboard is
- * refused.
+ * refused. Without JavaScript it cannot copy, so it hides
+ * (`data-requires-js`, globals.css); the code stays selectable.
  */
 export function CopyCode() {
   const [done, setDone] = useState(false);
@@ -35,6 +36,7 @@ export function CopyCode() {
         type="button"
         className={done ? "vx-copy is-done" : "vx-copy"}
         aria-label="Copy code"
+        data-requires-js
         onClick={copy}
       >
         <ContentCopyIcon className="is-copy" />

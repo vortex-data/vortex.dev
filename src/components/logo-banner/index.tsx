@@ -17,7 +17,9 @@ const FIRST_COPIES = 2;
  * the copies that keep the loop seamless are hidden from assistive
  * technology, and their links leave the tab order. Each logo links to its
  * owner's page about Vortex, or its homepage. `className` places the band on
- * the page.
+ * the page. Without JavaScript the pause control cannot work, so the logos
+ * sit still in rows, as under reduced motion, and the control hides
+ * (globals.css).
  */
 export function LogoBanner({ className }: { className?: string | undefined }) {
   const strip = useRef<HTMLDivElement>(null);
@@ -56,6 +58,7 @@ export function LogoBanner({ className }: { className?: string | undefined }) {
         type="button"
         aria-pressed={paused}
         aria-label="Pause the logos"
+        data-requires-js
         onClick={() => setPaused((p) => !p)}
       >
         <PauseIcon />

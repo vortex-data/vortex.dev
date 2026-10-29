@@ -60,12 +60,14 @@ export default async function RootLayout({
 
   // Dark is the server-rendered default; THEME_BOOTSTRAP corrects it before
   // first paint on the blog, so React must not flag the attribute it changed.
+  // It also swaps `no-js` for `js` first, so controls that need JavaScript
+  // hide only when no script runs (globals.css).
   return (
     <html
       lang="en"
       data-theme="dark"
       suppressHydrationWarning
-      className={`${geistSans.variable} ${geistMono.variable} ${funnelDisplay.variable}`}
+      className={`no-js ${geistSans.variable} ${geistMono.variable} ${funnelDisplay.variable}`}
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />

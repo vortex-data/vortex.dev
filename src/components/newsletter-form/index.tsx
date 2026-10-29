@@ -47,7 +47,13 @@ export const NewsletterForm = () => {
   };
 
   return (
-    <section className="blog-newsletter" aria-labelledby={`${id}-title`}>
+    // The sign-up posts through JavaScript; without it the form could not
+    // send, so the whole section hides (data-requires-js, globals.css).
+    <section
+      className="blog-newsletter"
+      aria-labelledby={`${id}-title`}
+      data-requires-js
+    >
       <h2 className="vx-label" id={`${id}-title`}>
         Newsletter
       </h2>

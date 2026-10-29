@@ -14,9 +14,17 @@ const useBeforePaint =
  * `<head>` never reruns. This applies the same rule on every route change,
  * before the new route paints, and follows the OS while a blog page set to
  * "system" stays open.
+ *
+ * It also keeps the root's `js` class. The first-paint script swaps the
+ * server's `no-js` for it; if React ever renders `<html>` afresh (a root-level
+ * hydration failure does), it puts `no-js` back, which would hide every
+ * control that needs JavaScript.
  */
 export function RouteTheme() {
   const pathname = usePathname();
+  useBeforePaint(() => {
+    document.documentElement.classList.replace("no-js", "js");
+  }, []);
   useBeforePaint(() => applyRouteTheme(pathname, window), [pathname]);
   return null;
 }
