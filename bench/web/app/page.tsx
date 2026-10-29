@@ -44,10 +44,17 @@ export const dynamic = 'force-dynamic';
  * see `lib/open-groups.ts`). The server never sees it, so `/` stays one CDN
  * cache entry. [`OpenGroupsScript`], right after the last group, opens the
  * listed groups before they paint; [`LandingState`] opens them after a client
- * navigation, writes the fragment after opens and closes (once per burst of
- * toggles), and owns the scroll: a reload or Back restores the element that
- * was at the top of the viewport (`lib/scroll-restore.ts`), and a fresh visit
- * scrolls to the first listed group.
+ * navigation (after a full load it keeps what the reader opened or closed
+ * before hydration), writes the fragment after opens and closes (coalescing a
+ * burst of toggles into two writes), and owns the scroll: a reload or Back
+ * restores the element that was at the top of the viewport
+ * (`lib/scroll-restore.ts`), and a fresh visit scrolls to the first listed
+ * group.
+ *
+ * The content (`HomeContent`) renders inside a Suspense boundary. A browser
+ * gets it streamed into a hidden segment that React reveals with an inline
+ * script, so with JavaScript off it never shows: a reader without JavaScript
+ * sees only the [`HomeLoading`] fallback. This predates the folded page.
  */
 export default async function Home({
   searchParams,
@@ -120,8 +127,11 @@ async function HomeContent({
             {/* After the last group's markup, in the same streamed chunk, so
                 it opens the fragment's groups before they paint. */}
             <OpenGroupsScript />
-            {/* v3's landing_body early-returns on an empty database, so the
-                no-JS hint only renders alongside actual chart shells. */}
+            {/* A browser never shows this hint. It streams inside the
+                Suspense boundary's hidden segment, which only React's inline
+                script reveals, so with JavaScript off the page shows the
+                loading fallback alone; with JavaScript on, `<noscript>`
+                shows nothing. */}
             <noscript>
               <p className="no-script">JavaScript is required to render the charts.</p>
             </noscript>

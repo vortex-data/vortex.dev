@@ -18,9 +18,11 @@ const COPIED_FEEDBACK_MS = 1500;
  * series overrides, repeated `hide` and `show` parameters preserve them and a
  * `group` parameter carries the same readable anchor. Other query parameters,
  * such as the global engine and format filters, stay unchanged.
- * [`GroupSection`] stamps the anchor as the section's `id`, so the fragment is
- * a real anchor even without JavaScript; with JavaScript, the pre-paint script
- * ([`OpenGroupsScript`]) and [`LandingState`] open the group on load.
+ * [`GroupSection`] stamps the anchor as the section's `id`, so the fragment
+ * names a real element on the page. On load, the pre-paint script
+ * ([`OpenGroupsScript`]) opens the group before it paints ([`LandingState`]
+ * does after a client navigation), and on a fresh visit `LandingState` scrolls
+ * to it.
  *
  * Anchors are already fragment-safe (`[a-z0-9-]`), but the fragment is
  * percent-encoded anyway so a future anchor shape cannot silently produce an

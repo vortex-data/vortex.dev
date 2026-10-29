@@ -246,16 +246,37 @@ Every group starts folded, one row with its Vortex-vs-Parquet headline. Its
 toolbar and cards ([`GroupBody`](../../web/components/GroupBody.tsx)) mount only
 while it is open, so a folded group hydrates no island. The open groups live in
 the URL fragment (`/#compression,clickbench`), which the CDN never sees. An
-inline script after the last group opens them while they are still in React's
-hidden streamed segment, so a reload or Back never shows them folded first.
-Scroll is restored by element, not by pixel
+inline script after the last group
+([`OpenGroupsScript`](../../web/components/OpenGroupsScript.tsx)) opens them
+while they are still in React's hidden streamed segment, so a reload or Back
+never shows them folded first. It also leaves a marker for the client code: a
+group the reader opens or closes before hydration stays that way, and a reader
+who scrolls, touches or presses a key before hydration is not moved by the
+restore. Scroll is restored by element, not by pixel
 ([`lib/scroll-restore.ts`](../../web/lib/scroll-restore.ts)): the open bodies
 mount only after hydration, so a saved `scrollY` would land against a shorter
-page. Against the previous build (production dump, desktop, CPU 4×): landing
-HTML 84 → 27 KB gzipped, islands 791 → 0, DOM elements 21,237 → 1,585, script
-time 186 → 59 ms, groups first painted at 413 → 182 ms. Back and Reload with two
-groups open put the same card within 1 px of its offset. Expand All now mounts
-all 791 islands at the click: 574 ms of blocking time against 500 ms.
+page.
+
+Measured against the previous build, the head of `claude/bench-cleanup`
+(b4caf7c): a local restore of the production dump, desktop (1440×900), no
+network throttling, CPU 4×, the median of 5 runs (Expand All: the median of 3),
+with one-off scripts that are not in this repository.
+
+- Landing HTML 84 → 27 KB gzipped, islands 791 → 0, DOM elements
+  21,237 → 1,585, script time 186 → 59 ms.
+- The groups first paint at 413 → 182 ms. First contentful paint rises
+  124 → 184 ms, because the previous build first paints its "Loading benchmark
+  summaries…" card and shows it until its 2.3 MB page has parsed. The new page
+  is small enough that its first paint already shows the groups; the card shows
+  only while a slow network holds them back.
+- Back and Reload with two groups open put the same card within 1 px of its
+  saved offset. The reader sees the top of the page for 1–2 frames, then that
+  spot. The Layout Instability API scores these loads at 1.4–1.8. It counts
+  content that moves above the restored card: the cards that mount during that
+  jump, and the empty cards that hide once the bundles arrive. The restore's
+  two scrolls cancel both, so the reader sees no shift after the jump.
+- Expand All mounts all 791 islands in the toggle tasks that follow the click:
+  574 ms of blocking time against 500 ms.
 
 ### Visual downsampling (LTTB)
 

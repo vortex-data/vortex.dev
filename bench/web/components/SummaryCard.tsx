@@ -36,8 +36,9 @@ function formatThroughput(valueGbS: number, operation: 'encode' | 'decode'): str
  * panels for their paired metrics. The three timing families (query, random
  * access, vector search) share one ranked-list arm because they use the same
  * [`SeriesRanking`] shape. The card renders inside the group's `<details>`,
- * after the summary row, so it shows when the group is open, with or without
- * JavaScript; the folded row carries the one-line headline instead.
+ * after the summary row. It is server-rendered and `<details>` is native, so
+ * it shows whenever the group is open, before hydration too; the folded row
+ * carries the one-line headline instead.
  *
  * Returns `null` when there is no summary or the variant has no content.
  */

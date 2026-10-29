@@ -18,8 +18,10 @@ import { setAllGroupsOpen } from '@/lib/open-groups';
  * theme-aware logo, the desktop GitHub link, and the theme toggle.
  *
  * Expand/Collapse All writes `details.open` on every group disclosure
- * directly, then writes the open set into the URL fragment once
- * (`setAllGroupsOpen` in `lib/open-groups.ts`). The native `toggle` event
+ * directly, then schedules one write of the open set into the URL fragment
+ * (`setAllGroupsOpen` in `lib/open-groups.ts`): at once after a quiet spell,
+ * otherwise once the clicks stop, because fragment writes are coalesced and
+ * kept at least 300 ms apart. The native `toggle` event
  * (which also fires for scripted changes) is how each group body learns its
  * group opened, so no shared React tree is needed between the header and the
  * groups. On a page without groups (the chart page) the buttons do nothing.

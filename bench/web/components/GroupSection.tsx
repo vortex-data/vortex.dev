@@ -22,9 +22,12 @@ const NO_INITIAL_SHOWN_SERIES: string[] = [];
  * Everything lives inside one native `<details class="group-disclosure">`,
  * folded by default: the `<summary>` row, then the group's [`SummaryCard`],
  * then its [`GroupBody`]. Nothing follows the `<details>` inside the section.
- * While folded, the browser hides everything but the summary row, with or
- * without JavaScript. The summary card is server-rendered, so an open group
- * shows its rankings before any client code runs.
+ * While folded, the browser itself hides everything but the summary row, so
+ * this holds before hydration too. The summary card is server-rendered, so an
+ * open group shows its rankings before hydration. (With JavaScript off, the
+ * page shows no group at all: the groups stream inside the landing page's
+ * Suspense boundary, whose hidden segment only React's inline script reveals;
+ * see `app/page.tsx`.)
  *
  * [`GroupBody`] is a client component. It server-renders as an empty
  * `<div class="group-body">` and mounts the group toolbar (group Y override,
@@ -54,11 +57,11 @@ const NO_INITIAL_SHOWN_SERIES: string[] = [];
  * The section carries `id={anchor}` — the human-readable anchor the page
  * derives from the group name via `lib/anchor.ts` (`#tpc-h-nvme-sf-1`, not the
  * opaque API slug) — so each group has a stable, legible URL fragment: the
- * summary row's [`GroupPermalink`] button copies `/#<anchor>`, and a
- * single-anchor fragment scrolls natively even without JavaScript. The page's
- * fragment lists every open group's anchor (`lib/open-groups.ts`); the
- * pre-paint script ([`OpenGroupsScript`]) opens those groups before the first
- * paint, and [`LandingState`] keeps the fragment in step with every toggle.
+ * summary row's [`GroupPermalink`] button copies `/#<anchor>`, which names a
+ * real element on the page. The page's fragment lists every open group's
+ * anchor (`lib/open-groups.ts`); the pre-paint script ([`OpenGroupsScript`])
+ * opens those groups before the first paint, and [`LandingState`] keeps the
+ * fragment in step with every toggle.
  */
 export function GroupSection({
   group,

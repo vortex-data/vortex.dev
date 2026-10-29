@@ -52,7 +52,9 @@ import type { ChartResponse } from '@/lib/queries';
  * - Group open/close stays native `<details>` behavior. On the landing page the
  *   island exists only while its group is open: [`GroupBody`] mounts the cards
  *   on the disclosure's `toggle` event (fired for user clicks and for scripted
- *   `open` writes such as Expand All) and unmounts them on close, so teardown
+ *   `open` writes such as Expand All), and at hydration, from a layout effect,
+ *   for a group that is already open (the pre-paint script opened it, or the
+ *   reader did before hydration). It unmounts them on close, so teardown
  *   runs through the mount effect's cleanup and `ChartController.destroy()`.
  *   The island's own `toggle` listener only disarms early when a close reaches
  *   it before React unmounts the island.
