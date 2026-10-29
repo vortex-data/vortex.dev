@@ -17,6 +17,7 @@ import {
   planScroll,
   readSavedScroll,
   restoreScroll,
+  type SavedScroll,
   saveScroll,
 } from '@/lib/scroll-restore';
 
@@ -68,8 +69,12 @@ export function LandingState(): null {
       }
     };
 
+    // A reload or Back whose restore has not applied yet still shows the top
+    // of the page; leaving now must keep the position it is restoring.
+    let pendingRestore: SavedScroll | null = null;
+
     const onPageHide = (): void => {
-      saveScroll(window);
+      saveScroll(window, pendingRestore ?? undefined);
     };
 
     // Capturing, so a handler that stops the click cannot skip the save; the
@@ -102,7 +107,10 @@ export function LandingState(): null {
     let cancelRestore = (): void => {};
     const plan = planScroll(navigationKind(window), saved, listed.length > 0);
     if (plan.kind === 'restore') {
-      cancelRestore = restoreScroll(window, plan.saved, ready, fragmentScroll);
+      pendingRestore = plan.saved;
+      cancelRestore = restoreScroll(window, plan.saved, ready, fragmentScroll, () => {
+        pendingRestore = null;
+      });
     } else if (plan.kind === 'fragment') {
       fragmentScroll();
     }

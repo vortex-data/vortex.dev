@@ -43,11 +43,16 @@ async function nextFrame(): Promise<void> {
   await flush();
 }
 
-/** Report this document's navigation as `type`, as the timing entry does. */
-function navigation(type: NavigationKind): void {
+/** Report this document's navigation as `type`, as the timing entry does,
+ * loaded at `name` (the landing page unless a test says otherwise). */
+function navigation(type: NavigationKind, name = 'https://bench.vortex.dev/'): void {
   vi.spyOn(performance, 'getEntriesByType').mockReturnValue([
-    { type } as unknown as PerformanceEntry,
+    { type, name } as unknown as PerformanceEntry,
   ]);
+}
+
+function savedAt(key: string): unknown {
+  return JSON.parse(sessionStorage.getItem(key) ?? 'null');
 }
 
 /** Give `el` a layout: its rect starts `top` px below the viewport top. */
@@ -359,6 +364,54 @@ describe('LandingState', () => {
       expect(scrollSpy).toHaveBeenCalledTimes(1);
       expect(scrollSpy.mock.contexts[0]).toBe(document.getElementById(FIRST));
       expect(scrollTo).not.toHaveBeenCalled();
+    });
+
+    it('on a client navigation from a reloaded chart page, acts as a fresh visit', async () => {
+      // The chart page's logo link renders `/` in the chart page's document,
+      // whose navigation entry says `reload`, at the chart's path.
+      navigation('reload', 'https://bench.vortex.dev/chart/c2');
+      sessionStorage.setItem(FIRST_KEY, JSON.stringify(SAVED));
+      place(chartCard('c2'), 900);
+      await mount(`/#${FIRST}`);
+
+      noteGroupBodyOpen('qm.tpch', Promise.resolve());
+      await nextFrame();
+      expect(scrollSpy).toHaveBeenCalledTimes(1);
+      expect(scrollTo).not.toHaveBeenCalled();
+    });
+
+    it('keeps the saved position when the page is left before the restore applies', async () => {
+      navigation('reload');
+      sessionStorage.setItem(FIRST_KEY, JSON.stringify(SAVED));
+      place(chartCard('c2'), 900);
+      await mount(`/#${FIRST}`);
+      await flush();
+
+      // The bodies have not mounted, so the page still shows the top.
+      window.dispatchEvent(new Event('pagehide'));
+      expect(savedAt(FIRST_KEY)).toEqual(SAVED);
+
+      noteGroupBodyOpen('qm.tpch', Promise.resolve());
+      await nextFrame();
+      expect(scrollTo).toHaveBeenCalledWith({ top: 780, behavior: 'instant' });
+      // Applied: from now on the page saves what it shows. (`scrollTo` is a
+      // stub, so move the card where the scroll would have put it.)
+      place(chartCard('c2'), 100);
+      window.dispatchEvent(new Event('pagehide'));
+      expect(savedAt(FIRST_KEY)).toEqual({ kind: 'chart', slug: 'c2', offset: 100 });
+    });
+
+    it('saves where the user scrolled once they take over from a pending restore', async () => {
+      navigation('back_forward');
+      sessionStorage.setItem(FIRST_KEY, JSON.stringify(SAVED));
+      place(chartCard('c2'), 900);
+      await mount(`/#${FIRST}`);
+      await flush();
+
+      window.dispatchEvent(new Event('wheel'));
+      place(chartCard('c2'), 40);
+      window.dispatchEvent(new Event('pagehide'));
+      expect(savedAt(FIRST_KEY)).toEqual({ kind: 'chart', slug: 'c2', offset: 40 });
     });
 
     it('on reload, falls back to the fragment scroll when the saved element is gone', async () => {

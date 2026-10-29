@@ -60,15 +60,30 @@ export function scrollStorageKey(loc: Pick<Location, 'pathname' | 'hash'>): stri
 }
 
 /**
- * How this document was loaded: `performance.getEntriesByType('navigation')`'s
+ * How this page was reached: `performance.getEntriesByType('navigation')`'s
  * `type`. A missing entry, or a type other than `reload` and `back_forward`
  * (`navigate`, `prerender`), counts as `navigate`.
+ *
+ * The entry describes the document, which a client-side navigation keeps: the
+ * chart page's logo link renders `/` inside the chart page's document, whose
+ * entry may say `reload`. So an entry counts only when its address (`name`)
+ * has the current path; any other entry, or one without a usable address,
+ * counts as `navigate`.
  */
 export function navigationKind(win: Window): NavigationKind {
   let type: unknown;
   try {
-    const entry = win.performance?.getEntriesByType?.('navigation')[0];
-    type = (entry as { type?: unknown } | undefined)?.type;
+    const entry = win.performance?.getEntriesByType?.('navigation')[0] as
+      | { type?: unknown; name?: unknown }
+      | undefined;
+    if (
+      entry === undefined ||
+      typeof entry.name !== 'string' ||
+      new URL(entry.name).pathname !== win.location.pathname
+    ) {
+      return 'navigate';
+    }
+    type = entry.type;
   } catch {
     return 'navigate';
   }
@@ -124,14 +139,15 @@ export function captureScroll(doc: Document): SavedScroll | null {
 }
 
 /**
- * Save the current position for this page's path and fragment. With nothing
- * in view, it forgets any earlier position instead, so a later restore never
- * lands somewhere stale. Blocked or full storage saves nothing.
+ * Save a position for this page's path and fragment: `position` when given,
+ * otherwise the current one ([`captureScroll`]). With nothing in view, it
+ * forgets any earlier position instead, so a later restore never lands
+ * somewhere stale. Blocked or full storage saves nothing.
  */
-export function saveScroll(win: Window): void {
+export function saveScroll(win: Window, position?: SavedScroll): void {
   try {
     const key = scrollStorageKey(win.location);
-    const saved = captureScroll(win.document);
+    const saved = position ?? captureScroll(win.document);
     if (saved === null) {
       win.sessionStorage.removeItem(key);
     } else {
@@ -219,22 +235,37 @@ export function planScroll(
  * the element is missing on the first pass, it calls `fallback` and stops.
  * User input (`wheel`, `touchstart`, `keydown`, `pointerdown`) stops every
  * later pass. Returns `cancel`, which also stops it and is safe to call twice.
+ *
+ * Until the first pass, the page shows a position that is not the reader's,
+ * and `saved` is still where they were. `onPendingEnd` runs once, when that
+ * stops being so: the first pass applied, or it is about to fall back, or the
+ * restore stopped (user input or `cancel`) before it.
  */
 export function restoreScroll(
   win: Window,
   saved: SavedScroll,
   ready: GroupBodiesReady,
   fallback: () => void,
+  onPendingEnd?: () => void,
 ): () => void {
   let active = true;
+  let pending = true;
   let frame: number | null = null;
   const options: AddEventListenerOptions = { capture: true, passive: true };
+
+  const endPending = (): void => {
+    if (pending) {
+      pending = false;
+      onPendingEnd?.();
+    }
+  };
 
   const cancel = (): void => {
     if (!active) {
       return;
     }
     active = false;
+    endPending();
     for (const type of USER_INPUT) {
       win.removeEventListener(type, cancel, options);
     }
@@ -257,6 +288,7 @@ export function restoreScroll(
       fallback();
       return;
     }
+    endPending();
     void ready.settled.then(() => {
       if (!active) {
         return;

@@ -164,6 +164,13 @@ describe('scroll restore', () => {
       expect(readSavedScroll(window)).toBeNull();
     });
 
+    it('saves a given position instead of the current one', () => {
+      window.history.replaceState(null, '', '/#tpc-h');
+      place(c2, 30);
+      saveScroll(window, saved);
+      expect(readSavedScroll(window)).toEqual(saved);
+    });
+
     it('forgets an earlier position when nothing is in view to save', () => {
       sessionStorage.setItem('bench-scroll:/', JSON.stringify(saved));
       saveScroll(window);
@@ -242,7 +249,7 @@ describe('scroll restore', () => {
       ['prerender', 'navigate'],
     ])('reads a %s navigation as %s', (type, kind) => {
       vi.spyOn(performance, 'getEntriesByType').mockReturnValue([
-        { type } as unknown as PerformanceEntry,
+        { type, name: 'https://bench.vortex.dev/' } as unknown as PerformanceEntry,
       ]);
       expect(navigationKind(window)).toBe(kind);
     });
@@ -250,6 +257,28 @@ describe('scroll restore', () => {
     it('reads a missing navigation entry as navigate', () => {
       vi.spyOn(performance, 'getEntriesByType').mockReturnValue([]);
       expect(navigationKind(window)).toBe('navigate');
+    });
+
+    it.each([
+      ['another path', 'https://bench.vortex.dev/chart/c'],
+      ['no address', undefined],
+      ['an address that does not parse', 'http://['],
+    ])('reads a reload of %s as navigate: a client navigation into this page', (_, name) => {
+      vi.spyOn(performance, 'getEntriesByType').mockReturnValue([
+        { type: 'reload', name } as unknown as PerformanceEntry,
+      ]);
+      expect(navigationKind(window)).toBe('navigate');
+    });
+
+    it('compares only the path, not the query or the fragment', () => {
+      window.history.replaceState(null, '', '/?engine=duckdb#tpc-h');
+      vi.spyOn(performance, 'getEntriesByType').mockReturnValue([
+        {
+          type: 'back_forward',
+          name: 'https://bench.vortex.dev/#ra',
+        } as unknown as PerformanceEntry,
+      ]);
+      expect(navigationKind(window)).toBe('back_forward');
     });
   });
 
@@ -362,6 +391,63 @@ describe('scroll restore', () => {
       await nextFrame();
       expect(scrollTo).not.toHaveBeenCalled();
       expect(fallback).not.toHaveBeenCalled();
+    });
+
+    it('ends its pending position once the first pass applies', async () => {
+      const mounted = deferred();
+      const onPendingEnd = vi.fn();
+      place(c2, 900);
+      restoreScroll(
+        window,
+        saved,
+        { mounted: mounted.promise, settled: new Promise(() => {}) },
+        vi.fn(),
+        onPendingEnd,
+      );
+      await flush();
+      expect(onPendingEnd).not.toHaveBeenCalled();
+
+      mounted.resolve();
+      await flush();
+      expect(scrollTo).toHaveBeenCalledTimes(1);
+      expect(onPendingEnd).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([
+      ['the user acts', () => window.dispatchEvent(new Event('wheel'))],
+      ['it is cancelled', (cancel: () => void) => cancel()],
+    ])('ends its pending position, once, when %s before the first pass', async (_, stop) => {
+      const mounted = deferred();
+      const onPendingEnd = vi.fn();
+      place(c2, 900);
+      const cancel = restoreScroll(
+        window,
+        saved,
+        { mounted: mounted.promise, settled: Promise.resolve() },
+        vi.fn(),
+        onPendingEnd,
+      );
+      stop(cancel);
+      expect(onPendingEnd).toHaveBeenCalledTimes(1);
+
+      cancel();
+      mounted.resolve();
+      await nextFrame();
+      expect(onPendingEnd).toHaveBeenCalledTimes(1);
+      expect(scrollTo).not.toHaveBeenCalled();
+    });
+
+    it('ends its pending position before it falls back', async () => {
+      const calls: string[] = [];
+      restoreScroll(
+        window,
+        { ...saved, slug: 'gone' },
+        { mounted: Promise.resolve(), settled: Promise.resolve() },
+        () => calls.push('fallback'),
+        () => calls.push('pending end'),
+      );
+      await nextFrame();
+      expect(calls).toEqual(['pending end', 'fallback']);
     });
 
     it('removes its listeners once it is done', async () => {
