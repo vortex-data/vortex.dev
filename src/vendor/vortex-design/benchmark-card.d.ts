@@ -35,6 +35,8 @@ export type Versus = {
   /** Parquet's score against Vortex's, at least 1, or null when either is not measured. */
   factor: number | null;
   vortexWins: boolean | null;
+  /** Whether the scores are equal (then `factor` is 1 and `vortexWins` false), or null when either is not measured. */
+  tie: boolean | null;
   /** The system that is not measured, Vortex first, or null when both are. */
   missing: "Vortex" | "Parquet" | null;
 };
@@ -56,7 +58,7 @@ export function formatFactor(f: number | null): string;
 
 export function panelNote(
   kind: BenchPanel["kind"],
-  vs: Pick<Versus, "vortexWins"> & Partial<Pick<Versus, "missing">>
+  vs: Pick<Versus, "vortexWins"> & Partial<Pick<Versus, "tie" | "missing">>
 ): string;
 
 export function renderPanel(panel: BenchPanel): string;

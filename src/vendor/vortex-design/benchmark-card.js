@@ -45,17 +45,18 @@ export function panelRows(rows, better, unit) {
 }
 
 /**
- * Vortex against Parquet: {factor, vortexWins, missing}. `factor` is the ratio of their scores,
- * at least 1, and says how far apart they are; `vortexWins` says which way. When Vortex or
- * Parquet is not measured (see `panelRows`), `factor` and `vortexWins` are null and `missing`
- * names the one that is, Vortex first. Otherwise `missing` is null.
+ * Vortex against Parquet: {factor, vortexWins, tie, missing}. `factor` is the ratio of their
+ * scores, at least 1, and says how far apart they are; `vortexWins` says which way. Equal scores
+ * are a tie: `factor` is 1, `tie` is true and `vortexWins` is false. When Vortex or Parquet is not
+ * measured (see `panelRows`), `factor`, `vortexWins` and `tie` are null and `missing` names the one
+ * that is, Vortex first. Otherwise `missing` is null.
  */
 export function versusParquet(rows, better) {
   const v = find(rows, "vortex");
   const p = find(rows, "parquet");
-  if (!isMeasured(v) || !isMeasured(p)) return { factor: null, vortexWins: null, missing: isMeasured(v) ? "Parquet" : "Vortex" };
+  if (!isMeasured(v) || !isMeasured(p)) return { factor: null, vortexWins: null, tie: null, missing: isMeasured(v) ? "Parquet" : "Vortex" };
   const vortexWins = better === "higher" ? v.score > p.score : v.score < p.score;
-  return { factor: Math.max(v.score / p.score, p.score / v.score), vortexWins, missing: null };
+  return { factor: Math.max(v.score / p.score, p.score / v.score), vortexWins, tie: v.score === p.score, missing: null };
 }
 
 /** A factor as the card prints it: 32× from 10 up, 5.1× from 1.1 up, 1.07× below, — for none. */
@@ -68,8 +69,9 @@ export function formatFactor(f) {
 }
 
 /** The words beside the factor. `kind` is "speed" (time or throughput) or "size". */
-export function panelNote(kind, { vortexWins, missing }) {
+export function panelNote(kind, { vortexWins, tie, missing }) {
   if (vortexWins === null || vortexWins === undefined) return `${missing ?? "Vortex"} not measured`;
+  if (tie) return kind === "size" ? "the same size as Parquet" : "as fast as Parquet";
   const words = kind === "size" ? (vortexWins ? "smaller" : "larger") : vortexWins ? "faster" : "slower";
   return `${words} than Parquet`;
 }
