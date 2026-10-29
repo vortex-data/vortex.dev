@@ -329,7 +329,7 @@ export function escapeHtml(s: unknown): string {
 /** The x-axis label for one commit slot: the short SHA, or `''` for a virtual
  * (not yet loaded) slot. */
 export function labelForCommit(commit: CommitPoint | null | undefined): string {
-  return commit && commit.sha ? shortSha(commit.sha) : '';
+  return commit?.sha ? shortSha(commit.sha) : '';
 }
 
 const MONTH_ABBR = [

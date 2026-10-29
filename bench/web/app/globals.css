@@ -99,13 +99,7 @@ body {
    * fallback stack matches v2's `src/styles/index.css` so the site
    * remains legible if the CDN is blocked. */
   font-family:
-    'Geist',
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    'SF Pro Display',
-    Roboto,
-    sans-serif;
+    'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'SF Pro Display', Roboto, sans-serif;
   font-size: 16px;
   line-height: 1.6;
 }

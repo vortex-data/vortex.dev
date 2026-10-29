@@ -85,7 +85,7 @@ describe('group slug round-trip', () => {
   });
 
   it('resolves legacy random-access group slugs to NVMe', () => {
-    const legacy = 'rag.' + Buffer.from('{"k":"RandomAccessGroup"}').toString('base64url');
+    const legacy = `rag.${Buffer.from('{"k":"RandomAccessGroup"}').toString('base64url')}`;
     expect(groupKeyFromSlug(legacy)).toEqual({ k: 'RandomAccessGroup', storage: 'nvme' });
   });
 

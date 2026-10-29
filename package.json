@@ -2,6 +2,9 @@
   "name": "vortex",
   "version": "0.1.0",
   "private": true,
+  "workspaces": [
+    "bench/web"
+  ],
   "packageManager": "bun@1.4.3",
   "engines": {
     "node": ">=24",
@@ -49,6 +52,7 @@
     "sharp"
   ],
   "overrides": {
-    "sharp": "^0.35.5"
+    "sharp": "^0.35.5",
+    "zod": "^4.6.7"
   }
 }

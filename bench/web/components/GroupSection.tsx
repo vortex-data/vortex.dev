@@ -83,6 +83,7 @@ export function GroupSection({
             {group.description !== undefined && (
               <span
                 className="group-info-icon"
+                // biome-ignore lint/a11y/noNoninteractiveTabindex: the icon takes focus so its tooltip shows for keyboard users.
                 tabIndex={0}
                 role="note"
                 aria-label={group.description}

@@ -1,5 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "bun install --frozen-lockfile",
   "crons": [{ "path": "/api/health", "schedule": "*/2 * * * *" }],
   "headers": [
     {

@@ -229,19 +229,96 @@ jobs:
   # `bun audit` job is informational, so this is the one advisory check
   # that blocks merge, and it is scoped to what the PR itself introduces
   # (severity `high` and above) rather than the whole pre-existing tree.
+  #
+  # GitHub's dependency graph does not read bun.lock. The dependency-snapshot
+  # workflow submits it, and the action would pass without it, so a guard
+  # runs first (see its comment). The retry inputs then cover the short time
+  # GitHub takes to process a submitted snapshot. `fail-on-scopes` stays at
+  # the action's default, `runtime`: a development-only advisory does not
+  # block merge and stays with `bun audit` and CLAUDE.md "Audit advisories".
   dependency-review:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-24.04
     permissions:
       contents: read
+      # Implies read, which the guard uses to list a fork's changed files.
       pull-requests: write
+      # The guard reads the snapshot job's check run.
+      checks: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The action reviews whatever graph it finds. If the snapshot job
+      # failed, was skipped or finished late, that graph lacks bun.lock's
+      # packages and the review passes without them. So: for a pull request
+      # from this repository, wait for that job on the head commit and fail
+      # unless it succeeded. A fork's pull request gets no snapshot (its token
+      # cannot submit one), so fail it if it changes a bun.lock; if it does
+      # not, it adds no locked package.
+      - name: Require the bun.lock snapshot
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          CHANGED_FILES: ${{ github.event.pull_request.changed_files }}
+          FROM_FORK: ${{ github.event.pull_request.head.repo.full_name != github.repository }}
+          # The `name:` of the job in dependency-snapshot.yml.
+          SNAPSHOT_CHECK: Submit bun.lock
+          WAIT_SECONDS: 600
+        run: |
+          if [ "$FROM_FORK" = true ]; then
+            files=$(gh api --paginate "repos/$REPO/pulls/$PR_NUMBER/files?per_page=100" --jq '.[].filename')
+            # The API lists at most 3000 files; a longer pull request could hide a bun.lock.
+            listed=$(grep -c . <<<"$files" || true)
+            if [ "$listed" -lt "$CHANGED_FILES" ]; then
+              echo "::error::Listed $listed of the pull request's $CHANGED_FILES changed files, so a bun.lock change could go unseen."
+              exit 1
+            fi
+            if grep -Eq '(^|/)bun\.lock$' <<<"$files"; then
+              echo "::error::This pull request comes from a fork and changes bun.lock. A fork gets no dependency snapshot, so dependency review cannot see the locked packages. Make the lock change from a branch in this repository."
+              exit 1
+            fi
+            echo "Fork pull request without a bun.lock change: it adds no locked package."
+            exit 0
+          fi
+
+          name=$(jq -rn --arg name "$SNAPSHOT_CHECK" '$name | @uri')
+          deadline=$((SECONDS + WAIT_SECONDS))
+          while :; do
+            # The newest run of the job (highest id), so a successful rerun counts.
+            if run=$(gh api "repos/$REPO/commits/$HEAD_SHA/check-runs?check_name=$name&per_page=100" \
+              --jq '(.check_runs | max_by(.id)) // {} | "\(.status // "missing") \(.conclusion // "none")"'); then
+              read -r status conclusion <<<"$run"
+              if [ "$status" = completed ]; then
+                if [ "$conclusion" = success ]; then
+                  echo "The '$SNAPSHOT_CHECK' job submitted the snapshot for $HEAD_SHA."
+                  exit 0
+                fi
+                echo "::error::The '$SNAPSHOT_CHECK' job concluded '$conclusion', so dependency review would not see bun.lock's packages. Rerun it, then rerun this job."
+                exit 1
+              fi
+              echo "'$SNAPSHOT_CHECK' on $HEAD_SHA: $status"
+            else
+              echo "::warning::Could not read the check runs of $HEAD_SHA; trying again."
+            fi
+            if [ "$SECONDS" -ge "$deadline" ]; then
+              echo "::error::The '$SNAPSHOT_CHECK' job did not finish on $HEAD_SHA within $WAIT_SECONDS seconds."
+              exit 1
+            fi
+            sleep 15
+          done
+
       - name: Dependency Review
         uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294  # v5.0.0
         with:
           fail-on-severity: high
           comment-summary-in-pr: on-failure
+          retry-on-snapshot-warnings: true
+          retry-on-snapshot-warnings-timeout: 300
 
   # Defense-in-depth on top of GitHub's push protection. Push protection
   # covers high-entropy / known-provider patterns at push time; TruffleHog

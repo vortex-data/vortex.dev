@@ -5,7 +5,7 @@ import { NextResponse } from 'next/server';
 
 import { READ_API_CACHE_CONTROL } from '@/lib/cache';
 import { cachedGroups } from '@/lib/data-cache';
-import { type GroupsResponse } from '@/lib/queries';
+import type { GroupsResponse } from '@/lib/queries';
 
 /**
  * `GET /api/groups` returns every benchmark group in canonical `GROUP_ORDER`,
