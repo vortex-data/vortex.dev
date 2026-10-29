@@ -9,8 +9,8 @@ import { NextResponse } from 'next/server';
 import { BENCH_DATA_TAG } from '@/lib/data-cache';
 
 /**
- * `POST /api/revalidate` flushes the [`BENCH_DATA_TAG`] Data Cache entries so the
- * next read recomputes against freshly ingested data. `scripts/post-ingest.py`
+ * `POST /api/revalidate` marks the [`BENCH_DATA_TAG`] Data Cache entries stale, so
+ * they refresh against freshly ingested data (see below). `scripts/post-ingest.py`
  * calls this after a successful Postgres write. Auth is a bearer token compared
  * in constant time against `BENCH_REVALIDATE_TOKEN`; a missing env var fails
  * closed with `503` so an unconfigured deployment never silently accepts
@@ -26,9 +26,16 @@ export async function POST(request: Request): Promise<NextResponse> {
   if (provided === null || !constantTimeEquals(provided, expected)) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
-  // `{ expire: 0 }` drops the entries at once, as the one-argument call did before
-  // Next.js 16. The `'max'` profile would serve the stale data once after an ingest.
-  revalidateTag(BENCH_DATA_TAG, { expire: 0 });
+  // The `'max'` profile marks the entries stale rather than dropping them: after
+  // an ingest, the next read serves the previous data once while the entry
+  // refreshes in the background, and the read after that gets the new data. So
+  // no read waits on the group-fill lock because of an ingest. Dropping the
+  // entries (`{ expire: 0 }`) made every read after an ingest wait on it, and
+  // with ingests about once a minute during benchmark runs, reads ran out of
+  // retries and failed. The cost: new results can take about one more CDN cycle
+  // (five minutes) to show, since the CDN's refresh may be the read that gets
+  // the previous data.
+  revalidateTag(BENCH_DATA_TAG, 'max');
   return NextResponse.json({ revalidated: true }, { status: 200 });
 }
 

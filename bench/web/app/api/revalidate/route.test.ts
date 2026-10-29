@@ -66,11 +66,12 @@ describe('POST /api/revalidate', () => {
     expect(res.headers.get('cache-control')).toBeNull();
   });
 
-  it('expires the tag at once, so the next read after an ingest is fresh', async () => {
-    // `{ expire: 0 }` keeps the one-argument behavior from before Next.js 16. The
-    // `'max'` profile would serve the stale entry once while it refreshes.
+  it('marks the tag stale, so the next read serves the previous data once while it refreshes', async () => {
+    // The `'max'` profile, not `{ expire: 0 }`: dropping the entries makes every
+    // read after an ingest wait on the group-fill lock.
     process.env.BENCH_REVALIDATE_TOKEN = 'secret-token-value';
-    await POST(post('secret-token-value'));
-    expect(revalidateTag).toHaveBeenCalledWith(BENCH_DATA_TAG, { expire: 0 });
+    const res = await POST(post('secret-token-value'));
+    expect(revalidateTag).toHaveBeenCalledWith(BENCH_DATA_TAG, 'max');
+    expect(await res.json()).toEqual({ revalidated: true });
   });
 });
