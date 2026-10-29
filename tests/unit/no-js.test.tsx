@@ -39,6 +39,17 @@ describe("the homepage without JavaScript", () => {
     );
   });
 
+  it("hides the symbol while a script can still draw the mark, and shows it when the mark cannot", () => {
+    assert.match(
+      rule(css, ".js .ascii-mark-still") ?? "",
+      /visibility:\s*hidden/
+    );
+    const shown = css.match(
+      /\.js \[data-mark-mode="static"\] > \.ascii-mark-still,\s*\.js \[data-mark-mode="error"\] > \.ascii-mark-still\s*\{([^}]*)\}/
+    );
+    assert.match(shown?.[1] ?? "", /visibility:\s*visible/);
+  });
+
   it("keeps every install command in reach: the tabs and copy hide, the panels stack under their names", () => {
     const html = renderToStaticMarkup(<InstallTabs sparkVersion="1.2.3" />);
     assert.match(html, /role="tablist"[^>]*data-requires-js="true"/);

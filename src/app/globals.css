@@ -84,8 +84,18 @@
   }
 }
 
-/* AsciiMark: the static symbol the server renders, inverted in Light as the
-   design system's own fallback is. */
+/* AsciiMark: the static symbol the server renders, for readers without
+   scripts. With scripts the host stays empty while the page loads, as the
+   design system draws it, and shows the symbol only once the mark reports
+   that it cannot draw (no WebGL, or an error). In Light it is inverted, as
+   the design system's own fallback is. */
+.js .ascii-mark-still {
+  visibility: hidden;
+}
+.js [data-mark-mode="static"] > .ascii-mark-still,
+.js [data-mark-mode="error"] > .ascii-mark-still {
+  visibility: visible;
+}
 :root[data-theme="light"] .ascii-mark-still {
   filter: invert(1);
 }

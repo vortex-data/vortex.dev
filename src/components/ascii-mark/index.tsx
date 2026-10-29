@@ -40,11 +40,12 @@ const STILL_STYLE = {
  * as Geist Mono characters. It is decorative, so the host is hidden from
  * assistive technology. `className` positions and sizes the host.
  *
- * The server renders the static symbol in the host, so the page shows a mark
- * before any script runs, and without scripts at all. Once the page is idle
- * the live (or reduced-motion) mark mounts and the symbol goes. Without
- * WebGL, when three.js cannot load, or when mounting throws, the symbol
- * stays.
+ * The server renders the static symbol in the host for readers without
+ * scripts. With scripts it stays hidden (globals.css), so the host is empty
+ * while the page loads, as before; once the page is idle the live (or
+ * reduced-motion) mark mounts and the symbol goes. Without WebGL, when
+ * three.js cannot load, or when mounting throws, the host's `data-mark-mode`
+ * says so (`static` or `error`) and the symbol shows.
  */
 export function AsciiMark({ className }: { className?: string | undefined }) {
   const host = useRef<HTMLDivElement>(null);
