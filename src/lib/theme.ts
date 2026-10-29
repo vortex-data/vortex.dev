@@ -82,6 +82,31 @@ function storageOf<S>(win: { readonly localStorage: S }): S | null {
   }
 }
 
+/**
+ * The choice the reader made on this page, keyed by its document. Storage
+ * may be blocked or full, so this is what keeps a choice alive until the
+ * page goes away.
+ */
+const pageChoices = new WeakMap<object, ThemeChoice>();
+
+/** The stored choice if storage holds one, else this page's, else Dark. */
+function currentChoice(win: {
+  readonly localStorage: Pick<Storage, "getItem">;
+  document: object;
+}): ThemeChoice {
+  let stored: string | null = null;
+  try {
+    stored = storageOf(win)?.getItem(THEME_KEY) ?? null;
+  } catch {
+    // Blocked storage: fall back to this page's choice.
+  }
+  return (
+    THEME_CHOICES.find((c) => c === stored) ??
+    pageChoices.get(win.document) ??
+    "dark"
+  );
+}
+
 /** What `applyRouteTheme` needs from `window`, so it can be tested without a DOM. */
 export interface ThemeWindow {
   localStorage: Pick<Storage, "getItem">;
@@ -107,6 +132,7 @@ export function chooseTheme(
     document: { documentElement: { dataset: DOMStringMap } };
   }
 ): void {
+  pageChoices.set(win.document, choice);
   saveChoice(storageOf(win), choice);
   win.document.documentElement.dataset.theme = themeFor(
     pathname,
@@ -128,7 +154,7 @@ export function applyRouteTheme(
   const apply = () => {
     win.document.documentElement.dataset.theme = themeFor(
       pathname,
-      readChoice(storageOf(win)),
+      currentChoice(win),
       media.matches
     );
   };

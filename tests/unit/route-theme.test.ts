@@ -76,3 +76,28 @@ describe("blocked storage", () => {
     assert.equal(root.dataset.theme, "light");
   });
 });
+
+describe("blocked storage and the OS", () => {
+  it("keeps the reader's choice for the page when the OS changes", () => {
+    const listeners = new Set<() => void>();
+    const media = {
+      matches: true,
+      addEventListener: (_: string, f: () => void) => listeners.add(f),
+      removeEventListener: (_: string, f: () => void) => listeners.delete(f)
+    };
+    const root = { dataset: {} as Record<string, string> };
+    const win = {
+      get localStorage(): Storage {
+        throw new DOMException("blocked", "SecurityError");
+      },
+      matchMedia: () => media,
+      document: { documentElement: root }
+    };
+    const stop = applyRouteTheme("/blog", win);
+    chooseTheme("/blog", "light", win);
+    media.matches = false;
+    for (const f of listeners) f();
+    assert.equal(root.dataset.theme, "light");
+    stop();
+  });
+});
