@@ -21,36 +21,3 @@ linker = "isolated"
 #
 # Units: seconds. 14 * 86400 = 1209600.
 minimumReleaseAge = 1209600
-
-# Security fixes newer than the 14-day window. Each entry exempts the whole
-# package, so remove it once its pinned version is older than 14 days.
-#
-# - next 16.4.1 (2026-10-15) fixes GHSA-2464-fhr4-w9xw and GHSA-673q-mjm6-r5xr
-#   (critical RCE) and GHSA-p3m5-59mp-jv5r (high DoS). Next pins its @next/*
-#   packages to the same version, so they need the same exemption.
-# - react / react-dom 19.3.1 (2026-10-14) harden the Server Components transport.
-#   React shipped the change on every supported line at once (19.0.9, 19.1.10,
-#   19.2.9).
-# - undici 7.30.1 and 8.12.2 (2026-10-15 14:18 and 15:05 UTC) fix the dev-only
-#   advisories that reach bench through testcontainers (7.x) and jsdom (8.x).
-#   8.12.1, the newest 8.x past the window, has four high advisories
-#   (GHSA-4w7w-5xrc-9h26, GHSA-2m5v-pch6-74hx, GHSA-qrxm-fqhp-jwvm,
-#   GHSA-xjj6-f33q-929c). The lockfile pins 8.12.2, not the newer 8.12.3 this
-#   exemption would also allow. Only bench uses undici.
-#
-# Remove all entries after 2026-10-29 15:06 UTC.
-minimumReleaseAgeExcludes = [
-  "next",
-  "@next/env",
-  "@next/swc-darwin-arm64",
-  "@next/swc-darwin-x64",
-  "@next/swc-linux-arm64-gnu",
-  "@next/swc-linux-arm64-musl",
-  "@next/swc-linux-x64-gnu",
-  "@next/swc-linux-x64-musl",
-  "@next/swc-win32-arm64-msvc",
-  "@next/swc-win32-x64-msvc",
-  "react",
-  "react-dom",
-  "undici",
-]
