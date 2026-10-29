@@ -20,7 +20,7 @@ The repository holds two independent apps:
 
 They share CI policy and nothing else:
 
-- **Toolchain.** bench is still on pnpm, ESLint, Prettier and Next.js 15.5. The root `tsconfig.json` and `biome.json` exclude `bench/`, and `bench/web/postcss.config.mjs` keeps Next.js from picking up the root's Tailwind config.
+- **Toolchain.** bench is still on pnpm, ESLint, Prettier and Next.js 15.5. The root `tsconfig.json` and `biome.json` exclude `bench/`, and `bench/web/postcss.config.mjs` keeps Next.js from looking for a PostCSS config in the repository root, which has none.
 - **CI.** `.github/actions/changed-paths` reports which app a change touches. `ci.yml` skips its site jobs on bench-only changes, and `bench-ci.yml` skips on site-only changes. Both gate with `if:`, not `on.paths`, so a skipped required check still passes. Dependency review, the secret scan and REUSE run on every change.
 - **Deploys.** The `vortex` Vercel project builds the site through the git integration, and `scripts/vercel-ignore-build.sh` skips bench-only commits. bench deploys to the `benchmarks-website` Vercel project (Root Directory `bench/web`) from `bench-deploy.yml`, with the Vercel CLI. Schema migrations go through `bench-schema-deploy.yml`, which only runs manually from `main` because the AWS role trusts nothing else.
 
@@ -32,7 +32,7 @@ This is a Next.js 16 marketing website for Vortex, a columnar file format, drawn
 
 - **Next.js 16** with App Router and Turbopack
 - **React 19** with TypeScript
-- **TailwindCSS 4** for styling
+- **The design system's CSS** (`src/styles/`), `globals.css` and CSS modules for styling, with no CSS framework
 - **three.js** (WebGL) for the design system's ASCII mark, loaded once the page is idle
 - **Plausible Analytics** for privacy-focused tracking
 - **Vercel Analytics** for performance monitoring

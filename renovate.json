@@ -44,10 +44,6 @@
       ]
     },
     {
-      "groupName": "TailwindCSS",
-      "matchPackageNames": ["tailwindcss", "@tailwindcss/**"]
-    },
-    {
       "groupName": "MDX content pipeline",
       "matchPackageNames": [
         "@mdx-js/**",
