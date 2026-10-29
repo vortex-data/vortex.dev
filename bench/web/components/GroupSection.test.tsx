@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
+// @vitest-environment jsdom
+
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
@@ -12,6 +14,13 @@ const UNIVERSE: FilterUniverse = {
   engines: ['datafusion', 'duckdb'],
   formats: ['parquet', 'vortex'],
 };
+
+/** The summary row's text, as a reader sees it. */
+function summaryText(html: string): string {
+  const el = document.createElement('div');
+  el.innerHTML = html;
+  return el.querySelector('summary')?.textContent ?? '';
+}
 
 const RANDOM_ACCESS: Group = {
   name: 'Random Access',
@@ -180,7 +189,7 @@ describe('GroupSection', () => {
     const row = html.slice(html.indexOf('<summary'), html.indexOf('</summary>'));
     expect(row).toContain('class="group-headline"');
     expect(row).toContain('data-tone="better"');
-    expect(row.replace(/<[^>]+>/g, '')).toContain('DuckDB 2.5× faster than Parquet');
+    expect(summaryText(html)).toContain('DuckDB 2.5× faster than Parquet');
   });
 
   it('spells a slower result in words and marks partial coverage in the row', () => {
@@ -216,7 +225,7 @@ describe('GroupSection', () => {
     const row = html.slice(html.indexOf('<summary'), html.indexOf('</summary>'));
     expect(row).toContain('data-tone="better"');
     expect(row).toContain('data-tone="worse"');
-    expect(row.replace(/<[^>]+>/g, '')).toContain(
+    expect(summaryText(html)).toContain(
       'DuckDB 2.5× faster · DataFusion 2.0× slower vs Parquet (partial)',
     );
   });
