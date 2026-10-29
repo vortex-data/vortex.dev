@@ -117,10 +117,11 @@ export function GroupNav({ groups }: { groups: GroupNavItem[] }) {
                 className="group-nav-link"
                 type="button"
                 onClick={() => {
-                  // Write the open set now rather than wait for the `toggle`
-                  // event, and also when the group was already open. The
-                  // write uses replaceState, which fires no `hashchange`, so
-                  // the jump does not scroll twice.
+                  // Write the open set now rather than after the `toggle`
+                  // event's delayed write, and also when the group was
+                  // already open. One write per jump stays well inside
+                  // Safari's replaceState limit. replaceState fires no
+                  // `hashchange`, so the jump does not scroll twice.
                   if (jumpToGroup(group.slug)) {
                     syncOpenFragment(window);
                   }

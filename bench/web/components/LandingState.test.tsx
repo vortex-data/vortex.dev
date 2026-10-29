@@ -9,7 +9,11 @@ import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from 'vite
 
 import { LandingState } from '@/components/LandingState';
 import { noteGroupBodyOpen, resetGroupBodies } from '@/lib/group-bodies';
-import { setAllGroupsOpen } from '@/lib/open-groups';
+import {
+  OPEN_FRAGMENT_SYNC_DELAY_MS,
+  resetOpenFragmentSync,
+  setAllGroupsOpen,
+} from '@/lib/open-groups';
 import type { NavigationKind, SavedScroll } from '@/lib/scroll-restore';
 
 // Three groups in page order, as the landing page renders them.
@@ -103,6 +107,7 @@ describe('LandingState', () => {
   beforeEach(() => {
     (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
     resetGroupBodies();
+    resetOpenFragmentSync(window);
     sessionStorage.clear();
     window.history.scrollRestoration = 'auto';
     // A fresh visit, unless a test says otherwise.
@@ -138,6 +143,7 @@ describe('LandingState', () => {
       root?.unmount();
     });
     root = null;
+    resetOpenFragmentSync(window);
     window.removeEventListener('error', onError);
     vi.restoreAllMocks();
     window.scrollTo = originalScrollTo;
@@ -154,55 +160,6 @@ describe('LandingState', () => {
       root?.render(<LandingState />);
     });
   }
-
-  /** Open or close one group the way a summary click does, and let its
-   * `toggle` event run. */
-  async function setOpen(anchor: string, open: boolean): Promise<void> {
-    disclosure(anchor).open = open;
-    await flush();
-  }
-
-  it('writes the open groups into the fragment, in page order, on every toggle', async () => {
-    await mount('/?engine=duckdb');
-
-    await setOpen('clickbench', true);
-    expect(window.location.href.endsWith('/?engine=duckdb#clickbench')).toBe(true);
-    await setOpen('tpc-h-nvme-sf-1', true);
-    expect(window.location.hash).toBe('#tpc-h-nvme-sf-1,clickbench');
-    await setOpen('clickbench', false);
-    expect(window.location.hash).toBe('#tpc-h-nvme-sf-1');
-    await setOpen('tpc-h-nvme-sf-1', false);
-    expect(window.location.href.endsWith('/?engine=duckdb')).toBe(true);
-    expect(window.location.href).not.toContain('#');
-  });
-
-  it('writes the fragment once per Expand All and Collapse All', async () => {
-    await mount('/?engine=duckdb');
-    const replace = vi.spyOn(window.history, 'replaceState');
-
-    setAllGroupsOpen(window, true);
-    await flush();
-    expect(replace).toHaveBeenCalledTimes(1);
-    expect(window.location.hash).toBe('#tpc-h-nvme-sf-1,random-access,clickbench');
-
-    setAllGroupsOpen(window, false);
-    await flush();
-    expect(replace).toHaveBeenCalledTimes(2);
-    expect(window.location.href).not.toContain('#');
-    expect(window.location.search).toBe('?engine=duckdb');
-  });
-
-  it('keeps opening groups when the browser refuses a URL write', async () => {
-    await mount('/');
-    vi.spyOn(window.history, 'replaceState').mockImplementation(() => {
-      throw new DOMException('limit', 'SecurityError');
-    });
-
-    expect(() => setAllGroupsOpen(window, true)).not.toThrow();
-    await flush();
-    expect(openStates()).toEqual([true, true, true]);
-    expect(onError).not.toHaveBeenCalled();
-  });
 
   it('on a fresh visit, opens every listed group and scrolls to the first listed once the bodies mount', async () => {
     await mount('/#clickbench,tpc-h-nvme-sf-1');
@@ -254,40 +211,237 @@ describe('LandingState', () => {
     expect(scrollSpy.mock.contexts[0]).toBe(document.getElementById('clickbench'));
   });
 
-  it('rewrites the fragment to the open set after a hashchange that toggles nothing', async () => {
-    await mount('/');
-    await setOpen(FIRST, true);
-    await setOpen('clickbench', true);
-    expect(window.location.hash).toBe(`#${FIRST},clickbench`);
-
-    // Already open: no toggle fires, so only the hashchange can fix the URL.
-    window.location.hash = 'clickbench';
-    await flush();
-    expect(window.location.hash).toBe(`#${FIRST},clickbench`);
-
-    window.location.hash = 'unknown';
-    await flush();
-    expect(window.location.hash).toBe(`#${FIRST},clickbench`);
-    expect(openStates()).toEqual([true, false, true]);
-  });
-
-  it('stops listening once unmounted', async () => {
-    await mount('/');
-    await act(async () => {
-      root?.unmount();
+  // Fragment writes are coalesced (`scheduleOpenFragmentSync`): a toggle after
+  // a quiet spell writes at once, and the rest of a burst writes once it stops.
+  // A fake `setTimeout` and `Date` run that delay. jsdom queues `toggle` and
+  // `hashchange` with `setImmediate`, which stays real.
+  describe('fragment writes', () => {
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
     });
-    root = null;
-    const replace = vi.spyOn(window.history, 'replaceState');
 
-    await setOpen('clickbench', true);
-    window.location.hash = 'random-access';
-    await flush();
-    expect(replace).not.toHaveBeenCalled();
-    expect(disclosure('random-access').open).toBe(false);
+    afterEach(() => {
+      vi.useRealTimers();
+    });
 
-    place(chartCard('c2'), 30);
-    window.dispatchEvent(new Event('pagehide'));
-    expect(sessionStorage.length).toBe(0);
+    /** Let jsdom's queued `toggle` and `hashchange` tasks, and the promise
+     * chains after them, run. */
+    async function tasks(): Promise<void> {
+      await act(async () => {
+        await new Promise((resolve) => setImmediate(resolve));
+      });
+    }
+
+    /** Open or close one group the way a summary click does, and let its
+     * `toggle` event run. */
+    async function toggle(anchor: string, open: boolean): Promise<void> {
+      disclosure(anchor).open = open;
+      await tasks();
+    }
+
+    /** Let the delay pass: a pending write runs, and the page is quiet again. */
+    function afterDelay(): void {
+      act(() => {
+        vi.advanceTimersByTime(OPEN_FRAGMENT_SYNC_DELAY_MS);
+      });
+    }
+
+    /** Open `FIRST` (written at once) and then `clickbench` (left pending). */
+    async function leavePending(): Promise<void> {
+      await toggle(FIRST, true);
+      await toggle('clickbench', true);
+      expect(window.location.hash).toBe(`#${FIRST}`);
+    }
+
+    it('writes the open groups into the fragment, in page order, on every isolated toggle', async () => {
+      await mount('/?engine=duckdb');
+
+      await toggle('clickbench', true);
+      expect(window.location.href.endsWith('/?engine=duckdb#clickbench')).toBe(true);
+      afterDelay();
+      await toggle('tpc-h-nvme-sf-1', true);
+      expect(window.location.hash).toBe('#tpc-h-nvme-sf-1,clickbench');
+      afterDelay();
+      await toggle('clickbench', false);
+      expect(window.location.hash).toBe('#tpc-h-nvme-sf-1');
+      afterDelay();
+      await toggle('tpc-h-nvme-sf-1', false);
+      expect(window.location.href.endsWith('/?engine=duckdb')).toBe(true);
+      expect(window.location.href).not.toContain('#');
+    });
+
+    it('coalesces rapid toggles into two writes: as they start and once they stop', async () => {
+      await mount('/');
+      const replace = vi.spyOn(window.history, 'replaceState');
+
+      // 123 toggles, 50 ms apart, as a visitor holding Enter makes; each group
+      // is toggled an odd number of times, so ends open.
+      for (let i = 0; i < 123; i++) {
+        const { anchor } = GROUPS[i % 3]!;
+        await toggle(anchor, !disclosure(anchor).open);
+        act(() => {
+          vi.advanceTimersByTime(50);
+        });
+      }
+      expect(replace).toHaveBeenCalledTimes(1);
+
+      afterDelay();
+      expect(replace).toHaveBeenCalledTimes(2);
+      expect(window.location.hash).toBe(`#${GROUPS.map(({ anchor }) => anchor).join(',')}`);
+      expect(openStates()).toEqual([true, true, true]);
+    });
+
+    it('writes the fragment once per Expand All and Collapse All', async () => {
+      await mount('/?engine=duckdb');
+      const replace = vi.spyOn(window.history, 'replaceState');
+
+      setAllGroupsOpen(window, true);
+      expect(replace).toHaveBeenCalledTimes(1);
+      await tasks();
+      afterDelay();
+      expect(replace).toHaveBeenCalledTimes(1);
+      expect(window.location.hash).toBe('#tpc-h-nvme-sf-1,random-access,clickbench');
+
+      setAllGroupsOpen(window, false);
+      await tasks();
+      afterDelay();
+      expect(replace).toHaveBeenCalledTimes(2);
+      expect(window.location.href).not.toContain('#');
+      expect(window.location.search).toBe('?engine=duckdb');
+    });
+
+    it('keeps opening groups when the browser refuses a URL write', async () => {
+      await mount('/');
+      const replace = vi.spyOn(window.history, 'replaceState').mockImplementation(() => {
+        throw new DOMException('limit', 'SecurityError');
+      });
+
+      expect(() => setAllGroupsOpen(window, true)).not.toThrow();
+      await tasks();
+      afterDelay();
+      expect(replace).toHaveBeenCalled();
+      expect(openStates()).toEqual([true, true, true]);
+      expect(onError).not.toHaveBeenCalled();
+    });
+
+    it('on pagehide, saves under the URL a reload loads, then writes a pending set and saves under it too', async () => {
+      await mount('/');
+      await leavePending();
+      place(chartCard('c2'), 30);
+      const replace = vi.spyOn(window.history, 'replaceState');
+
+      window.dispatchEvent(new Event('pagehide'));
+      // A reload loads the URL as it was when the reload began.
+      expect(savedAt(FIRST_KEY)).toEqual({ kind: 'chart', slug: 'c2', offset: 30 });
+      // A traversal away keeps the write, and comes back to it.
+      expect(window.location.hash).toBe(`#${FIRST},clickbench`);
+      expect(savedAt(`bench-scroll:/#${FIRST},clickbench`)).toEqual({
+        kind: 'chart',
+        slug: 'c2',
+        offset: 30,
+      });
+
+      afterDelay();
+      expect(replace).toHaveBeenCalledTimes(1);
+    });
+
+    it('on pagehide with nothing pending, saves under the current URL only', async () => {
+      await mount('/');
+      await toggle(FIRST, true);
+      place(chartCard('c2'), 30);
+
+      window.dispatchEvent(new Event('pagehide'));
+      expect(savedAt(FIRST_KEY)).toEqual({ kind: 'chart', slug: 'c2', offset: 30 });
+      expect(sessionStorage.length).toBe(1);
+    });
+
+    it('writes a pending set before saving when a chart link is followed', async () => {
+      await mount('/');
+      await leavePending();
+      place(chartCard('c2'), 30);
+
+      // jsdom cannot navigate; stop the link after the page's own listener.
+      const stop = (event: Event): void => event.preventDefault();
+      document.addEventListener('click', stop);
+      chartCard('c2').querySelector('a')?.click();
+      document.removeEventListener('click', stop);
+      expect(window.location.hash).toBe(`#${FIRST},clickbench`);
+      expect(savedAt(`bench-scroll:/#${FIRST},clickbench`)).toEqual({
+        kind: 'chart',
+        slug: 'c2',
+        offset: 30,
+      });
+    });
+
+    it('reads a typed fragment before a pending write can overwrite it', async () => {
+      await mount('/');
+      await leavePending();
+
+      // The visitor types a fragment; the pending write comes due before the
+      // browser runs the `hashchange` task.
+      window.location.hash = 'random-access';
+      afterDelay();
+      expect(window.location.hash).toBe('#random-access');
+
+      await tasks();
+      expect(openStates()).toEqual([true, true, true]);
+      expect(window.location.hash).toBe(`#${FIRST},random-access,clickbench`);
+    });
+
+    it('writes the whole open set once after a hashchange that follows pending toggles', async () => {
+      await mount('/');
+      await leavePending();
+      const replace = vi.spyOn(window.history, 'replaceState');
+
+      window.location.hash = 'random-access';
+      await tasks();
+      expect(openStates()).toEqual([true, true, true]);
+      expect(window.location.hash).toBe(`#${FIRST},random-access,clickbench`);
+
+      afterDelay();
+      expect(replace).toHaveBeenCalledTimes(1);
+      expect(window.location.hash).toBe(`#${FIRST},random-access,clickbench`);
+    });
+
+    it('rewrites the fragment to the open set after a hashchange that toggles nothing', async () => {
+      await mount('/');
+      await toggle(FIRST, true);
+      afterDelay();
+      await toggle('clickbench', true);
+      expect(window.location.hash).toBe(`#${FIRST},clickbench`);
+
+      // Already open: no toggle fires, so only the hashchange can fix the URL.
+      window.location.hash = 'clickbench';
+      await tasks();
+      expect(window.location.hash).toBe(`#${FIRST},clickbench`);
+
+      window.location.hash = 'unknown';
+      await tasks();
+      expect(window.location.hash).toBe(`#${FIRST},clickbench`);
+      expect(openStates()).toEqual([true, false, true]);
+    });
+
+    it('drops a pending write and stops listening once unmounted', async () => {
+      await mount('/');
+      await leavePending();
+      await act(async () => {
+        root?.unmount();
+      });
+      root = null;
+      const replace = vi.spyOn(window.history, 'replaceState');
+
+      afterDelay();
+      await toggle('random-access', true);
+      afterDelay();
+      window.location.hash = 'clickbench';
+      await tasks();
+      afterDelay();
+      expect(replace).not.toHaveBeenCalled();
+
+      place(chartCard('c2'), 30);
+      window.dispatchEvent(new Event('pagehide'));
+      expect(sessionStorage.length).toBe(0);
+    });
   });
 
   describe('scroll restoration', () => {

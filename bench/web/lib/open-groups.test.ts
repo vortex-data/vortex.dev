@@ -7,14 +7,19 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { groupAnchors } from '@/lib/anchor';
 import {
+  cancelOpenFragmentSync,
+  flushOpenFragmentSync,
   formatOpenFragment,
   type GroupRef,
+  OPEN_FRAGMENT_SYNC_DELAY_MS,
   openAnchors,
   openGroupSlugs,
   openGroupsFromHash,
   pageGroups,
   parseOpenFragment,
+  resetOpenFragmentSync,
   resolveOpenAnchors,
+  scheduleOpenFragmentSync,
   scrollToGroup,
   setAllGroupsOpen,
   syncOpenFragment,
@@ -77,9 +82,14 @@ describe('resolveOpenAnchors', () => {
 });
 
 describe('the open groups on the page', () => {
-  beforeEach(seed);
+  beforeEach(() => {
+    seed();
+    resetOpenFragmentSync(window);
+  });
 
   afterEach(() => {
+    resetOpenFragmentSync(window);
+    vi.useRealTimers();
     vi.restoreAllMocks();
     window.history.replaceState(null, '', '/');
     document.body.innerHTML = '';
@@ -154,6 +164,7 @@ describe('the open groups on the page', () => {
   });
 
   it('setAllGroupsOpen opens every group and writes the fragment once', () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
     window.history.replaceState(null, '', '/?engine=duckdb');
     const replace = vi.spyOn(window.history, 'replaceState');
 
@@ -161,11 +172,141 @@ describe('the open groups on the page', () => {
     expect(GROUPS.map(({ anchor }) => disclosure(anchor).open)).toEqual([true, true, true]);
     expect(replace).toHaveBeenCalledTimes(1);
     expect(window.location.hash).toBe('#tpc-h-nvme-sf-1,random-access,clickbench');
+    // The toggles that follow find the fragment current.
+    scheduleOpenFragmentSync(window);
+    vi.advanceTimersByTime(OPEN_FRAGMENT_SYNC_DELAY_MS);
+    expect(replace).toHaveBeenCalledTimes(1);
 
     setAllGroupsOpen(window, false);
     expect(GROUPS.map(({ anchor }) => disclosure(anchor).open)).toEqual([false, false, false]);
     expect(replace).toHaveBeenCalledTimes(2);
     expect(window.location.hash).toBe('');
     expect(window.location.href.endsWith('/?engine=duckdb')).toBe(true);
+  });
+
+  // Safari refuses a document's 101st `replaceState` in 10 seconds, and Next.js
+  // makes a second call for each of ours, so a burst of toggles must become a
+  // few writes.
+  describe('the fragment write scheduler', () => {
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    });
+
+    /** Toggle `anchor` and schedule its write, as the page's toggle listener does. */
+    function toggle(anchor: string): void {
+      const details = disclosure(anchor);
+      details.open = !details.open;
+      scheduleOpenFragmentSync(window);
+    }
+
+    /** Leave a write pending: one toggle writes at once, the next waits. */
+    function leavePending(): void {
+      toggle('clickbench');
+      toggle('random-access');
+    }
+
+    it('writes an isolated toggle at once', () => {
+      toggle('clickbench');
+      expect(window.location.hash).toBe('#clickbench');
+    });
+
+    it('coalesces a burst of toggles into two writes: as it starts and once it stops', () => {
+      const replace = vi.spyOn(window.history, 'replaceState');
+      // 123 toggles, 50 ms apart: six seconds of fast clicking, which leaves
+      // each group toggled an odd number of times, so open.
+      for (let i = 0; i < 123; i++) {
+        toggle(GROUPS[i % 3]!.anchor);
+        vi.advanceTimersByTime(50);
+      }
+      expect(replace).toHaveBeenCalledTimes(1);
+
+      vi.advanceTimersByTime(OPEN_FRAGMENT_SYNC_DELAY_MS);
+      expect(replace).toHaveBeenCalledTimes(2);
+      expect(window.location.hash).toBe('#tpc-h-nvme-sf-1,random-access,clickbench');
+    });
+
+    it.each([50, 150, 290, 301, 450, 1000])(
+      'keeps writes at least the delay apart when toggles come every %i ms',
+      (interval) => {
+        const writes: number[] = [];
+        vi.spyOn(window.history, 'replaceState').mockImplementation(() => {
+          writes.push(Date.now());
+        });
+        const start = Date.now();
+        for (let i = 0; Date.now() - start < 10_000; i++) {
+          toggle(GROUPS[i % 3]!.anchor);
+          vi.advanceTimersByTime(interval);
+        }
+        vi.advanceTimersByTime(OPEN_FRAGMENT_SYNC_DELAY_MS);
+
+        expect(writes.length).toBeGreaterThan(0);
+        for (let i = 1; i < writes.length; i++) {
+          expect(writes[i]! - writes[i - 1]!).toBeGreaterThanOrEqual(OPEN_FRAGMENT_SYNC_DELAY_MS);
+        }
+        // At most 34 writes in 10 seconds: with Next.js's extra call per write,
+        // 68 calls, below Safari's 100.
+        expect(writes.length).toBeLessThanOrEqual(10_000 / OPEN_FRAGMENT_SYNC_DELAY_MS + 1);
+      },
+    );
+
+    it('waits for the delay after the last toggle of a burst', () => {
+      leavePending();
+      expect(window.location.hash).toBe('#clickbench');
+      vi.advanceTimersByTime(OPEN_FRAGMENT_SYNC_DELAY_MS - 1);
+      expect(window.location.hash).toBe('#clickbench');
+      vi.advanceTimersByTime(1);
+      expect(window.location.hash).toBe('#random-access,clickbench');
+    });
+
+    it('flush writes a pending set at once, and only once', () => {
+      leavePending();
+      const replace = vi.spyOn(window.history, 'replaceState');
+
+      expect(flushOpenFragmentSync(window)).toBe(true);
+      expect(window.location.hash).toBe('#random-access,clickbench');
+      expect(flushOpenFragmentSync(window)).toBe(false);
+      vi.advanceTimersByTime(OPEN_FRAGMENT_SYNC_DELAY_MS);
+      expect(replace).toHaveBeenCalledTimes(1);
+    });
+
+    it('flush writes nothing when nothing is pending', () => {
+      disclosure('clickbench').open = true;
+      const replace = vi.spyOn(window.history, 'replaceState');
+
+      expect(flushOpenFragmentSync(window)).toBe(false);
+      expect(replace).not.toHaveBeenCalled();
+    });
+
+    it('cancel drops a pending write', () => {
+      leavePending();
+      const replace = vi.spyOn(window.history, 'replaceState');
+
+      cancelOpenFragmentSync(window);
+      vi.advanceTimersByTime(OPEN_FRAGMENT_SYNC_DELAY_MS);
+      expect(flushOpenFragmentSync(window)).toBe(false);
+      expect(replace).not.toHaveBeenCalled();
+      expect(window.location.hash).toBe('#clickbench');
+    });
+
+    it('never overwrites a fragment that changed after the write was scheduled', () => {
+      leavePending();
+      // A fragment typed into the address bar, whose hashchange has not run yet.
+      window.history.replaceState(null, '', '/#tpc-h-nvme-sf-1');
+      const replace = vi.spyOn(window.history, 'replaceState');
+
+      vi.advanceTimersByTime(OPEN_FRAGMENT_SYNC_DELAY_MS);
+      expect(replace).not.toHaveBeenCalled();
+      expect(window.location.hash).toBe('#tpc-h-nvme-sf-1');
+    });
+
+    it('a write made at once leaves the pending one nothing to do', () => {
+      leavePending();
+      const replace = vi.spyOn(window.history, 'replaceState');
+
+      expect(syncOpenFragment(window)).toBe(true);
+      expect(flushOpenFragmentSync(window)).toBe(false);
+      vi.advanceTimersByTime(OPEN_FRAGMENT_SYNC_DELAY_MS);
+      expect(replace).toHaveBeenCalledTimes(1);
+    });
   });
 });

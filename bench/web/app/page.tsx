@@ -44,10 +44,10 @@ export const dynamic = 'force-dynamic';
  * see `lib/open-groups.ts`). The server never sees it, so `/` stays one CDN
  * cache entry. [`OpenGroupsScript`], right after the last group, opens the
  * listed groups before they paint; [`LandingState`] opens them after a client
- * navigation, writes the fragment on every open and close, and owns the
- * scroll: a reload or Back restores the element that was at the top of the
- * viewport (`lib/scroll-restore.ts`), and a fresh visit scrolls to the first
- * listed group.
+ * navigation, writes the fragment after opens and closes (once per burst of
+ * toggles), and owns the scroll: a reload or Back restores the element that
+ * was at the top of the viewport (`lib/scroll-restore.ts`), and a fresh visit
+ * scrolls to the first listed group.
  */
 export default async function Home({
   searchParams,

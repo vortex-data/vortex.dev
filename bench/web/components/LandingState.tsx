@@ -7,8 +7,11 @@ import { useEffect } from 'react';
 
 import { groupBodiesReady } from '@/lib/group-bodies';
 import {
+  cancelOpenFragmentSync,
+  flushOpenFragmentSync,
   openGroupSlugs,
   openGroupsFromHash,
+  scheduleOpenFragmentSync,
   scrollToGroup,
   syncOpenFragment,
 } from '@/lib/open-groups';
@@ -31,14 +34,19 @@ const CHART_LINK = 'a[href^="/chart/"]';
  * - **Fragment writer.** A capturing `toggle` listener on the document (the
  *   event does not bubble) rewrites the fragment after every group open or
  *   close, whoever caused it: a summary click, Expand All, the group nav or
- *   the browser. Writes go through [`syncOpenFragment`], so they never add a
- *   history entry, only happen when the URL would change, and survive a
- *   browser that refuses them.
+ *   the browser. It schedules the write ([`scheduleOpenFragmentSync`]), so
+ *   writes stay at least 300 ms apart and a burst of toggles is two writes:
+ *   Safari refuses more than 100 `replaceState` calls in 10 seconds, and
+ *   Next.js adds one call to each of ours. Writes never add a history entry,
+ *   only happen when the URL would change, and survive a browser that
+ *   refuses them. The scroll save (below) keys a position by the fragment, so
+ *   it makes a pending write first (see `onPageHide` for the reload case).
  * - **Fragment reader.** On mount it opens the groups the fragment lists. The
  *   pre-paint script ([`OpenGroupsScript`]) has usually done so already, and
  *   this is then a no-op; on a client navigation to `/` React never runs that
  *   script, and this opens them. A later `hashchange` (an in-page link, or a
- *   fragment typed into the address bar) opens what it lists, rewrites the
+ *   fragment typed into the address bar) first drops any pending write, so it
+ *   cannot overwrite the new fragment, then opens what it lists, rewrites the
  *   fragment to the whole open set (a group that was already open fires no
  *   `toggle`, so nothing else would) and scrolls to the first listed group.
  * - **Scroll** (`lib/scroll-restore.ts`). While mounted, the page sets
@@ -65,7 +73,7 @@ export function LandingState(): null {
     const onToggle = (event: Event): void => {
       const target = event.target as Element | null;
       if (target?.matches?.('details.group-disclosure')) {
-        syncOpenFragment(window);
+        scheduleOpenFragmentSync(window);
       }
     };
 
@@ -73,8 +81,15 @@ export function LandingState(): null {
     // of the page; leaving now must keep the position it is restoring.
     let pendingRestore: SavedScroll | null = null;
 
+    // The saved position is keyed by the fragment. A reload loads the URL as it
+    // was when the reload began, before this runs, so save under it first.
+    // Then make any pending fragment write and save under that too: a page
+    // left another way keeps the write, and Back returns to it.
     const onPageHide = (): void => {
       saveScroll(window, pendingRestore ?? undefined);
+      if (flushOpenFragmentSync(window)) {
+        saveScroll(window, pendingRestore ?? undefined);
+      }
     };
 
     // Capturing, so a handler that stops the click cannot skip the save; the
@@ -82,6 +97,7 @@ export function LandingState(): null {
     const onClick = (event: MouseEvent): void => {
       const target = event.target as Element | null;
       if (target?.closest?.(CHART_LINK)) {
+        flushOpenFragmentSync(window);
         saveScroll(window);
       }
     };
@@ -115,8 +131,10 @@ export function LandingState(): null {
       fragmentScroll();
     }
 
-    // A new fragment is the user's choice: it ends any restore still pending.
+    // A new fragment is the user's choice: it ends any restore still pending,
+    // and a pending write (of the open set before it) must not overwrite it.
     const onHashChange = (): void => {
+      cancelOpenFragmentSync(window);
       cancelRestore();
       const listedNow = openGroupsFromHash(document, window.location.hash);
       syncOpenFragment(window);
@@ -130,6 +148,9 @@ export function LandingState(): null {
     return () => {
       active = false;
       cancelRestore();
+      // Dropped, not made: after an unmount the URL may already be the next
+      // page's.
+      cancelOpenFragmentSync(window);
       document.removeEventListener('toggle', onToggle, true);
       document.removeEventListener('click', onClick, true);
       window.removeEventListener('pagehide', onPageHide);
