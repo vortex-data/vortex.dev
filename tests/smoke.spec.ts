@@ -531,3 +531,23 @@ test.describe("theme on client navigation", () => {
     expect(theme).toBe("dark");
   });
 });
+
+test.describe("logo banner under reduced motion", () => {
+  for (const width of [1440, 375]) {
+    test(`shows all twelve logos still at ${width}px`, async ({ page }) => {
+      await page.emulateMedia({ reducedMotion: "reduce" });
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto("/");
+      const logos = page.locator(
+        'section[aria-label="Who builds on Vortex"] img:not([alt=""])'
+      );
+      await expect(logos).toHaveCount(12);
+      for (const box of await logos.evaluateAll((imgs) =>
+        imgs.map((i) => i.getBoundingClientRect().toJSON())
+      )) {
+        expect(box.left).toBeGreaterThanOrEqual(0);
+        expect(box.right).toBeLessThanOrEqual(width);
+      }
+    });
+  }
+});

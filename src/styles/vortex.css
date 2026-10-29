@@ -140,9 +140,24 @@
     transform: translateX(-50%);
   }
 }
+/* Reduced motion: no marquee. Every logo sits still in wrapped rows, and the copies that only fed
+   the loop go, so none is left past the strip's edge. */
 @media (prefers-reduced-motion: reduce) {
+  .vx-logos-strip {
+    mask-image: none;
+  }
   .vx-logos-track {
     animation: none;
+    width: auto;
+  }
+  .vx-logos-set {
+    flex-wrap: wrap;
+    height: auto;
+    row-gap: var(--space-24);
+    padding-right: 0;
+  }
+  .vx-logos-set[aria-hidden="true"] {
+    display: none;
   }
 }
 
