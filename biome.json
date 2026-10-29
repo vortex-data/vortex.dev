@@ -9,7 +9,6 @@
     "ignoreUnknown": true,
     "includes": [
       "**",
-      "!bench",
       "!src/content",
       "!src/vendor",
       "!public",
@@ -19,6 +18,8 @@
       "!out",
       "!build",
       "!next-env.d.ts",
+      "!bench/web/.next",
+      "!bench/web/next-env.d.ts",
       "!src/app/globals.css",
       "!src/styles/vortex-tokens.css",
       "!src/styles/vortex.css",
@@ -94,6 +95,43 @@
       }
     }
   },
+  "overrides": [
+    {
+      "includes": ["bench/**"],
+      "formatter": {
+        "lineWidth": 100
+      },
+      "javascript": {
+        "formatter": {
+          "quoteStyle": "single",
+          "jsxQuoteStyle": "double",
+          "trailingCommas": "all"
+        }
+      },
+      "css": {
+        "formatter": {
+          "quoteStyle": "single"
+        }
+      },
+      "linter": {
+        "rules": {
+          "correctness": {
+            "useExhaustiveDependencies": "error"
+          },
+          "complexity": {
+            "noImportantStyles": "off"
+          }
+        }
+      },
+      "assist": {
+        "actions": {
+          "source": {
+            "organizeImports": "off"
+          }
+        }
+      }
+    }
+  ],
   "assist": {
     "enabled": true,
     "actions": {

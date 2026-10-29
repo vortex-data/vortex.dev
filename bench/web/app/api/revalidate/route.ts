@@ -26,7 +26,9 @@ export async function POST(request: Request): Promise<NextResponse> {
   if (provided === null || !constantTimeEquals(provided, expected)) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
-  revalidateTag(BENCH_DATA_TAG);
+  // `{ expire: 0 }` drops the entries at once, as the one-argument call did before
+  // Next.js 16. The `'max'` profile would serve the stale data once after an ingest.
+  revalidateTag(BENCH_DATA_TAG, { expire: 0 });
   return NextResponse.json({ revalidated: true }, { status: 200 });
 }
 

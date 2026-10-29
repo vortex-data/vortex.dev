@@ -119,7 +119,6 @@ export function Header({
             <MenuIcon size={18} />
           </button>
           <Link className="logo-link" href="/" aria-label="bench.vortex.dev home">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               className="site-logo logo-light"
               src="/Vortex_Black_NoBG.svg"
@@ -127,7 +126,6 @@ export function Header({
               width={654}
               height={190}
             />
-            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               className="site-logo logo-dark"
               src="/Vortex_White_NoBG.svg"
@@ -139,6 +137,7 @@ export function Header({
           <h1 className="site-title">Vortex Benchmarks</h1>
         </div>
         <div className="header-center">
+          {/* biome-ignore lint/a11y/useAriaPropsSupportedByRole: deliberate markup, as bench has always rendered the nav controls. */}
           <div
             className={`nav-controls${navOpen ? ' nav-controls--open' : ''}`}
             id="bench-nav-controls"

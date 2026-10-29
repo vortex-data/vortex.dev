@@ -75,12 +75,7 @@
 
 /* Geist, which bench names but never loads. Load it with the site's font loader too. */
 body {
-  font-family:
-    'Geist',
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    sans-serif;
+  font-family: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 /* 6px cards, 4px controls. Circles (the info icon, spinners, swatches) keep their 50%. */

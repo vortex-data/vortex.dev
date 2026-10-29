@@ -7,7 +7,13 @@ import { pathToFileURL } from 'node:url';
 import { setTimeout } from 'node:timers/promises';
 
 /** Verify the public read paths within a three-minute deadline. */
-export async function verifyDeployment(base, sha, environment, fetchImpl = fetch, sleep = setTimeout) {
+export async function verifyDeployment(
+  base,
+  sha,
+  environment,
+  fetchImpl = fetch,
+  sleep = setTimeout,
+) {
   assert.match(sha, /^[0-9a-f]{40}$/);
   assert.ok(['preview', 'production'].includes(environment));
   const origin = new URL(base);
@@ -26,9 +32,12 @@ export async function verifyDeployment(base, sha, environment, fetchImpl = fetch
           signal: AbortSignal.timeout(Math.min(20_000, remaining)),
         });
         const location = response.headers.get('location');
-        const redirect = location && [301, 302, 303, 307, 308].includes(response.status)
-          ? new URL(location, origin) : null;
-        const vercelSso = redirect?.origin === 'https://vercel.com' && redirect.pathname === '/sso-api';
+        const redirect =
+          location && [301, 302, 303, 307, 308].includes(response.status)
+            ? new URL(location, origin)
+            : null;
+        const vercelSso =
+          redirect?.origin === 'https://vercel.com' && redirect.pathname === '/sso-api';
         if ([401, 403].includes(response.status) || vercelSso) {
           if (environment === 'preview') return 'protected';
           throw new Error(`Public production route ${path} returned ${response.status}`);
@@ -54,12 +63,19 @@ export async function verifyDeployment(base, sha, environment, fetchImpl = fetch
 
   function chart(body) {
     assert.ok(Array.isArray(body.commits), 'Chart commits must be an array');
-    assert.ok(body.series && typeof body.series === 'object' && !Array.isArray(body.series),
-      'Chart series must be an object');
+    assert.ok(
+      body.series && typeof body.series === 'object' && !Array.isArray(body.series),
+      'Chart series must be an object',
+    );
     for (const values of Object.values(body.series)) {
-      assert.ok(Array.isArray(values) && values.length === body.commits.length &&
-        values.every((value) => value === null || (typeof value === 'number' && Number.isFinite(value))),
-      'Chart series must align with its commit window');
+      assert.ok(
+        Array.isArray(values) &&
+          values.length === body.commits.length &&
+          values.every(
+            (value) => value === null || (typeof value === 'number' && Number.isFinite(value)),
+          ),
+        'Chart series must align with its commit window',
+      );
     }
   }
 
@@ -70,8 +86,10 @@ export async function verifyDeployment(base, sha, environment, fetchImpl = fetch
   });
   if (health === 'protected') return 'protected';
   const groups = await json('/api/groups', (body) => {
-    assert.ok(Array.isArray(body.groups) && body.groups.some((group) => group.charts?.length),
-      'No populated groups');
+    assert.ok(
+      Array.isArray(body.groups) && body.groups.some((group) => group.charts?.length),
+      'No populated groups',
+    );
   });
   if (groups === 'protected') return 'protected';
   const group = groups.groups.find((item) => item.charts?.length);
@@ -88,9 +106,12 @@ export async function verifyDeployment(base, sha, environment, fetchImpl = fetch
     const result = await request(path, async (response) => {
       assert.match(response.headers.get('content-type') ?? '', /text\/html/);
       const html = await response.text();
-      assert.ok(html.includes(path === '/'
-        ? 'data-role="global-filter-bar"'
-        : `data-chart-slug="${chartSlug}"`), `${path}: rendered page content is missing`);
+      assert.ok(
+        html.includes(
+          path === '/' ? 'data-role="global-filter-bar"' : `data-chart-slug="${chartSlug}"`,
+        ),
+        `${path}: rendered page content is missing`,
+      );
     });
     if (result === 'protected') return 'protected';
   }
@@ -98,7 +119,11 @@ export async function verifyDeployment(base, sha, environment, fetchImpl = fetch
   for (const path of ['/', `/api/chart/${chartSlug}`]) {
     const result = await request(path, async (response) => {
       await response.arrayBuffer();
-      assert.equal(response.headers.get('x-vercel-cache'), 'HIT', `${path}: CDN did not report HIT`);
+      assert.equal(
+        response.headers.get('x-vercel-cache'),
+        'HIT',
+        `${path}: CDN did not report HIT`,
+      );
     });
     if (result === 'protected') return 'protected';
   }
@@ -108,12 +133,14 @@ export async function verifyDeployment(base, sha, environment, fetchImpl = fetch
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
     const result = await verifyDeployment(...process.argv.slice(2));
-    const message = result === 'protected'
-      ? 'Deployment created; preview protection blocked verification. Health, build identity, and CDN caching remain unverified.'
-      : 'Verified build SHA, health, representative group/chart JSON, HTML pages, and CDN HIT.';
+    const message =
+      result === 'protected'
+        ? 'Deployment created; preview protection blocked verification. Health, build identity, and CDN caching remain unverified.'
+        : 'Verified build SHA, health, representative group/chart JSON, HTML pages, and CDN HIT.';
     console.log(`${result === 'protected' ? '::notice::' : ''}${message}`);
     if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `result=${result}\n`);
-    if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${message}\n`);
+    if (process.env.GITHUB_STEP_SUMMARY)
+      appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${message}\n`);
   } catch (error) {
     console.error(error.message);
     process.exitCode = 1;
