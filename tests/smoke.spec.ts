@@ -507,10 +507,16 @@ test.describe("footer", () => {
     await expect(charter).toHaveAttribute("href", "/charter.pdf");
   });
 
-  test("credits the donor under the LF line", async ({ page }) => {
+  test("credits the donor right after the LF line", async ({ page }) => {
     await page.goto("/");
     const credit = page.locator("footer .vx-footer-credit");
     await expect(credit).toHaveText("Donated by Spiral.");
+    await expect(page.locator("footer .vx-footer-text")).toContainText(
+      "lfprojects.org/policies. Donated by Spiral."
+    );
+    expect(await credit.evaluate((e) => getComputedStyle(e).display)).toBe(
+      "inline"
+    );
     await expect(credit.getByRole("link", { name: "Spiral" })).toHaveAttribute(
       "href",
       "https://spiraldb.com"
