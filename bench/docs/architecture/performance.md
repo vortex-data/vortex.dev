@@ -324,7 +324,14 @@ streamed the loading view (511c316):
 "Groups laid out" is the first animation frame in which a group section has
 layout. In production a miss costs the cold database read, seconds after an idle
 gap (see "The cost being hidden"); the CDN and the 24-hour Data Cache backstop
-keep misses rare.
+keep misses rare, and an ingest causes none: it marks the entries stale rather
+than dropping them (see "Refresh on ingest"), so the next render of `/` takes
+the plain-HTML path with the previous data.
+
+The 150 ms threshold was measured against the local Data Cache, where a hit
+answers in a few milliseconds. Check it against Vercel's function logs on a
+preview deployment before relying on it: a hit there reads the cache over the
+network.
 
 ### Visual downsampling (LTTB)
 
