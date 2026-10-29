@@ -402,8 +402,11 @@ export function Chart({ slug, name, index, groupSlug, initialPayload }: ChartIsl
           onClick={() => controllerRef.current?.onWindowChipClick()}
         />
       </h3>
+      {/* Without JavaScript nothing draws the chart, so its controls and its
+          canvas carry `data-requires-js` and are hidden (globals.css); the
+          title link and the page's `<noscript>` note remain. */}
       {/* biome-ignore lint/a11y/useAriaPropsSupportedByRole: deliberate markup, as bench has always rendered the chart toolbar. */}
-      <div className="toolbar toolbar--card" aria-label="Chart controls">
+      <div className="toolbar toolbar--card" aria-label="Chart controls" data-requires-js>
         {/* biome-ignore lint/a11y/useSemanticElements: a fieldset would change the toolbar's layout. */}
         <div className="toolbar-group" role="group" aria-label="Visible commits">
           <span className="toolbar-label">Show</span>
@@ -444,7 +447,7 @@ export function Chart({ slug, name, index, groupSlug, initialPayload }: ChartIsl
         </div>
       </div>
       <div className="chart-tooltip-host" ref={tooltipHostRef} />
-      <div className="chart-wrap">
+      <div className="chart-wrap" data-requires-js>
         {!constructed && !error && (
           <div className="chart-placeholder" role="status" aria-live="polite">
             <span className="chart-spinner" aria-hidden="true" />
@@ -465,6 +468,7 @@ export function Chart({ slug, name, index, groupSlug, initialPayload }: ChartIsl
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={100}
+        data-requires-js
         ref={stripRef}
       >
         <div className="chart-range-strip-track">

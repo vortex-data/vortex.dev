@@ -34,6 +34,13 @@ describe('Chart (server-rendered card markup)', () => {
     expect(html).toMatch(/toolbar-btn toolbar-btn--active[^>]*data-y="linear"/);
   });
 
+  it('marks its controls and its canvas as needing JavaScript, but not its title link', () => {
+    expect(html).toMatch(/class="toolbar toolbar--card"[^>]*data-requires-js="true"/);
+    expect(html).toContain('<div class="chart-wrap" data-requires-js="true">');
+    expect(html).toMatch(/data-role="range-strip"[^>]*data-requires-js="true"/);
+    expect(html).not.toMatch(/<a [^>]*data-requires-js/);
+  });
+
   it('renders the tooltip host and the range strip with both handles', () => {
     expect(html).toContain('class="chart-tooltip-host"');
     expect(html).toContain('data-role="range-strip"');

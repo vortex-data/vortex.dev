@@ -53,7 +53,8 @@ export function jumpToGroup(slug: string, doc: Document = document): boolean {
  * Toggle-driven (not hover) so it works on touch and keyboard, mirroring the
  * header's hamburger nav ([`Header`]): `aria-expanded` / `aria-controls` on the
  * toggle, with outside-click and Escape closing the panel. Renders nothing when
- * there are no groups.
+ * there are no groups. Without JavaScript neither the toggle nor the entries
+ * work, so the whole menu carries `data-requires-js` and is hidden.
  */
 export function GroupNav({ groups }: { groups: GroupNavItem[] }) {
   const [open, setOpen] = useState(false);
@@ -89,7 +90,7 @@ export function GroupNav({ groups }: { groups: GroupNavItem[] }) {
   }
 
   return (
-    <nav className="group-nav" aria-label="Jump to group">
+    <nav className="group-nav" aria-label="Jump to group" data-requires-js>
       <button
         className="control-btn group-nav-toggle"
         type="button"

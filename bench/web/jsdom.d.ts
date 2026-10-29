@@ -3,9 +3,10 @@
 
 // Ambient types for the part of jsdom that tests construct directly. jsdom
 // (a dev dependency, through vitest's jsdom environment) ships no types, and
-// bench adds no `@types/jsdom` dependency for one test: the pre-paint script
-// test (`components/OpenGroupsScript.test.tsx`) builds its own JSDOM so the
-// script runs while the page parses. Extend this when a test needs more.
+// bench adds no `@types/jsdom` dependency for the two tests that build their
+// own JSDOM so a script runs while the page parses: the pre-paint script test
+// (`components/OpenGroupsScript.test.tsx`) and the root layout's
+// (`app/layout.test.ts`). Extend this when a test needs more.
 declare module 'jsdom' {
   /** Receives the page's console calls and jsdom's own errors. */
   export class VirtualConsole {

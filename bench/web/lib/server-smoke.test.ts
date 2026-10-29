@@ -127,8 +127,11 @@ describe.skipIf(!databaseAvailable || !BUILD_PRESENT)(
       expect(bootstrap).toBeGreaterThan(0);
       expect(bootstrap).toBeLessThan(html.indexOf('class="group-details"'));
       expect(finish).toBeGreaterThan(html.lastIndexOf('class="group-details"'));
-      // The pre-paint theme bootstrap is inlined in <head>.
+      // The pre-paint theme bootstrap is inlined in <head>, and swaps the
+      // root's `no-js` class, which hides the controls that need JavaScript.
       expect(html).toContain('localStorage.getItem("bench-theme")');
+      expect(html).toContain('<html lang="en" class="no-js"');
+      expect(html).toContain('data-role="theme-toggle" data-requires-js="true"');
     });
 
     it('serves the chart permalink page with the v3 title and meta line', async () => {
