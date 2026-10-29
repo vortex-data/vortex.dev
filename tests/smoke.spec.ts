@@ -503,3 +503,31 @@ test.describe("narrowest phones", () => {
     expect(gap).toBeLessThan(2);
   });
 });
+
+test.describe("theme on client navigation", () => {
+  test("the destination's theme is set before its page paints", async ({
+    page
+  }) => {
+    await page.goto("/blog");
+    await page.evaluate(() => localStorage.setItem("vx-theme", "light"));
+    await page.reload();
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+    // A MutationObserver runs after React commits the new route but before
+    // the browser paints it, so it sees the theme the first frame uses.
+    await page.evaluate(() => {
+      const w = window as unknown as { themeAtCommit?: string };
+      new MutationObserver((_, observer) => {
+        if (document.querySelector("h1.vx-display")) {
+          w.themeAtCommit = document.documentElement.dataset.theme ?? "";
+          observer.disconnect();
+        }
+      }).observe(document.body, { childList: true, subtree: true });
+    });
+    await page.locator('header a[href="/"]').first().click();
+    await expect(page.locator("h1.vx-display")).toBeVisible();
+    const theme = await page.evaluate(
+      () => (window as unknown as { themeAtCommit?: string }).themeAtCommit
+    );
+    expect(theme).toBe("dark");
+  });
+});
