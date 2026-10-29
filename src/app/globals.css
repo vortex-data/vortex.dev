@@ -199,6 +199,14 @@ body {
   }
 }
 
+/* Without the switch the row needs about 330px, so on the narrowest phones
+   every page's button drops the repository name too. */
+@media (max-width: 360px) {
+  .site-header-repo {
+    display: none;
+  }
+}
+
 /* ------------------------------------------------------------------ blog
    The blog's page frame, and the parts the design system has no card for. */
 

@@ -468,3 +468,38 @@ test.describe("mobile layout", () => {
     expect(scrollWidth).toBeLessThanOrEqual(clientWidth);
   });
 });
+
+test.describe("narrowest phones", () => {
+  test.use({ viewport: { width: 320, height: 640 } });
+
+  for (const path of ["/", "/blog"]) {
+    test(`${path} has no horizontal scroll at 320px`, async ({ page }) => {
+      await page.goto(path);
+      const { scrollWidth, clientWidth } = await page.evaluate(() => ({
+        scrollWidth: document.documentElement.scrollWidth,
+        clientWidth: document.documentElement.clientWidth
+      }));
+      expect(scrollWidth).toBeLessThanOrEqual(clientWidth);
+    });
+  }
+
+  test("the GitHub button shares the wordmark's row at 320px", async ({
+    page
+  }) => {
+    await page.goto("/");
+    // Same row: the two groups' vertical centres line up (the header
+    // centres a 24px wordmark against a 32px button).
+    const middle = (selector: string) =>
+      page
+        .locator(selector)
+        .first()
+        .evaluate((e) => {
+          const r = e.getBoundingClientRect();
+          return r.top + r.height / 2;
+        });
+    const gap = Math.abs(
+      (await middle(".vx-header-end")) - (await middle(".vx-header-start"))
+    );
+    expect(gap).toBeLessThan(2);
+  });
+});
