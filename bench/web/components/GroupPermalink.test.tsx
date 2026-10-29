@@ -174,7 +174,6 @@ describe('GroupPermalink click behavior', () => {
     ['Ctrl', { ctrlKey: true }],
     ['Shift', { shiftKey: true }],
     ['Alt', { altKey: true }],
-    ['middle-button', { button: 1 }],
   ])('leaves a %s click to the browser, so the link opens as asked', async (_, init) => {
     const { link, details } = mount();
     const event = new MouseEvent('click', { bubbles: true, cancelable: true, ...init });

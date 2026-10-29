@@ -61,10 +61,11 @@ export function groupPermalinkUrl(
  * button it used to be) copies the group's permalink (see
  * [`groupPermalinkUrl`]) to the clipboard instead, including its current
  * series overrides, and once the copy has succeeded swaps the link glyph for
- * a checkmark for a moment as confirmation. A click with a modifier key, or
- * with a button other than the main one, stays a link click, so opening the
- * group in a new tab or window still works. The server and the first client
- * render both carry the link wording, so hydration matches.
+ * a checkmark for a moment as confirmation. A click with a modifier key stays
+ * a link click, so opening the group in a new tab or window still works (a
+ * middle click arrives as `auxclick`, which this never handles). The server
+ * and the first client render both carry the link wording, so hydration
+ * matches.
  *
  * It leaves the address bar alone: the fragment there holds the page's open
  * groups (`lib/open-groups.ts`), not a single group's link. Where the browser
@@ -146,9 +147,9 @@ export function GroupPermalink({
       title={copies ? 'Copy link to this group' : 'Link to this group'}
       aria-label={`${copies ? 'Copy link' : 'Link'} to ${groupName}`}
       onClick={(e) => {
-        // A modified or non-main-button click opens the link as the reader
-        // asked (a new tab or window).
-        if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
+        // A modified click opens the link as the reader asked (a new tab or
+        // window).
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
           return;
         }
         // Copy instead of following the link, and keep the click from the
