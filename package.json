@@ -54,6 +54,7 @@
     "sharp"
   ],
   "overrides": {
+    "postcss-selector-parser": "^6.1.5",
     "sharp": "^0.35.5",
     "zod": "^4.6.7"
   }
