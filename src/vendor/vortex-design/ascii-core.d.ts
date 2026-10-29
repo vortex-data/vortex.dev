@@ -24,3 +24,13 @@ export function markPalette(scheme: string): {
   field: string;
   brush: [string, string];
 };
+
+/**
+ * Reads the mark's render back without stalling the GPU every frame: the first
+ * frame after `resize` reads at once, then one async read is in flight at a time.
+ */
+export function frameReader(gpu: {
+  render: () => void;
+  readSync: (buf: Uint8Array) => void;
+  readAsync?: ((buf: Uint8Array) => Promise<unknown>) | null;
+}): { resize(bytes: number): void; next(): Uint8Array };

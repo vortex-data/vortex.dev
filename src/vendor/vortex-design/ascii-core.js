@@ -62,3 +62,66 @@ export function markPalette(scheme) {
     brush: ["--accent", "--accent-ink"],
   };
 }
+
+/**
+ * Reads the mark's render back for the character grid without stalling the GPU every frame.
+ * `render()` draws the scene into the render target. `readSync(buf)` reads it into `buf` at once,
+ * so the page waits for the GPU. `readAsync(buf)`, when the renderer has one (WebGL2's pixel pack
+ * buffer and fence), starts a read and resolves once `buf` holds it. Call `resize(bytes)` whenever
+ * the target changes size, then `next()` once a frame: it returns the newest complete pixels.
+ * The first frame after a resize reads at once, so the mark never shows an empty field. After it,
+ * one read is in flight at a time and the scene renders only when a read starts, so the grid lags
+ * the model by a frame or so. A failed async read falls back to reading at once.
+ */
+export function frameReader({ render, readSync, readAsync = null }) {
+  let front = new Uint8Array(0);
+  let back = front;
+  let gen = 0;
+  let busy = false;
+  let stale = true;
+  let read = readAsync;
+  return {
+    resize(bytes) {
+      front = new Uint8Array(bytes);
+      back = new Uint8Array(bytes);
+      gen++;
+      busy = false;
+      stale = true;
+    },
+    next() {
+      if (stale || !read) {
+        render();
+        readSync(front);
+        stale = false;
+        return front;
+      }
+      if (!busy) {
+        const g = gen;
+        const buf = back;
+        busy = true;
+        render();
+        // The read starts now, right after the render, and lands on a later frame.
+        let landed;
+        try {
+          landed = Promise.resolve(read(buf));
+        } catch (err) {
+          landed = Promise.reject(err);
+        }
+        landed.then(
+            () => {
+              if (g !== gen) return;
+              back = front;
+              front = buf;
+              busy = false;
+            },
+            () => {
+              if (g !== gen) return;
+              read = null;
+              busy = false;
+            },
+          );
+      }
+      return front;
+    },
+  };
+}

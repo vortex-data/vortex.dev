@@ -3,7 +3,7 @@
 // Under reduced motion it draws one still frame and ignores the pointer. Without WebGL, or when
 // three.js cannot load, it shows the static symbol. It draws in the host's colour scheme and
 // follows a change of data-theme on the page.
-import { brushStrength, fitFov, hexDigit, markPalette, rampChar } from "./ascii-core.js";
+import { brushStrength, fitFov, frameReader, hexDigit, markPalette, rampChar } from "./ascii-core.js";
 import { decode } from "./vortex-mark-geometry.js";
 
 const SCALE = 3.0;
@@ -160,8 +160,36 @@ export async function mountAsciiMark(host, opts = {}) {
   let W = 0;
   let H = 0;
   let target = null;
-  let pixels = null;
+  // The grid reads the render back from the GPU. Where three.js has an async read (WebGL2's pixel
+  // pack buffer and a fence), the page never waits for the GPU after the first frame: the grid
+  // draws from the newest read that has landed. Elsewhere, and for the still frame under reduced
+  // motion, it reads at once. three.js leaves its pack buffer bound while a read is in flight,
+  // which would make a later synchronous read fail, so it is unbound at once.
+  const gl = renderer.getContext();
+  const canReadAsync =
+    !reduced && typeof renderer.readRenderTargetPixelsAsync === "function" && typeof WebGL2RenderingContext !== "undefined" && gl instanceof WebGL2RenderingContext;
+  const reader = frameReader({
+    render: () => {
+      renderer.setRenderTarget(target);
+      renderer.render(scene, camera);
+    },
+    readSync: (buf) => {
+      renderer.readRenderTargetPixels(target, 0, 0, cols * SUB, rows * SUB, buf);
+      renderer.setRenderTarget(null);
+    },
+    readAsync: canReadAsync
+      ? (buf) => {
+          const landed = renderer.readRenderTargetPixelsAsync(target, 0, 0, cols * SUB, rows * SUB, buf);
+          gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
+          renderer.setRenderTarget(null);
+          return landed;
+        }
+      : null,
+  });
+  // Lays the grid out for the host's size. A call at the same size changes nothing, so the
+  // ResizeObserver's first callback costs no second synchronous read. Returns whether it changed.
   const layout = () => {
+    if (target && host.clientWidth === W && host.clientHeight === H) return false;
     W = host.clientWidth;
     H = host.clientHeight;
     const dpr = Math.min(2, devicePixelRatio || 1);
@@ -175,10 +203,11 @@ export async function mountAsciiMark(host, opts = {}) {
     rows = Math.max(1, Math.floor(H / o.lineHeight));
     target?.dispose();
     target = new THREE.WebGLRenderTarget(cols * SUB, rows * SUB);
-    pixels = new Uint8Array(cols * SUB * rows * SUB * 4);
+    reader.resize(cols * SUB * rows * SUB * 4);
     camera.aspect = (cols * cw) / (rows * o.lineHeight);
     camera.fov = fitFov(30, camera.aspect);
     camera.updateProjectionMatrix();
+    return true;
   };
   layout();
 
@@ -203,10 +232,7 @@ export async function mountAsciiMark(host, opts = {}) {
   };
 
   const draw = (now) => {
-    renderer.setRenderTarget(target);
-    renderer.render(scene, camera);
-    renderer.readRenderTargetPixels(target, 0, 0, cols * SUB, rows * SUB, pixels);
-    renderer.setRenderTarget(null);
+    const pixels = reader.next();
     trail = trail.filter((s) => now - s.born < TRAIL_MS);
     const marks = [
       ...trail.map((s) => {
@@ -253,8 +279,7 @@ export async function mountAsciiMark(host, opts = {}) {
     draw(performance.now());
     repaints.push(() => draw(performance.now()));
     const ro = new ResizeObserver(() => {
-      layout();
-      draw(performance.now());
+      if (layout()) draw(performance.now());
     });
     ro.observe(host);
     cleanups.push(() => ro.disconnect());
