@@ -132,7 +132,7 @@ describe('GroupSection', () => {
     );
     expect(html).toContain('class="group-permalink"');
     expect(html).toContain('href="/#random-access"');
-    expect(html).toContain('aria-label="Copy link to Random Access"');
+    expect(html).toContain('aria-label="Link to Random Access"');
   });
 
   it('renders the summary card after the disclosure, so a collapsed group shows it', () => {

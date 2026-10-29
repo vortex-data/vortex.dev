@@ -24,6 +24,17 @@ describe('the stylesheet without JavaScript', () => {
     expect(rule(css, '.group-disclosure:not([open]) ~ .group-body')).toMatch(/display:\s*none/);
   });
 
+  it('makes a group summary read as a plain heading, with no chevron, pointer, hover or open state', () => {
+    expect(rule(css, '.no-js .group-summary')).toMatch(/cursor:\s*default/);
+    expect(rule(css, '.no-js .group-summary-row::before')).toMatch(/display:\s*none/);
+    expect(rule(css, '.no-js .group-summary:hover .group-summary-row')).toMatch(
+      /background:\s*none/,
+    );
+    expect(rule(css, '.no-js .group-disclosure[open] ~ .benchmark-scores-summary')).toMatch(
+      /border-bottom:\s*0/,
+    );
+  });
+
   it('shows the mobile nav in the header row, since no script can open its panel', () => {
     const mobile = css.match(/@media\s*\(max-width:\s*768px\)\s*\{(?:[^{}]|\{[^{}]*\})*\}/g);
     expect(mobile).not.toBeNull();

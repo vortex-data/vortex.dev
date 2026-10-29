@@ -83,6 +83,12 @@ export default async function Home({
           <p className="empty">No data ingested yet.</p>
         ) : (
           <>
+            {/* Shown only with JavaScript off, above the groups. */}
+            <noscript>
+              <p className="no-script no-script--lead">
+                These summaries are complete without JavaScript. The charts need it.
+              </p>
+            </noscript>
             {/* Its scripts sit before the first group and after the last, so
                 it opens each of the fragment's groups before it paints. */}
             <OpenGroupsScript>
@@ -111,10 +117,6 @@ export default async function Home({
                 );
               })}
             </OpenGroupsScript>
-            {/* Shown only with JavaScript off, after the groups. */}
-            <noscript>
-              <p className="no-script">JavaScript is required to render the charts.</p>
-            </noscript>
           </>
         )}
       </main>

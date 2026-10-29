@@ -82,6 +82,15 @@ describe('the landing page', () => {
     expect(html.match(/class="benchmark-scores-summary/g)).toHaveLength(GROUPS.length);
   });
 
+  it('opens <main> with a no-JavaScript note that says the summaries are complete', async () => {
+    const html = await landingHtml();
+    const note = html.indexOf(
+      '<noscript><p class="no-script no-script--lead">These summaries are complete without JavaScript. The charts need it.</p></noscript>',
+    );
+    expect(note).toBeGreaterThan(html.indexOf('<main>'));
+    expect(note).toBeLessThan(html.indexOf('class="group-details"'));
+  });
+
   it('places the open-groups bootstrap before the first group and its finish step after the last', async () => {
     const html = await landingHtml();
     const bootstrap = html.indexOf('data-role="open-groups-bootstrap"');

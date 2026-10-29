@@ -56,11 +56,15 @@ export function groupPermalinkUrl(
 /**
  * The copy-link control in a group's summary header: a real link to the group
  * (`/#<anchor>`). Without JavaScript it is a plain link, which a reader can
- * follow or copy. With JavaScript, clicking it (or pressing Enter, or Space
- * as on the button it used to be) copies the group's permalink (see
+ * follow or copy, named "Link to <group>". Once it has mounted, its name and
+ * title say "Copy link", and a plain click (or Enter, or Space as on the
+ * button it used to be) copies the group's permalink (see
  * [`groupPermalinkUrl`]) to the clipboard instead, including its current
  * series overrides, and once the copy has succeeded swaps the link glyph for
- * a checkmark for a moment as confirmation.
+ * a checkmark for a moment as confirmation. A click with a modifier key, or
+ * with a button other than the main one, stays a link click, so opening the
+ * group in a new tab or window still works. The server and the first client
+ * render both carry the link wording, so hydration matches.
  *
  * It leaves the address bar alone: the fragment there holds the page's open
  * groups (`lib/open-groups.ts`), not a single group's link. Where the browser
@@ -82,14 +86,18 @@ export function GroupPermalink({
   groupSlug: string;
 }) {
   const [copied, setCopied] = useState(false);
+  // False on the server and in the first client render, so both name a plain
+  // link; true once mounted, when a click copies.
+  const [copies, setCopies] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mountedRef = useRef(false);
 
-  // Cancel a pending feedback reset on unmount so it never fires after the
-  // island is gone, and note the unmount so a copy that settles later shows
-  // nothing.
+  // Switch to the copy wording, cancel a pending feedback reset on unmount so
+  // it never fires after the island is gone, and note the unmount so a copy
+  // that settles later shows nothing.
   useEffect(() => {
     mountedRef.current = true;
+    setCopies(true);
     return () => {
       mountedRef.current = false;
       if (timerRef.current !== null) {
@@ -135,9 +143,14 @@ export function GroupPermalink({
     <a
       className={`group-permalink${copied ? ' group-permalink--copied' : ''}`}
       href={`/#${encodeURIComponent(anchor)}`}
-      title="Copy link to this group"
-      aria-label={`Copy link to ${groupName}`}
+      title={copies ? 'Copy link to this group' : 'Link to this group'}
+      aria-label={`${copies ? 'Copy link' : 'Link'} to ${groupName}`}
       onClick={(e) => {
+        // A modified or non-main-button click opens the link as the reader
+        // asked (a new tab or window).
+        if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
+          return;
+        }
         // Copy instead of following the link, and keep the click from the
         // <summary>, which would toggle the group.
         e.preventDefault();

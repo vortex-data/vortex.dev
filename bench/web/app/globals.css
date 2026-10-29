@@ -689,6 +689,23 @@ main {
   display: none;
 }
 
+/* Without JavaScript a group's summary still toggles its <details>, but
+ * opening it shows nothing more, so the row reads as a plain heading: no
+ * chevron, no pointer, no hover, and no open state. CSS cannot remove its
+ * Tab stop. */
+.no-js .group-summary {
+  cursor: default;
+}
+.no-js .group-summary-row::before {
+  display: none;
+}
+.no-js .group-summary:hover .group-summary-row {
+  background: none;
+}
+.no-js .group-disclosure[open] ~ .benchmark-scores-summary {
+  border-bottom: 0;
+}
+
 .group-body > .chart-grid .chart-card:last-child {
   margin-bottom: 0;
 }
@@ -1390,6 +1407,10 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
   background: var(--code-bg);
   color: var(--muted);
   font-size: 0.875rem;
+}
+/* The landing page's note opens `<main>`, above the first group. */
+.no-script--lead {
+  margin: 0 0 1.5rem;
 }
 
 /* Per-card loading + error indicators (lazy-fetch on details toggle). */

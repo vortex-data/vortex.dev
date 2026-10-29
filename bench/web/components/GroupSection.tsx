@@ -26,6 +26,8 @@ const NO_INITIAL_SHOWN_SERIES: string[] = [];
  * `<details>`, so a collapsed group still shows its rankings table, and it is
  * server-rendered, so it shows before hydration and with JavaScript off.
  * Opening the group mounts the body's toolbar and charts below the card.
+ * Without JavaScript opening it would show nothing more, so under the root's
+ * `no-js` class the summary row reads as a plain heading (globals.css).
  *
  * [`GroupBody`] is a client component. It server-renders as an empty
  * `<div class="group-body">` and mounts the group toolbar (group Y override,

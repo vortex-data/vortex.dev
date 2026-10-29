@@ -4,7 +4,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 import { FilterBar } from '@/components/FilterBar';
 import type { FilterUniverse } from '@/lib/chart-format';
@@ -68,10 +68,13 @@ export function Header({
   // theme before hydration) and on every toggle.
   useEffect(() => {
     setNextTheme(effectiveTheme() === 'light' ? 'dark' : 'light');
-    // The pre-paint script has swapped `no-js` for `js` already. If React
-    // ever renders the root `<html>` afresh (a root-level hydration failure
-    // does), it puts the server's `no-js` back, which would hide every
-    // control that needs JavaScript; swap it again.
+  }, []);
+
+  // The pre-paint script has swapped `no-js` for `js` already. If React ever
+  // renders the root `<html>` afresh (a root-level hydration failure does), it
+  // puts the server's `no-js` back, which would hide every control that needs
+  // JavaScript; swap it again, before the browser paints.
+  useLayoutEffect(() => {
     document.documentElement.classList.replace('no-js', 'js');
   }, []);
 

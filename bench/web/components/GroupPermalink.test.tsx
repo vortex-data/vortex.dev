@@ -4,7 +4,7 @@
 // @vitest-environment jsdom
 
 import { act } from 'react';
-import { createRoot, type Root } from 'react-dom/client';
+import { createRoot, hydrateRoot, type Root } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -49,7 +49,9 @@ describe('GroupPermalink markup', () => {
       <GroupPermalink anchor="random-access" groupName="Random Access" groupSlug="random_access" />,
     );
     expect(html).toMatch(/^<a class="group-permalink" href="\/#random-access"/);
-    expect(html).toContain('aria-label="Copy link to Random Access"');
+    // Named as the plain link it is until JavaScript can copy it.
+    expect(html).toContain('title="Link to this group"');
+    expect(html).toContain('aria-label="Link to Random Access"');
     expect(html).not.toContain('<button');
     // The resting state carries no copied styling.
     expect(html).not.toContain('group-permalink--copied');
@@ -134,6 +136,55 @@ describe('GroupPermalink click behavior', () => {
     // preventDefault stops the link's navigation, and the <summary>
     // activation that would otherwise toggle the group open.
     expect(event.defaultPrevented).toBe(true);
+    expect(details.open).toBe(false);
+  });
+
+  it('takes the copy wording once mounted', () => {
+    const { link } = mount();
+    expect(link.getAttribute('aria-label')).toBe('Copy link to Random Access');
+    expect(link.getAttribute('title')).toBe('Copy link to this group');
+  });
+
+  it('hydrates its server markup with no mismatch, then takes the copy wording', async () => {
+    const host = document.createElement('div');
+    host.innerHTML = renderToStaticMarkup(
+      <GroupPermalink anchor="random-access" groupName="Random Access" groupSlug="random_access" />,
+    );
+    container.appendChild(host);
+    const consoleError = vi.spyOn(console, 'error');
+    const recoverableError = vi.fn();
+    await act(async () => {
+      root = hydrateRoot(
+        host,
+        <GroupPermalink
+          anchor="random-access"
+          groupName="Random Access"
+          groupSlug="random_access"
+        />,
+        { onRecoverableError: recoverableError },
+      );
+    });
+    expect(recoverableError).not.toHaveBeenCalled();
+    expect(consoleError).not.toHaveBeenCalled();
+    expect(host.querySelector('a')?.getAttribute('aria-label')).toBe('Copy link to Random Access');
+  });
+
+  it.each([
+    ['Cmd', { metaKey: true }],
+    ['Ctrl', { ctrlKey: true }],
+    ['Shift', { shiftKey: true }],
+    ['Alt', { altKey: true }],
+    ['middle-button', { button: 1 }],
+  ])('leaves a %s click to the browser, so the link opens as asked', async (_, init) => {
+    const { link, details } = mount();
+    const event = new MouseEvent('click', { bubbles: true, cancelable: true, ...init });
+
+    await act(async () => {
+      link.dispatchEvent(event);
+    });
+
+    expect(copiedText).toEqual([]);
+    expect(event.defaultPrevented).toBe(false);
     expect(details.open).toBe(false);
   });
 

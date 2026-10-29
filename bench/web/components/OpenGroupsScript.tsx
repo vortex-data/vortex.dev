@@ -86,8 +86,6 @@ import type { ReactNode } from 'react';
  *       if (!b[c]) b[c] = s;
  *     }
  *   };
- *   o = new MutationObserver(function () { try { v(0); } catch (e) {} });
- *   o.observe(document, { childList: true, subtree: true });
  *   g = {
  *     input: false,
  *     stop: function () {
@@ -98,20 +96,29 @@ import type { ReactNode } from 'react';
  *   for (i = 0; i < n.length; i++) {
  *     addEventListener(n[i], h, { capture: true, passive: true });
  *   }
+ *   // The finish step exists before the observer does: if creating the
+ *   // observer fails, the finish step still opens every listed group.
  *   document.__benchOpenGroupsEnd = function () {
  *     var m, d;
  *     document.__benchOpenGroupsEnd = null;
- *     o.disconnect();
- *     v(1);
- *     for (m = 0; m < p.length; m++) {
- *       k = p[m];
- *       if (!a[k] && b[k]) {
- *         d = b[k].querySelector('details.group-disclosure');
- *         if (d) d.open = true;
+ *     if (o) o.disconnect();
+ *     if (p.length) {
+ *       v(1);
+ *       for (m = 0; m < p.length; m++) {
+ *         k = p[m];
+ *         if (!a[k] && b[k]) {
+ *           d = b[k].querySelector('details.group-disclosure');
+ *           if (d) d.open = true;
+ *         }
  *       }
  *     }
  *     document.__benchOpenGroups = g;
  *   };
+ *   // A fragment that lists nothing has nothing to open: no observer.
+ *   if (p.length) {
+ *     o = new MutationObserver(function () { try { v(0); } catch (e) {} });
+ *     o.observe(document, { childList: true, subtree: true });
+ *   }
  */
 export const OPEN_GROUPS_BOOTSTRAP =
   '(function(){try{' +
@@ -137,8 +144,6 @@ export const OPEN_GROUPS_BOOTSTRAP =
   'a[c]=1;' +
   'c=":"+s.getAttribute("data-group-slug");' +
   'if(!b[c])b[c]=s}};' +
-  'o=new MutationObserver(function(){try{v(0)}catch(e){}});' +
-  'o.observe(document,{childList:true,subtree:true});' +
   'g={input:false,stop:function(){' +
   'for(var m=0;m<n.length;m++)removeEventListener(n[m],h,true)}};' +
   'h=function(){g.input=true;g.stop()};' +
@@ -146,14 +151,18 @@ export const OPEN_GROUPS_BOOTSTRAP =
   'document.__benchOpenGroupsEnd=function(){' +
   'var m,d;' +
   'document.__benchOpenGroupsEnd=null;' +
-  'o.disconnect();' +
+  'if(o)o.disconnect();' +
+  'if(p.length){' +
   'v(1);' +
   'for(m=0;m<p.length;m++){' +
   'k=p[m];' +
   'if(!a[k]&&b[k]){' +
   'd=b[k].querySelector("details.group-disclosure");' +
-  'if(d)d.open=true}}' +
-  'document.__benchOpenGroups=g}' +
+  'if(d)d.open=true}}}' +
+  'document.__benchOpenGroups=g};' +
+  'if(p.length){' +
+  'o=new MutationObserver(function(){try{v(0)}catch(e){}});' +
+  'o.observe(document,{childList:true,subtree:true})}' +
   '}catch(e){}})();';
 
 /**

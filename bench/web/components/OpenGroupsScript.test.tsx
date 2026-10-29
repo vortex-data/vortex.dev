@@ -222,6 +222,40 @@ describe('OpenGroupsScript', () => {
       expect(marker?.input).toBe(false);
     });
 
+    it.each([
+      ['', 0],
+      ['#', 0],
+      ['#,,', 0],
+      ['#clickbench', 1],
+    ])('creates an observer only when the fragment lists something ("%s")', (hash, observers) => {
+      let created = 0;
+      const { doc, errors } = load(hash, (window) => {
+        const Native = window.MutationObserver;
+        window.MutationObserver = class extends Native {
+          constructor(callback: MutationCallback) {
+            super(callback);
+            created += 1;
+          }
+        };
+      });
+      expect(created).toBe(observers);
+      expect(takeOpenGroupsBootstrap(doc)).toEqual({ input: false });
+      expect(errors).toEqual([]);
+    });
+
+    it('still opens every listed group, at the finish step, when no observer can be made', () => {
+      const { doc, errors } = load('#clickbench,tpc-h-nvme-sf-1', (window) => {
+        window.MutationObserver = class {
+          constructor() {
+            throw new Error('no observers here');
+          }
+        } as unknown as typeof MutationObserver;
+      });
+      expect(openAnchors(doc)).toEqual(['tpc-h-nvme-sf-1', 'clickbench']);
+      expect(takeOpenGroupsBootstrap(doc)).toEqual({ input: false });
+      expect(errors).toEqual([]);
+    });
+
     it('leaves no marker when it fails, so the groups open after hydration instead', () => {
       const { doc, errors } = load('#clickbench', (window) => {
         window.Document.prototype.querySelectorAll = () => {
