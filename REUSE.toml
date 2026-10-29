@@ -76,6 +76,11 @@ SPDX-License-Identifier = "LicenseRef-Third-Party"
 # belongs to its owner and is not relicensed. Each file comes from its owner's own site,
 # brand page or official repository, and each owner is named as it names itself.
 [[annotations]]
+path = "src/assets/logos/spiral.svg"
+SPDX-FileCopyrightText = "Fulcrum Technologies, Inc. dba Spiral, Inc"
+SPDX-License-Identifier = "LicenseRef-Third-Party"
+
+[[annotations]]
 path = "src/assets/logos/microsoft.png"
 SPDX-FileCopyrightText = "Microsoft Corporation"
 SPDX-License-Identifier = "LicenseRef-Third-Party"
@@ -96,8 +101,8 @@ SPDX-FileCopyrightText = "LangChain Inc."
 SPDX-License-Identifier = "LicenseRef-Third-Party"
 
 [[annotations]]
-path = "src/assets/logos/polar-signals.svg"
-SPDX-FileCopyrightText = "Polar Signals Inc."
+path = "src/assets/logos/dash0.svg"
+SPDX-FileCopyrightText = "Dash0 Inc."
 SPDX-License-Identifier = "LicenseRef-Third-Party"
 
 # Milvus is an LF AI & Data Foundation project, which holds the project's trademark.

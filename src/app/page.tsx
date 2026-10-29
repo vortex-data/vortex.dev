@@ -9,7 +9,7 @@ import styles from "./page.module.css";
 
 const TITLE = "Vortex | The fastest columnar file format";
 const DESCRIPTION =
-  "Vortex is a columnar file format for fast scans and fast random access, with Rust, Python, DuckDB and Spark support. An Apache-2.0 project of the Linux Foundation.";
+  "Vortex is a columnar file format for fast scans and fast random access, with Rust, Python, DuckDB, and Spark support. An Apache-2.0 project of the Linux Foundation.";
 
 export const metadata: Metadata = {
   title: TITLE,

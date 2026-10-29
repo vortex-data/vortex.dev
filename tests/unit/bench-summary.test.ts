@@ -222,18 +222,24 @@ describe("panelsFrom", () => {
     });
   });
 
-  it("drops a time whose ratio to Vortex's is not bench's score ratio", () => {
+  // bench serves its scores and its charts from two endpoints, and a build can
+  // read them a commit apart. The card shows the times it read, and its factor
+  // comes from the same times, so the bars and the factor still agree. It never
+  // blanks a panel because the two answers were a commit apart.
+  it("keeps times read a commit apart from the scores, and takes the factor from them", () => {
     const cs = charts();
-    const q0 = cs.Clickbench.charts[0];
-    assert.ok(q0);
-    q0.series["datafusion:lance"] = [1e15];
+    for (const chart of cs.Clickbench.charts) {
+      const s = chart.series["datafusion:parquet"];
+      if (Array.isArray(s))
+        chart.series["datafusion:parquet"] = s.map((v) =>
+          typeof v === "number" ? v * 1.1 : v
+        );
+    }
     const rows = panelsFrom(groups(), cs)?.[2]?.rows;
-    assert.equal(
-      rows?.[2]?.score,
-      null,
-      "Lance's times moved, its score did not"
-    );
-    assert.ok(rows?.[0]?.score, "Vortex keeps its time");
+    const parquet = rows?.find((r) => r.system === "Parquet");
+    const vortex = rows?.find((r) => r.system === "Vortex");
+    assert.ok(parquet?.score, "Parquet keeps its time");
+    assert.ok(vortex?.score, "Vortex keeps its time");
   });
 
   it("counts a query a system has no time for, so the card says Not measured", () => {

@@ -78,7 +78,7 @@ export function BenchPanel({ panel }: { panel: Panel }) {
 }
 
 /**
- * The design system's BenchmarkCard: Vortex against Parquet, Lance and Arrow
+ * The design system's BenchmarkCard: Vortex against Parquet, Lance, and Arrow
  * in six panels, with a caption that says how to read them, a source line
  * that names bench.vortex.dev and the read date, and a line for each panel
  * whose figures are not bench's. The panels come from `getBenchSummary`; the
@@ -96,7 +96,7 @@ export function BenchmarkCard({
     <section className="vx-card vx-bench" aria-label="Benchmark summary">
       <div className="vx-bench-head">
         <h2 className="vx-bench-headline">
-          Vortex against Parquet, Lance and Arrow{" "}
+          Vortex against Parquet, Lance, and Arrow{" "}
           <span className="vx-bench-sub">
             · times in ms, the geomean over queries or datasets, the rest
             against Parquet = 1, best first

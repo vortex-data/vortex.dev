@@ -15,7 +15,9 @@ const FIRST_COPIES = 2;
  * pointer, with focus among the logos and while the pause control is pressed
  * (WCAG 2.2.2), and stops it under reduced motion. The first set carries the names;
  * the copies that keep the loop seamless are hidden from assistive
- * technology. `className` places the band on the page.
+ * technology, and their links leave the tab order. Each logo links to its
+ * owner's page about Vortex, or its homepage. `className` places the band on
+ * the page.
  */
 export function LogoBanner({ className }: { className?: string | undefined }) {
   const strip = useRef<HTMLDivElement>(null);
@@ -68,15 +70,16 @@ export function LogoBanner({ className }: { className?: string | undefined }) {
               className="vx-logos-set"
               aria-hidden={i > 0 ? true : undefined}
             >
-              {LOGOS.map(({ name, image, width, height }) => (
-                <img
-                  key={name}
-                  src={image.src}
-                  width={width}
-                  height={height}
-                  alt={i > 0 ? "" : name}
-                  decoding="async"
-                />
+              {LOGOS.map(({ name, image, width, height, href }) => (
+                <a key={name} href={href} tabIndex={i > 0 ? -1 : undefined}>
+                  <img
+                    src={image.src}
+                    width={width}
+                    height={height}
+                    alt={i > 0 ? "" : name}
+                    decoding="async"
+                  />
+                </a>
               ))}
             </div>
           ))}

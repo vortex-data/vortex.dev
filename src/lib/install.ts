@@ -20,7 +20,7 @@ export function installTabs(sparkVersion: string | null): InstallTab[] {
     {
       key: "python",
       label: "Python",
-      lines: [shell("pip install vortex-data")]
+      lines: [shell("uv add vortex-data")]
     },
     {
       key: "duckdb",

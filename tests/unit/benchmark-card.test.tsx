@@ -75,7 +75,7 @@ describe("BenchmarkCard", () => {
     );
     assert.ok(
       html.includes(
-        '<h2 class="vx-bench-headline">Vortex against Parquet, Lance and Arrow <span class="vx-bench-sub">· times in ms, the geomean over queries or datasets, the rest against Parquet = 1, best first</span></h2>'
+        '<h2 class="vx-bench-headline">Vortex against Parquet, Lance, and Arrow <span class="vx-bench-sub">· times in ms, the geomean over queries or datasets, the rest against Parquet = 1, best first</span></h2>'
       )
     );
     assert.ok(

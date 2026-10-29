@@ -56,7 +56,7 @@ test.describe("home", () => {
       "true"
     );
     await expect(panel).toBeVisible();
-    await expect(panel).toContainText("pip install vortex-data");
+    await expect(panel).toContainText("uv add vortex-data");
     await expect(
       page.getByRole("button", { name: "Copy to clipboard" })
     ).toBeVisible();
@@ -117,7 +117,7 @@ test.describe("home", () => {
     await page.getByRole("button", { name: "Copy to clipboard" }).click();
     await expect(page.getByRole("status")).toHaveText("Copied");
     expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
-      "pip install vortex-data"
+      "uv add vortex-data"
     );
   });
 
@@ -219,7 +219,7 @@ test.describe("home bands", () => {
     );
   });
 
-  test("the logo banner shows the twelve cleared logos", async ({ page }) => {
+  test("the logo banner shows the thirteen cleared logos", async ({ page }) => {
     await page.goto("/");
     const banner = page.getByRole("region", { name: "Who builds on Vortex" });
     await expect(banner).toBeVisible();
@@ -230,9 +230,10 @@ test.describe("home bands", () => {
     expect(names).toEqual([
       "Microsoft",
       "Palantir",
+      "Spiral",
       "Firebolt",
       "LangChain",
-      "Polar Signals",
+      "Dash0",
       "Milvus",
       "DuckDB",
       "Apache DataFusion",
@@ -505,6 +506,54 @@ test.describe("footer", () => {
     await expect(charter).toBeVisible();
     await expect(charter).toHaveAttribute("href", "/charter.pdf");
   });
+
+  test("credits the donor under the LF line", async ({ page }) => {
+    await page.goto("/");
+    const credit = page.locator("footer .vx-footer-credit");
+    await expect(credit).toHaveText("Donated by Spiral.");
+    await expect(credit.getByRole("link", { name: "Spiral" })).toHaveAttribute(
+      "href",
+      "https://spiraldb.com"
+    );
+  });
+});
+
+// Each logo links to its owner's page about Vortex, or its homepage. The
+// copies that keep the loop seamless keep their links out of the tab order,
+// so a keyboard reaches each owner once.
+test.describe("logo banner links", () => {
+  test("every logo is a named link, and only the first set is tabbable", async ({
+    page
+  }) => {
+    await page.goto("/");
+    const sets = page.locator(".vx-logos-set");
+    const first = sets.first().locator("a");
+    const names = await first.evaluateAll((links) =>
+      links.map((a) => [
+        a.querySelector("img")?.getAttribute("alt"),
+        a.getAttribute("href"),
+        a.getAttribute("tabindex")
+      ])
+    );
+    expect(names.slice(0, 3).map(([n]) => n)).toEqual([
+      "Microsoft",
+      "Palantir",
+      "Spiral"
+    ]);
+    for (const [name, href, tabindex] of names) {
+      expect(name, "each link is named by its logo").toBeTruthy();
+      expect(href).toMatch(/^https:\/\//);
+      expect(tabindex).toBeNull();
+    }
+    expect(names.map(([n]) => n)).toContain("Dash0");
+    expect(names.map(([n]) => n)).not.toContain("Polar Signals");
+    const copies = await sets
+      .nth(1)
+      .locator("a")
+      .evaluateAll((links) => links.map((a) => a.getAttribute("tabindex")));
+    expect(copies.length).toBe(names.length);
+    expect(new Set(copies)).toEqual(new Set(["-1"]));
+  });
 });
 
 test.describe("mobile layout", () => {
@@ -761,14 +810,14 @@ test.describe("logo banner pause", () => {
 
 test.describe("logo banner under reduced motion", () => {
   for (const width of [1440, 375]) {
-    test(`shows all twelve logos still at ${width}px`, async ({ page }) => {
+    test(`shows all thirteen logos still at ${width}px`, async ({ page }) => {
       await page.emulateMedia({ reducedMotion: "reduce" });
       await page.setViewportSize({ width, height: 900 });
       await page.goto("/");
       const logos = page.locator(
         'section[aria-label="Who builds on Vortex"] img:not([alt=""])'
       );
-      await expect(logos).toHaveCount(12);
+      await expect(logos).toHaveCount(13);
       for (const box of await logos.evaluateAll((imgs) =>
         imgs.map((i) => i.getBoundingClientRect().toJSON())
       )) {

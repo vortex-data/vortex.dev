@@ -6,13 +6,15 @@ import { LogoBanner } from "@/components/logo-banner";
 import { LOGOS } from "@/components/logo-banner/logos";
 
 // The adopters Will cleared for public use (spec section 6.5), in the Home
-// card's order.
+// card's order. Spiral sits third, so it is in view on load. Dash0 replaced
+// Polar Signals, which it acquired.
 const CLEARED = [
   "Microsoft",
   "Palantir",
+  "Spiral",
   "Firebolt",
   "LangChain",
-  "Polar Signals",
+  "Dash0",
   "Milvus",
   "DuckDB",
   "Apache DataFusion",
@@ -28,7 +30,7 @@ describe("LogoBanner", () => {
       LOGOS.map((l) => l.name),
       CLEARED
     );
-    for (const name of ["Google", "DatologyAI", "Spice AI", "Dash0"])
+    for (const name of ["Google", "DatologyAI", "Spice AI", "Polar Signals"])
       assert.ok(!LOGOS.some((l) => l.name.includes(name)), name);
   });
 

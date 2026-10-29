@@ -16,7 +16,7 @@ describe("installTabs", () => {
   it("draws a shell prompt before the shell commands only", () => {
     const [rust, python, duckdb, spark, cli] = installTabs("0.90.0");
     assert.deepEqual(lines(rust), [["$", "cargo add vortex"]]);
-    assert.deepEqual(lines(python), [["$", "pip install vortex-data"]]);
+    assert.deepEqual(lines(python), [["$", "uv add vortex-data"]]);
     assert.deepEqual(lines(duckdb), [
       [
         "",
@@ -56,7 +56,7 @@ describe("copyText", () => {
     const copied = Object.fromEntries(tabs.map((t) => [t.key, copyText(t)]));
     assert.deepEqual(copied, {
       rust: "cargo add vortex",
-      python: "pip install vortex-data",
+      python: "uv add vortex-data",
       duckdb:
         "INSTALL vortex; LOAD vortex; SELECT * FROM read_vortex('data.vortex');",
       spark: 'implementation("dev.vortex:vortex-spark_2.13:0.90.0:all")',

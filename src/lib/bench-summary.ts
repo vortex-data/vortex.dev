@@ -252,34 +252,22 @@ export function groupTimes(
   return out;
 }
 
-// Two numbers agree when they differ by under 1%.
-const agree = (a: number, b: number) => Math.abs(a / b - 1) < 0.01;
-
-// A time panel's rows: each system's geomean time in ms. A time is shown
-// only where bench scores the system too and the times keep bench's score
-// ratios, Vortex's against each other's within 1%; otherwise the row has no
-// score, and the card says "Not measured".
+// A time panel's rows: each system's geomean time in ms, where bench scores
+// the system. The panel's factor is Parquet's time over Vortex's, so the bars
+// and the factor agree by construction. bench serves scores and charts from
+// two endpoints that a build can read a commit apart, so the times are not
+// held to the scores' ratios: that would blank a panel for a moment's drift.
 function timeRows(
   source: Source & { times: NonNullable<Source["times"]> },
   rankings: Ranking[],
   times: NonNullable<ReturnType<typeof groupTimes>>
 ): Row[] {
-  const scored = SYSTEMS.map(([system, format]) => ({
-    system,
-    score: rowFor(source, rankings, format).score,
-    time: times.get(source.times.series(format))
-  }));
-  const vortex = scored.find((r) => r.system === "Vortex");
-  return scored.map(({ system, score, time }) => {
+  return SYSTEMS.map(([system, format]) => {
+    const score = rowFor(source, rankings, format).score;
+    const time = times.get(source.times.series(format));
     if (!time) return { system, score: null };
     const { ms, measured, total } = time;
-    const ok =
-      ms !== null &&
-      score !== null &&
-      positive(vortex?.score) &&
-      positive(vortex?.time?.ms) &&
-      agree(ms / vortex.time.ms, score / vortex.score);
-    return { system, score: ok ? ms : null, measured, total };
+    return { system, score: score === null ? null : ms, measured, total };
   });
 }
 

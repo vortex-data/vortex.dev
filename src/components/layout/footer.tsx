@@ -19,8 +19,8 @@ const LINKS = [
 
 /**
  * The design system's Footer card: The Linux Foundation's logo (the system's
- * CSS inverts it in Light), the line LF Projects requires, and the project's
- * links.
+ * CSS inverts it in Light), the line LF Projects requires with the card's
+ * credit line under it, and the project's links.
  */
 export function Footer() {
   return (
@@ -40,6 +40,13 @@ export function Footer() {
           lfprojects.org/policies
         </a>
         .
+        <span className="vx-footer-credit">
+          Donated by{" "}
+          <a className="vx-link" href="https://spiraldb.com">
+            Spiral
+          </a>
+          .
+        </span>
       </p>
       <nav className="vx-footer-nav" aria-label="Project">
         {LINKS.map(({ href, label }) => (

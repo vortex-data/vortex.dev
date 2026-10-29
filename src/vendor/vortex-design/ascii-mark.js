@@ -22,7 +22,7 @@ const THREE_URL = "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module
 
 /**
  * Mounts the mark in `host` (positioned, sized by the caller).
- * Options: patch (brush reach in px, 44), lean (follow the pointer, false), size and lineHeight
+ * Options: patch (brush reach in px, 31), lean (follow the pointer, false), size and lineHeight
  * of the character grid (12, 14), font (the grid's family; the host's --font-mono token by
  * default), fallbackSrc (the symbol image for the static mode), mode ("auto", or "static" for the
  * still symbol whatever the browser can do), three (a three.js module the site bundles, for pages
@@ -41,7 +41,7 @@ export async function mountAsciiMark(host, opts = {}) {
     mode: "auto",
     size: 12,
     lineHeight: 14,
-    patch: 44,
+    patch: 31,
     lean: false,
     fallbackSrc: null,
     three: null,
