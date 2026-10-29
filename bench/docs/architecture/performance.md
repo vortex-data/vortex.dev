@@ -106,17 +106,22 @@ fast.
 scaling that is not full coverage — but a low-traffic site effectively runs one
 instance, so the ping warms the path the typical first visitor actually takes.
 
-### Parallel group fan-out
+### One query per group
 
-A group page builds one chart payload per chart (99 for TPC-DS, 43 for
-Clickbench). The fan-out in `collectGroupCharts`
-([`web/lib/queries.ts`](../../web/lib/queries.ts)) runs those queries with an
-order-preserving `Promise.all` bounded by the existing `pg` pool (max 8
-connections) rather than a sequential `await` loop, so a Data Cache *miss* on a
-big group does not serialize into dozens of round-trips. The output (chart set,
-order, shape) is unchanged and pinned by an integration test. This was a small,
-low-risk change; batching a whole group into one SQL statement is the larger
-win, deliberately left for later because the chart shapes are heterogeneous.
+A group page inlines every chart's payload (99 for TPC-DS, 43 for Clickbench).
+`groupChartPayloads` ([`web/lib/queries.ts`](../../web/lib/queries.ts)) builds
+them from two statements instead of two per chart: the last `n` commits, and
+every chart's rows in that window, one `LATERAL` join per chart (in slices of
+25 charts, one after another, so a TPC-DS group runs five). A chart's x-axis is
+the last `min(n, total)` commits of the shared window, so the JSON is
+byte-identical to `chartPayload`'s, which a test and a dump check pin. On one
+connection the per-chart `MIN` over a query chart's whole history became the
+cost, so it is a skip scan of `idx_query_measurements_summary`, and the commit
+count is a binary search. `QUERY_CONCURRENCY` now bounds only the summaries in
+`collectGroups`. On the 2026-10-28 dump at `n=100`, warm: TPC-DS (NVMe) SF=1
+1.59 s → 0.32 s, Clickbench 0.87 s → 0.14 s, Compression 70 → 120 ms (its
+`MIN` still reads every row). At `?n=all` the TPC-DS group takes 5.3 s against
+4.9 s, with peak memory at most 1.34× the old fan-out's.
 
 ### `query_measurements` reads filter on a denormalized timestamp
 
