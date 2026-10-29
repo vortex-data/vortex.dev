@@ -73,10 +73,10 @@ SPDX-FileCopyrightText = "The Linux Foundation"
 SPDX-License-Identifier = "LicenseRef-Third-Party"
 
 # Adopters' logos for the homepage's logo banner, used only to show who builds on Vortex. Each
-# belongs to its owner and is not relicensed. The owners come from each owner's own repository
-# (its LICENSE or NOTICE) or its GitHub organization.
+# belongs to its owner and is not relicensed. Each file comes from its owner's own site,
+# brand page or official repository, and each owner is named as it names itself.
 [[annotations]]
-path = "src/assets/logos/microsoft.svg"
+path = "src/assets/logos/microsoft.png"
 SPDX-FileCopyrightText = "Microsoft Corporation"
 SPDX-License-Identifier = "LicenseRef-Third-Party"
 
@@ -87,17 +87,17 @@ SPDX-License-Identifier = "LicenseRef-Third-Party"
 
 [[annotations]]
 path = "src/assets/logos/firebolt.svg"
-SPDX-FileCopyrightText = "Firebolt Analytics, Inc."
+SPDX-FileCopyrightText = "Firebolt Analytics Inc"
 SPDX-License-Identifier = "LicenseRef-Third-Party"
 
 [[annotations]]
 path = "src/assets/logos/langchain.svg"
-SPDX-FileCopyrightText = "LangChain, Inc."
+SPDX-FileCopyrightText = "LangChain Inc."
 SPDX-License-Identifier = "LicenseRef-Third-Party"
 
 [[annotations]]
 path = "src/assets/logos/polar-signals.svg"
-SPDX-FileCopyrightText = "Polar Signals, Inc."
+SPDX-FileCopyrightText = "Polar Signals Inc."
 SPDX-License-Identifier = "LicenseRef-Third-Party"
 
 # Milvus is an LF AI & Data Foundation project, which holds the project's trademark.
@@ -108,7 +108,7 @@ SPDX-License-Identifier = "LicenseRef-Third-Party"
 
 [[annotations]]
 path = "src/assets/logos/duckdb.svg"
-SPDX-FileCopyrightText = "Stichting DuckDB Foundation"
+SPDX-FileCopyrightText = "DuckDB Foundation"
 SPDX-License-Identifier = "LicenseRef-Third-Party"
 
 [[annotations]]
