@@ -13,14 +13,19 @@ declare module 'jsdom' {
     on(event: 'jsdomError', listener: (error: Error) => void): this;
   }
 
+  /** A JSDOM page's window. */
+  export type DOMWindow = Window & typeof globalThis;
+
   export interface ConstructorOptions {
     url?: string;
     runScripts?: 'dangerously' | 'outside-only';
     virtualConsole?: VirtualConsole;
+    /** Runs on the new window before the page parses (before its scripts). */
+    beforeParse?: (window: DOMWindow) => void;
   }
 
   export class JSDOM {
     constructor(html?: string, options?: ConstructorOptions);
-    readonly window: Window & typeof globalThis;
+    readonly window: DOMWindow;
   }
 }
