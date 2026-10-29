@@ -19,9 +19,10 @@ import { DEFAULT_COMMIT_WINDOW } from '@/lib/window';
 
 /**
  * The single revalidation tag shared by every cached read below. A successful
- * ingest flushes the whole layer with one [`revalidateTag`] call from
- * `POST /api/revalidate`, so newly ingested data shows up on the next request
- * rather than waiting out a TTL.
+ * ingest marks the whole layer stale with one [`revalidateTag`] call from
+ * `POST /api/revalidate`: the next read of each entry serves the previous data
+ * once and refreshes it in the background, so newly ingested data shows up on
+ * the read after that rather than waiting out a TTL.
  */
 export const BENCH_DATA_TAG = 'bench-data';
 
@@ -35,7 +36,8 @@ export const BENCH_DATA_TAG = 'bench-data';
  * site: a longer backstop keeps the default last-100 window warm across
  * overnight idle gaps, so a CDN miss reads this Data Cache instead of paying
  * the multi-second cold database fill. The freshness cost is bounded by the
- * revalidate hook, which flushes the tag on every ingest once its env is set.
+ * revalidate hook, which marks the tag stale on every ingest once its env is
+ * set.
  */
 export const DATA_CACHE_BACKSTOP_SECONDS = 86400;
 
