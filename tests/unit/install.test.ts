@@ -18,8 +18,10 @@ describe("installTabs", () => {
     assert.deepEqual(lines(rust), [["$", "cargo add vortex"]]);
     assert.deepEqual(lines(python), [["$", "pip install vortex-data"]]);
     assert.deepEqual(lines(duckdb), [
-      ["", "INSTALL vortex; LOAD vortex;"],
-      ["", "SELECT * FROM read_vortex('data.vortex');"]
+      [
+        "",
+        "INSTALL vortex; LOAD vortex; SELECT * FROM read_vortex('data.vortex');"
+      ]
     ]);
     assert.deepEqual(lines(spark), [
       ["", 'implementation("dev.vortex:vortex-spark_2.13:0.90.0:all")']
@@ -39,12 +41,12 @@ describe("installTabs", () => {
     assert.equal(new Set(keys).size, keys.length);
   });
 
-  it("holds no tab taller than DuckDB's two lines, the height the block reserves", () => {
-    // The block stacks every tab's commands in one cell, so it is always as tall as the
-    // tallest. This pins that tallest tab, so a longer one is a deliberate change.
-    const tabs = installTabs("0.90.0");
-    assert.equal(Math.max(...tabs.map((t) => t.lines.length)), 2);
-    for (const t of tabs) assert.ok(t.lines.length >= 1, t.label);
+  // Note 62: the block stacks every tab's commands in one cell, so it is
+  // always as tall as the tallest. A two-line DuckDB tab made the homepage's
+  // box two lines tall under a one-line command, so every tab is one line.
+  it("keeps every tab to one line, the height the block reserves", () => {
+    for (const t of installTabs("0.90.0"))
+      assert.equal(t.lines.length, 1, t.key);
   });
 });
 
@@ -56,7 +58,7 @@ describe("copyText", () => {
       rust: "cargo add vortex",
       python: "pip install vortex-data",
       duckdb:
-        "INSTALL vortex; LOAD vortex;\nSELECT * FROM read_vortex('data.vortex');",
+        "INSTALL vortex; LOAD vortex; SELECT * FROM read_vortex('data.vortex');",
       spark: 'implementation("dev.vortex:vortex-spark_2.13:0.90.0:all")',
       cli: "uvx --from vortex-data vx --help"
     });

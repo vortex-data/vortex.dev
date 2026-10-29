@@ -47,7 +47,7 @@ export default async function Home() {
           <span className="vx-label vx-eyebrow">
             Apache-2.0 · A Linux Foundation project
           </span>
-          <h1 className="vx-display">The fastest columnar file format.</h1>
+          <h1 className="vx-display">Fast, small, open: pick three.</h1>
           <InstallTabs sparkVersion={sparkVersion} />
         </div>
         <div className={styles.mark}>

@@ -4,59 +4,80 @@ import {
   formatFactor,
   panelNote,
   panelRows,
+  pickSystems,
+  sourceNotes,
   versusParquet
 } from "@/vendor/vortex-design/benchmark-card.js";
 
 const SOURCE_URL = "https://bench.vortex.dev";
 
+const STATE_CLASS = {
+  measured: "",
+  "not-measured": " is-missing",
+  "n/a": " is-na"
+};
+
 /**
  * One panel of the design system's BenchmarkCard, drawn in JSX from the
  * system's own rules (benchmark-card.js). Its markup is the same as the
  * system's `renderPanel`, and tests/unit/benchmark-card.test.tsx holds it
- * there: the metric with its unit and direction, the factor against Parquet
- * with the words that say who won, and the bars best first.
+ * there: the metric, the factor against Parquet with the words that say who
+ * won, and the bars best first, each ending in its score. The score with its
+ * unit is each bar's title and screen-reader text. A system that cannot run
+ * the benchmark is N/A, with its reason.
  */
 export function BenchPanel({ panel }: { panel: Panel }) {
-  const { title, unit, kind, better, rows } = panel;
+  const { title, unit, kind, better, rows, systems } = panel;
   const vs = versusParquet(rows, better);
   return (
     <div className="vx-bench-panel">
       <div className="vx-label-sm vx-bench-title">
         <span className="vx-bench-metric">{title}</span>
-        <span className="vx-bench-unit">
-          <span className="vx-keep-case">{unit}</span>
-          {` ${better === "higher" ? "↑" : "↓"}`}
-        </span>
       </div>
-      <div className="vx-stat vx-bench-big">
-        {formatFactor(vs.factor)}
+      <div className="vx-bench-big">
+        <span className="vx-stat">{formatFactor(vs.factor)}</span>{" "}
         <span className="vx-caption vx-bench-note">{panelNote(kind, vs)}</span>
       </div>
       <div className="vx-bars">
-        {panelRows(rows, better, unit).map((r) => (
-          <div key={r.system} className={r.ours ? "vx-bar is-ours" : "vx-bar"}>
-            <span>{r.system}</span>
-            <span className="vx-bar-track">
-              {r.score !== null && (
-                <span
-                  className="vx-bar-fill"
-                  style={{ width: `${Math.max(1.5, r.width)}%` }}
-                />
-              )}
-            </span>
-            <span className="vx-bar-value">{r.label}</span>
-          </div>
-        ))}
+        {panelRows(pickSystems(rows, systems), better, unit).map((r) => {
+          const className = `vx-bar${r.ours ? " is-ours" : ""}${STATE_CLASS[r.state]}`;
+          const tip = `${r.system}: ${r.exact}`;
+          if (r.state === "not-measured")
+            return (
+              <div key={r.system} className={className} title={tip}>
+                <span>{r.system}</span>
+                <span className="vx-bar-missing">Not measured</span>
+              </div>
+            );
+          return (
+            <div key={r.system} className={className} title={tip}>
+              <span>{r.system}</span>
+              <span className="vx-bar-track">
+                {r.state === "measured" && (
+                  <span
+                    className="vx-bar-fill"
+                    style={{ width: `${Math.max(1.5, r.width)}%` }}
+                  />
+                )}
+              </span>
+              <span className="vx-bar-value" aria-hidden="true">
+                {r.label}
+              </span>
+              <span className="vx-sr-only">{r.exact}</span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
 }
 
 /**
- * The design system's BenchmarkCard: Vortex against Parquet and Lance in six
- * panels, with a source line that names bench.vortex.dev and the read date.
- * The panels come from `getBenchSummary`; the page leaves the card out when
- * that read fails.
+ * The design system's BenchmarkCard: Vortex against Parquet, Lance and Arrow
+ * in six panels, with a caption that says how to read them, a source line
+ * that names bench.vortex.dev and the read date, and a line for each panel
+ * whose figures are not bench's. The panels come from `getBenchSummary`; the
+ * page leaves the card out when that read fails.
  */
 export function BenchmarkCard({
   panels,
@@ -65,13 +86,15 @@ export function BenchmarkCard({
   panels: readonly Panel[];
   readAt: Date;
 }) {
+  const notes = sourceNotes(panels);
   return (
     <section className="vx-card vx-bench" aria-label="Benchmark summary">
       <div className="vx-bench-head">
         <h2 className="vx-bench-headline">
-          Vortex against Parquet and Lance{" "}
+          Vortex against Parquet, Lance and Arrow{" "}
           <span className="vx-bench-sub">
-            · six benchmarks, best first in each
+            · times against the fastest run, the rest against Parquet, best
+            first
           </span>
         </h2>
         <a className="vx-label-sm vx-source vx-nav-link" href={SOURCE_URL}>
@@ -88,6 +111,9 @@ export function BenchmarkCard({
           <BenchPanel key={panel.title} panel={panel} />
         ))}
       </div>
+      {notes.length > 0 && (
+        <p className="vx-caption vx-bench-foot">{notes.join(" ")}</p>
+      )}
     </section>
   );
 }

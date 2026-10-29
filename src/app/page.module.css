@@ -13,16 +13,21 @@
   position: relative;
   flex: 1 0 auto;
   display: grid;
-  grid-template-columns: minmax(0, 760px) minmax(320px, 1fr);
-  gap: var(--space-48);
+  /* 840px holds the headline (822px at 64px) on one line. The 32px gap
+     keeps the mark's column 472px wide at 1440, so the mark still takes
+     the hero's full height. */
+  grid-template-columns: minmax(0, 840px) minmax(320px, 1fr);
+  gap: var(--space-32);
   /* The card pads the foot by 24px and clips 3px of it at 1440 × 900. 20px
      draws the same page with nothing clipped. */
   padding: var(--space-32) var(--page-pad) var(--space-20);
 }
 
+/* The text sits in the middle of the hero's height, beside the mark, which
+   fills that height. */
 .text {
   display: grid;
-  align-content: start;
+  align-content: center;
   gap: var(--space-24);
 }
 

@@ -1,4 +1,5 @@
 import { formatDay } from "./date";
+import { GPU_PANEL } from "./gpu-result";
 
 const GROUPS_URL = "https://bench.vortex.dev/api/groups";
 const DAY_SECONDS = 86400;
@@ -13,6 +14,8 @@ export type Row = {
   score: number | null;
   measured?: number;
   total?: number;
+  /** Why the system cannot run the benchmark at all; the card says N/A. */
+  unavailable?: string;
 };
 
 /** One panel of the BenchmarkCard, as `benchmark-card.js` reads it. */
@@ -22,17 +25,26 @@ export type Panel = {
   kind: "speed" | "size";
   better: "higher" | "lower";
   rows: Row[];
+  /** The systems the panel shows, in order (`pickSystems`). */
+  systems?: readonly string[];
+  /** For figures that are not bench's: their source, printed under the panels. */
+  source?: { note: string };
 };
 
 export type BenchSummary = { panels: Panel[]; readAt: Date };
 
-// The three systems the card compares, by bench's format name, in the order
-// the rows are listed (the card sorts them best first).
+// The systems the card can compare, by bench's format name, in the order the
+// rows are listed (the card sorts them best first). Each panel chooses the
+// ones it shows (`systems`). Bench runs Arrow (as Arrow IPC files) only in
+// random access and file size.
 const SYSTEMS = [
   ["Vortex", "vortex-file-compressed"],
   ["Parquet", "parquet"],
-  ["Lance", "lance"]
+  ["Lance", "lance"],
+  ["Arrow", "arrow-ipc"]
 ] as const;
+const WITH_LANCE = ["Vortex", "Parquet", "Lance"];
+const WITH_ARROW = ["Vortex", "Parquet", "Lance", "Arrow"];
 
 type Ranking = Record<string, unknown>;
 
@@ -58,10 +70,14 @@ type Source = {
   where?: Ranking;
   /** The ranking's field that holds the score. */
   score: "score" | "ratio";
+  /** The systems the panel shows. */
+  systems: readonly string[];
 };
 
-// The six panels, in the card's order, and where bench keeps each one.
-const SOURCES: Source[] = [
+// The six panels, in the card's order: five from bench and, beside
+// ClickBench, the GPU result bench does not publish yet, kept by hand in
+// gpu-result.ts with its source.
+const SOURCES: (Source | Panel)[] = [
   {
     title: "Scan throughput",
     unit: "× Parquet",
@@ -71,27 +87,8 @@ const SOURCES: Source[] = [
     rankings: (s) => s.rankings,
     name: (f) => f,
     where: { operation: "decode" },
-    score: "ratio"
-  },
-  {
-    title: "Random access, NVMe, cold",
-    unit: "× fastest",
-    kind: "speed",
-    better: "lower",
-    group: "Random Access (NVMe)",
-    rankings: (s) => s.coldRankings,
-    name: (f) => f,
-    score: "score"
-  },
-  {
-    title: "Random access, S3, cold",
-    unit: "× fastest",
-    kind: "speed",
-    better: "lower",
-    group: "Random Access (S3)",
-    rankings: (s) => s.coldRankings,
-    name: (f) => f,
-    score: "score"
+    score: "ratio",
+    systems: WITH_LANCE
   },
   {
     title: "Write throughput",
@@ -102,7 +99,8 @@ const SOURCES: Source[] = [
     rankings: (s) => s.rankings,
     name: (f) => f,
     where: { operation: "encode" },
-    score: "ratio"
+    score: "ratio",
+    systems: WITH_LANCE
   },
   {
     title: "ClickBench on DataFusion",
@@ -112,7 +110,20 @@ const SOURCES: Source[] = [
     group: "Clickbench",
     rankings: (s) => s.rankings,
     name: (f) => `datafusion:${f}`,
-    score: "score"
+    score: "score",
+    systems: WITH_LANCE
+  },
+  GPU_PANEL,
+  {
+    title: "Random access, NVMe, cold",
+    unit: "× fastest",
+    kind: "speed",
+    better: "lower",
+    group: "Random Access (NVMe)",
+    rankings: (s) => s.coldRankings,
+    name: (f) => f,
+    score: "score",
+    systems: WITH_ARROW
   },
   {
     title: "File size against Parquet + zstd",
@@ -122,7 +133,8 @@ const SOURCES: Source[] = [
     group: "Compression Size",
     rankings: (s) => s.rankings,
     name: (f) => f,
-    score: "ratio"
+    score: "ratio",
+    systems: WITH_ARROW
   }
 ];
 
@@ -159,16 +171,22 @@ function rowFor(source: Source, rankings: Ranking[], format: string) {
 }
 
 /**
- * The BenchmarkCard's six panels from bench's `/api/groups` payload (its
- * `groups` array). Each panel lists Vortex, Parquet and Lance. A system bench
- * did not report keeps its row with no score, so the card says "Not
- * measured". A group that is missing, or that reports none of the three, gives
- * `null`: the card shows six panels or none.
+ * The BenchmarkCard's six panels: five from bench's `/api/groups` payload
+ * (its `groups` array) and the hand-kept GPU panel. Each bench panel has a
+ * row for every system the card knows and names the ones it shows
+ * (`systems`). A shown system bench did not report keeps its row with no
+ * score, so the card says "Not measured". A group that is missing, or that
+ * reports none of the shown systems, gives `null`: the card shows six panels
+ * or none.
  */
 export function panelsFrom(groups: unknown): Panel[] | null {
   if (!Array.isArray(groups)) return null;
   const panels: Panel[] = [];
   for (const source of SOURCES) {
+    if (!("group" in source)) {
+      panels.push(source);
+      continue;
+    }
     const group = groups.find((g) => isObject(g) && g.name === source.group);
     const summary = isObject(group) ? group.summary : undefined;
     const list = isObject(summary) ? source.rankings(summary) : undefined;
@@ -178,9 +196,10 @@ export function panelsFrom(groups: unknown): Panel[] | null {
       system,
       ...rowFor(source, rankings, format)
     }));
-    if (rows.every((r) => !measured(r))) return null;
-    const { title, unit, kind, better } = source;
-    panels.push({ title, unit, kind, better, rows });
+    const { title, unit, kind, better, systems } = source;
+    const shown = rows.filter((r) => systems.includes(r.system));
+    if (shown.every((r) => !measured(r))) return null;
+    panels.push({ title, unit, kind, better, rows, systems });
   }
   return panels;
 }

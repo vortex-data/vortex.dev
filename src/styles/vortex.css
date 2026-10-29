@@ -376,9 +376,12 @@
 @media (max-width: 360px) {
   .vx-header-repo { display: none; }
 }
-/* The homepage headline sets at the h1 size on phones, where 76px would take five lines. */
+/* The homepage headline, "Fast, small, open: pick three.", takes one line (822px) in the hero's 840px column. Where
+   it wraps, it never strands one word on its last line, and on phones its lines balance. */
+.vx-display { text-wrap: pretty; }
+/* The homepage headline sets at the h1 size on phones, where 64px would take four lines. */
 @media (max-width: 640px) {
-  .vx-display { font-size: 48px; }
+  .vx-display { font-size: 48px; text-wrap: balance; }
 }
 
 .vx-footer {
@@ -414,7 +417,7 @@
 }
 .vx-tabs-list button:hover { color: var(--ink-body); }
 .vx-tabs-list button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
-.vx-tabs-code { display: flex; align-items: flex-start; gap: var(--space-12); padding: var(--space-16); }
+.vx-tabs-code { display: flex; align-items: flex-start; gap: var(--space-12); padding: var(--space-12) var(--space-16); }
 /* Every panel shares one grid cell and only the selected one shows, so the block is always the
    tallest panel's height and switching tabs never moves the page. */
 .vx-tabs-panels { display: grid; flex: 1; min-width: 0; }
@@ -428,7 +431,9 @@
 .vx-copy .is-check, .vx-copy.is-done .is-copy { display: none; }
 .vx-copy.is-done .is-check { display: block; }
 
-.vx-bench { overflow: hidden; container: vx-bench / inline-size; }
+/* A bar's value column has one width in every row, so every track has one length and the bars
+   share a scale. 6ch holds "100.00". */
+.vx-bench { overflow: hidden; container: vx-bench / inline-size; --bar-value: 6ch; }
 .vx-bench-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--space-8) var(--space-16); padding: var(--space-12) var(--space-20); border-bottom: 1px solid var(--line); }
 .vx-bench-headline { margin: 0; font: 500 14px/1.3 var(--font-sans); color: var(--ink); }
 .vx-bench-sub { color: var(--ink-muted); font-weight: 400; }
@@ -439,12 +444,17 @@
    clipped edge hide the outer ones, so a rule shows only between panels, in any number of rows.
    The panels in a row share three rows (title, figure, bars), so a title that takes a third line
    moves every figure in its row down with it. */
-.vx-bench-panel { display: grid; grid-row: span 3; grid-template-rows: subgrid; gap: var(--space-12); align-content: start; padding: var(--space-16); border-top: 1px solid var(--line); border-left: 1px solid var(--line); margin: -1px 0 0 -1px; }
-.vx-bench-title { display: grid; gap: 2px; }
-/* Two lines for every title, so the big figures line up whatever the titles' lengths. */
-.vx-bench-metric { min-height: 2lh; text-wrap: balance; }
-.vx-bench-big { color: var(--ink); }
-.vx-bench-note { display: block; margin-top: var(--space-4); color: var(--ink-muted); }
+.vx-bench-panel { display: grid; grid-row: span 3; grid-template-rows: subgrid; gap: var(--space-8); align-content: start; padding: var(--space-12) var(--space-16); border-top: 1px solid var(--line); border-left: 1px solid var(--line); margin: -1px 0 0 -1px; }
+.vx-bench-title { display: grid; }
+/* One line for a title. The panels in a row share their rows, so a title that wraps moves every
+   figure in its row down with it and the figures still line up. */
+.vx-bench-metric { text-wrap: balance; }
+/* The factor and the words that say who won share a line, and the words wrap under it in a
+   narrow panel. A 4px gap keeps "1.07× larger than Parquet" on one line in six columns. */
+.vx-bench-big { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-4); color: var(--ink); }
+.vx-bench-note { color: var(--ink-muted); }
+/* The sources of panels whose figures are not bench's, under the panels. */
+.vx-bench-foot { margin: 0; padding: var(--space-4) var(--space-20); border-top: 1px solid var(--line); color: var(--ink-muted); }
 
 /* A bar chart's rows: name, a bar on its track, the value. Vortex is the one Blue row. */
 .vx-bars { display: grid; gap: var(--space-8); }
@@ -465,22 +475,29 @@
 .vx-bar.is-ours .vx-bar-fill { background: var(--chart-1); }
 .vx-bars.is-lg .vx-bar { gap: var(--space-12); font-size: 12.5px; }
 .vx-bars.is-lg .vx-bar-track { height: 10px; }
-/* In a panel whose text is narrower than about 175px, a bar beside its name and value was 15 to
-   50px wide. So there each bar runs the panel's width under its name and value: about 140px on a
-   375px phone. One column would give 190px bars, but the card would grow from 790px to 1,310px
-   tall, more than a phone's screen. */
+/* The card's bars end in their scores, small and muted, Vortex's included, so the magnitudes read
+   at a glance and the bars and the factor still lead. The score with its unit is the row's title
+   and screen-reader text. A system with no score says "Not measured" where its bar would be. In a
+   panel whose text is narrower than about 175px, a bar beside its name and value was 15 to 50px
+   wide. So there each bar runs the panel's width under its name and value: about 140px on a 375px
+   phone. One column would give 190px bars, but the card would grow taller than a phone's screen. */
+.vx-bench .vx-bars { align-content: start; }
 .vx-bench .vx-bar { grid-template-columns: minmax(0, 1fr) auto; row-gap: var(--space-4); }
+.vx-bench .vx-bar-value { font-size: 11px; color: var(--ink-muted); }
 .vx-bench .vx-bar-track { grid-column: 1 / -1; grid-row: 2; }
+.vx-bench .vx-bar-missing { grid-column: 1 / -1; grid-row: 2; }
 @container vx-bench (min-width: 410px) {
   .vx-bench .vx-bar { grid-template-columns: var(--bar-name, 56px) minmax(0, 1fr) var(--bar-value, auto); }
   .vx-bench .vx-bar-track { grid-column: auto; grid-row: auto; }
+  .vx-bench .vx-bar-missing { grid-column: 2 / -1; grid-row: auto; }
 }
 @container vx-bench (min-width: 640px) {
   .vx-bench-panels { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .vx-bench-panel { padding: var(--space-16) var(--space-20); }
+  .vx-bench-panel { padding: var(--space-12) var(--space-20); }
 }
 @container vx-bench (min-width: 1260px) {
   .vx-bench-panels { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .vx-bench-panel { padding-inline: var(--space-16); }
 }
 
 /* ------------------------------------------------------------------ docs */

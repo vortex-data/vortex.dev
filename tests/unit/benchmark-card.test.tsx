@@ -40,7 +40,9 @@ describe("BenchPanel", () => {
     const html = renderToStaticMarkup(<BenchPanel panel={panel} />);
     assert.equal(html, renderPanel(panel));
     assert.match(html, /Parquet not measured/);
-    assert.equal(html.match(/Not measured/g)?.length, 2);
+    // Each says so where its bar would be, and in its hover title.
+    assert.equal(html.match(/>Not measured</g)?.length, 2);
+    assert.equal(html.match(/: Not measured"/g)?.length, 2);
     const noVortex = {
       ...panel,
       rows: panel.rows.map((r) =>
@@ -69,7 +71,7 @@ describe("BenchmarkCard", () => {
     );
     assert.ok(
       html.includes(
-        '<h2 class="vx-bench-headline">Vortex against Parquet and Lance <span class="vx-bench-sub">· six benchmarks, best first in each</span></h2>'
+        '<h2 class="vx-bench-headline">Vortex against Parquet, Lance and Arrow <span class="vx-bench-sub">· times against the fastest run, the rest against Parquet, best first</span></h2>'
       )
     );
     assert.ok(
@@ -82,29 +84,107 @@ describe("BenchmarkCard", () => {
   });
 
   // Note 34: the bars and the big figure read the same scores, so NVMe's bars
-  // give the 32× above them, not the 29× that bench's totals gave.
-  it("prints bench's scores as bench does, and the bars agree with the factor", () => {
+  // give the 32× above them, not the 29× that bench's totals gave. Note 62:
+  // each bar ends in its score, and its score with the unit, which the panel
+  // no longer prints, is its screen-reader text and title.
+  it("ends each bar in bench's score, keeps the unit for screen readers and hover, and the bars agree with the factor", () => {
     assert.ok(PANELS);
     const html = renderToStaticMarkup(
       <BenchmarkCard panels={PANELS} readAt={new Date("2026-10-29")} />
     );
-    const values = [...html.matchAll(/class="vx-bar-value">([^<]*)</g)].map(
-      (m) => m[1]
-    );
+    assert.doesNotMatch(html, /vx-bench-unit/);
+    const values = [
+      ...html.matchAll(/class="vx-bar-value" aria-hidden="true">([^<]*)</g)
+    ].map((m) => m[1]);
     assert.deepEqual(
       values,
       [
         ["5.12", "1.00", "0.90"],
-        ["1.18", "1.90", "38.20"],
-        ["1.00", "2.18", "2.55"],
         ["1.57", "1.00", "0.54"],
         ["1.26", "2.01", "17.50"],
-        ["1", "1.07", "1.99"]
+        ["3.90", "1.00", "N/A"],
+        ["1.18", "1.90", "2.10", "38.20"],
+        ["1", "1.07", "1.99", "5.59"]
       ].flat()
     );
+    const exact = [...html.matchAll(/class="vx-sr-only">([^<]*)</g)].map(
+      (m) => m[1]
+    );
+    assert.deepEqual(
+      exact,
+      [
+        ["5.12× Parquet", "1.00× Parquet", "0.90× Parquet"],
+        ["1.57× Parquet", "1.00× Parquet", "0.54× Parquet"],
+        ["1.26× fastest", "2.01× fastest", "17.50× fastest"],
+        [
+          "3.90× Parquet",
+          "1.00× Parquet",
+          "not available, no cuDF integration"
+        ],
+        ["1.18× fastest", "1.90× fastest", "2.10× fastest", "38.20× fastest"],
+        ["1×", "1.07×", "1.99×", "5.59×"]
+      ].flat()
+    );
+    assert.match(html, /<div class="vx-bar" title="Arrow: 2\.10× fastest">/);
     const factors = [
-      ...html.matchAll(/class="vx-stat vx-bench-big">([^<]*)</g)
+      ...html.matchAll(/class="vx-bench-big"><span class="vx-stat">([^<]*)</g)
     ].map((m) => m[1]);
-    assert.deepEqual(factors, ["5.1×", "32×", "2.5×", "1.6×", "1.6×", "1.07×"]);
+    assert.deepEqual(factors, ["5.1×", "1.6×", "1.6×", "3.9×", "32×", "1.07×"]);
+  });
+
+  it("shows Arrow only where bench runs it, and Lance in every bench panel", () => {
+    assert.ok(PANELS);
+    const shown = PANELS.map((p) =>
+      [
+        ...renderToStaticMarkup(<BenchPanel panel={p} />).matchAll(
+          /class="vx-bar[^"]*" title="([^:]+):/g
+        )
+      ].map((m) => m[1])
+    );
+    assert.deepEqual(shown, [
+      ["Vortex", "Parquet", "Lance"],
+      ["Vortex", "Parquet", "Lance"],
+      ["Vortex", "Parquet", "Lance"],
+      ["Vortex", "Parquet", "Lance"],
+      ["Vortex", "Lance", "Arrow", "Parquet"],
+      ["Parquet", "Vortex", "Lance", "Arrow"]
+    ]);
+  });
+
+  // The GPU panel is not bench's, so the card names it and its source in a
+  // line under the panels, without a link. Lance cannot run in cuDF, so its
+  // row is N/A, not Not measured.
+  it("names the hand-kept GPU panel's source under the panels, and shows Lance as N/A", () => {
+    assert.ok(PANELS);
+    const html = renderToStaticMarkup(
+      <BenchmarkCard panels={PANELS} readAt={new Date("2026-10-29")} />
+    );
+    assert.ok(
+      html.includes(
+        '<span class="vx-bench-metric">GPU analytics with cuDF</span>'
+      )
+    );
+    assert.doesNotMatch(html, /vx-bench-mark|<sup/);
+    assert.match(
+      html,
+      /<p class="vx-caption vx-bench-foot">GPU analytics with cuDF: end to end, hot, on GH200, NDS-H SF10, from the Vortex UW–Madison talk<\/p><\/section>$/
+    );
+    assert.equal(html.match(/<a /g)?.length, 1, "one link, to bench");
+    assert.ok(
+      html.includes(
+        '<div class="vx-bar is-na" title="Lance: not available, no cuDF integration"><span>Lance</span><span class="vx-bar-track"></span><span class="vx-bar-value" aria-hidden="true">N/A</span>'
+      )
+    );
+  });
+
+  it("prints no source line when every panel is bench's", () => {
+    assert.ok(PANELS);
+    const html = renderToStaticMarkup(
+      <BenchmarkCard
+        panels={PANELS.filter((p) => !p.source)}
+        readAt={new Date("2026-10-29")}
+      />
+    );
+    assert.doesNotMatch(html, /vx-bench-foot/);
   });
 });

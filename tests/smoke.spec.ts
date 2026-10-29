@@ -36,7 +36,7 @@ test.describe("home", () => {
     await expect(
       page.getByRole("heading", {
         level: 1,
-        name: "The fastest columnar file format."
+        name: "Fast, small, open: pick three."
       })
     ).toBeVisible();
   });
@@ -162,6 +162,49 @@ test.describe("home bands", () => {
       /bench\.vortex\.dev · read \d+ \w{3} \d{4}/i
     );
     await expect(card.locator(".vx-bar.is-ours")).toHaveCount(6);
+  });
+
+  // Note 62: each bar ends in its score, with the unit for screen readers
+  // and as its hover title. Lance cannot run in cuDF, so it is N/A there, and
+  // the hand-kept GPU panel's source is named under the panels.
+  test("each bar ends in its score, keeps its unit for screen readers, and the GPU panel names its source", async ({
+    page
+  }) => {
+    await page.goto("/");
+    const card = page.getByRole("region", { name: "Benchmark summary" });
+    test.skip((await card.count()) === 0, "bench was not read at build");
+    const bars = await card.locator(".vx-bar").evaluateAll((rows) =>
+      rows.map((r) => ({
+        title: r.getAttribute("title") ?? "",
+        value: r.querySelector(".vx-bar-value")?.textContent ?? null,
+        sr: r.querySelector(".vx-sr-only")?.textContent ?? null,
+        missing: r.querySelector(".vx-bar-missing") !== null
+      }))
+    );
+    expect(bars.length).toBeGreaterThanOrEqual(19);
+    for (const b of bars) {
+      if (b.missing) {
+        expect(b.title).toMatch(/: Not measured$/);
+        continue;
+      }
+      expect(b.value).toMatch(/^(\d[\d.]*|N\/A)$/);
+      expect(b.title.endsWith(`: ${b.sr}`)).toBe(true);
+    }
+    // The value column is one width in every row, so the bars share a scale.
+    const widths = await card
+      .locator(".vx-bar-track")
+      .evaluateAll((ts) =>
+        ts.map((t) => Math.round(t.getBoundingClientRect().width))
+      );
+    expect(new Set(widths).size).toBeLessThanOrEqual(3);
+    await expect(
+      card.locator(
+        '.vx-bar.is-na[title="Lance: not available, no cuDF integration"]'
+      )
+    ).toHaveCount(1);
+    await expect(card.locator(".vx-bench-foot")).toHaveText(
+      /^GPU analytics with cuDF: .*UW–Madison talk$/
+    );
   });
 
   test("the logo banner shows the twelve cleared logos", async ({ page }) => {
@@ -485,7 +528,7 @@ test.describe("mobile layout", () => {
 });
 
 // On a phone the BenchmarkCard sets its panels two to a row, each bar under
-// its name and value. Beside them, a bar was 15 to 50px wide at 375px.
+// its name. Beside them, a bar was 15 to 50px wide at 375px.
 test.describe("benchmark card on phones", () => {
   for (const width of [320, 375]) {
     test.describe(`at ${width}px`, () => {
@@ -562,6 +605,31 @@ test.describe("benchmark card columns", () => {
         expect(m.first).toBe(columns);
         expect(m.narrowest).toBeGreaterThanOrEqual(60);
       });
+    });
+  }
+});
+
+// Note 62: the homepage fits one screen on a 14-inch laptop's browser and at
+// 1440 × 900, with the footer in view and nothing to scroll.
+test.describe("home fits one screen", () => {
+  for (const [width, height] of [
+    [1440, 900],
+    [1512, 860]
+  ] as const) {
+    test(`at ${width} × ${height}`, async ({ page }) => {
+      await page.setViewportSize({ width, height });
+      await page.goto("/");
+      const m = await page.evaluate(() => {
+        const foot = document.querySelector("footer")?.getBoundingClientRect();
+        return {
+          scroll: document.documentElement.scrollHeight - window.innerHeight,
+          footTop: foot?.top ?? Number.POSITIVE_INFINITY,
+          footBottom: foot?.bottom ?? Number.POSITIVE_INFINITY
+        };
+      });
+      expect(m.scroll).toBeLessThanOrEqual(0);
+      expect(m.footTop).toBeLessThan(height);
+      expect(m.footBottom).toBeLessThanOrEqual(height);
     });
   }
 });

@@ -7,9 +7,11 @@ import {
   type Panel,
   panelsFrom
 } from "@/lib/bench-summary";
+import { GPU_PANEL, PER_QUERY } from "@/lib/gpu-result";
 
 // bench.vortex.dev/api/groups as it answered on 28 Oct 2026, cut down to each
-// group's name and summary: the five groups the card reads and one it ignores.
+// group's name and summary: the four groups the card reads, Random Access
+// (S3), which it no longer reads, and one it ignores.
 const PAYLOAD = JSON.parse(
   readFileSync(new URL("./fixtures/bench-groups.json", import.meta.url), "utf8")
 ) as { groups: Record<string, unknown>[] };
@@ -27,9 +29,14 @@ const group = (gs: ReturnType<typeof groups>, name: string) => {
 };
 
 // The six panels from the fixture: bench's published geomean scores,
-// unrounded, with bench's coverage where it gives one. The card prints each
+// unrounded, with bench's coverage where it gives one, and the hand-kept GPU
+// panel beside ClickBench. Each bench panel has a row for every system the
+// card knows and names the ones it shows: Lance everywhere, Arrow only in
+// random access and file size, where bench runs it. The card prints each
 // score as bench does (benchmark-card.js's formatScore), so the site does not
 // round them. Titles join their parts with commas, so a line breaks cleanly.
+const LANCE = ["Vortex", "Parquet", "Lance"];
+const ARROW = ["Vortex", "Parquet", "Lance", "Arrow"];
 const PANELS: Panel[] = [
   {
     title: "Scan throughput",
@@ -39,30 +46,10 @@ const PANELS: Panel[] = [
     rows: [
       { system: "Vortex", score: 5.11549948136936 },
       { system: "Parquet", score: 1 },
-      { system: "Lance", score: 0.9003144780651322 }
-    ]
-  },
-  {
-    title: "Random access, NVMe, cold",
-    unit: "× fastest",
-    kind: "speed",
-    better: "lower",
-    rows: [
-      { system: "Vortex", score: 1.181104702076434, measured: 4, total: 4 },
-      { system: "Parquet", score: 38.20111652800704, measured: 4, total: 4 },
-      { system: "Lance", score: 1.8986894799471206, measured: 4, total: 4 }
-    ]
-  },
-  {
-    title: "Random access, S3, cold",
-    unit: "× fastest",
-    kind: "speed",
-    better: "lower",
-    rows: [
-      { system: "Vortex", score: 1, measured: 4, total: 4 },
-      { system: "Parquet", score: 2.5452014906806983, measured: 4, total: 4 },
-      { system: "Lance", score: 2.184430006681497, measured: 4, total: 4 }
-    ]
+      { system: "Lance", score: 0.9003144780651322 },
+      { system: "Arrow", score: null }
+    ],
+    systems: LANCE
   },
   {
     title: "Write throughput",
@@ -72,8 +59,10 @@ const PANELS: Panel[] = [
     rows: [
       { system: "Vortex", score: 1.5744172249047315 },
       { system: "Parquet", score: 1 },
-      { system: "Lance", score: 0.5357674304281903 }
-    ]
+      { system: "Lance", score: 0.5357674304281903 },
+      { system: "Arrow", score: null }
+    ],
+    systems: LANCE
   },
   {
     title: "ClickBench on DataFusion",
@@ -83,8 +72,24 @@ const PANELS: Panel[] = [
     rows: [
       { system: "Vortex", score: 1.2606848438809655, measured: 43, total: 43 },
       { system: "Parquet", score: 2.0073889499374, measured: 43, total: 43 },
-      { system: "Lance", score: 17.499514076001677, measured: 43, total: 43 }
-    ]
+      { system: "Lance", score: 17.499514076001677, measured: 43, total: 43 },
+      { system: "Arrow", score: null }
+    ],
+    systems: LANCE
+  },
+  GPU_PANEL,
+  {
+    title: "Random access, NVMe, cold",
+    unit: "× fastest",
+    kind: "speed",
+    better: "lower",
+    rows: [
+      { system: "Vortex", score: 1.181104702076434, measured: 4, total: 4 },
+      { system: "Parquet", score: 38.20111652800704, measured: 4, total: 4 },
+      { system: "Lance", score: 1.8986894799471206, measured: 4, total: 4 },
+      { system: "Arrow", score: 2.103207656693982, measured: 4, total: 4 }
+    ],
+    systems: ARROW
   },
   {
     title: "File size against Parquet + zstd",
@@ -94,8 +99,10 @@ const PANELS: Panel[] = [
     rows: [
       { system: "Vortex", score: 1.0679702496972 },
       { system: "Parquet", score: 1 },
-      { system: "Lance", score: 1.9857446360880464 }
-    ]
+      { system: "Lance", score: 1.9857446360880464 },
+      { system: "Arrow", score: 5.590366300370603 }
+    ],
+    systems: ARROW
   }
 ];
 
@@ -113,7 +120,7 @@ describe("panelsFrom", () => {
     const scan = panelsFrom(gs)?.[0];
     assert.deepEqual(scan?.rows[2], { system: "Lance", score: null });
     // The write panel reads the same group and keeps its Lance row.
-    assert.equal(panelsFrom(gs)?.[3]?.rows[2]?.score, 0.5357674304281903);
+    assert.equal(panelsFrom(gs)?.[1]?.rows[2]?.score, 0.5357674304281903);
   });
 
   it("passes bench's coverage on, so the card can say Not measured", () => {
@@ -123,7 +130,7 @@ describe("panelsFrom", () => {
     );
     assert.ok(lance);
     lance.measured = 3;
-    assert.deepEqual(panelsFrom(gs)?.[1]?.rows[2], {
+    assert.deepEqual(panelsFrom(gs)?.[4]?.rows[2], {
       system: "Lance",
       score: 1.8986894799471206,
       measured: 3,
@@ -145,7 +152,7 @@ describe("panelsFrom", () => {
     );
     assert.ok(parquet);
     parquet.score = "2.0";
-    assert.deepEqual(panelsFrom(gs)?.[4]?.rows[1], {
+    assert.deepEqual(panelsFrom(gs)?.[2]?.rows[1], {
       system: "Parquet",
       score: null,
       measured: 43,
@@ -158,7 +165,6 @@ describe("panelsFrom", () => {
       "Compression",
       "Compression Size",
       "Random Access (NVMe)",
-      "Random Access (S3)",
       "Clickbench"
     ]) {
       const gs = groups().filter((g) => g.name !== name);
@@ -166,10 +172,25 @@ describe("panelsFrom", () => {
     }
   });
 
-  it("gives null when a group reports none of the three systems", () => {
+  it("gives null when a group reports none of the systems it shows", () => {
     const gs = groups();
-    group(gs, "Random Access (S3)").summary.coldRankings = [];
+    group(gs, "Random Access (NVMe)").summary.coldRankings = [];
     assert.equal(panelsFrom(gs), null);
+    // Arrow alone is shown only where bench runs it, so a scan ranking that
+    // listed only Arrow still counts as none.
+    const only = groups();
+    group(only, "Compression").summary.rankings = [
+      { name: "arrow-ipc", operation: "decode", ratio: 2 },
+      ...(group(only, "Compression").summary.rankings ?? []).filter(
+        (r) => r.operation === "encode"
+      )
+    ];
+    assert.equal(panelsFrom(only), null);
+  });
+
+  it("no longer needs bench's S3 group", () => {
+    const gs = groups().filter((g) => g.name !== "Random Access (S3)");
+    assert.deepEqual(panelsFrom(gs), PANELS);
   });
 
   it("gives null for groups that are not bench's shape", () => {
@@ -257,6 +278,29 @@ describe("getBenchSummary", () => {
   it("gives null when the body is not JSON", async () => {
     const { fake } = stub(() => new Response("<html>", { status: 200 }));
     assert.equal(await getBenchSummary(fake), null);
+  });
+});
+
+// The GPU panel is kept by hand (gpu-result.ts). Its score must be the
+// geomean of the talk's per-query speedups, so an update to one cannot leave
+// the other behind.
+describe("GPU_PANEL", () => {
+  it("scores the geomean of its per-query speedups, against the fastest Parquet", () => {
+    const qs = Object.values(PER_QUERY);
+    const geomean = Math.exp(
+      qs.reduce((a, q) => a + Math.log(q), 0) / qs.length
+    );
+    const vortex = GPU_PANEL.rows.find((r) => r.system === "Vortex");
+    const parquet = GPU_PANEL.rows.find((r) => r.system === "Parquet");
+    assert.equal(vortex?.score, Number(geomean.toFixed(1)));
+    assert.equal(parquet?.score, 1);
+    assert.deepEqual(GPU_PANEL.systems, ["Vortex", "Parquet", "Lance"]);
+    assert.match(GPU_PANEL.source?.note ?? "", /UW–Madison talk/);
+    assert.deepEqual(GPU_PANEL.rows.at(-1), {
+      system: "Lance",
+      score: null,
+      unavailable: "no cuDF integration"
+    });
   });
 });
 

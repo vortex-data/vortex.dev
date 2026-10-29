@@ -8,6 +8,11 @@ export type BenchRow = {
   measured?: number | null;
   /** All the datasets or queries in the benchmark. */
   total?: number | null;
+  /**
+   * Why the system cannot run the benchmark at all ("no cuDF integration"). The row is then "N/A".
+   * "Not measured" is for a system that could run but has no result.
+   */
+  unavailable?: string;
 };
 
 export type BenchPanel = {
@@ -18,6 +23,15 @@ export type BenchPanel = {
   kind: "speed" | "size";
   better: "higher" | "lower";
   rows: readonly BenchRow[];
+  /** The systems the panel shows, in order. It must name Vortex and Parquet. Omitted, every row shows. */
+  systems?: readonly string[];
+  /** For figures that are not bench's: where they come from, which the card prints under the panels. */
+  source?: PanelSource;
+};
+
+export type PanelSource = {
+  /** Where the figures come from, briefly: "end to end, hot, on GH200, NDS-H SF10". */
+  note: string;
 };
 
 export type PanelRow = {
@@ -26,8 +40,11 @@ export type PanelRow = {
   score: number | null;
   /** The score as a percentage of the panel's largest, 0 when not measured. */
   width: number;
-  /** The score as bench prints it, or "Not measured". */
+  /** The score as bench prints it, "Not measured" or "N/A". */
   label: string;
+  /** For screen readers and the hover title: "38.20× fastest", "Not measured", or "not available, " and the reason. */
+  exact: string;
+  state: "measured" | "not-measured" | "n/a";
   ours: boolean;
 };
 
@@ -42,6 +59,13 @@ export type Versus = {
 };
 
 export function formatScore(score: number, unit: string): string;
+
+export function exactValue(score: number | null, unit: string): string;
+
+export function pickSystems(
+  rows: readonly BenchRow[],
+  systems: readonly string[] | undefined
+): BenchRow[];
 
 export function panelRows(
   rows: readonly BenchRow[],
@@ -60,5 +84,7 @@ export function panelNote(
   kind: BenchPanel["kind"],
   vs: Pick<Versus, "vortexWins"> & Partial<Pick<Versus, "tie" | "missing">>
 ): string;
+
+export function sourceNotes(panels: readonly BenchPanel[]): string[];
 
 export function renderPanel(panel: BenchPanel): string;

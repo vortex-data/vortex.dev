@@ -26,8 +26,10 @@ export function installTabs(sparkVersion: string | null): InstallTab[] {
       key: "duckdb",
       label: "DuckDB",
       lines: [
-        code("INSTALL vortex; LOAD vortex;"),
-        code("SELECT * FROM read_vortex('data.vortex');")
+        // One line, like every tab: the block is the tallest tab's height.
+        code(
+          "INSTALL vortex; LOAD vortex; SELECT * FROM read_vortex('data.vortex');"
+        )
       ]
     },
     ...(sparkVersion
