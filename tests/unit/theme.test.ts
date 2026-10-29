@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { runInNewContext } from "node:vm";
-import { THEME_BOOTSTRAP, themeFor } from "@/lib/theme";
+import { THEME_BOOTSTRAP, THEMEABLE, themeFor } from "@/lib/theme";
 
-// Runs the inline first-paint script against a fake page and returns the theme it set.
+// Runs the inline first-paint script against a fake page and returns what it set on <html>.
 function boot(
   pathname: string,
   stored: string | null,
@@ -22,7 +22,7 @@ function boot(
     },
     matchMedia: () => ({ matches: prefersDark })
   });
-  return root.dataset.theme;
+  return root.dataset;
 }
 
 const CASES: [string, string | null, boolean, "light" | "dark"][] = [
@@ -43,7 +43,10 @@ describe("themeFor", () => {
   it("keeps every page Dark except the blog, which follows the reader's choice", () => {
     for (const [path, stored, prefersDark, want] of CASES) {
       assert.equal(
-        themeFor(path, stored, prefersDark),
+        themeFor(stored ?? "dark", prefersDark, {
+          path,
+          themeable: THEMEABLE
+        }),
         want,
         `${path} ${stored} ${prefersDark}`
       );
@@ -55,7 +58,7 @@ describe("THEME_BOOTSTRAP", () => {
   it("sets the same theme as themeFor before first paint", () => {
     for (const [path, stored, prefersDark, want] of CASES) {
       assert.equal(
-        boot(path, stored, prefersDark),
+        boot(path, stored, prefersDark).theme,
         want,
         `${path} ${stored} ${prefersDark}`
       );
@@ -63,7 +66,12 @@ describe("THEME_BOOTSTRAP", () => {
   });
 
   it("falls back to Dark when storage is blocked", () => {
-    assert.equal(boot("/blog", "light", false, true), "dark");
+    assert.equal(boot("/blog", "light", false, true).theme, "dark");
+  });
+
+  it("records the choice, which the switch shows pressed before hydration", () => {
+    assert.equal(boot("/blog", "system", true).themeChoice, "system");
+    assert.equal(boot("/blog", null, true).themeChoice, "dark");
   });
 
   it("is a constant that builds no code from values", () => {

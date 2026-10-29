@@ -111,7 +111,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
         {more.length > 0 && (
           <footer className="vx-article-more">
             <h2 className="vx-label">More posts</h2>
-            <PostRows posts={more} />
+            <PostRows posts={more} heading="h3" />
           </footer>
         )}
       </article>

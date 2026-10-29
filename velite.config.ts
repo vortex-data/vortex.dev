@@ -5,7 +5,7 @@ import {
   rehypeHeadingLevels,
   rehypeTables
 } from "./src/lib/rehype-blog";
-import { syntaxTheme } from "./src/lib/syntax-theme";
+import { shikiTheme } from "./src/vendor/vortex-design/code-block.js";
 
 const blog = defineCollection({
   name: "Blog",
@@ -24,9 +24,9 @@ const blog = defineCollection({
           [
             rehypePrettyCode,
             {
-              // Colours from the design system's syntax-* tokens, so code
-              // follows the blog's Light and Dark themes.
-              theme: syntaxTheme,
+              // The design system's Shiki theme: colours from its syntax-*
+              // tokens, so code follows the blog's Light and Dark themes.
+              theme: shikiTheme,
               keepBackground: false,
               // A fence with no language is still a CodeBlock.
               defaultLang: { block: "plaintext" }

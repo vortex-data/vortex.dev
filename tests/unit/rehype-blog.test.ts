@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
-  codeLabel,
   type HastElement,
   type HastNode,
   type HastRoot,
@@ -72,7 +71,8 @@ describe("rehypeAsides", () => {
       )
     );
     const quote = tree.children[0] as HastElement;
-    assert.equal(quote.properties.dataAside, "");
+    assert.equal(quote.properties.dataAside, "info");
+    assert.equal(quote.properties.dataTitle, undefined);
     const p = quote.children[1] as HastElement;
     assert.deepEqual(p.properties.className, ["vx-callout-body"]);
     assert.deepEqual(p.children[0], {
@@ -91,6 +91,35 @@ describe("rehypeAsides", () => {
       type: "text",
       value: "Maximilian Kuschewski"
     });
+  });
+
+  it("makes a GitHub alert an aside with its kind and title, and drops a marker line", () => {
+    const tree = run(
+      rehypeAsides,
+      root(
+        el("blockquote", [
+          el("p", [text("[!WARNING]")]),
+          el("p", [text("Back up the file first.")])
+        ])
+      )
+    );
+    const quote = tree.children[0] as HastElement;
+    assert.equal(quote.properties.dataAside, "warning");
+    assert.equal(quote.properties.dataTitle, "Warning");
+    assert.equal(quote.children.length, 1);
+    const p = quote.children[0] as HastElement;
+    assert.deepEqual(p.properties.className, ["vx-callout-body"]);
+  });
+
+  it("keeps the alert's text when it shares the marker's paragraph", () => {
+    const tree = run(
+      rehypeAsides,
+      root(el("blockquote", [el("p", [text("[!NOTE]\nLoad it first.")])]))
+    );
+    const quote = tree.children[0] as HastElement;
+    assert.equal(quote.properties.dataTitle, "Note");
+    const p = quote.children[0] as HastElement;
+    assert.deepEqual(p.children[0], { type: "text", value: "Load it first." });
   });
 
   it("keeps a blockquote that opens with words as a quote", () => {
@@ -148,22 +177,5 @@ describe("rehypeTables", () => {
       (r.children[1] as HastElement).properties.className,
       undefined
     );
-  });
-});
-
-describe("codeLabel", () => {
-  it("names the language the way its owners spell it", () => {
-    assert.equal(codeLabel("rust"), "Rust");
-    assert.equal(codeLabel("sql"), "SQL");
-    assert.equal(codeLabel("python"), "Python");
-  });
-
-  it("calls every plain-text spelling Text", () => {
-    for (const lang of ["text", "plaintext", "plainText", "txt", undefined])
-      assert.equal(codeLabel(lang), "Text", String(lang));
-  });
-
-  it("keeps a language it does not know as written", () => {
-    assert.equal(codeLabel("zig"), "zig");
   });
 });

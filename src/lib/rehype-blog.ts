@@ -1,8 +1,11 @@
 /**
  * Rehype plugins that fit a post's Markdown to the design system's Article
  * card. velite.config.ts runs them after rehype-pretty-code. They work on
- * plain HAST objects and import nothing, so they add no dependency.
+ * plain HAST objects and add no dependency. Which blockquotes become a
+ * Callout is the design system's rule (`callout.js`).
  */
+
+import { calloutOf } from "../vendor/vortex-design/callout.js";
 
 export interface HastText {
   type: "text";
@@ -73,8 +76,8 @@ const HEADING = /^h([1-6])$/;
 
 /**
  * Sets a post's top heading level to h2, under the page's one h1 (the
- * title), and moves its other headings by the same step. Posts start at `#`
- * or at `##`, and the Article card styles h2 and h3.
+ * title), and moves its other headings by the same step, as the Article
+ * card asks of a renderer. Posts start at `#` or at `##`.
  */
 export function rehypeHeadingLevels() {
   return (tree: HastRoot) => {
@@ -89,16 +92,12 @@ export function rehypeHeadingLevels() {
   };
 }
 
-// An emoji at the start of a blockquote, with any variation selector and
-// joiners, and the space or line break after it.
-const LEADING_EMOJI =
-  /^\s*\p{Extended_Pictographic}(?:\uFE0F|\u200D\p{Extended_Pictographic})*\s*/u;
-
 /**
- * Marks a blockquote that opens with an emoji ("> 💡 …") as an aside, which
- * the blog renders as the Callout card: the `info` icon takes the emoji's
- * place. Its paragraphs become `vx-callout-body`. A blockquote that opens
- * with words stays a quote.
+ * Marks a blockquote the Callout card's rule picks out as an aside: a GitHub
+ * alert ("> [!NOTE]") or one that opens with an emoji ("> 💡 …"). It drops
+ * the marker and records the kind (`data-aside`) and any title
+ * (`data-title`), which `mdx-components.tsx` draws. Its paragraphs become
+ * `vx-callout-body`. A blockquote that opens with words stays a quote.
  */
 export function rehypeAsides() {
   return (tree: HastRoot) => {
@@ -106,11 +105,21 @@ export function rehypeAsides() {
       const paras = quote.children.filter(
         (n): n is HastElement => n.type === "element" && n.tagName === "p"
       );
-      const first = paras[0]?.children[0];
-      if (first?.type !== "text" || !LEADING_EMOJI.test(first.value)) continue;
-      first.value = first.value.replace(LEADING_EMOJI, "");
-      quote.properties.dataAside = "";
-      for (const p of paras) addClass(p, "vx-callout-body");
+      const [lead] = paras;
+      const first = lead?.children[0];
+      if (!lead || first?.type !== "text") continue;
+      const callout = calloutOf(first.value);
+      if (!callout) continue;
+      first.value = callout.rest;
+      quote.properties.dataAside = callout.kind;
+      if (callout.title) quote.properties.dataTitle = callout.title;
+      // An alert's marker on a line of its own leaves an empty paragraph.
+      let body = paras;
+      if (callout.rest.trim() === "" && lead.children.length === 1) {
+        quote.children = quote.children.filter((n) => n !== lead);
+        body = paras.slice(1);
+      }
+      for (const p of body) addClass(p, "vx-callout-body");
     }
   };
 }
@@ -169,30 +178,4 @@ function markNumbers(table: HastElement): void {
     if (first && textOf(first).trim().toLowerCase() === "total")
       addClass(r, "is-total");
   }
-}
-
-const LANGUAGES: Record<string, string> = {
-  bash: "Shell",
-  c: "C",
-  cpp: "C++",
-  java: "Java",
-  javascript: "JavaScript",
-  js: "JavaScript",
-  json: "JSON",
-  py: "Python",
-  python: "Python",
-  rust: "Rust",
-  sh: "Shell",
-  shell: "Shell",
-  sql: "SQL",
-  toml: "TOML",
-  ts: "TypeScript",
-  typescript: "TypeScript",
-  yaml: "YAML"
-};
-
-/** The CodeBlock card's label for a fence's language. */
-export function codeLabel(lang: string | undefined): string {
-  if (!lang || /^(plain)?te?xt$|^plain$/i.test(lang)) return "Text";
-  return LANGUAGES[lang.toLowerCase()] ?? lang;
 }

@@ -1,7 +1,8 @@
 # Vortex design system modules
 
-Copied unchanged from the Vortex design system's `components/lib/`: `benchmark-card.js` and
-`benchmark-card.d.ts` on 2026-10-29, the rest on 2026-10-28. Do not edit them here: change the
+Copied unchanged from the Vortex design system's `components/lib/`: `benchmark-card.js`,
+`benchmark-card.d.ts`, `theme.js`, `callout.js`, `code-block.js` and their `.d.ts` files on
+2026-10-29, the rest on 2026-10-28. Do not edit them here: change the
 system, then copy them again. Biome skips this folder.
 
 | File | What it is |
@@ -11,6 +12,10 @@ system, then copy them again. Biome skips this folder.
 | `vortex-mark-geometry.js` | The mark's mesh, generated from the 3D model |
 | `benchmark-card.js` | The BenchmarkCard's DOM-free rules: `formatValue`, `panelRows`, `versusParquet`, `formatFactor`, `panelNote` and `renderPanel` |
 | `benchmark-card.d.ts` | Its types, which the system ships beside it |
+| `theme.js` | The ThemeSwitch's rules: the first-paint script for the blog's paths (`themeBootstrap`), `isThemeable`, `themeFor`, `readChoice` and `saveChoice` |
+| `callout.js` | The Callout card's Markdown rule: `calloutOf` turns a GitHub alert or an emoji-led blockquote into an aside |
+| `code-block.js` | The CodeBlock card's Shiki theme (`shikiTheme`) and labels (`codeLabel`) |
+| `theme.d.ts`, `callout.d.ts`, `code-block.d.ts` | Their types, which the system ships beside them |
 
 `ascii-mark.d.ts`, `ascii-core.d.ts` and `three.d.ts` are the site's own: types for TypeScript,
 not part of the system. The site bundles three.js from npm (`three`,

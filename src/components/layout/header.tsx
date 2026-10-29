@@ -10,9 +10,10 @@ import { HeaderNav } from "./header-nav";
 /**
  * The design system's Header card, site variant: the wordmark, the nav and
  * the GitHub button, then on blog pages the ThemeSwitch, last in the end
- * group as the card's docs variant places it. The system's CSS shows the
- * wordmark that suits the theme, and below 800px moves the nav to a second
- * row.
+ * group. The system's CSS shows the wordmark that suits the theme, moves the
+ * nav to a second row below 800px (920px with the switch), and drops the
+ * repository name on narrow phones. The button's name starts with its
+ * visible text, as Lighthouse's label-content-name-mismatch requires.
  */
 export async function Header() {
   const stars = await getStarCount();
@@ -46,11 +47,11 @@ export async function Header() {
           aria-label={
             stars === null
               ? `${REPO} on GitHub`
-              : `${REPO} on GitHub, ${formatStars(stars)} stars`
+              : `${REPO} ${formatStars(stars)} stars on GitHub`
           }
         >
           <MarkGithub />
-          <span className="site-header-repo">{REPO}</span>
+          <span className="vx-header-repo">{REPO}</span>
           {stars !== null && (
             <span className="vx-btn-count">
               <StarIcon />

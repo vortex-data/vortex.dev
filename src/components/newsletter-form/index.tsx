@@ -5,9 +5,9 @@ import { type FormEvent, useId, useState } from "react";
 type FormState = "idle" | "loading" | "success" | "error";
 
 /**
- * The blog's newsletter sign-up, in the design system's controls: the email
- * field and the primary `vx-btn`. The system has no Field card, so the field
- * is styled from its tokens in globals.css (`.site-field`).
+ * The blog's newsletter sign-up, in the design system's Field card: the
+ * email field and the primary `vx-btn` in a `vx-field-row`, and the error
+ * under it in `vx-field-error`.
  */
 export const NewsletterForm = () => {
   const [email, setEmail] = useState("");
@@ -59,13 +59,13 @@ export const NewsletterForm = () => {
           You are subscribed.
         </p>
       ) : (
-        <form className="blog-newsletter-form" onSubmit={handleSubmit}>
+        <form className="vx-field-row" onSubmit={handleSubmit}>
           <label className="vx-sr-only" htmlFor={`${id}-email`}>
             Email address
           </label>
           <input
             id={`${id}-email`}
-            className="site-field"
+            className="vx-field"
             type="email"
             autoComplete="email"
             value={email}
@@ -91,11 +91,7 @@ export const NewsletterForm = () => {
         </form>
       )}
       {state === "error" && (
-        <p
-          className="vx-small blog-newsletter-error"
-          id={`${id}-error`}
-          role="alert"
-        >
+        <p className="vx-small vx-field-error" id={`${id}-error`} role="alert">
           {errorMessage}
         </p>
       )}

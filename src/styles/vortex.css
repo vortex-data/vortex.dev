@@ -187,6 +187,29 @@
 .vx-btn.is-mono { padding: 0 var(--space-12); font: 400 13px/1 var(--font-mono); }
 .vx-btn-count { display: inline-flex; align-items: center; gap: var(--space-4); padding-left: var(--space-12); border-left: 1px solid var(--edge); color: var(--ink-muted); }
 
+/* A text field: raised, at control-md, with an edge that turns ink on hover, like the docs' search.
+   A row holds a field and its button. */
+.vx-field {
+  appearance: none;
+  box-sizing: border-box;
+  height: var(--control-md);
+  margin: 0;
+  padding: 0 var(--space-12);
+  font: 400 14px/1 var(--font-sans);
+  color: var(--ink);
+  background: var(--raised);
+  border: 1px solid var(--edge);
+  border-radius: var(--radius-control);
+  transition: border-color 150ms ease-out;
+}
+.vx-field::placeholder { color: var(--ink-muted); opacity: 1; }
+.vx-field:hover { border-color: var(--ink); }
+.vx-field[aria-invalid="true"] { border-color: var(--error-ink); }
+.vx-field:disabled { opacity: 0.45; cursor: default; }
+.vx-field-row { display: flex; gap: var(--space-8); max-width: 440px; }
+.vx-field-row > .vx-field { flex: 1 1 auto; min-width: 0; }
+.vx-field-error { margin: var(--space-8) 0 0; color: var(--error-ink); }
+
 /* The header: the wordmark, then either the site's navigation or the docs' label and search,
    then the end group. */
 .vx-header {
@@ -241,8 +264,24 @@
   .vx-header.has-nav .vx-header-nav { order: 3; width: 100%; margin-left: 0; gap: var(--space-20); overflow-x: auto; }
   .vx-header.has-nav .vx-header-end { margin-left: auto; }
 }
+/* With the ThemeSwitch in its end group the site header needs about 900px, so it takes two rows
+   below 920px. */
+@media (max-width: 920px) {
+  .vx-header.has-nav:has(.vx-theme-switch) { flex-wrap: wrap; height: auto; padding-block: var(--space-12); row-gap: var(--space-12); }
+  .vx-header.has-nav:has(.vx-theme-switch) .vx-header-nav { order: 3; width: 100%; margin-left: 0; gap: var(--space-20); overflow-x: auto; }
+  .vx-header.has-nav:has(.vx-theme-switch) .vx-header-end { margin-left: auto; }
+}
 @media (max-width: 640px) {
   .vx-header-label, .vx-header-end .is-wide { display: none; }
+}
+/* The wordmark, the GitHub button and the switch need about 430px on one row, so below 480px the
+   button keeps its mark and count and drops the repository name. Without the switch the row needs
+   about 330px, so the name goes below 360px. The button's aria-label still names the repository. */
+@media (max-width: 480px) {
+  .vx-header-end:has(.vx-theme-switch) .vx-header-repo { display: none; }
+}
+@media (max-width: 360px) {
+  .vx-header-repo { display: none; }
 }
 /* The homepage headline sets at the h1 size on phones, where 76px would take five lines. */
 @media (max-width: 640px) {
@@ -343,9 +382,13 @@
 }
 
 /* ------------------------------------------------------------------ docs */
+/* A fieldset, so its margin and minimum width are cleared. Until a script presses a button, the
+   choice THEME_BOOTSTRAP wrote to data-theme-choice on the root shows pressed. */
 .vx-theme-switch {
   display: inline-flex;
   gap: 2px;
+  min-width: 0;
+  margin: 0;
   padding: 2px;
   background: var(--raised);
   border: 1px solid var(--edge);
@@ -364,7 +407,10 @@
   transition: color 150ms ease-out, background-color 150ms ease-out;
 }
 .vx-theme-switch button:hover { color: var(--ink); }
-.vx-theme-switch button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
+.vx-theme-switch button[aria-pressed="true"],
+:root[data-theme-choice="light"] .vx-theme-switch:not(:has([aria-pressed="true"])) button[data-choice="light"],
+:root[data-theme-choice="dark"] .vx-theme-switch:not(:has([aria-pressed="true"])) button[data-choice="dark"],
+:root[data-theme-choice="system"] .vx-theme-switch:not(:has([aria-pressed="true"])) button[data-choice="system"] { background: var(--surface); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
 .vx-theme-switch svg { width: 16px; height: 16px; fill: currentColor; }
 
 /* DocsNav and Toc style the lists Sphinx writes, so they select its elements. */
@@ -458,6 +504,7 @@
 .vx-callout-icon { width: 20px; height: 20px; margin-top: 1px; fill: var(--ink); }
 .vx-callout-title { margin: 0 0 2px; font-weight: 600; color: var(--ink); }
 .vx-callout-body { margin: 0; }
+.vx-callout-body + .vx-callout-body { margin-top: var(--space-8); }
 
 /* ------------------------------------------------------------------ blog */
 .vx-blog-head {
@@ -473,21 +520,26 @@
 .vx-blog-feeds { display: flex; gap: var(--space-16); }
 
 /* Post rows sit in a .vx-posts list, which they measure to decide their layout. */
-.vx-posts { container-type: inline-size; }
+/* The list is a ul of li > a.vx-post-row. Each row reaches 12px past the column on both sides, so
+   its text sits on the column's edge, under the heading, and its wash has room. The rule between
+   rows spans the column only, as the heading's rule does. */
+.vx-posts { container-type: inline-size; margin: 0; padding: 0; list-style: none; }
 .vx-post-row {
+  position: relative;
   display: grid;
   grid-template-columns: 150px minmax(0, 1fr);
   gap: var(--space-4) var(--space-24);
+  margin: 0 calc(-1 * var(--space-12));
   padding: var(--space-16) var(--space-12);
-  border-bottom: 1px solid var(--line);
   color: inherit;
   text-decoration: none;
   transition: background-color 150ms ease-out;
 }
+.vx-post-row::after { content: ""; position: absolute; right: var(--space-12); bottom: 0; left: var(--space-12); border-bottom: 1px solid var(--line); }
 .vx-post-row:hover { background: var(--wash); }
 .vx-post-row-meta { grid-row: span 2; display: grid; align-content: start; gap: var(--space-4); padding-top: var(--space-4); }
-.vx-post-row-title { color: var(--ink); }
-.vx-post-row-excerpt { color: var(--ink-muted); }
+.vx-post-row-title { margin: 0; color: var(--ink); }
+.vx-post-row-excerpt { margin: 0; color: var(--ink-muted); }
 @container (max-width: 560px) {
   .vx-post-row { grid-template-columns: minmax(0, 1fr); }
   .vx-post-row-meta { grid-row: auto; display: flex; gap: var(--space-12); padding-top: 0; }
@@ -506,8 +558,15 @@
 .vx-prose > * { margin: 0 0 1.1em; }
 .vx-prose > h2 { margin: 2em 0 0.6em; font: 500 28px/1.15 var(--font-display); letter-spacing: -0.02em; color: var(--ink); }
 .vx-prose > h3 { margin: 1.6em 0 0.5em; font: 600 22px/1.2 var(--font-display); letter-spacing: -0.02em; color: var(--ink); }
+.vx-prose > h4 { margin: 1.4em 0 0.4em; font: 600 18px/1.3 var(--font-display); letter-spacing: -0.02em; color: var(--ink); }
+.vx-prose > h5,
+.vx-prose > h6 { margin: 1.4em 0 0.4em; font-size: 1em; font-weight: 600; color: var(--ink); }
 .vx-prose strong { font-weight: 600; color: var(--ink); }
+/* Markers are drawn here, because a site's reset often removes them. */
 .vx-prose ul, .vx-prose ol { padding-left: 1.4em; }
+.vx-prose ul { list-style: disc; }
+.vx-prose ol { list-style: decimal; }
+.vx-prose ul ul { list-style: circle; }
 .vx-prose li + li { margin-top: 0.4em; }
 .vx-prose li::marker { color: var(--ink-muted); }
 .vx-prose blockquote {
@@ -543,7 +602,7 @@
 .vx-prose td,
 .vx-table td { padding: var(--space-8) var(--space-12) var(--space-8) 0; border-bottom: 1px solid var(--line); }
 .vx-prose .is-num,
-.vx-table .is-num { text-align: right; font-family: var(--font-mono); font-size: 13px; }
+.vx-table .is-num { text-align: right; font-family: var(--font-mono); font-size: 13px; white-space: nowrap; }
 .vx-prose tr.is-total td,
 .vx-table tr.is-total td { color: var(--ink); font-weight: 600; border-bottom: 0; }
 /* Data tables: every cell in mono, rows at app height, and column names keep their case. */
@@ -566,5 +625,5 @@
 /* ------------------------------------------------------------------ focus
    One rule for every focusable element, last so that it wins over the resets above. Rows and
    segments inside a clipped container draw it inside their edge. */
-:where(a, button, [tabindex]):focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 :where(.vx-docs-nav a, .vx-toc a, .vx-post-row, .vx-tree-node, .vx-filemap-bar > button, .vx-tabs-list button):focus-visible { outline-offset: -2px; }

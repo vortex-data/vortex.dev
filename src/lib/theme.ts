@@ -1,3 +1,11 @@
+import {
+  isThemeable as onThemeablePath,
+  saveChoice,
+  type ThemeChoice,
+  themeBootstrap,
+  themeFor
+} from "@/vendor/vortex-design/theme.js";
+
 /**
  * Palette source of truth for TS-side consumers (OG image generation,
  * scripts). The CSS-side source lives in `src/app/globals.css` under
@@ -16,59 +24,39 @@ export const THEME = {
 
 export type ThemeKey = keyof typeof THEME;
 
-/** The ThemeSwitch card's three choices, in its order. */
-export const THEME_CHOICES = ["light", "dark", "system"] as const;
+export {
+  readChoice,
+  saveChoice,
+  themeFor
+} from "@/vendor/vortex-design/theme.js";
+export type { ThemeChoice };
 
-export type ThemeChoice = (typeof THEME_CHOICES)[number];
+/** The ThemeSwitch card's three choices, in its order. */
+export const THEME_CHOICES = [
+  "light",
+  "dark",
+  "system"
+] as const satisfies readonly ThemeChoice[];
+
+/**
+ * The paths that carry the ThemeSwitch: the blog index and its posts. Every
+ * other page is Dark only. The design system's theme module takes the list.
+ */
+export const THEMEABLE = ["/blog"] as const;
 
 const THEME_KEY = "vx-theme";
 
-/** Whether a page carries the ThemeSwitch: the blog index and its posts. */
+/** Whether a page carries the ThemeSwitch. */
 export function isThemeable(pathname: string | null): boolean {
-  return (
-    pathname !== null && (pathname === "/blog" || pathname.startsWith("/blog/"))
-  );
-}
-
-/** The stored choice, or Dark when it is unset, unknown or blocked. */
-export function readChoice(
-  storage: Pick<Storage, "getItem"> | null
-): ThemeChoice {
-  try {
-    const v = storage?.getItem(THEME_KEY);
-    return THEME_CHOICES.find((c) => c === v) ?? "dark";
-  } catch {
-    return "dark";
-  }
-}
-
-/** Stores the choice. Blocked storage only costs the memory of it. */
-export function saveChoice(
-  storage: Pick<Storage, "setItem"> | null,
-  choice: ThemeChoice
-): void {
-  try {
-    storage?.setItem(THEME_KEY, choice);
-  } catch {
-    // The theme still changes for this page.
-  }
+  return pathname !== null && onThemeablePath(pathname, THEMEABLE);
 }
 
 /**
- * Which theme a page renders in. The blog carries the design system's
- * ThemeSwitch and follows the reader's choice in `localStorage["vx-theme"]`
- * (light, dark or system; Dark when unset). Every other page is Dark only.
+ * The design system's first-paint script for this site's paths. It sets
+ * `<html data-theme>` (Dark outside the blog) and `data-theme-choice`, from
+ * which the system's CSS shows the switch's choice pressed before hydration.
  */
-export function themeFor(
-  pathname: string,
-  stored: string | null,
-  prefersDark: boolean
-): "light" | "dark" {
-  if (!isThemeable(pathname)) return "dark";
-  if (stored === "light") return "light";
-  if (stored === "system") return prefersDark ? "dark" : "light";
-  return "dark";
-}
+export const THEME_BOOTSTRAP = themeBootstrap({ themeable: THEMEABLE });
 
 /**
  * `win.localStorage`, or null where reading the property itself throws
@@ -110,6 +98,23 @@ function currentChoice(win: {
   );
 }
 
+type Root = { documentElement: { dataset: DOMStringMap } };
+
+// Sets the page's theme, and the choice the switch shows, as the bootstrap does.
+function apply(
+  root: Root,
+  pathname: string,
+  choice: ThemeChoice,
+  prefersDark: boolean
+): void {
+  const { dataset } = root.documentElement;
+  dataset.themeChoice = choice;
+  dataset.theme = themeFor(choice, prefersDark, {
+    path: pathname,
+    themeable: THEMEABLE
+  });
+}
+
 /** What `applyRouteTheme` needs from `window`, so it can be tested without a DOM. */
 export interface ThemeWindow {
   localStorage: Pick<Storage, "getItem">;
@@ -118,7 +123,7 @@ export interface ThemeWindow {
     addEventListener(type: "change", listener: () => void): void;
     removeEventListener(type: "change", listener: () => void): void;
   };
-  document: { documentElement: { dataset: DOMStringMap } };
+  document: Root;
 }
 
 /**
@@ -132,12 +137,13 @@ export function chooseTheme(
   win: {
     localStorage: Pick<Storage, "setItem">;
     matchMedia(query: string): { readonly matches: boolean };
-    document: { documentElement: { dataset: DOMStringMap } };
+    document: Root;
   }
 ): void {
   pageChoices.set(win.document, choice);
   saveChoice(storageOf(win), choice);
-  win.document.documentElement.dataset.theme = themeFor(
+  apply(
+    win.document,
     pathname,
     choice,
     win.matchMedia("(prefers-color-scheme: dark)").matches
@@ -146,34 +152,18 @@ export function chooseTheme(
 
 /**
  * Sets `<html data-theme>` for `pathname` and keeps it in step with the OS
- * while the page stays open, which a blog set to "system" needs. Returns a
- * function that stops listening.
+ * while the page stays open, which a blog set to "system" needs. Client-side
+ * navigation keeps the document, so the first-paint script never reruns.
+ * Returns a function that stops listening.
  */
 export function applyRouteTheme(
   pathname: string,
   win: ThemeWindow
 ): () => void {
   const media = win.matchMedia("(prefers-color-scheme: dark)");
-  const apply = () => {
-    win.document.documentElement.dataset.theme = themeFor(
-      pathname,
-      currentChoice(win),
-      media.matches
-    );
-  };
-  apply();
-  media.addEventListener("change", apply);
-  return () => media.removeEventListener("change", apply);
+  const run = () =>
+    apply(win.document, pathname, currentChoice(win), media.matches);
+  run();
+  media.addEventListener("change", run);
+  return () => media.removeEventListener("change", run);
 }
-
-/**
- * `themeFor` in plain ES5, for an inline classic script in `<head>` so the
- * theme lands on `<html>` before first paint. It is a constant: it reads the
- * path, the stored choice and the OS preference itself, and builds no code
- * from values. `tests/unit/theme.test.ts` holds it to `themeFor`.
- */
-export const THEME_BOOTSTRAP =
-  '(function(){var t="dark",p=location.pathname;' +
-  'if(p==="/blog"||p.indexOf("/blog/")===0){var s=null;try{s=localStorage.getItem("vx-theme");}catch(e){}' +
-  'if(s==="light")t="light";else if(s==="system")t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";}' +
-  "document.documentElement.dataset.theme=t;})();";

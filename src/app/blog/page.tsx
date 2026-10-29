@@ -49,7 +49,7 @@ export default function BlogPage() {
       {posts.length === 0 ? (
         <p className="vx-small blog-empty">No posts yet.</p>
       ) : (
-        <PostRows posts={posts} />
+        <PostRows posts={posts} heading="h2" />
       )}
       <NewsletterForm />
     </div>

@@ -1,6 +1,6 @@
 import { type ComponentProps, isValidElement } from "react";
-import { InfoIcon } from "@/components/icons";
-import { codeLabel } from "@/lib/rehype-blog";
+import { InfoIcon, WarningIcon } from "@/components/icons";
+import { codeLabel } from "@/vendor/vortex-design/code-block.js";
 import { CopyCode } from "./copy-code";
 
 /**
@@ -36,14 +36,30 @@ function Pre({ className, ...props }: ComponentProps<"pre">) {
   );
 }
 
-/** An aside (`rehypeAsides`) as the Callout card; any other blockquote as it is. */
-function Blockquote({ children, ...props }: ComponentProps<"blockquote">) {
-  if (!("data-aside" in props))
-    return <blockquote {...props}>{children}</blockquote>;
+type AsideProps = ComponentProps<"blockquote"> & {
+  "data-aside"?: string;
+  "data-title"?: string;
+};
+
+/**
+ * An aside (`rehypeAsides`) as the Callout card: the kind's icon, the title
+ * if the aside has one, then its paragraphs. Any other blockquote as it is.
+ */
+function Blockquote({
+  children,
+  "data-aside": kind,
+  "data-title": title,
+  ...props
+}: AsideProps) {
+  if (kind === undefined) return <blockquote {...props}>{children}</blockquote>;
+  const Icon = kind === "warning" ? WarningIcon : InfoIcon;
   return (
     <div className="vx-callout" role="note">
-      <InfoIcon className="vx-callout-icon" />
-      <div>{children}</div>
+      <Icon className="vx-callout-icon" />
+      <div>
+        {title && <p className="vx-callout-title">{title}</p>}
+        {children}
+      </div>
     </div>
   );
 }

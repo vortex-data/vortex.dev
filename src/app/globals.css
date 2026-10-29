@@ -167,46 +167,6 @@ body {
   flex: 1 0 auto;
 }
 
-/* The Header card has no layout for the ThemeSwitch beside the site's nav
-   and GitHub button, which adds about 104px to the end group. So a blog
-   page's header needs about 900px on one row, where the card's other pages
-   need 790px, and below 920px it takes the card's two-row layout. */
-@media (max-width: 920px) {
-  .vx-header.has-nav:has(.vx-theme-switch) {
-    flex-wrap: wrap;
-    height: auto;
-    padding-block: var(--space-12);
-    row-gap: var(--space-12);
-  }
-  .vx-header.has-nav:has(.vx-theme-switch) .vx-header-nav {
-    order: 3;
-    width: 100%;
-    margin-left: 0;
-    gap: var(--space-20);
-    overflow-x: auto;
-  }
-  .vx-header.has-nav:has(.vx-theme-switch) .vx-header-end {
-    margin-left: auto;
-  }
-}
-
-/* On a phone the wordmark, the GitHub button and the switch need about 430px
-   on one row, so below 480px the button keeps its mark and drops the
-   repository name. Its aria-label still names it. */
-@media (max-width: 480px) {
-  .vx-header-end:has(.vx-theme-switch) .site-header-repo {
-    display: none;
-  }
-}
-
-/* Without the switch the row needs about 330px, so on the narrowest phones
-   every page's button drops the repository name too. */
-@media (max-width: 360px) {
-  .site-header-repo {
-    display: none;
-  }
-}
-
 /* ------------------------------------------------------------------ blog
    The blog's page frame, and the parts the design system has no card for. */
 
@@ -235,25 +195,9 @@ body {
   white-space: nowrap;
 }
 
-/* A number keeps its unit on its line, and a table too wide for a phone
-   scrolls inside its vx-table-wrap instead. */
-.vx-prose .is-num {
-  white-space: nowrap;
-}
-
 .blog-empty {
   margin: var(--space-24) 0 0;
   color: var(--ink-muted);
-}
-
-/* The reset at the top removes list markers, which the Article card's prose
-   keeps and colours. */
-.vx-prose ul {
-  list-style: disc;
-}
-
-.vx-prose ol {
-  list-style: decimal;
 }
 
 /* The newsletter sign-up under the post list. */
@@ -266,57 +210,7 @@ body {
   color: var(--ink-body);
 }
 
-.blog-newsletter-form {
-  display: flex;
-  gap: var(--space-8);
-  max-width: 440px;
-}
-
 .blog-newsletter-done {
   margin: 0;
   color: var(--ink);
-}
-
-.blog-newsletter-error {
-  margin: var(--space-8) 0 0;
-  color: var(--error-ink);
-}
-
-/* A text field from the system's tokens, because the system has no Field
-   card. It draws like the docs' search button: `raised`, at `control-md`,
-   with an `edge` border that turns `ink` on hover. */
-.site-field {
-  flex: 1 1 auto;
-  min-width: 0;
-  height: var(--control-md);
-  padding: 0 var(--space-12);
-  font: 400 14px/1 var(--font-sans);
-  color: var(--ink);
-  background: var(--raised);
-  border: 1px solid var(--edge);
-  border-radius: var(--radius-control);
-  transition: border-color 150ms ease-out;
-}
-
-.site-field::placeholder {
-  color: var(--ink-muted);
-  opacity: 1;
-}
-
-.site-field:hover {
-  border-color: var(--ink);
-}
-
-/* The system's focus rule covers links, buttons and [tabindex] only. */
-.site-field:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
-}
-
-.site-field[aria-invalid="true"] {
-  border-color: var(--error-ink);
-}
-
-.site-field:disabled {
-  opacity: 0.45;
 }

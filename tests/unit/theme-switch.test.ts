@@ -87,6 +87,7 @@ describe("chooseTheme", () => {
     chooseTheme("/blog", "light", w.win);
     assert.equal(w.localStorage.items.get("vx-theme"), "light");
     assert.equal(w.root.dataset.theme, "light");
+    assert.equal(w.root.dataset.themeChoice, "light");
     chooseTheme("/blog", "system", w.win);
     assert.equal(w.root.dataset.theme, "dark");
     chooseTheme("/blog/welcome", "dark", w.win);

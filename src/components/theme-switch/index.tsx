@@ -31,12 +31,11 @@ function storage(): Storage | null {
 /**
  * The design system's ThemeSwitch card: Light, Dark and System, stored in
  * `localStorage["vx-theme"]`. It renders on blog pages only, because every
- * other page is Dark only (`themeFor`). The server cannot read the stored
- * choice, so no button is pressed until the first effect reads it. The
- * theme itself is already right by then: `THEME_BOOTSTRAP` set it before
- * first paint, and `RouteTheme` follows the OS for System. The group is a
- * fieldset rather than the card's `div role="group"`, which Biome's a11y
- * rules reject.
+ * other page is Dark only (`THEMEABLE`). The server cannot read the stored
+ * choice, so it renders every button unpressed. Until the first effect
+ * reads the choice, the system's CSS shows the one `THEME_BOOTSTRAP` wrote
+ * to `data-theme-choice` pressed, and `RouteTheme` follows the OS for
+ * System. The group is a fieldset, as the card has it.
  */
 export function ThemeSwitch() {
   const pathname = usePathname();

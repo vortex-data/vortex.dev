@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 
 /**
  * Browser smoke tests. Structural and behavioral checks against a real
@@ -593,6 +593,106 @@ test.describe("logo banner under reduced motion", () => {
         expect(box.left).toBeGreaterThanOrEqual(0);
         expect(box.right).toBeLessThanOrEqual(width);
       }
+    });
+  }
+});
+
+// Rules the site once patched in globals.css, which the design system now
+// carries: the header with a ThemeSwitch, Field, prose lists, numeric cells
+// and the post rows.
+test.describe("design system rules on the blog", () => {
+  const POST = "/blog/btrblocks-compressor";
+  // A row's text starts with its meta (the date), which sits in its first column.
+  const x = async (page: Page, selector: string) =>
+    (await page.locator(selector).first().boundingBox())?.x ?? Number.NaN;
+
+  test("post rows are list items titled by h2s, in line with the heading", async ({
+    page
+  }) => {
+    await page.goto("/blog");
+    const row = page.locator("ul.vx-posts > li > a.vx-post-row").first();
+    await expect(row.locator("h2.vx-post-row-title")).toBeVisible();
+    const gap =
+      (await x(page, ".vx-post-row-meta")) - (await x(page, ".vx-blog-title"));
+    expect(Math.abs(gap)).toBeLessThan(1);
+  });
+
+  test("More posts titles are h3s, in line with their label", async ({
+    page
+  }) => {
+    await page.goto(POST);
+    const more = ".vx-article-more";
+    await expect(
+      page.locator(`${more} li h3.vx-post-row-title`).first()
+    ).toBeVisible();
+    const gap =
+      (await x(page, `${more} .vx-post-row-meta`)) -
+      (await x(page, `${more} > .vx-label`));
+    expect(Math.abs(gap)).toBeLessThan(1);
+  });
+
+  test("prose lists keep their markers under the site's reset", async ({
+    page
+  }) => {
+    await page.goto(POST);
+    const marker = (selector: string) =>
+      page
+        .locator(selector)
+        .first()
+        .evaluate((e) => getComputedStyle(e).listStyleType);
+    expect(await marker(".vx-prose > ul")).toBe("disc");
+    expect(await marker(".vx-prose > ol")).toBe("decimal");
+  });
+
+  test("a numeric cell keeps its number on one line", async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.goto(POST);
+    const cell = page.locator(".vx-prose td.is-num").first();
+    expect(await cell.evaluate((e) => getComputedStyle(e).whiteSpace)).toBe(
+      "nowrap"
+    );
+  });
+
+  test("the email field takes the focus ring", async ({ page }) => {
+    await page.goto("/blog");
+    const field = page.getByLabel("Email address");
+    await field.focus();
+    const ring = await field.evaluate((e) => {
+      const s = getComputedStyle(e);
+      return `${s.outlineStyle} ${s.outlineWidth}`;
+    });
+    expect(ring).toBe("solid 2px");
+  });
+
+  test("the GitHub button's name starts with its visible text", async ({
+    page
+  }) => {
+    await page.goto("/blog");
+    await expect(
+      page.locator('header a[href="https://github.com/vortex-data/vortex"]')
+    ).toHaveAccessibleName(/^vortex-data\/vortex( [\d.]+k? stars)? on GitHub$/);
+  });
+
+  for (const [width, rows] of [
+    [1000, 1],
+    [900, 2]
+  ] as const) {
+    test(`the blog header takes ${rows} row${rows > 1 ? "s" : ""} at ${width}px, and nothing overflows`, async ({
+      page
+    }) => {
+      await page.setViewportSize({ width, height: 800 });
+      await page.goto("/blog");
+      const box = async (selector: string) => {
+        const b = await page.locator(selector).first().boundingBox();
+        if (!b) throw new Error(`${selector} has no box`);
+        return b;
+      };
+      const nav = await box(".vx-header-nav");
+      const end = await box(".vx-header-end");
+      expect(nav.y >= end.y + end.height).toBe(rows === 2);
+      const header = page.locator(".vx-header");
+      const fits = await header.evaluate((e) => e.scrollWidth <= e.clientWidth);
+      expect(fits).toBe(true);
     });
   }
 });

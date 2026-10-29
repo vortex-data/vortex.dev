@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
-import { syntaxTheme } from "@/lib/syntax-theme";
+import { codeLabel, shikiTheme } from "@/vendor/vortex-design/code-block.js";
 
 const tokens = readFileSync(
   new URL("../../src/styles/vortex-tokens.css", import.meta.url),
@@ -9,8 +9,8 @@ const tokens = readFileSync(
 );
 
 const colors = [
-  ...Object.values(syntaxTheme.colors),
-  ...syntaxTheme.tokenColors.flatMap((r) =>
+  ...Object.values(shikiTheme.colors),
+  ...shikiTheme.tokenColors.flatMap((r) =>
     r.settings.foreground ? [r.settings.foreground] : []
   )
 ];
@@ -20,9 +20,9 @@ const colors = [
 const ruleFor = (scope: string) => {
   let best: {
     length: number;
-    rule: (typeof syntaxTheme.tokenColors)[number];
+    rule: (typeof shikiTheme.tokenColors)[number];
   } | null = null;
-  for (const rule of syntaxTheme.tokenColors)
+  for (const rule of shikiTheme.tokenColors)
     for (const sel of [rule.scope].flat())
       if (
         (scope === sel || scope.startsWith(`${sel}.`)) &&
@@ -32,7 +32,9 @@ const ruleFor = (scope: string) => {
   return best?.rule;
 };
 
-describe("syntaxTheme", () => {
+// The design system ships the theme. These hold it to the site's copy of the
+// tokens and to the scopes Rust and SQL posts produce.
+describe("shikiTheme", () => {
   it("colours code only with the system's syntax-* tokens, so code follows the theme", () => {
     assert.ok(colors.length > 4);
     for (const c of colors) {
@@ -70,10 +72,24 @@ describe("syntaxTheme", () => {
   });
 
   it("sets plain text and no background, so the block keeps CodeBlock's raised ground", () => {
-    assert.equal(
-      syntaxTheme.colors["editor.foreground"],
-      "var(--syntax-plain)"
-    );
-    assert.equal("editor.background" in syntaxTheme.colors, false);
+    assert.equal(shikiTheme.colors["editor.foreground"], "var(--syntax-plain)");
+    assert.equal("editor.background" in shikiTheme.colors, false);
+  });
+});
+
+describe("codeLabel", () => {
+  it("names the language the way its owners spell it", () => {
+    assert.equal(codeLabel("rust"), "Rust");
+    assert.equal(codeLabel("sql"), "SQL");
+    assert.equal(codeLabel("python"), "Python");
+  });
+
+  it("calls every plain-text spelling Text", () => {
+    for (const lang of ["text", "plaintext", "plainText", "txt", undefined])
+      assert.equal(codeLabel(lang), "Text", String(lang));
+  });
+
+  it("keeps a language it does not know as written", () => {
+    assert.equal(codeLabel("zig"), "zig");
   });
 });
