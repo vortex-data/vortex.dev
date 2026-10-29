@@ -9,7 +9,7 @@ import { Chart } from '@/components/Chart';
 import { GroupToolbar } from '@/components/GroupToolbar';
 import { chartPriority, type FilterUniverse } from '@/lib/chart-format';
 import { abortGroupBundle, ensureGroupBundle } from '@/lib/chart-store';
-import { noteGroupBodyOpen, seedGroupFilterOnce } from '@/lib/group-bodies';
+import { noteGroupBodyClosed, noteGroupBodyOpen, seedGroupFilterOnce } from '@/lib/group-bodies';
 import type { ChartLink } from '@/lib/queries';
 
 /** Props for one group's body. */
@@ -91,12 +91,16 @@ export function GroupBody({
 
   // Tell the scroll restorer the cards are in the DOM, with the bundle they
   // wait for. Child effects run first, so the islands have already started the
-  // bundle at this same priority and this call joins it without a request. No
-  // cleanup: a StrictMode replay must not abort the bundle.
+  // bundle at this same priority and this call joins it without a request. The
+  // cleanup (on close or unmount) only withdraws the note, so a wait that
+  // starts later holds for the next mount; it never aborts the bundle, which a
+  // StrictMode replay must not do.
   useEffect(() => {
-    if (open) {
-      noteGroupBodyOpen(groupSlug, ensureGroupBundle(groupSlug, chartPriority(startIndex)));
+    if (!open) {
+      return;
     }
+    noteGroupBodyOpen(groupSlug, ensureGroupBundle(groupSlug, chartPriority(startIndex)));
+    return () => noteGroupBodyClosed(groupSlug);
   }, [open, groupSlug, startIndex]);
 
   return (

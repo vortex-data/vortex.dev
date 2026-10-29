@@ -7,6 +7,7 @@ import { getGroupSnapshot, initGroupFilter, toggleGroupSeries } from './chart-st
 import {
   type GroupBodiesReady,
   groupBodiesReady,
+  noteGroupBodyClosed,
   noteGroupBodyOpen,
   resetGroupBodies,
   seedGroupFilterOnce,
@@ -77,6 +78,45 @@ describe('groupBodiesReady', () => {
     const early = track(groupBodiesReady(['a']));
     await flush();
     expect(early).toEqual(['mounted', 'settled']);
+  });
+  it('forgets a closed body, so a later wait holds for the next mount and its own bundle', async () => {
+    noteGroupBodyOpen('a', Promise.resolve());
+    noteGroupBodyClosed('a');
+    const fired = track(groupBodiesReady(['a']));
+    await flush();
+    expect(fired).toEqual([]);
+
+    let resolveReopened!: () => void;
+    noteGroupBodyOpen(
+      'a',
+      new Promise<void>((resolve) => {
+        resolveReopened = resolve;
+      }),
+    );
+    await flush();
+    expect(fired).toEqual(['mounted']);
+
+    resolveReopened();
+    await flush();
+    expect(fired).toEqual(['mounted', 'settled']);
+  });
+
+  it('keeps a wait made while the body was open on the bundle it saw', async () => {
+    let resolveFirst!: () => void;
+    noteGroupBodyOpen(
+      'a',
+      new Promise<void>((resolve) => {
+        resolveFirst = resolve;
+      }),
+    );
+    const fired = track(groupBodiesReady(['a']));
+    noteGroupBodyClosed('a');
+    await flush();
+    expect(fired).toEqual(['mounted']);
+
+    resolveFirst();
+    await flush();
+    expect(fired).toEqual(['mounted', 'settled']);
   });
 });
 

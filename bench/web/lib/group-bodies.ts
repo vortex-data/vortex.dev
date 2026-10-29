@@ -23,8 +23,9 @@ export interface GroupBodiesReady {
   settled: Promise<void>;
 }
 
-// The bundle each group's body noted when it last opened. A group stays noted
-// after it closes: the wait is for its first mount on this page.
+// The bundle of each group whose body is mounted now. A body that closes or
+// unmounts is forgotten ([`noteGroupBodyClosed`]), so a wait that starts after
+// it holds for the next mount and that mount's bundle, never a stale one.
 const notedBundles = new Map<string, Promise<unknown>>();
 // Waits for a group that has not noted yet. Each receives the bundle in a box,
 // because resolving with a bare promise would adopt it and wait for the bundle.
@@ -43,6 +44,13 @@ export function noteGroupBodyOpen(groupSlug: string, bundle: Promise<unknown>): 
   }
 }
 
+/** Record that `groupSlug`'s body has closed or unmounted its cards. A wait
+ * that already saw the body keeps its bundle; a later one waits for the next
+ * [`noteGroupBodyOpen`]. */
+export function noteGroupBodyClosed(groupSlug: string): void {
+  notedBundles.delete(groupSlug);
+}
+
 function whenNoted(groupSlug: string): Promise<{ bundle: Promise<unknown> }> {
   const bundle = notedBundles.get(groupSlug);
   if (bundle !== undefined) {
@@ -57,8 +65,9 @@ function whenNoted(groupSlug: string): Promise<{ bundle: Promise<unknown> }> {
 
 /**
  * Wait for the bodies of `groupSlugs` to mount, and then for their bundles to
- * settle. A note made before this call counts. A failed bundle counts as
- * settled. With no groups, both promises resolve at once.
+ * settle. A body mounted before this call counts; one that has since closed
+ * does not. A failed bundle counts as settled. With no groups, both promises
+ * resolve at once.
  */
 export function groupBodiesReady(groupSlugs: readonly string[]): GroupBodiesReady {
   const noted = Promise.all(groupSlugs.map(whenNoted));

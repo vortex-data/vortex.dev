@@ -257,4 +257,42 @@ describe('GroupBody', () => {
     await flush();
     expect(fired).toEqual(['mounted', 'settled']);
   });
+
+  it('after a close, makes the scroll restorer wait for the reopened body', async () => {
+    await render();
+    await toggle(true);
+    await flush();
+    await toggle(false);
+    await flush();
+
+    const ready = groupBodiesReady(['g']);
+    const fired: string[] = [];
+    void ready.mounted.then(() => fired.push('mounted'));
+    await flush();
+    expect(fired).toEqual([]);
+
+    await toggle(true);
+    await flush();
+    expect(body.querySelectorAll('.chart-card')).toHaveLength(2);
+    expect(fired).toEqual(['mounted']);
+  });
+
+  it('after an unmount, makes the scroll restorer wait for a new body', async () => {
+    await render(true);
+    await flush();
+    await act(async () => {
+      root?.unmount();
+    });
+    root = null;
+
+    const ready = groupBodiesReady(['g']);
+    const fired: string[] = [];
+    void ready.mounted.then(() => fired.push('mounted'));
+    await flush();
+    expect(fired).toEqual([]);
+
+    await render(true);
+    await flush();
+    expect(fired).toEqual(['mounted']);
+  });
 });
