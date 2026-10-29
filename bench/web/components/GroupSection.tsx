@@ -54,9 +54,11 @@ const NO_INITIAL_SHOWN_SERIES: string[] = [];
  * The section carries `id={anchor}` — the human-readable anchor the page
  * derives from the group name via `lib/anchor.ts` (`#tpc-h-nvme-sf-1`, not the
  * opaque API slug) — so each group has a stable, legible URL fragment: the
- * summary row's [`GroupPermalink`] button copies `/#<anchor>`, the fragment
- * scrolls natively even without JavaScript, and [`GroupNav`]'s hash-jump
- * effect expands the disclosure on load.
+ * summary row's [`GroupPermalink`] button copies `/#<anchor>`, and a
+ * single-anchor fragment scrolls natively even without JavaScript. The page's
+ * fragment lists every open group's anchor (`lib/open-groups.ts`); the
+ * pre-paint script ([`OpenGroupsScript`]) opens those groups before the first
+ * paint, and [`LandingState`] keeps the fragment in step with every toggle.
  */
 export function GroupSection({
   group,
@@ -86,7 +88,9 @@ export function GroupSection({
       data-group-name={group.name}
       data-group-slug={group.slug}
     >
-      <details className="group-disclosure">
+      {/* The pre-paint script (`OpenGroupsScript`) may add `open` to this
+          element before hydration, when the URL fragment lists the group. */}
+      <details className="group-disclosure" suppressHydrationWarning>
         <summary className="group-summary">
           <span className="group-summary-row">
             <span className="group-name">{group.name}</span>

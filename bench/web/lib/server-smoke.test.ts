@@ -114,6 +114,11 @@ describe.skipIf(!databaseAvailable || !BUILD_PRESENT)(
       expect(html).toContain('faster than Parquet'); // the fixture's compression group
       expect(html).not.toContain('class="chart-card"');
       expect(html).not.toContain('data-role="group-toolbar"');
+      // The open-groups bootstrap follows the last group's markup, so it runs
+      // before the groups paint.
+      const script = html.indexOf('data-role="open-groups-bootstrap"');
+      expect(html.lastIndexOf('class="group-details"')).toBeGreaterThan(0);
+      expect(script).toBeGreaterThan(html.lastIndexOf('class="group-details"'));
       // The pre-paint theme bootstrap is inlined in <head>.
       expect(html).toContain('localStorage.getItem("bench-theme")');
     });

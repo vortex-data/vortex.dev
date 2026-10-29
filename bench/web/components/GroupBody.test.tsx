@@ -4,11 +4,13 @@
 // @vitest-environment jsdom
 
 import { act } from 'react';
-import { createRoot, type Root } from 'react-dom/client';
-import { renderToStaticMarkup } from 'react-dom/server';
+import { createRoot, hydrateRoot, type Root } from 'react-dom/client';
+import { renderToStaticMarkup, renderToString } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { GroupBody, type GroupBodyProps } from '@/components/GroupBody';
+import { GroupSection } from '@/components/GroupSection';
+import { OPEN_GROUPS_BOOTSTRAP, OpenGroupsScript } from '@/components/OpenGroupsScript';
 import {
   abortGroupBundle,
   bundleQueue,
@@ -18,6 +20,7 @@ import {
   toggleGroupSeries,
 } from '@/lib/chart-store';
 import { groupBodiesReady, resetGroupBodies } from '@/lib/group-bodies';
+import type { Group } from '@/lib/queries';
 
 // The real island is covered by the `Chart.*` suites; here a bare card stands
 // in for it, so the body's own mount, fetch and abort behavior is all that runs.
@@ -96,6 +99,7 @@ describe('GroupBody', () => {
     container.remove();
     vi.unstubAllGlobals();
     resetPayloadCache();
+    window.history.replaceState(null, '', '/');
   });
 
   async function render(open = false): Promise<void> {
@@ -139,6 +143,47 @@ describe('GroupBody', () => {
   it('mounts at once when the group is already open at hydration', async () => {
     await render(true);
     expect(body.querySelectorAll('.chart-card')).toHaveLength(2);
+  });
+
+  it('hydrates server markup that the pre-paint script opened, with no hydration warning', async () => {
+    const group: Group = { name: 'G', slug: 'g', charts: PROPS.charts };
+    const page = (
+      <main>
+        <GroupSection
+          group={group}
+          anchor="g-anchor"
+          startIndex={PROPS.startIndex}
+          universe={PROPS.universe}
+        />
+        <OpenGroupsScript />
+      </main>
+    );
+    container.innerHTML = renderToString(page);
+    window.history.replaceState(null, '', '/#g-anchor');
+    // Markup set through innerHTML never runs its scripts, so run the
+    // bootstrap here, as the parser would have before hydration.
+    const script = document.createElement('script');
+    script.textContent = OPEN_GROUPS_BOOTSTRAP;
+    document.body.appendChild(script);
+    script.remove();
+    const details = container.querySelector<HTMLDetailsElement>('details.group-disclosure');
+    expect(details?.hasAttribute('open')).toBe(true);
+    expect(container.querySelectorAll('.chart-card')).toHaveLength(0);
+
+    const consoleError = vi.spyOn(console, 'error');
+    const recoverableError = vi.fn();
+    await act(async () => {
+      root = hydrateRoot(container, page, { onRecoverableError: recoverableError });
+    });
+    await flush();
+
+    // The body opened during hydration and fetched its bundle once.
+    expect(container.querySelectorAll('.chart-card')).toHaveLength(2);
+    expect(urls).toEqual(['/api/group/g?n=100']);
+    // `open` is the only difference from the server markup, and the
+    // disclosure's `suppressHydrationWarning` covers it.
+    expect(recoverableError).not.toHaveBeenCalled();
+    expect(consoleError).not.toHaveBeenCalled();
   });
 
   it("requests the group bundle once, at its first chart's priority", async () => {

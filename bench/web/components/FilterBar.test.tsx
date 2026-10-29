@@ -61,7 +61,7 @@ describe('global filter URL round trips', () => {
       window.history.replaceState(
         null,
         '',
-        `${path}?n=all&group=random-access&hide=duckdb&show=lance#random-access`,
+        `${path}?n=all&group=random-access&hide=duckdb&show=lance#random-access,tpc-h-nvme-sf-1`,
       );
       await mount();
       expect(getGlobalFilterSnapshot().active.formats).toEqual(['vortex', 'parquet']);
@@ -83,7 +83,7 @@ describe('global filter URL round trips', () => {
       expect(url.searchParams.get('group')).toBe('random-access');
       expect(url.searchParams.get('hide')).toBe('duckdb');
       expect(url.searchParams.get('show')).toBe('lance');
-      expect(url.hash).toBe('#random-access');
+      expect(url.hash).toBe('#random-access,tpc-h-nvme-sf-1');
       expect(url.pathname).toBe(path);
       await reload();
       expect(getGlobalFilterSnapshot().active).toEqual(universe);

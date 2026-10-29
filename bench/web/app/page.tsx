@@ -8,6 +8,8 @@ import { GroupNav } from '@/components/GroupNav';
 import { GroupSection } from '@/components/GroupSection';
 import { Header } from '@/components/Header';
 import { HomeLoading } from '@/components/HomeLoading';
+import { LandingState } from '@/components/LandingState';
+import { OpenGroupsScript } from '@/components/OpenGroupsScript';
 import { groupAnchors } from '@/lib/anchor';
 import { parseFilterCsv, singleSearchParam } from '@/lib/chart-format';
 import { cachedFilterUniverse, cachedGroups } from '@/lib/data-cache';
@@ -28,14 +30,22 @@ export const dynamic = 'force-dynamic';
 
 /**
  * The landing page: a server-rendered section per group in canonical
- * `GROUP_ORDER`, each with its summary card, per-group toolbar, and a grid of
- * chart-card client islands. `data-chart-index` is assigned page-wide so each
- * chart's index is unique across every group (matching v3's `landing_body`
- * counter).
+ * `GROUP_ORDER`, each a folded row with its headline that opens to its summary
+ * card, per-group toolbar and a grid of chart-card client islands (mounted
+ * only while the group is open). `data-chart-index` is assigned page-wide so
+ * each chart's index is unique across every group (matching v3's
+ * `landing_body` counter).
  *
  * `?engine=` / `?format=` are the global filter's URL allowlists (CSV). A
- * A readable `?group=` anchor plus repeated `?hide=` / `?show=` values restores
+ * readable `?group=` anchor plus repeated `?hide=` / `?show=` values restores
  * the target group's local series overrides.
+ *
+ * The URL fragment lists the open groups' anchors (`#tpc-h-nvme-sf-1,clickbench`,
+ * see `lib/open-groups.ts`). The server never sees it, so `/` stays one CDN
+ * cache entry. [`OpenGroupsScript`], right after the last group, opens the
+ * listed groups before they paint; [`LandingState`] opens them after a client
+ * navigation, scrolls to the first listed group, and writes the fragment on
+ * every open and close.
  */
 export default async function Home({
   searchParams,
@@ -75,13 +85,7 @@ async function HomeContent({
   return (
     <>
       <Header universe={universe} initialEngines={initialEngines} initialFormats={initialFormats} />
-      <GroupNav
-        groups={groups.map((group, i) => ({
-          name: group.name,
-          slug: group.slug,
-          anchor: anchors[i]!,
-        }))}
-      />
+      <GroupNav groups={groups.map((group) => ({ name: group.name, slug: group.slug }))} />
       <main>
         {groups.length === 0 ? (
           <p className="empty">No data ingested yet.</p>
@@ -111,6 +115,9 @@ async function HomeContent({
                 />
               );
             })}
+            {/* After the last group's markup, in the same streamed chunk, so
+                it opens the fragment's groups before they paint. */}
+            <OpenGroupsScript />
             {/* v3's landing_body early-returns on an empty database, so the
                 no-JS hint only renders alongside actual chart shells. */}
             <noscript>
@@ -119,6 +126,7 @@ async function HomeContent({
           </>
         )}
       </main>
+      <LandingState />
       <Footer />
     </>
   );
