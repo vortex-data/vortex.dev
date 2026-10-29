@@ -181,7 +181,8 @@ gated by an `IntersectionObserver` with `LAZY_HYDRATION_ROOT_MARGIN = '300px
 0px'` (a card begins hydrating just before it scrolls into view) and scheduled by
 `priority = -index` so the top cards render first. Only the ~6 visible charts
 hydrate on open; the rest hydrate on scroll. The initial latest-100 fetches are
-capped per tab (`HYDRATION_CONCURRENCY = 4`).
+capped per tab (`HYDRATION_CONCURRENCY = 4`). A folded group has no islands at
+all: its cards mount only when it opens (see "A folded landing page" below).
 
 ### Full history is opt-in
 
@@ -238,6 +239,23 @@ gates the *Chart.js construction* (the actual CPU cost), and bundles run at
 first. The cache is per-session by design: a close/reopen costs zero fetches, and
 the small staleness window for an already-open tab after a server-side
 revalidation is accepted (a refresh gets fresh data).
+
+### A folded landing page
+
+Every group starts folded, one row with its Vortex-vs-Parquet headline. Its
+toolbar and cards ([`GroupBody`](../../web/components/GroupBody.tsx)) mount only
+while it is open, so a folded group hydrates no island. The open groups live in
+the URL fragment (`/#compression,clickbench`), which the CDN never sees. An
+inline script after the last group opens them while they are still in React's
+hidden streamed segment, so a reload or Back never shows them folded first.
+Scroll is restored by element, not by pixel
+([`lib/scroll-restore.ts`](../../web/lib/scroll-restore.ts)): the open bodies
+mount only after hydration, so a saved `scrollY` would land against a shorter
+page. Against the previous build (production dump, desktop, CPU 4×): landing
+HTML 84 → 27 KB gzipped, islands 791 → 0, DOM elements 21,237 → 1,585, script
+time 186 → 59 ms, groups first painted at 413 → 182 ms. Back and Reload with two
+groups open put the same card within 1 px of its offset. Expand All now mounts
+all 791 islands at the click: 574 ms of blocking time against 500 ms.
 
 ### Visual downsampling (LTTB)
 
