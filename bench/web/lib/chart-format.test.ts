@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   canonicalHistory,
   chartHasRecentData,
+  chartPriority,
   clampRangeWindow,
   collectAllValues,
   commitDateLabel,
@@ -713,5 +714,13 @@ describe('chartHasRecentData', () => {
     const values = [1, null, null];
     expect(chartHasRecentData({ series: { a: values } }, 2)).toBe(false);
     expect(chartHasRecentData({ series: { a: values } }, 3)).toBe(true);
+  });
+});
+
+describe('chartPriority', () => {
+  it('ranks the first chart at +0 and later charts by their negated index', () => {
+    // `+0`, not `-0`: `Object.is` (and so `toBe`) tells them apart.
+    expect(Object.is(chartPriority(0), 0)).toBe(true);
+    expect(chartPriority(7)).toBe(-7);
   });
 });

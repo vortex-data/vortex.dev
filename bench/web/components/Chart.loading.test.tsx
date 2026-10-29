@@ -124,8 +124,9 @@ describe('Chart opt-in full-history loading', () => {
   async function renderOpenGroup(slug = 'qm.eyJrIjoidHBjaCJ9'): Promise<HTMLButtonElement | null> {
     container.innerHTML =
       '<section class="group-details">' +
-      '<details class="group-disclosure" open><summary class="group-summary">g</summary></details>' +
-      '<div class="chart-grid"><div id="mount"></div></div>' +
+      '<details class="group-disclosure" open><summary class="group-summary">g</summary>' +
+      '<div class="group-body"><div class="chart-grid"><div id="mount"></div></div></div>' +
+      '</details>' +
       '</section>';
     const mount = container.querySelector('#mount') as HTMLElement;
     root = createRoot(mount);
@@ -370,8 +371,9 @@ describe('Chart opt-in full-history loading', () => {
     });
     container.innerHTML =
       '<section class="group-details">' +
-      '<details class="group-disclosure" open><summary class="group-summary">g</summary></details>' +
-      '<div class="chart-grid"><div id="mount"></div></div>' +
+      '<details class="group-disclosure" open><summary class="group-summary">g</summary>' +
+      '<div class="group-body"><div class="chart-grid"><div id="mount"></div></div></div>' +
+      '</details>' +
       '</section>';
     const mount = container.querySelector('#mount') as HTMLElement;
     root = createRoot(mount);

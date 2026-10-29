@@ -8,16 +8,18 @@
 # layout does not change with that default.
 linker = "isolated"
 
-# Refuse to install package versions younger than 14 days. Mirrors the
+# Refuse to install package versions younger than 7 days. Mirrors the
 # Renovate minimumReleaseAge in renovate.json so a local `bun install`,
 # `bun add`, `bun update`, or a Vercel build can't pull a freshly
 # published (and potentially compromised) version that Renovate would
 # have held back.
 #
 # The window matters because npm worms (Shai-Hulud, mini-Shai-Hulud, the
-# May 2026 TanStack incident) propagate, get detected, and get yanked
-# within hours-to-days; 14 days is the observed safe horizon for those
-# events to have surfaced.
+# May 2026 TanStack incident, the autumn 2026 waves) propagate, get
+# detected, and get yanked within minutes to hours; 7 days leaves a wide
+# margin for those events to have surfaced. Renovate's security updates
+# skip its own wait; if such a fix is younger than this window, allowlist
+# it in minimumReleaseAgeExcludes until the window passes.
 #
-# Units: seconds. 14 * 86400 = 1209600.
-minimumReleaseAge = 1209600
+# Units: seconds. 7 * 86400 = 604800.
+minimumReleaseAge = 604800

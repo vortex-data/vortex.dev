@@ -181,7 +181,9 @@ gated by an `IntersectionObserver` with `LAZY_HYDRATION_ROOT_MARGIN = '300px
 0px'` (a card begins hydrating just before it scrolls into view) and scheduled by
 `priority = -index` so the top cards render first. Only the ~6 visible charts
 hydrate on open; the rest hydrate on scroll. The initial latest-100 fetches are
-capped per tab (`HYDRATION_CONCURRENCY = 4`).
+capped per tab (`HYDRATION_CONCURRENCY = 4`). A collapsed group has no islands
+at all: its cards mount only when it opens (see "Collapsed groups on the landing
+page" below).
 
 ### Full history is opt-in
 
@@ -238,6 +240,46 @@ gates the *Chart.js construction* (the actual CPU cost), and bundles run at
 first. The cache is per-session by design: a close/reopen costs zero fetches, and
 the small staleness window for an already-open tab after a server-side
 revalidation is accepted (a refresh gets fresh data).
+
+### Collapsed groups on the landing page
+
+Every group starts collapsed: its header row, with the Vortex-vs-Parquet
+headline, and its summary table, both server-rendered. Its toolbar and cards
+([`GroupBody`](../../web/components/GroupBody.tsx)) mount only while it is open,
+so a collapsed group hydrates no island. The open groups live in
+the URL fragment (`/#compression,clickbench`), which the CDN never sees. An
+inline script after the last group
+([`OpenGroupsScript`](../../web/components/OpenGroupsScript.tsx)) opens them
+while they are still in React's hidden streamed segment, so a reload or Back
+never shows them collapsed first. It also leaves a marker for the client code: a
+group the reader opens or closes before hydration stays that way, and a reader
+who scrolls, touches, clicks or presses a key before hydration is not moved,
+neither by the restore nor by the scroll to a link's first group. Scroll is
+restored by element, not by pixel
+([`lib/scroll-restore.ts`](../../web/lib/scroll-restore.ts)): the open bodies
+mount only after hydration, so a saved `scrollY` would land against a shorter
+page.
+
+Measured against the previous build, the head of `claude/bench-cleanup`
+(b4caf7c): a local restore of the production dump, desktop (1440×900), no
+network throttling, CPU 4×, the median of 5 runs (Expand All: the median of 3),
+with one-off scripts that are not in this repository.
+
+- Landing HTML 84 → 27 KB gzipped, islands 791 → 0, DOM elements
+  21,237 → 1,585, script time 186 → 59 ms.
+- The groups first paint at 413 → 182 ms. First contentful paint rises
+  124 → 184 ms, because the previous build first paints its "Loading benchmark
+  summaries…" card and shows it until its 2.3 MB page has parsed. The new page
+  is small enough that its first paint already shows the groups; the card shows
+  only while a slow network holds them back.
+- Back and Reload with two groups open put the same card within 1 px of its
+  saved offset. The reader sees the top of the page for 1–2 frames, then that
+  spot. The Layout Instability API scores these loads at 1.4–1.8. It counts
+  content that moves above the restored card: the cards that mount during that
+  jump, and the empty cards that hide once the bundles arrive. The restore's
+  two scrolls cancel both, so the reader sees no shift after the jump.
+- Expand All mounts all 791 islands in the toggle tasks that follow the click:
+  574 ms of blocking time against 500 ms.
 
 ### Visual downsampling (LTTB)
 

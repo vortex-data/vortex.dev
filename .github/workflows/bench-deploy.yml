@@ -134,7 +134,7 @@ jobs:
           node-version-file: .nvmrc
 
       # An exact version, and `--before` gives the CLI's whole dependency tree
-      # the repository's 14-day cooldown, so this job, which holds VERCEL_TOKEN,
+      # the repository's 7-day cooldown, so this job, which holds VERCEL_TOKEN,
       # never installs a freshly published package. There's no lockfile: the
       # CLI pins vulnerable versions of its own dependencies that nothing here
       # can patch (see CLAUDE.md "bench advisories"), and a lockfile would put
@@ -142,7 +142,7 @@ jobs:
       - name: Install Vercel CLI
         run: |
           npm install -g --ignore-scripts --no-audit --no-fund \
-            --before="$(date -u -d '14 days ago' +%Y-%m-%dT%H:%M:%SZ)" \
+            --before="$(date -u -d '7 days ago' +%Y-%m-%dT%H:%M:%SZ)" \
             "vercel@${VERCEL_CLI_VERSION}"
 
       # Production verification probes the public domain, so it has to be set.

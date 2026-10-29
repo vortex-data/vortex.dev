@@ -75,8 +75,9 @@ describe('Chart island lifecycle (StrictMode effect replay)', () => {
     // open-disclosure structure GroupSection produces.
     container.innerHTML =
       '<section class="group-details">' +
-      '<details class="group-disclosure" open><summary class="group-summary">g</summary></details>' +
-      '<div class="chart-grid"><div id="mount"></div></div>' +
+      '<details class="group-disclosure" open><summary class="group-summary">g</summary>' +
+      '<div class="group-body"><div class="chart-grid"><div id="mount"></div></div></div>' +
+      '</details>' +
       '</section>';
     const mount = container.querySelector('#mount') as HTMLElement;
     root = createRoot(mount);
@@ -120,8 +121,9 @@ describe('Chart island lifecycle (StrictMode effect replay)', () => {
     try {
       container.innerHTML =
         '<section class="group-details">' +
-        '<details class="group-disclosure"><summary class="group-summary">g</summary></details>' +
-        '<div class="chart-grid"><div id="mount"></div></div>' +
+        '<details class="group-disclosure"><summary class="group-summary">g</summary>' +
+        '<div class="group-body"><div class="chart-grid"><div id="mount"></div></div></div>' +
+        '</details>' +
         '</section>';
       const mount = container.querySelector('#mount') as HTMLElement;
       root = createRoot(mount);

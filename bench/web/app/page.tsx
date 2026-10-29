@@ -8,6 +8,8 @@ import { GroupNav } from '@/components/GroupNav';
 import { GroupSection } from '@/components/GroupSection';
 import { Header } from '@/components/Header';
 import { HomeLoading } from '@/components/HomeLoading';
+import { LandingState } from '@/components/LandingState';
+import { OpenGroupsScript } from '@/components/OpenGroupsScript';
 import { groupAnchors } from '@/lib/anchor';
 import { parseFilterCsv, singleSearchParam } from '@/lib/chart-format';
 import { cachedFilterUniverse, cachedGroups } from '@/lib/data-cache';
@@ -28,14 +30,32 @@ export const dynamic = 'force-dynamic';
 
 /**
  * The landing page: a server-rendered section per group in canonical
- * `GROUP_ORDER`, each with its summary card, per-group toolbar, and a grid of
- * chart-card client islands. `data-chart-index` is assigned page-wide so each
- * chart's index is unique across every group (matching v3's `landing_body`
- * counter).
+ * `GROUP_ORDER`, each collapsed to its header row (with the headline) and its
+ * summary card, and opening to its per-group toolbar and a grid of chart-card
+ * client islands (mounted only while the group is open). `data-chart-index` is assigned page-wide so
+ * each chart's index is unique across every group (matching v3's
+ * `landing_body` counter).
  *
  * `?engine=` / `?format=` are the global filter's URL allowlists (CSV). A
- * A readable `?group=` anchor plus repeated `?hide=` / `?show=` values restores
+ * readable `?group=` anchor plus repeated `?hide=` / `?show=` values restores
  * the target group's local series overrides.
+ *
+ * The URL fragment lists the open groups' anchors (`#tpc-h-nvme-sf-1,clickbench`,
+ * see `lib/open-groups.ts`). The server never sees it, so `/` stays one CDN
+ * cache entry. [`OpenGroupsScript`], right after the last group, opens the
+ * listed groups before they paint; [`LandingState`] opens them after a client
+ * navigation (after a full load it keeps what the reader opened or closed
+ * before hydration), writes the fragment after opens and closes (coalescing a
+ * burst of toggles into two writes), and owns the scroll: a reload or Back
+ * restores the element that was at the top of the viewport
+ * (`lib/scroll-restore.ts`), and a fresh visit scrolls to the first listed
+ * group. Neither moves a reader who scrolled, touched, clicked or pressed a
+ * key before hydration.
+ *
+ * The content (`HomeContent`) renders inside a Suspense boundary. A browser
+ * gets it streamed into a hidden segment that React reveals with an inline
+ * script, so with JavaScript off it never shows: a reader without JavaScript
+ * sees only the [`HomeLoading`] fallback. This predates the collapsed groups.
  */
 export default async function Home({
   searchParams,
@@ -75,13 +95,7 @@ async function HomeContent({
   return (
     <>
       <Header universe={universe} initialEngines={initialEngines} initialFormats={initialFormats} />
-      <GroupNav
-        groups={groups.map((group, i) => ({
-          name: group.name,
-          slug: group.slug,
-          anchor: anchors[i]!,
-        }))}
-      />
+      <GroupNav groups={groups.map((group) => ({ name: group.name, slug: group.slug }))} />
       <main>
         {groups.length === 0 ? (
           <p className="empty">No data ingested yet.</p>
@@ -111,14 +125,21 @@ async function HomeContent({
                 />
               );
             })}
-            {/* v3's landing_body early-returns on an empty database, so the
-                no-JS hint only renders alongside actual chart shells. */}
+            {/* After the last group's markup, in the same streamed chunk, so
+                it opens the fragment's groups before they paint. */}
+            <OpenGroupsScript />
+            {/* A browser never shows this hint. It streams inside the
+                Suspense boundary's hidden segment, which only React's inline
+                script reveals, so with JavaScript off the page shows the
+                loading fallback alone; with JavaScript on, `<noscript>`
+                shows nothing. */}
             <noscript>
               <p className="no-script">JavaScript is required to render the charts.</p>
             </noscript>
           </>
         )}
       </main>
+      <LandingState />
       <Footer />
     </>
   );

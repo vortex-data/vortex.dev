@@ -66,6 +66,7 @@ test('landing page with the first group open', async ({ page }) => {
 
   const section = page.locator('section.group-details').first();
   await section.locator('summary.group-summary').click();
+  await expect(section.locator('.chart-card').first()).toBeVisible();
   // Charts draw when they scroll near the viewport, so visit every one before the screenshot.
   const cards = section.locator('.chart-card');
   for (let index = 0, count = await cards.count(); index < count; index++) {

@@ -96,7 +96,7 @@ describe.skipIf(!databaseAvailable || !BUILD_PRESENT)(
       await container.stop();
     });
 
-    it('serves the landing page with header chrome, group sections, and chart islands', async () => {
+    it('serves the landing page with header chrome and collapsed groups, and no chart islands', async () => {
       const html = await (await fetch(`${BASE}/`)).text();
       // Header chrome (PR-4.4.b islands, server-rendered).
       expect(html).toContain('data-role="nav-mobile-toggle"');
@@ -106,11 +106,19 @@ describe.skipIf(!databaseAvailable || !BUILD_PRESENT)(
       // The fixture's engines surface as filter chips via collectFilterUniverse.
       expect(html).toContain('data-value="datafusion"');
       expect(html).toContain('data-value="duckdb"');
-      // Group section + per-group toolbar + chart-card islands.
+      // Collapsed groups with their headlines. Each group body is empty until
+      // its group opens, so no toolbar or chart-card island is in the HTML.
       expect(html).toContain('class="group-details"');
-      expect(html).toContain('data-role="group-toolbar"');
-      expect(html).toContain('data-role="scope-slider"');
-      expect(html).toContain('data-role="range-strip"');
+      expect(html).toContain('class="group-body"');
+      expect(html).toContain('class="group-headline"');
+      expect(html).toContain('faster than Parquet'); // the fixture's compression group
+      expect(html).not.toContain('class="chart-card"');
+      expect(html).not.toContain('data-role="group-toolbar"');
+      // The open-groups bootstrap follows the last group's markup, so it runs
+      // before the groups paint.
+      const script = html.indexOf('data-role="open-groups-bootstrap"');
+      expect(html.lastIndexOf('class="group-details"')).toBeGreaterThan(0);
+      expect(script).toBeGreaterThan(html.lastIndexOf('class="group-details"'));
       // The pre-paint theme bootstrap is inlined in <head>.
       expect(html).toContain('localStorage.getItem("bench-theme")');
     });
