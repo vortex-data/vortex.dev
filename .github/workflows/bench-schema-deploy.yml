@@ -59,12 +59,12 @@ jobs:
 
       # Resolve dependencies before interpreting the runner's exit status. A uv
       # download or environment failure must fail even during a dry run. The
-      # resolution gets the repository's 14-day cooldown, since this job holds
+      # resolution gets the repository's 7-day cooldown, since this job holds
       # the migrator role's credentials.
       - name: Prepare migration interpreter
         run: |
           set -Eeuo pipefail
-          export UV_EXCLUDE_NEWER="$(date -u -d '14 days ago' +%Y-%m-%dT%H:%M:%SZ)"
+          export UV_EXCLUDE_NEWER="$(date -u -d '7 days ago' +%Y-%m-%dT%H:%M:%SZ)"
           uv venv "${RUNNER_TEMP}/migration-venv"
           uv export --script scripts/migrate-schema.py --no-hashes > "${RUNNER_TEMP}/migration-requirements.txt"
           uv pip install --python "${RUNNER_TEMP}/migration-venv/bin/python" -r "${RUNNER_TEMP}/migration-requirements.txt"
