@@ -474,6 +474,7 @@ main {
 }
 .group-summary-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.75rem;
   padding: 1rem 2rem;
@@ -519,6 +520,19 @@ main {
   letter-spacing: 0.02em;
   line-height: 1;
   text-transform: uppercase;
+}
+/*
+ * The one-line headline at the end of a group's summary row (GroupSection,
+ * lib/headline.ts): how Vortex compares with Parquet. Plain muted text; the
+ * words carry the verdict, so tone colors (data-tone on each part) are left to
+ * the visual redesign. It sits at the right on desktop and wraps to its own
+ * line on a phone.
+ */
+.group-headline {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
 }
 /*
  * The copy-link button next to a group's chart count (GroupPermalink). A bare
@@ -1719,6 +1733,10 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
   .group-count {
     flex: 0 0 auto;
     font-size: 0.65rem;
+  }
+  .group-headline {
+    flex-basis: 100%;
+    margin-left: 0;
   }
   .group-details > .chart-grid {
     padding: 0.75rem;

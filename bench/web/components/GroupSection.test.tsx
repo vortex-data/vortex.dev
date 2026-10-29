@@ -29,6 +29,21 @@ const RANDOM_ACCESS: Group = {
   description: 'Tests selecting arbitrary row indices on NVMe',
 };
 
+const TPCH: Group = {
+  name: 'TPC-H NVMe SF=10',
+  slug: 'query.eyJrIjoiUXVlcnlHcm91cCJ9',
+  charts: [{ name: 'q1', slug: 'query.eyJhIjoxfQ' }],
+  summary: {
+    type: 'queryBenchmark',
+    title: 'TPC-H',
+    rankings: [
+      { name: 'duckdb:vortex-file-compressed', score: 1, totalRuntime: 1, measured: 22, total: 22 },
+      { name: 'duckdb:parquet', score: 2.5, totalRuntime: 2.5, measured: 22, total: 22 },
+    ],
+    explanation: 'lower is better',
+  },
+};
+
 describe('GroupSection', () => {
   it('renders the group-details shell with a collapsed disclosure', () => {
     const html = renderToStaticMarkup(
@@ -154,5 +169,65 @@ describe('GroupSection', () => {
     expect(html).not.toContain('class="group-info-icon"');
     // A group with no summary renders no summary card.
     expect(html).not.toContain('class="benchmark-scores-summary"');
+  });
+
+  it('renders the headline as text inside the summary row', () => {
+    const html = renderToStaticMarkup(
+      <GroupSection group={TPCH} anchor="tpc-h-nvme-sf-10" startIndex={0} universe={UNIVERSE} />,
+    );
+    const row = html.slice(html.indexOf('<summary'), html.indexOf('</summary>'));
+    expect(row).toContain('class="group-headline"');
+    expect(row).toContain('data-tone="better"');
+    expect(row.replace(/<[^>]+>/g, '')).toContain('DuckDB 2.5× faster than Parquet');
+  });
+
+  it('spells a slower result in words and marks partial coverage in the row', () => {
+    const group: Group = {
+      ...TPCH,
+      summary: {
+        type: 'queryBenchmark',
+        title: 'TPC-H',
+        explanation: 'lower is better',
+        rankings: [
+          {
+            name: 'duckdb:vortex-file-compressed',
+            score: 1,
+            totalRuntime: 1,
+            measured: 22,
+            total: 22,
+          },
+          { name: 'duckdb:parquet', score: 2.5, totalRuntime: 1, measured: 22, total: 22 },
+          {
+            name: 'datafusion:vortex-file-compressed',
+            score: 2,
+            totalRuntime: 1,
+            measured: 21,
+            total: 22,
+          },
+          { name: 'datafusion:parquet', score: 1, totalRuntime: 1, measured: 22, total: 22 },
+        ],
+      },
+    };
+    const html = renderToStaticMarkup(
+      <GroupSection group={group} anchor="tpc-h-nvme-sf-10" startIndex={0} universe={UNIVERSE} />,
+    );
+    const row = html.slice(html.indexOf('<summary'), html.indexOf('</summary>'));
+    expect(row).toContain('data-tone="better"');
+    expect(row).toContain('data-tone="worse"');
+    expect(row.replace(/<[^>]+>/g, '')).toContain(
+      'DuckDB 2.5× faster · DataFusion 2.0× slower vs Parquet (partial)',
+    );
+  });
+
+  it('renders no headline when the summary has no Vortex series', () => {
+    const html = renderToStaticMarkup(
+      <GroupSection
+        group={RANDOM_ACCESS}
+        anchor="random-access"
+        startIndex={0}
+        universe={UNIVERSE}
+      />,
+    );
+    expect(html).not.toContain('group-headline');
   });
 });

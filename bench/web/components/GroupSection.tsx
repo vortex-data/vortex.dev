@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
+import { Fragment } from 'react';
+
 import { Chart } from '@/components/Chart';
 import { GroupDocsLink } from '@/components/GroupDocsLink';
 import { GroupPermalink } from '@/components/GroupPermalink';
@@ -8,6 +10,7 @@ import { GroupToolbar } from '@/components/GroupToolbar';
 import { SummaryCard } from '@/components/SummaryCard';
 import { groupDocUrl } from '@/lib/benchmark-docs';
 import type { FilterUniverse } from '@/lib/chart-format';
+import { groupHeadline } from '@/lib/headline';
 import type { Group } from '@/lib/queries';
 
 const NO_INITIAL_HIDDEN_SERIES: string[] = [];
@@ -28,6 +31,12 @@ const NO_INITIAL_SHOWN_SERIES: string[] = [];
  * and a page-unique `data-chart-index`; the island lazily fetches
  * `/api/chart/[slug]` when this group's disclosure opens (it listens for the
  * native `toggle` event of the enclosing `details.group-disclosure`).
+ *
+ * The summary row ends with the group's headline (`lib/headline.ts`): one line
+ * of text saying how Vortex compares with Parquet, so a folded group still
+ * says something. It is plain text inside the `<summary>`; the tone on each
+ * part only styles it, and a slower result reads in words, never by color
+ * alone. A group whose summary has nothing honest to say shows no headline.
  *
  * The group title carries two affordances beyond the disclosure itself: the ⓘ
  * tooltip with the editorial one-liner from `lib/descriptions.ts`, and a
@@ -68,6 +77,7 @@ export function GroupSection({
   // selected by the dataset name inside the group's slug (`null` if the slug
   // does not parse or no matching explainer exists).
   const docUrl = groupDocUrl(group.slug);
+  const headline = groupHeadline(group.summary);
   return (
     <section
       className="group-details"
@@ -96,6 +106,20 @@ export function GroupSection({
               {chartCount} chart{chartCount !== 1 ? 's' : ''}
             </span>
             <GroupPermalink anchor={anchor} groupName={group.name} groupSlug={group.slug} />
+            {headline !== null && (
+              <span className="group-headline">
+                {headline.parts.map((part, i) => (
+                  <Fragment key={part.text}>
+                    {i > 0 && ' · '}
+                    <span className="group-headline-part" data-tone={part.tone}>
+                      {part.text}
+                    </span>
+                  </Fragment>
+                ))}
+                {headline.suffix !== null && ` ${headline.suffix}`}
+                {headline.partial && ' (partial)'}
+              </span>
+            )}
           </span>
         </summary>
       </details>
