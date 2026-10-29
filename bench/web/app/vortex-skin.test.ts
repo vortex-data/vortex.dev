@@ -72,11 +72,17 @@ describe('vortex-skin.css', () => {
     }
   });
 
+  // The linear and log toggles are a switch, which the system draws without Blue (below).
+  const SWITCH = '.toolbar-btn';
+
   it('repaints every rule where bench fills with the accent', () => {
     const globals = declsOf('./globals.css');
     const FILL = new Set(['background', 'background-color', 'accent-color']);
     const fills = new Set(
-      globals.filter((d) => FILL.has(d.prop) && d.value === 'var(--accent)').flatMap(selectorsOf),
+      globals
+        .filter((d) => FILL.has(d.prop) && d.value === 'var(--accent)')
+        .flatMap(selectorsOf)
+        .filter((s) => !s.startsWith(SWITCH)),
     );
     expect(fills.size).toBeGreaterThan(3);
     const isFill = (s: string) => [...fills].some((f) => s === f || s.startsWith(`${f}:`));
@@ -93,9 +99,24 @@ describe('vortex-skin.css', () => {
   });
 
   it("keeps an active control's border on its fill when hovered", () => {
-    // Bench's .filter-chip:hover and .toolbar-btn:hover would ring the fill in the word Blue.
-    for (const sel of ['.filter-chip--active:hover', '.toolbar-btn--active:hover']) {
-      expect(valueOf(sel, 'border-color'), sel).toBe('var(--accent-fill)');
+    // Bench's .filter-chip:hover would ring the fill in the word Blue.
+    expect(valueOf('.filter-chip--active:hover', 'border-color')).toBe('var(--accent-fill)');
+  });
+
+  // The system's States rule: a pressed switch sits on surface in ink inside a raised group, and
+  // a switch is never Blue. The skin cannot move anything, so the options draw the group.
+  it('draws the linear and log toggles as a switch, with no Blue', () => {
+    for (const sel of DARK) expect(valueOf(sel, '--raised'), sel).toBe('#2b2b29');
+    for (const sel of LIGHT) expect(valueOf(sel, '--raised'), sel).toBe('#ebebe8');
+    expect(valueOf('.toolbar-btn', 'background')).toBe('var(--raised)');
+    expect(valueOf('.toolbar-btn', 'color')).toBe('var(--muted)');
+    for (const sel of ['.toolbar-btn--active', '.toolbar-btn--active:hover']) {
+      expect(valueOf(sel, 'background'), sel).toBe('var(--card-bg)');
+      expect(valueOf(sel, 'border-color'), sel).toBe('var(--border)');
+      expect(valueOf(sel, 'color'), sel).toBe('var(--fg)');
+    }
+    for (const d of decls.filter((x) => selectorsOf(x).some((s) => s.startsWith(SWITCH)))) {
+      expect(d.value, `${d.sel} ${d.prop}`).not.toMatch(/accent/);
     }
   });
 

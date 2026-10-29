@@ -17,3 +17,10 @@ export function hexDigit(row: number, col: number, tick: number): string;
 
 /** How many copies of a logo set the banner needs so that two loops cover the view, always even. */
 export function copiesNeeded(setWidth: number, viewWidth: number): number;
+
+/** The tokens the mark draws with in a colour scheme: four inks, the field's dot and the brush. */
+export function markPalette(scheme: string): {
+  inks: string[];
+  field: string;
+  brush: [string, string];
+};

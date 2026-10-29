@@ -1,8 +1,9 @@
 // The Vortex mark, turning in 3D and redrawn every frame as a grid of Geist Mono characters.
 // The pointer leaves a short Blue trail in which the characters become flickering hex bytes.
 // Under reduced motion it draws one still frame and ignores the pointer. Without WebGL, or when
-// three.js cannot load, it shows the static symbol.
-import { brushStrength, fitFov, hexDigit, rampChar } from "./ascii-core.js";
+// three.js cannot load, it shows the static symbol. It draws in the host's colour scheme and
+// follows a change of data-theme on the page.
+import { brushStrength, fitFov, hexDigit, markPalette, rampChar } from "./ascii-core.js";
 import { decode } from "./vortex-mark-geometry.js";
 
 const SCALE = 3.0;
@@ -27,6 +28,9 @@ const THREE_URL = "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module
  * still symbol whatever the browser can do), three (a three.js module the site bundles, for pages
  * whose CSP blocks the CDN), threeUrl (where to load three.js otherwise), exposure (how bright the
  * lit faces read on the ramp, 2.5). The mark is decorative: keep the host aria-hidden.
+ * Colours follow the host's colour-scheme, which the tokens set per theme: Dark greys on a Dark
+ * ground, mirrored greys in Light (markPalette in ascii-core.js), and the brush in the accent. In
+ * Light the symbol image is inverted, so pass the white one in both themes.
  * Resolves to { mode: "live" | "reduced" | "static", destroy() }. Call destroy() when the host
  * leaves the page: it stops the loop, removes the listeners and frees the WebGL context.
  */
@@ -49,10 +53,25 @@ export async function mountAsciiMark(host, opts = {}) {
   const destroy = () => {
     while (cleanups.length) cleanups.pop()();
   };
-  const css = hostCss;
-  const inks = ["--grey-600", "--grey-500", "--grey-400", "--grey-50"].map((v) => css.getPropertyValue(v).trim() || "#888");
-  const field = css.getPropertyValue("--grey-700").trim() || "#2b2b29";
-  const brush = [css.getPropertyValue("--blue-bright").trim() || "#6e5cff", css.getPropertyValue("--blue-soft").trim() || "#a5a0f8"];
+  // The palette for the host's scheme, read again whenever a data-theme changes on the page.
+  let inks, field, brush, light;
+  const paint = () => {
+    const css = getComputedStyle(host);
+    light = css.colorScheme === "light";
+    const p = markPalette(light ? "light" : "dark");
+    const read = (name, fallback) => css.getPropertyValue(name).trim() || fallback;
+    inks = p.inks.map((n) => read(n, "#888"));
+    field = read(p.field, light ? "#d4d4d2" : "#2b2b29");
+    brush = [read(p.brush[0], "#6e5cff"), read(p.brush[1], "#a5a0f8")];
+  };
+  paint();
+  const repaints = [];
+  const themes = new MutationObserver(() => {
+    paint();
+    for (const f of repaints) f();
+  });
+  themes.observe(document.documentElement, { attributes: true, subtree: true, attributeFilter: ["data-theme"] });
+  cleanups.push(() => themes.disconnect());
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   const still = () => {
@@ -61,6 +80,9 @@ export async function mountAsciiMark(host, opts = {}) {
       img.src = o.fallbackSrc;
       img.alt = "";
       img.style.cssText = "position:absolute;inset:0;margin:auto;width:40%;height:auto;opacity:0.85";
+      const tone = () => (img.style.filter = light ? "invert(1)" : "");
+      tone();
+      repaints.push(tone);
       host.appendChild(img);
       cleanups.push(() => img.remove());
     }
@@ -229,6 +251,7 @@ export async function mountAsciiMark(host, opts = {}) {
   // Reduced motion: one still frame, redrawn only when the host is resized. No brush.
   if (reduced) {
     draw(performance.now());
+    repaints.push(() => draw(performance.now()));
     const ro = new ResizeObserver(() => {
       layout();
       draw(performance.now());

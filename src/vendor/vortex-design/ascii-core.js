@@ -48,3 +48,17 @@ export function fitFov(base, aspect) {
   if (aspect >= 1) return base;
   return (2 * Math.atan(Math.tan((base * Math.PI) / 360) / aspect) * 180) / Math.PI;
 }
+
+/**
+ * The tokens the mark draws with in a colour scheme ("dark" or "light"; anything else is Dark):
+ * four inks that step away from the ground as the lit faces brighten, the field's dot, and the
+ * brush's outer and inner colours. Light mirrors Dark's steps of contrast against its own ground.
+ */
+export function markPalette(scheme) {
+  const light = scheme === "light";
+  return {
+    inks: light ? ["--grey-400", "--grey-450", "--grey-600", "--black"] : ["--grey-600", "--grey-500", "--grey-400", "--grey-50"],
+    field: light ? "--grey-300" : "--grey-700",
+    brush: ["--accent", "--accent-ink"],
+  };
+}

@@ -1,156 +1,10 @@
 @import "../styles/vortex-tokens.css";
+@import "../styles/vortex-base.css";
 @import "../styles/vortex.css";
 
 /* The design system's Dark ground. src/lib/theme.ts mirrors it (scripts/verify.ts). */
 :root {
   --background: #0f0f0e;
-}
-
-/* The reset the site's pages are drawn on, which came with Tailwind until
-   the pages moved to the design system. It sits in a layer, so every
-   unlayered rule, the system's and the site's, overrides it. */
-@layer base {
-  *,
-  ::before,
-  ::after,
-  ::backdrop {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-    border: 0 solid;
-  }
-
-  html {
-    line-height: 1.5;
-    font-family: var(--font-sans);
-    -webkit-text-size-adjust: 100%;
-    tab-size: 4;
-    -webkit-tap-highlight-color: transparent;
-  }
-
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6 {
-    font-size: inherit;
-    font-weight: inherit;
-  }
-
-  a {
-    color: inherit;
-    text-decoration: inherit;
-  }
-
-  b,
-  strong {
-    font-weight: bolder;
-  }
-
-  code,
-  kbd,
-  samp,
-  pre {
-    font-family: var(--font-mono);
-    font-size: 1em;
-  }
-
-  small {
-    font-size: 80%;
-  }
-
-  sub,
-  sup {
-    position: relative;
-    font-size: 75%;
-    line-height: 0;
-    vertical-align: baseline;
-  }
-
-  sub {
-    bottom: -0.25em;
-  }
-
-  sup {
-    top: -0.5em;
-  }
-
-  table {
-    text-indent: 0;
-    border-color: inherit;
-    border-collapse: collapse;
-  }
-
-  hr {
-    height: 0;
-    color: inherit;
-    border-top-width: 1px;
-  }
-
-  ol,
-  ul,
-  menu {
-    list-style: none;
-  }
-
-  img,
-  svg,
-  video,
-  canvas,
-  audio,
-  iframe,
-  embed,
-  object {
-    display: block;
-    vertical-align: middle;
-  }
-
-  img,
-  video {
-    max-width: 100%;
-    height: auto;
-  }
-
-  button,
-  input,
-  select,
-  optgroup,
-  textarea {
-    font: inherit;
-    letter-spacing: inherit;
-    color: inherit;
-    background-color: transparent;
-    border-radius: 0;
-    opacity: 1;
-  }
-
-  ::placeholder {
-    opacity: 1;
-  }
-
-  textarea {
-    resize: vertical;
-  }
-
-  [hidden]:where(:not([hidden="until-found"])) {
-    display: none !important;
-  }
-}
-
-/* Thin scrollbars in the theme's greys: a control's edge on the ground. */
-html {
-  scrollbar-width: thin;
-  scrollbar-color: var(--edge) var(--ground);
-}
-
-body {
-  background: var(--ground);
-  color: var(--ink-body);
-  font-family: var(--font-sans);
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
 
 /* The page frame from the design system's Home card: header, main and footer
@@ -163,8 +17,12 @@ body {
   margin-inline: auto;
 }
 
+/* main fills the height the header and footer leave, and hands it on as a
+   flex column, so the homepage's hero and the Status card can fill it. */
 .site-main {
   flex: 1 0 auto;
+  display: flex;
+  flex-direction: column;
 }
 
 /* ------------------------------------------------------------------ blog
@@ -174,6 +32,7 @@ body {
    card (68ch of 17px Geist and its padding), so the list and a post share
    their edges. */
 .blog-page {
+  width: 100%;
   max-width: calc(68ch + 2 * var(--space-48) + 2 * var(--page-pad));
   margin-inline: auto;
   padding: var(--space-48) var(--page-pad) var(--space-64);

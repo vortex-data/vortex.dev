@@ -2,14 +2,13 @@
 
 import NextLink from "next/link";
 import { useEffect } from "react";
-import styles from "./status.module.css";
 
 /**
- * The error page, laid out as the 404 without the mark: the Eyebrow, the
- * headline, one sentence, then "Try again", which renders the page again
- * through `reset`, and a link home. Next requires a client component here.
- * A server error carries a digest, the key to its entry in the server's
- * log, which the page shows for a bug report.
+ * The error page: the design system's Status card without the mark, so a
+ * page that failed draws as little as it can. "Try again" renders the page
+ * again through `reset`. Next requires a client component here. A server
+ * error carries a digest, the key to its entry in the server's log, which
+ * the page shows as a machine reference for a bug report.
  */
 export default function ErrorPage({
   error,
@@ -23,14 +22,14 @@ export default function ErrorPage({
   }, [error]);
 
   return (
-    <div className={styles.page}>
-      <div className={styles.text}>
+    <div className="vx-status">
+      <div className="vx-status-text">
         <span className="vx-label vx-eyebrow">Error</span>
         <h1 className="vx-h1">This page did not load.</h1>
-        <p className={`vx-lede ${styles.sentence}`}>
-          The error may be temporary, so try again.
+        <p className="vx-lede vx-status-sentence">
+          The error may be temporary.
         </p>
-        <div className={styles.actions}>
+        <div className="vx-btn-row">
           <button
             type="button"
             className="vx-btn vx-btn-primary"
@@ -43,8 +42,8 @@ export default function ErrorPage({
           </NextLink>
         </div>
         {error.digest && (
-          <p className={`vx-label-sm ${styles.digest}`}>
-            Reference · <span className="vx-keep-case">{error.digest}</span>
+          <p className="vx-label-sm">
+            Reference · <code className="vx-ref">{error.digest}</code>
           </p>
         )}
       </div>

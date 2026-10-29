@@ -31,6 +31,16 @@
   text-transform: none;
   letter-spacing: 0;
 }
+/* A machine reference, such as an error digest or a commit hash, in a label or in text. It keeps
+   its case, selects whole for a bug report, and breaks anywhere rather than overflow a phone. */
+.vx-ref {
+  font-family: var(--font-mono);
+  font-size: inherit;
+  text-transform: none;
+  letter-spacing: 0;
+  user-select: all;
+  overflow-wrap: anywhere;
+}
 .vx-stat,
 .vx-num {
   font-variant-numeric: tabular-nums;
@@ -186,6 +196,28 @@
 .vx-btn-ghost:hover { background: var(--raised); }
 .vx-btn.is-mono { padding: 0 var(--space-12); font: 400 13px/1 var(--font-mono); }
 .vx-btn-count { display: inline-flex; align-items: center; gap: var(--space-4); padding-left: var(--space-12); border-left: 1px solid var(--edge); color: var(--ink-muted); }
+/* Buttons side by side, primary first, wrapping onto a second row on a phone. */
+.vx-btn-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-12); }
+
+/* A 404 or error page: the hero with no bands under it. It takes the height its parent (a flex
+   column between the header and the footer) leaves, and centres its text in it. With the mark it
+   takes the homepage hero's two columns, and stacks below 1100px as the hero does. */
+.vx-status { flex: 1 0 auto; display: grid; grid-template-columns: minmax(0, 760px); align-content: center; gap: var(--space-48); padding: var(--space-32) var(--page-pad); }
+.vx-status.has-mark { grid-template-columns: minmax(0, 760px) minmax(320px, 1fr); align-content: normal; }
+.vx-status-text { display: grid; align-content: center; justify-items: start; gap: var(--space-24); }
+.vx-status-text > * { margin: 0; }
+.vx-status-text h1 { color: var(--ink); }
+.vx-status-sentence { color: var(--ink-body); }
+/* The mark's cell has a height to fill. Its host is never taller than 9/10 of the cell's width. */
+.vx-status-mark { position: relative; min-height: 0; container-type: size; }
+.vx-status-mark > * { position: absolute; inset: 0; height: min(100cqh, 90cqw); margin: auto 0; }
+@media (max-width: 1099px) {
+  .vx-status.has-mark { grid-template-columns: minmax(0, 1fr); align-content: center; gap: var(--space-24); }
+  .vx-status-mark { height: 320px; }
+}
+@media (max-width: 640px) {
+  .vx-status-mark { height: 240px; }
+}
 
 /* A text field: raised, at control-md, with an edge that turns ink on hover, like the docs' search.
    A row holds a field and its button. */
@@ -335,16 +367,18 @@
 .vx-copy .is-check, .vx-copy.is-done .is-copy { display: none; }
 .vx-copy.is-done .is-check { display: block; }
 
-.vx-bench { overflow: hidden; }
+.vx-bench { overflow: hidden; container: vx-bench / inline-size; }
 .vx-bench-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--space-8) var(--space-16); padding: var(--space-12) var(--space-20); border-bottom: 1px solid var(--line); }
 .vx-bench-headline { margin: 0; font: 500 14px/1.3 var(--font-sans); color: var(--ink); }
 .vx-bench-sub { color: var(--ink-muted); font-weight: 400; }
-.vx-bench-panels { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+/* Two, three or six columns by the card's own width, so a panel's text is never much under 175px.
+   At 1440 the six share one row. */
+.vx-bench-panels { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 /* Each panel rules its top and left edges 1px outside itself. The head's rule and the card's
    clipped edge hide the outer ones, so a rule shows only between panels, in any number of rows.
    The panels in a row share three rows (title, figure, bars), so a title that takes a third line
    moves every figure in its row down with it. */
-.vx-bench-panel { display: grid; grid-row: span 3; grid-template-rows: subgrid; gap: var(--space-12); align-content: start; padding: var(--space-16) var(--space-20); border-top: 1px solid var(--line); border-left: 1px solid var(--line); margin: -1px 0 0 -1px; }
+.vx-bench-panel { display: grid; grid-row: span 3; grid-template-rows: subgrid; gap: var(--space-12); align-content: start; padding: var(--space-16); border-top: 1px solid var(--line); border-left: 1px solid var(--line); margin: -1px 0 0 -1px; }
 .vx-bench-title { display: grid; gap: 2px; }
 /* Two lines for every title, so the big figures line up whatever the titles' lengths. */
 .vx-bench-metric { min-height: 2lh; text-wrap: balance; }
@@ -370,15 +404,22 @@
 .vx-bar.is-ours .vx-bar-fill { background: var(--chart-1); }
 .vx-bars.is-lg .vx-bar { gap: var(--space-12); font-size: 12.5px; }
 .vx-bars.is-lg .vx-bar-track { height: 10px; }
-/* At 640px and below the panels sit two to a row, about 170px wide at 375px. With its name and
-   value beside it, a bar there was 15 to 50px. So each bar runs the panel's width under its name
-   and value: about 140px at 375px. One column gives 190px bars, but the card grows from 790px to
-   1,310px tall, more than a phone's screen. */
-@media (max-width: 640px) {
-  .vx-bench-panels { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .vx-bench-panel { padding: var(--space-16); }
-  .vx-bench .vx-bar { grid-template-columns: minmax(0, 1fr) auto; row-gap: var(--space-4); }
-  .vx-bench .vx-bar-track { grid-column: 1 / -1; grid-row: 2; }
+/* In a panel whose text is narrower than about 175px, a bar beside its name and value was 15 to
+   50px wide. So there each bar runs the panel's width under its name and value: about 140px on a
+   375px phone. One column would give 190px bars, but the card would grow from 790px to 1,310px
+   tall, more than a phone's screen. */
+.vx-bench .vx-bar { grid-template-columns: minmax(0, 1fr) auto; row-gap: var(--space-4); }
+.vx-bench .vx-bar-track { grid-column: 1 / -1; grid-row: 2; }
+@container vx-bench (min-width: 410px) {
+  .vx-bench .vx-bar { grid-template-columns: var(--bar-name, 56px) minmax(0, 1fr) var(--bar-value, auto); }
+  .vx-bench .vx-bar-track { grid-column: auto; grid-row: auto; }
+}
+@container vx-bench (min-width: 640px) {
+  .vx-bench-panels { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .vx-bench-panel { padding: var(--space-16) var(--space-20); }
+}
+@container vx-bench (min-width: 1260px) {
+  .vx-bench-panels { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 }
 
 /* ------------------------------------------------------------------ docs */

@@ -23,6 +23,7 @@
       "!src/app/globals.css",
       "!src/styles/vortex-tokens.css",
       "!src/styles/vortex.css",
+      "!src/styles/vortex-base.css",
       "!**/*.svg"
     ]
   },

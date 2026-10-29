@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import NextLink from "next/link";
 import { AsciiMark } from "@/components/ascii-mark";
-import styles from "./status.module.css";
 
 const TITLE = "Page not found | Vortex";
 const SENTENCE = "There is no page at this address.";
@@ -24,19 +23,19 @@ export const metadata: Metadata = {
 };
 
 /**
- * The 404 page, laid out as the homepage's hero: the Eyebrow, the headline,
- * one sentence and three ways on, with the AsciiMark beside them. It is
- * Dark, as every page outside the blog is. Under /blog it follows the
- * reader's theme, and in Light it leaves the mark out (status.module.css).
+ * The 404 page: the design system's Status card with the mark. The words
+ * follow Writing › Site errors. It is Dark, as every page outside the blog
+ * is. Under /blog it follows the reader's theme, and the mark draws in Light
+ * too.
  */
 export default function NotFound() {
   return (
-    <div className={`${styles.page} ${styles.withMark}`}>
-      <div className={styles.text}>
+    <div className="vx-status has-mark">
+      <div className="vx-status-text">
         <span className="vx-label vx-eyebrow">404</span>
         <h1 className="vx-h1">Page not found.</h1>
-        <p className={`vx-lede ${styles.sentence}`}>{SENTENCE}</p>
-        <div className={styles.actions}>
+        <p className="vx-lede vx-status-sentence">{SENTENCE}</p>
+        <div className="vx-btn-row">
           <NextLink className="vx-btn vx-btn-primary" href="/">
             Go to the homepage
           </NextLink>
@@ -48,8 +47,8 @@ export default function NotFound() {
           </NextLink>
         </div>
       </div>
-      <div className={styles.mark}>
-        <AsciiMark className={styles.markHost} />
+      <div className="vx-status-mark">
+        <AsciiMark />
       </div>
     </div>
   );

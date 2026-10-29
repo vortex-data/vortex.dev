@@ -36,4 +36,16 @@ describe("the site's copy of the design system styles", () => {
     const c = globals.indexOf('@import "../styles/vortex.css"');
     assert.ok(t > -1 && c > t, "tokens import precedes components import");
   });
+
+  // Note 59: the reset is the system's base.css, copied as vortex-base.css,
+  // and the site keeps no reset of its own.
+  it("takes its reset from the system's base.css, in a layer", () => {
+    const globals = read("src/app/globals.css");
+    assert.ok(globals.includes('@import "../styles/vortex-base.css"'));
+    assert.match(read("src/styles/vortex-base.css"), /@layer vx-base \{/);
+    assert.doesNotMatch(
+      globals,
+      /@layer|list-style: none|margin: 0;\s*padding: 0/
+    );
+  });
 });

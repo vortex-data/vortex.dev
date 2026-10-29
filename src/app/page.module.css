@@ -3,13 +3,6 @@
    1440 × 900 it fills one screen, and the hero takes the height the bands
    leave. Below that height, and on phones, the page scrolls. */
 
-/* The root layout's main fills the screen; here it hands that height on to
-   the page, as the Home card's 1fr row does. */
-:global(.site-main):has(> .home) {
-  display: flex;
-  flex-direction: column;
-}
-
 .home {
   flex: 1 0 auto;
   display: flex;

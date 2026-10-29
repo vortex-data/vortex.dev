@@ -21,6 +21,7 @@
   --accent-fg: #ffffff;
   --accent-fill: #1d0fed;
   --accent-fill-fg: #ffffff;
+  --raised: #ebebe8;
 }
 :root[data-theme='light'] {
   --page-bg: #f5f5f2;
@@ -36,6 +37,7 @@
   --accent-fg: #ffffff;
   --accent-fill: #1d0fed;
   --accent-fill-fg: #ffffff;
+  --raised: #ebebe8;
 }
 
 /* Dark: bench's default when the OS asks for dark, and its explicit dark theme. Cards sit on
@@ -55,6 +57,7 @@
     --accent-fg: #171716;
     --accent-fill: #6e5cff;
     --accent-fill-fg: #ffffff;
+    --raised: #2b2b29;
   }
 }
 :root[data-theme='dark'] {
@@ -71,6 +74,7 @@
   --accent-fg: #171716;
   --accent-fill: #6e5cff;
   --accent-fill-fg: #ffffff;
+  --raised: #2b2b29;
 }
 
 /* Geist, which bench names but never loads. Load it with the site's font loader too. */
@@ -110,14 +114,12 @@ body {
   background: var(--accent-fill);
   color: var(--accent-fill-fg);
 }
-.filter-chip--active,
-.toolbar-btn--active {
+.filter-chip--active {
   background: var(--accent-fill);
   border-color: var(--accent-fill);
   color: var(--accent-fill-fg);
 }
-.filter-chip--active:hover,
-.toolbar-btn--active:hover {
+.filter-chip--active:hover {
   border-color: var(--accent-fill);
   color: var(--accent-fill-fg);
 }
@@ -126,4 +128,23 @@ body {
 }
 .chart-range-strip-handle {
   background: var(--accent-fill);
+}
+
+/* The linear and log toggles are a switch, so they follow the system's States rule with no Blue:
+   the options are raised in muted text, and the pressed one sits on the card's surface in ink.
+   The skin cannot move anything, so the raised group is drawn by the options themselves. */
+.toolbar-btn {
+  background: var(--raised);
+  border-color: var(--raised);
+  color: var(--muted);
+}
+.toolbar-btn:hover {
+  border-color: var(--raised);
+  color: var(--fg);
+}
+.toolbar-btn--active,
+.toolbar-btn--active:hover {
+  background: var(--card-bg);
+  border-color: var(--border);
+  color: var(--fg);
 }

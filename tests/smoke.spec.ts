@@ -422,6 +422,21 @@ test.describe("404", () => {
   });
 });
 
+// Note 56: under the blog a 404 follows the reader's theme, and the mark
+// draws in Light rather than leaving a hole.
+test("a 404 under the blog in Light draws the mark", async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem("vx-theme", "light"));
+  const res = await page.goto("/blog/no-such-post");
+  expect(res?.status()).toBe(404);
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  const host = page.locator("main [data-mark-mode]");
+  await expect(host).toHaveCount(1, { timeout: 15000 });
+  expect(await host.getAttribute("data-mark-mode")).not.toBe("error");
+  await expect(host).toBeVisible();
+  const box = await host.boundingBox();
+  expect(box?.height ?? 0).toBeGreaterThan(100);
+});
+
 test.describe("footer", () => {
   test("shows the LF Projects policies link and the Charter", async ({
     page
@@ -509,6 +524,43 @@ test.describe("benchmark card on phones", () => {
         expect(m.narrowest).toBeGreaterThanOrEqual(100);
         expect(m.misaligned).toBe(0);
         expect(m.ruled).toBe(true);
+      });
+    });
+  }
+});
+
+// Note 60: the card sets 2, 3 or 6 columns by its own width, so between
+// phones and 1440px a bar is never squeezed to 26 or 30px.
+test.describe("benchmark card columns", () => {
+  for (const [width, columns] of [
+    [640, 2],
+    [1024, 3],
+    [1440, 6]
+  ] as const) {
+    test.describe(`at ${width}px`, () => {
+      test.use({ viewport: { width, height: 900 } });
+
+      test(`${columns} columns, with bars of 60px or more`, async ({
+        page
+      }) => {
+        await page.goto("/");
+        const card = page.getByRole("region", { name: "Benchmark summary" });
+        test.skip((await card.count()) === 0, "bench was not read at build");
+        const m = await card.evaluate((el) => {
+          const tops = [...el.querySelectorAll(".vx-bench-panel")].map((p) =>
+            Math.round(p.getBoundingClientRect().top)
+          );
+          const first = tops.filter((t) => t === tops[0]).length;
+          const tracks = [...el.querySelectorAll(".vx-bar-track")];
+          return {
+            first,
+            narrowest: Math.min(
+              ...tracks.map((t) => t.getBoundingClientRect().width)
+            )
+          };
+        });
+        expect(m.first).toBe(columns);
+        expect(m.narrowest).toBeGreaterThanOrEqual(60);
       });
     });
   }

@@ -1,16 +1,16 @@
 # Vortex design system modules
 
-Copied unchanged from the Vortex design system's `components/lib/`: `benchmark-card.js`,
-`benchmark-card.d.ts`, `theme.js`, `callout.js`, `code-block.js` and their `.d.ts` files on
-2026-10-29, the rest on 2026-10-28. Do not edit them here: change the
+Copied unchanged from the Vortex design system's `components/lib/`: `ascii-mark.js`,
+`ascii-core.js`, `benchmark-card.js`, `benchmark-card.d.ts`, `theme.js`, `callout.js`,
+`code-block.js` and their `.d.ts` files on 2026-10-29, the rest on 2026-10-28. Do not edit them here: change the
 system, then copy them again. Biome skips this folder.
 
 | File | What it is |
 | --- | --- |
-| `ascii-mark.js` | The AsciiMark card's renderer: `mountAsciiMark(host, options)` |
-| `ascii-core.js` | Its DOM-free rules: the luminance ramp, the brush and the hex flicker, and the LogoBanner's `copiesNeeded` |
+| `ascii-mark.js` | The AsciiMark card's renderer: `mountAsciiMark(host, options)`, in Dark or Light |
+| `ascii-core.js` | Its DOM-free rules: the luminance ramp, the brush, the hex flicker and each theme's palette (`markPalette`), and the LogoBanner's `copiesNeeded` |
 | `vortex-mark-geometry.js` | The mark's mesh, generated from the 3D model |
-| `benchmark-card.js` | The BenchmarkCard's DOM-free rules: `formatValue`, `panelRows`, `versusParquet`, `formatFactor`, `panelNote` and `renderPanel` |
+| `benchmark-card.js` | The BenchmarkCard's DOM-free rules: `formatScore`, `panelRows`, `versusParquet`, `formatFactor`, `panelNote` and `renderPanel` |
 | `benchmark-card.d.ts` | Its types, which the system ships beside it |
 | `theme.js` | The ThemeSwitch's rules: the first-paint script for the blog's paths (`themeBootstrap`), `isThemeable`, `themeFor`, `readChoice` and `saveChoice` |
 | `callout.js` | The Callout card's Markdown rule: `calloutOf` turns a GitHub alert or an emoji-led blockquote into an aside |
