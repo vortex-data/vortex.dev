@@ -22,7 +22,7 @@ const COPIED_FEEDBACK_MS = 1500;
  * names a real element on the page. On load, the pre-paint script
  * ([`OpenGroupsScript`]) opens the group before it paints ([`LandingState`]
  * does after a client navigation), and on a fresh visit `LandingState` scrolls
- * to it.
+ * to it, unless the reader moved before hydration.
  *
  * Anchors are already fragment-safe (`[a-z0-9-]`), but the fragment is
  * percent-encoded anyway so a future anchor shape cannot silently produce an

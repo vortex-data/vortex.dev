@@ -15,9 +15,9 @@ import type { GroupBodiesReady } from '@/lib/group-bodies';
  *   link is followed, it records the element nearest the top of the viewport
  *   (a chart card, or else a group section) and that element's offset from
  *   the viewport top, in `sessionStorage` under the page's path and fragment.
- * - **Plan.** If the reader already scrolled, touched or pressed a key before
- *   hydration (the pre-paint script records that), do nothing: they have
- *   taken over the scroll. Otherwise, on a reload or a Back/Forward with
+ * - **Plan.** If the reader already scrolled, touched, clicked or pressed a
+ *   key before hydration (the pre-paint script records that), do nothing:
+ *   they have taken over the scroll. Otherwise, on a reload or a Back/Forward with
  *   something saved, restore; else scroll to the fragment's first group, if
  *   it names one: a fresh visit always does this, whatever was saved.
  * - **Restore.** Once the open groups' bodies have mounted, scroll the saved

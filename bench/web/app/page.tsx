@@ -49,7 +49,8 @@ export const dynamic = 'force-dynamic';
  * burst of toggles into two writes), and owns the scroll: a reload or Back
  * restores the element that was at the top of the viewport
  * (`lib/scroll-restore.ts`), and a fresh visit scrolls to the first listed
- * group.
+ * group. Neither moves a reader who scrolled, touched, clicked or pressed a
+ * key before hydration.
  *
  * The content (`HomeContent`) renders inside a Suspense boundary. A browser
  * gets it streamed into a hidden segment that React reveals with an inline

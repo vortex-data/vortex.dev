@@ -251,8 +251,9 @@ inline script after the last group
 while they are still in React's hidden streamed segment, so a reload or Back
 never shows them folded first. It also leaves a marker for the client code: a
 group the reader opens or closes before hydration stays that way, and a reader
-who scrolls, touches or presses a key before hydration is not moved, neither by
-the restore nor by the scroll to a link's first group. Scroll is restored by element, not by pixel
+who scrolls, touches, clicks or presses a key before hydration is not moved,
+neither by the restore nor by the scroll to a link's first group. Scroll is
+restored by element, not by pixel
 ([`lib/scroll-restore.ts`](../../web/lib/scroll-restore.ts)): the open bodies
 mount only after hydration, so a saved `scrollY` would land against a shorter
 page.

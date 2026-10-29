@@ -3,7 +3,7 @@
 
 // @vitest-environment jsdom
 
-import { act } from 'react';
+import { act, StrictMode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 
@@ -184,23 +184,36 @@ describe('LandingState', () => {
     await render();
   }
 
-  async function render(): Promise<void> {
+  /** Mount the page; `strict` runs its effect twice, as `bun dev` does. */
+  async function render(strict = false): Promise<void> {
     root = createRoot(container);
     await act(async () => {
-      root?.render(<LandingState />);
+      root?.render(
+        strict ? (
+          <StrictMode>
+            <LandingState />
+          </StrictMode>
+        ) : (
+          <LandingState />
+        ),
+      );
     });
   }
 
   /** Load `url` as a full page load does: the pre-paint script runs, the
    * reader does `beforeHydration`, then React mounts the page. */
-  async function hydrate(url: string, beforeHydration: () => void = () => {}): Promise<void> {
+  async function hydrate(
+    url: string,
+    beforeHydration: () => void = () => {},
+    strict = false,
+  ): Promise<void> {
     window.history.replaceState(null, '', url);
     runBootstrap();
     beforeHydration();
     // A browser fires the `toggle` events of those opens and closes before
     // React hydrates, with nobody listening yet.
     await new Promise((resolve) => setImmediate(resolve));
-    await render();
+    await render(strict);
   }
 
   it('on a fresh visit, opens every listed group and scrolls to the first listed once the bodies mount', async () => {
@@ -753,6 +766,22 @@ describe('LandingState', () => {
       noteGroupBodyOpen('qm.tpch', Promise.resolve());
       await nextFrame();
       expect(scrollTo).toHaveBeenCalledWith({ top: 780, behavior: 'instant' });
+    });
+
+    it('restores under StrictMode after the first run rewrote an out-of-order fragment', async () => {
+      // The position is saved under the fragment as loaded. The first run
+      // rewrites it to page order; the replay must still use the first read.
+      navigation('reload');
+      sessionStorage.setItem(`bench-scroll:/#clickbench,${FIRST}`, JSON.stringify(SAVED));
+      place(chartCard('c2'), 900);
+      await hydrate(`/#clickbench,${FIRST}`, () => {}, true);
+      expect(window.location.hash).toBe(`#${FIRST},clickbench`);
+
+      noteGroupBodyOpen('qm.tpch', Promise.resolve());
+      noteGroupBodyOpen('qm.click', Promise.resolve());
+      await nextFrame();
+      expect(scrollTo).toHaveBeenCalledWith({ top: 780, behavior: 'instant' });
+      expect(scrollSpy).not.toHaveBeenCalled();
     });
 
     it('on reload, falls back to the fragment scroll, at once, when the saved element is gone', async () => {
