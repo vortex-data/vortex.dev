@@ -89,7 +89,10 @@ function storageOf<S>(win: { readonly localStorage: S }): S | null {
  */
 const pageChoices = new WeakMap<object, ThemeChoice>();
 
-/** The stored choice if storage holds one, else this page's, else Dark. */
+/**
+ * The reader's choice on this page if they made one (their latest action,
+ * even when saving it failed), else the stored choice, else Dark.
+ */
 function currentChoice(win: {
   readonly localStorage: Pick<Storage, "getItem">;
   document: object;
@@ -101,8 +104,8 @@ function currentChoice(win: {
     // Blocked storage: fall back to this page's choice.
   }
   return (
-    THEME_CHOICES.find((c) => c === stored) ??
     pageChoices.get(win.document) ??
+    THEME_CHOICES.find((c) => c === stored) ??
     "dark"
   );
 }

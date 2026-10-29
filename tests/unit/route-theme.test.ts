@@ -101,3 +101,31 @@ describe("blocked storage and the OS", () => {
     stop();
   });
 });
+
+describe("read-only storage", () => {
+  it("keeps the reader's new choice when saving it fails", () => {
+    const listeners = new Set<() => void>();
+    const media = {
+      matches: true,
+      addEventListener: (_: string, f: () => void) => listeners.add(f),
+      removeEventListener: (_: string, f: () => void) => listeners.delete(f)
+    };
+    const root = { dataset: {} as Record<string, string> };
+    const win = {
+      localStorage: {
+        getItem: () => "dark",
+        setItem: () => {
+          throw new DOMException("full", "QuotaExceededError");
+        }
+      },
+      matchMedia: () => media,
+      document: { documentElement: root }
+    };
+    const stop = applyRouteTheme("/blog", win);
+    chooseTheme("/blog", "light", win);
+    media.matches = false;
+    for (const f of listeners) f();
+    assert.equal(root.dataset.theme, "light");
+    stop();
+  });
+});
