@@ -91,8 +91,10 @@ describe('empty-window charts hide by default and the toggle reveals them', () =
   async function renderGroup(groupSlug: string): Promise<void> {
     container.innerHTML =
       '<section class="group-details">' +
-      '<details class="group-disclosure" open><summary class="group-summary">g</summary></details>' +
-      '<div class="chart-grid"><div id="m0"></div><div id="m1"></div></div>' +
+      '<details class="group-disclosure" open><summary class="group-summary">g</summary>' +
+      '<div class="group-body"><div class="chart-grid">' +
+      '<div id="m0"></div><div id="m1"></div></div></div>' +
+      '</details>' +
       '</section>';
     const roots: Root[] = [];
     await act(async () => {

@@ -183,10 +183,11 @@ export class ChartController {
       this.bundleFailed = false;
       return ensureGroupBundle(groupSlug, priority).then((result) => {
         // The group can close while this card awaits the in-flight bundle. The
-        // close runs `abortInFlightFetches` + `abortGroupBundle` already, so a
-        // per-chart fallback issued now would never be aborted and would defeat
-        // the "closing a group frees server capacity" contract. Bail when the
-        // group is no longer open.
+        // close unmounts the island (its `destroy()` aborts this controller's
+        // fetches) and GroupBody aborts the bundle, so a per-chart fallback
+        // issued now would never be aborted and would defeat the "closing a
+        // group frees server capacity" contract. Bail when the controller is
+        // disposed or the group is no longer open.
         if (state.disposed || state.payload || !this.groupIsOpen() || result.status === 'aborted') {
           return;
         }

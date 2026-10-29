@@ -16,6 +16,7 @@ import {
   MenuIcon,
 } from '@/components/icons';
 import { GitHubIcon } from '@/components/mark-github';
+import { setAllGroupsOpen } from '@/lib/open-groups';
 
 /**
  * The sticky site header, the full client port of
@@ -25,9 +26,13 @@ import { GitHubIcon } from '@/components/mark-github';
  * theme-aware logo, the desktop GitHub link, and the theme toggle.
  *
  * Expand/Collapse All writes `details.open` on every group disclosure
- * directly; the native `toggle` event (which also fires for scripted changes)
- * is how each chart island learns its group opened, so no shared React tree is
- * needed between the header and the islands.
+ * directly, then schedules one write of the open set into the URL fragment
+ * (`setAllGroupsOpen` in `lib/open-groups.ts`): at once after a quiet spell,
+ * otherwise once the clicks stop, because fragment writes are coalesced and
+ * kept at least 300 ms apart. The native `toggle` event
+ * (which also fires for scripted changes) is how each group body learns its
+ * group opened, so no shared React tree is needed between the header and the
+ * groups. On a page without groups (the chart page) the buttons do nothing.
  *
  * The filter dropdown renders only when the universe has at least one chip,
  * matching v3's `show_filters` guard. Pages without chart data (or without the
@@ -149,7 +154,7 @@ export function Header({
               className="control-btn"
               type="button"
               data-action="expand-all"
-              onClick={() => setAllGroups(true)}
+              onClick={() => setAllGroupsOpen(window, true)}
             >
               <ExpandAllIcon />
               <span>Expand All</span>
@@ -158,7 +163,7 @@ export function Header({
               className="control-btn"
               type="button"
               data-action="collapse-all"
-              onClick={() => setAllGroups(false)}
+              onClick={() => setAllGroupsOpen(window, false)}
             >
               <CollapseAllIcon />
               <span>Collapse All</span>
@@ -222,13 +227,4 @@ function effectiveTheme(): 'light' | 'dark' {
     return 'dark';
   }
   return 'light';
-}
-
-/** Open or close every group disclosure. Writing `details.open` fires each
- * disclosure's `toggle` event, which is what triggers the chart islands'
- * group-open hydration. */
-function setAllGroups(open: boolean): void {
-  document.querySelectorAll<HTMLDetailsElement>('details.group-disclosure').forEach((d) => {
-    d.open = open;
-  });
 }

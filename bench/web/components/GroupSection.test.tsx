@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
+// @vitest-environment jsdom
+
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
@@ -12,6 +14,13 @@ const UNIVERSE: FilterUniverse = {
   engines: ['datafusion', 'duckdb'],
   formats: ['parquet', 'vortex'],
 };
+
+/** The summary row's text, as a reader sees it. */
+function summaryText(html: string): string {
+  const el = document.createElement('div');
+  el.innerHTML = html;
+  return el.querySelector('summary')?.textContent ?? '';
+}
 
 const RANDOM_ACCESS: Group = {
   name: 'Random Access',
@@ -27,6 +36,21 @@ const RANDOM_ACCESS: Group = {
     explanation: 'lower is better',
   },
   description: 'Tests selecting arbitrary row indices on NVMe',
+};
+
+const TPCH: Group = {
+  name: 'TPC-H NVMe SF=10',
+  slug: 'query.eyJrIjoiUXVlcnlHcm91cCJ9',
+  charts: [{ name: 'q1', slug: 'query.eyJhIjoxfQ' }],
+  summary: {
+    type: 'queryBenchmark',
+    title: 'TPC-H',
+    rankings: [
+      { name: 'duckdb:vortex-file-compressed', score: 1, totalRuntime: 1, measured: 22, total: 22 },
+      { name: 'duckdb:parquet', score: 2.5, totalRuntime: 2.5, measured: 22, total: 22 },
+    ],
+    explanation: 'lower is better',
+  },
 };
 
 describe('GroupSection', () => {
@@ -110,7 +134,7 @@ describe('GroupSection', () => {
     expect(html).toContain('aria-label="Copy link to Random Access"');
   });
 
-  it('renders the summary card inside the section', () => {
+  it('renders the summary card after the disclosure, so a collapsed group shows it', () => {
     const html = renderToStaticMarkup(
       <GroupSection
         group={RANDOM_ACCESS}
@@ -119,11 +143,16 @@ describe('GroupSection', () => {
         universe={UNIVERSE}
       />,
     );
-    expect(html).toContain('benchmark-scores-summary--random-access');
+    // The `<details>` holds only the summary row; the card follows it, so the
+    // browser shows the card whether the group is open or not.
+    const card = html.indexOf('benchmark-scores-summary--random-access');
+    expect(html).toContain('</summary></details>');
+    expect(card).toBeGreaterThan(html.indexOf('</details>'));
+    expect(card).toBeLessThan(html.indexOf('class="group-body"'));
     expect(html).toContain('>Hot</h3>');
   });
 
-  it('renders one chart-card shell per chart with page-wide indices and permalinks', () => {
+  it('renders an empty group body and no chart or toolbar markup while collapsed', () => {
     const html = renderToStaticMarkup(
       <GroupSection
         group={RANDOM_ACCESS}
@@ -132,15 +161,13 @@ describe('GroupSection', () => {
         universe={UNIVERSE}
       />,
     );
-    expect(html).toContain('class="chart-grid"');
-    // First chart takes startIndex, second takes startIndex + 1.
-    expect(html).toContain('data-chart-index="5"');
-    expect(html).toContain('data-chart-slug="ra.eyJhIjoxfQ"');
-    expect(html).toContain('data-chart-index="6"');
-    expect(html).toContain('data-chart-slug="ra.eyJhIjoyfQ"');
-    expect(html).toContain('href="/chart/ra.eyJhIjoxfQ"');
-    expect(html).toContain('href="/chart/ra.eyJhIjoyfQ"');
-    expect(html).toContain('<canvas');
+    // The body mounts its toolbar and chart cards only once the group opens.
+    // It is the section's last child, after the disclosure and the card.
+    expect(html).toContain('<div class="group-body"></div>');
+    expect(html.endsWith('<div class="group-body"></div></section>')).toBe(true);
+    expect(html).not.toContain('class="chart-card"');
+    expect(html).not.toContain('data-role="group-toolbar"');
+    expect(html).not.toContain('<canvas');
   });
 
   it('uses the singular "chart" label for a single-chart group and omits a missing description', () => {
@@ -156,5 +183,65 @@ describe('GroupSection', () => {
     expect(html).not.toContain('class="group-info-icon"');
     // A group with no summary renders no summary card.
     expect(html).not.toContain('class="benchmark-scores-summary"');
+  });
+
+  it('renders the headline as text inside the summary row', () => {
+    const html = renderToStaticMarkup(
+      <GroupSection group={TPCH} anchor="tpc-h-nvme-sf-10" startIndex={0} universe={UNIVERSE} />,
+    );
+    const row = html.slice(html.indexOf('<summary'), html.indexOf('</summary>'));
+    expect(row).toContain('class="group-headline"');
+    expect(row).toContain('data-tone="better"');
+    expect(summaryText(html)).toContain('DuckDB 2.5× faster than Parquet');
+  });
+
+  it('spells a slower result in words and marks partial coverage in the row', () => {
+    const group: Group = {
+      ...TPCH,
+      summary: {
+        type: 'queryBenchmark',
+        title: 'TPC-H',
+        explanation: 'lower is better',
+        rankings: [
+          {
+            name: 'duckdb:vortex-file-compressed',
+            score: 1,
+            totalRuntime: 1,
+            measured: 22,
+            total: 22,
+          },
+          { name: 'duckdb:parquet', score: 2.5, totalRuntime: 1, measured: 22, total: 22 },
+          {
+            name: 'datafusion:vortex-file-compressed',
+            score: 2,
+            totalRuntime: 1,
+            measured: 21,
+            total: 22,
+          },
+          { name: 'datafusion:parquet', score: 1, totalRuntime: 1, measured: 22, total: 22 },
+        ],
+      },
+    };
+    const html = renderToStaticMarkup(
+      <GroupSection group={group} anchor="tpc-h-nvme-sf-10" startIndex={0} universe={UNIVERSE} />,
+    );
+    const row = html.slice(html.indexOf('<summary'), html.indexOf('</summary>'));
+    expect(row).toContain('data-tone="better"');
+    expect(row).toContain('data-tone="worse"');
+    expect(summaryText(html)).toContain(
+      'DuckDB 2.5× faster · DataFusion 2.0× slower vs Parquet (partial)',
+    );
+  });
+
+  it('renders no headline when the summary has no Vortex series', () => {
+    const html = renderToStaticMarkup(
+      <GroupSection
+        group={RANDOM_ACCESS}
+        anchor="random-access"
+        startIndex={0}
+        universe={UNIVERSE}
+      />,
+    );
+    expect(html).not.toContain('group-headline');
   });
 });

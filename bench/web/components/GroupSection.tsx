@@ -1,14 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
-import { Chart } from '@/components/Chart';
+import { Fragment } from 'react';
+
+import { GroupBody } from '@/components/GroupBody';
 import { GroupDocsLink } from '@/components/GroupDocsLink';
 import { GroupPermalink } from '@/components/GroupPermalink';
-import { GroupToolbar } from '@/components/GroupToolbar';
 import { InfoIcon } from '@/components/icons';
 import { SummaryCard } from '@/components/SummaryCard';
 import { groupDocUrl } from '@/lib/benchmark-docs';
 import type { FilterUniverse } from '@/lib/chart-format';
+import { groupHeadline } from '@/lib/headline';
 import type { Group } from '@/lib/queries';
 
 const NO_INITIAL_HIDDEN_SERIES: string[] = [];
@@ -18,36 +20,49 @@ const NO_INITIAL_SHOWN_SERIES: string[] = [];
  * One group's landing-page section, the server-component port of
  * `server/src/html/landing.rs`'s per-group markup.
  *
- * The `<details>` disclosure wraps ONLY its `<summary>` header; the summary
- * card and the chart grid are siblings inside `.group-details`, so the CSS rule
- * `.group-disclosure:not([open]) ~ .chart-grid` hides the charts while the
- * group is collapsed (native `<details>` toggling, no JavaScript). The summary
- * card is intentionally outside that rule, so the at-a-glance rankings stay
- * visible whether or not the group is expanded.
+ * The section holds a native `<details class="group-disclosure">`, collapsed
+ * by default, whose only content is the `<summary>` row; then the group's
+ * [`SummaryCard`]; then its [`GroupBody`]. The summary card sits outside the
+ * `<details>`, so a collapsed group still shows its rankings table, and it is
+ * server-rendered, so it shows before hydration. Opening the group mounts the
+ * body's toolbar and charts below the card. (With JavaScript off, the page
+ * shows no group at all: the groups stream inside the landing page's Suspense
+ * boundary, whose hidden segment only React's inline script reveals; see
+ * `app/page.tsx`.)
  *
- * Each chart renders as a [`Chart`] client island carrying `data-chart-slug`
- * and a page-unique `data-chart-index`; the island lazily fetches
- * `/api/chart/[slug]` when this group's disclosure opens (it listens for the
- * native `toggle` event of the enclosing `details.group-disclosure`).
+ * [`GroupBody`] is a client component. It server-renders as an empty
+ * `<div class="group-body">` and mounts the group toolbar (group Y override,
+ * series filter, empty-charts toggle, reset) and the chart grid only while the
+ * disclosure is open, unmounting them on close. A collapsed group therefore
+ * ships no chart markup and hydrates no chart island. Each chart is a [`Chart`]
+ * island carrying `data-chart-slug` and a page-unique `data-chart-index`; the
+ * island lazily loads its data through the group's bundle when it mounts into
+ * an open group, and keeps listening for the disclosure's native `toggle`
+ * event.
+ *
+ * The summary row ends with the group's headline (`lib/headline.ts`): one line
+ * of text saying how Vortex compares with Parquet, so the row alone says how
+ * the group came out. It is plain text inside the `<summary>`; the tone on each
+ * part only styles it, and a slower result reads in words, never by color
+ * alone. A group whose summary has nothing honest to say shows no headline.
  *
  * The group title carries two affordances beyond the disclosure itself: the info
  * tooltip with the editorial one-liner from `lib/descriptions.ts`, and a
  * [`GroupDocsLink`] to the benchmark's explainer doc in the monorepo, which
  * `lib/benchmark-docs.ts` derives from the group slug's dataset name.
  *
- * The per-group toolbar (group Y override + series filter + empty-charts
- * toggle + reset) sits between the summary card and the chart grid, exactly as
- * in v3's `landing_body`; CSS hides it while the disclosure is closed.
- *
  * `startIndex` is the running page-wide chart index of this group's first
- * chart, so `data-chart-index` is unique across every chart on the page.
+ * chart, so `data-chart-index` is unique across every chart on the page and
+ * load priority keeps its page-wide order.
  *
  * The section carries `id={anchor}` — the human-readable anchor the page
  * derives from the group name via `lib/anchor.ts` (`#tpc-h-nvme-sf-1`, not the
  * opaque API slug) — so each group has a stable, legible URL fragment: the
- * summary row's [`GroupPermalink`] button copies `/#<anchor>`, the fragment
- * scrolls natively even without JavaScript, and [`GroupNav`]'s hash-jump
- * effect expands the disclosure on load.
+ * summary row's [`GroupPermalink`] button copies `/#<anchor>`, which names a
+ * real element on the page. The page's fragment lists every open group's
+ * anchor (`lib/open-groups.ts`); the pre-paint script ([`OpenGroupsScript`])
+ * opens those groups before the first paint, and [`LandingState`] keeps the
+ * fragment in step with every toggle.
  */
 export function GroupSection({
   group,
@@ -69,6 +84,7 @@ export function GroupSection({
   // selected by the dataset name inside the group's slug (`null` if the slug
   // does not parse or no matching explainer exists).
   const docUrl = groupDocUrl(group.slug);
+  const headline = groupHeadline(group.summary);
   return (
     <section
       className="group-details"
@@ -76,7 +92,9 @@ export function GroupSection({
       data-group-name={group.name}
       data-group-slug={group.slug}
     >
-      <details className="group-disclosure">
+      {/* The pre-paint script (`OpenGroupsScript`) may add `open` to this
+          element before hydration, when the URL fragment lists the group. */}
+      <details className="group-disclosure" suppressHydrationWarning>
         <summary className="group-summary">
           <span className="group-summary-row">
             <span className="group-name">{group.name}</span>
@@ -97,27 +115,32 @@ export function GroupSection({
               {chartCount} chart{chartCount !== 1 ? 's' : ''}
             </span>
             <GroupPermalink anchor={anchor} groupName={group.name} groupSlug={group.slug} />
+            {headline !== null && (
+              <span className="group-headline">
+                {headline.parts.map((part, i) => (
+                  <Fragment key={part.text}>
+                    {i > 0 && ' · '}
+                    <span className="group-headline-part" data-tone={part.tone}>
+                      {part.text}
+                    </span>
+                  </Fragment>
+                ))}
+                {headline.suffix !== null && ` ${headline.suffix}`}
+                {headline.partial && ' (partial)'}
+              </span>
+            )}
           </span>
         </summary>
       </details>
       <SummaryCard summary={group.summary} />
-      <GroupToolbar
+      <GroupBody
         groupSlug={group.slug}
+        charts={group.charts}
+        startIndex={startIndex}
         universe={universe}
         initialHiddenSeries={initialHiddenSeries}
         initialShownSeries={initialShownSeries}
       />
-      <div className="chart-grid">
-        {group.charts.map((link, i) => (
-          <Chart
-            key={link.slug}
-            slug={link.slug}
-            name={link.name}
-            index={startIndex + i}
-            groupSlug={group.slug}
-          />
-        ))}
-      </div>
     </section>
   );
 }
