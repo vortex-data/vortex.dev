@@ -23,7 +23,7 @@ const declsOf = (path: string) =>
     ...read(path)
       .replace(/\/\*[\s\S]*?\*\//g, '')
       .matchAll(/([^{}]+)\{([^{}]*)\}/g),
-  ].flatMap(([, sel, body]) =>
+  ].flatMap(([, sel = '', body = '']) =>
     body
       .split(';')
       .map((d) => d.trim())

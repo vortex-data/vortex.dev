@@ -159,7 +159,7 @@ v3 auto-queued a background `?n=all` fetch for every chart on group open; on a
 the windowed fetches a user actually waits on. v4 removed the auto-warmup: full
 history loads only on a deliberate per-chart signal — a window-chip click, a
 ~1000ms hover dwell, or a pan/zoom into the unloaded region.
-→ `web/components/Chart.tsx`, `web/lib/chart-format.ts`.
+→ `web/components/chart/controller.ts`, `web/lib/chart-format.ts`.
 
 **Bounded windows render on the full-length virtual x-axis.**
 Loading a small window and then "more" normally re-bases the Chart.js x-axis
@@ -181,7 +181,7 @@ Each fetch carries an `AbortController` and a 30s timeout; closing/reopening a
 group cancels its in-flight fetches rather than piling load on the server, and a
 stall aborts instead of spinning forever. 30s is headroom over the ~7.8s cold
 first-hit, so a slow-but-live request is not falsely killed.
-→ `web/components/Chart.tsx`, `web/lib/chart-store.ts`.
+→ `web/components/chart/controller.ts`, `web/lib/chart-store/bundles.ts`.
 
 **Expand All loads one bundle per group, not N per-chart requests.**
 The viewport-gated per-chart path loads only what is on screen — the opposite of
@@ -190,7 +190,7 @@ bundle into a session-lifetime payload cache, priming every chart with a single
 request; the `IntersectionObserver` still gates the CPU-bound Chart.js
 construction. The cache is per-session by design (a close/reopen costs zero
 fetches).
-→ `web/lib/chart-store.ts` (`ensureGroupBundle`).
+→ `web/lib/chart-store/bundles.ts` (`ensureGroupBundle`).
 
 **A warmer cron keeps the function and its DB connections hot.**
 Caches handle repeat reads but not the first read after idle. A Vercel-native

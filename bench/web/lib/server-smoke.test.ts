@@ -4,12 +4,16 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import type { StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { getPool, resetPool } from './db';
 import { chartKeyToSlug, groupKeyToSlug, type ChartKey, type GroupKey } from './slug';
-import { dockerAvailable, seedChartFixture, startBenchContainer } from './test-harness';
+import {
+  type BenchDatabase,
+  integrationDatabaseAvailable,
+  seedChartFixture,
+  startBenchDatabase,
+} from './test-harness';
 
 // End-to-end smoke: boot the REAL production server (`next start` over the
 // existing `.next` build) against a seeded testcontainers Postgres and assert
@@ -22,6 +26,7 @@ import { dockerAvailable, seedChartFixture, startBenchContainer } from './test-h
 // (`bun run --cwd bench/web build` first); both are environment, not code, conditions.
 
 const WEB_ROOT = fileURLToPath(new URL('..', import.meta.url));
+const databaseAvailable = integrationDatabaseAvailable();
 const BUILD_PRESENT = existsSync(`${WEB_ROOT}/.next/BUILD_ID`);
 const PORT = 4319;
 const BASE = `http://127.0.0.1:${PORT}`;
@@ -66,18 +71,18 @@ async function waitForServer(url: string, timeoutMs: number): Promise<void> {
   throw new Error(`server did not become ready at ${url}: ${String(lastErr)}`);
 }
 
-describe.skipIf(!dockerAvailable() || !BUILD_PRESENT)(
+describe.skipIf(!databaseAvailable || !BUILD_PRESENT)(
   'production-server smoke (next start + seeded Postgres)',
   () => {
-    let container: StartedPostgreSqlContainer;
+    let container: BenchDatabase;
     let server: ChildProcess | null = null;
 
     beforeAll(async () => {
-      container = await startBenchContainer();
+      container = await startBenchDatabase();
       await seedChartFixture(getPool());
       server = spawn('node_modules/.bin/next', ['start', '-p', String(PORT)], {
         cwd: WEB_ROOT,
-        // `startBenchContainer` exported the BENCH_DB_* connection env on
+        // `startBenchDatabase` exported the BENCH_DB_* connection env on
         // process.env; the server child inherits it.
         env: { ...process.env, NODE_ENV: 'production' },
         stdio: 'ignore',

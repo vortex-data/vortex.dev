@@ -62,13 +62,3 @@ export function parseCommitWindow(raw: string | null | undefined): CommitWindow 
 export function commitWindowLimit(window: CommitWindow): number | null {
   return window.kind === 'all' ? null : window.n;
 }
-
-/**
- * Render the window as the value the URL carries (`"100"` / `"all"`). Ported
- * ahead of its consumer: v3's `CommitWindow::url_value` is used by the HTML
- * toolbar and permalink links, which arrive with the PR-4.4.b client islands.
- * Until then this is exercised only by its unit test.
- */
-export function commitWindowUrlValue(window: CommitWindow): string {
-  return window.kind === 'all' ? 'all' : String(window.n);
-}

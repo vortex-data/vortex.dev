@@ -96,7 +96,7 @@ describe('compression summaries', () => {
     if (summary === null || summary.type !== 'compression') {
       throw new Error('expected a compression summary');
     }
-    const ranking = summary.rankings[0];
+    const ranking = summary.rankings[0]!;
 
     expect(ranking.ratio).toBeCloseTo(1, 6);
     expect(ranking.throughputGbS).toBeCloseTo(7.5, 6);
@@ -159,8 +159,8 @@ describe('compression summaries', () => {
       'arrow-ipc',
     ];
     const calls = query.mock.calls as Array<[string, unknown[]]>;
-    expect(calls[0][1]).toEqual(timingParams);
-    expect(calls[1][1]).toEqual(sizeParams);
+    expect(calls[0]![1]).toEqual(timingParams);
+    expect(calls[1]![1]).toEqual(sizeParams);
     for (const [text] of calls) {
       expect(text).toContain('format = ANY($1::text[])');
       expect(text).toContain('format = ANY($2::text[])');
@@ -175,19 +175,19 @@ describe('compression summaries', () => {
       // another hard-coded format branch or a per-dataset history scan.
       expect(text).not.toContain("format = 'lance'");
     }
-    expect(calls[0][0]).toContain('latest_uncompressed_sizes');
+    expect(calls[0]![0]).toContain('latest_uncompressed_sizes');
     for (const [text] of calls) {
       // Read the column directly: `to_jsonb(s)` serialized every row (a
       // whole-table CPU cost on every summary) just to reach one field.
       expect(text).toMatch(/\bs\.uncompressed_bytes\b/);
       expect(text).not.toContain('to_jsonb(');
     }
-    expect(calls[0][0]).toContain('LEFT JOIN latest_uncompressed_sizes');
-    expect(calls[1][0]).toContain('latest_uncompressed_sizes');
-    expect(calls[1][0]).toContain('latest_arrow_ipc');
-    expect(calls[1][0]).toContain('selected_with_arrow_ipc');
-    expect(calls[1][0]).toContain('LEFT JOIN latest_uncompressed_sizes');
-    expect(calls[1][0]).toContain(
+    expect(calls[0]![0]).toContain('LEFT JOIN latest_uncompressed_sizes');
+    expect(calls[1]![0]).toContain('latest_uncompressed_sizes');
+    expect(calls[1]![0]).toContain('latest_arrow_ipc');
+    expect(calls[1]![0]).toContain('selected_with_arrow_ipc');
+    expect(calls[1]![0]).toContain('LEFT JOIN latest_uncompressed_sizes');
+    expect(calls[1]![0]).toContain(
       'COALESCE(uncompressed.uncompressed_bytes, selected.uncompressed_bytes)',
     );
   });
@@ -250,9 +250,9 @@ describe('timing summaries (shared ranking model)', () => {
       throw new Error('expected a randomAccess summary');
     }
     expect(summary.hotRankings.map((r) => r.name)).toEqual(['vortex', 'lance']);
-    expect(summary.hotRankings[0].score).toBeCloseTo(Math.cbrt(1_100_010 / 350_010), 6);
-    expect(summary.hotRankings[1].score).toBeCloseTo(Math.cbrt((3_000_010 / 1_000_010) ** 2), 6);
-    expect(summary.hotRankings[0].totalRuntime).toBeCloseTo(3_100_000 / 3, 6);
+    expect(summary.hotRankings[0]!.score).toBeCloseTo(Math.cbrt(1_100_010 / 350_010), 6);
+    expect(summary.hotRankings[1]!.score).toBeCloseTo(Math.cbrt((3_000_010 / 1_000_010) ** 2), 6);
+    expect(summary.hotRankings[0]!.totalRuntime).toBeCloseTo(3_100_000 / 3, 6);
     expect(summary.hotRankings.map((r) => r.measured)).toEqual([3, 3]);
     expect(summary.hotRankings.map((r) => r.total)).toEqual([3, 3]);
     expect(summary.coldRankings).toEqual([]);
@@ -406,8 +406,8 @@ describe('timing summaries (shared ranking model)', () => {
       ['lance', 1, 2, 100_000],
       ['vortex', 1, 2, 200_000],
     ]);
-    expect(summary.hotRankings[0].score).toBeCloseTo(Math.sqrt(2), 6);
-    expect(summary.hotRankings[1].score).toBeCloseTo(Math.sqrt(2 * (200_010 / 100_010)), 6);
+    expect(summary.hotRankings[0]!.score).toBeCloseTo(Math.sqrt(2), 6);
+    expect(summary.hotRankings[1]!.score).toBeCloseTo(Math.sqrt(2 * (200_010 / 100_010)), 6);
     expect(
       summary.coldRankings.map((ranking) => [
         ranking.name,
@@ -419,8 +419,8 @@ describe('timing summaries (shared ranking model)', () => {
       ['vortex', 2, 3, 200_000],
       ['lance', 2, 3, 300_000],
     ]);
-    expect(summary.coldRankings[0].score).toBeCloseTo(Math.cbrt(2), 6);
-    expect(summary.coldRankings[1].score).toBeCloseTo(Math.cbrt(2 * (400_010 / 200_010)), 6);
+    expect(summary.coldRankings[0]!.score).toBeCloseTo(Math.cbrt(2), 6);
+    expect(summary.coldRankings[1]!.score).toBeCloseTo(Math.cbrt(2 * (400_010 / 200_010)), 6);
   });
 
   it('reports zero coverage when no random-access dataset is complete', async () => {
@@ -483,8 +483,8 @@ describe('timing summaries (shared ranking model)', () => {
 
     expect(summary.hotRankings.map((ranking) => ranking.name)).toEqual(['vortex', 'parquet']);
     expect(summary.coldRankings.map((ranking) => ranking.name)).toEqual(['parquet', 'vortex']);
-    expect(summary.hotRankings[0].totalRuntime).toBe(100_000);
-    expect(summary.coldRankings[0].totalRuntime).toBe(300_000);
+    expect(summary.hotRankings[0]!.totalRuntime).toBe(100_000);
+    expect(summary.coldRankings[0]!.totalRuntime).toBe(300_000);
   });
 
   it('summarizes a vector-search group across its thresholds', async () => {
@@ -507,9 +507,9 @@ describe('timing summaries (shared ranking model)', () => {
     }
     expect(summary.title).toBe('Vector Search Performance');
     expect(summary.rankings.map((r) => r.name)).toEqual(['vortex-turboquant', 'vortex-flat']);
-    expect(summary.rankings[0].score).toBeCloseTo(1.0, 6);
-    expect(summary.rankings[1].score).toBeCloseTo(Math.sqrt((2010 / 1010) * (8010 / 2010)), 6);
-    expect(summary.rankings[1].totalRuntime).toBeCloseTo(10_000, 6);
+    expect(summary.rankings[0]!.score).toBeCloseTo(1.0, 6);
+    expect(summary.rankings[1]!.score).toBeCloseTo(Math.sqrt((2010 / 1010) * (8010 / 2010)), 6);
+    expect(summary.rankings[1]!.totalRuntime).toBeCloseTo(10_000, 6);
   });
 
   it.each([

@@ -17,8 +17,25 @@ bun run --cwd bench/web dev           # needs BENCH_DB_* pointing at a database 
 bun run --cwd bench/web format:check  # biome format
 bun run --cwd bench/web lint          # biome lint
 bun run --cwd bench/web build         # next build; deliberately works WITHOUT a database
-bun run --cwd bench/web test          # vitest; the Postgres integration suite needs Docker and uv
+bun run --cwd bench/web test          # vitest; the Postgres integration suite needs Docker, or BENCH_TEST_DATABASE_URL, and uv
 ```
+
+Without Docker, run the integration suite against a local Postgres. This starts a throwaway
+cluster in `$TMPDIR` on port 55433, which stays clear of the parity cluster on 55432. `--locale=C`
+matches the collation of the CI container:
+
+```bash
+PG=/opt/homebrew/opt/postgresql@16/bin
+$PG/initdb -D "$TMPDIR/bench-test-pg" -U postgres -A trust -E UTF8 --locale=C
+$PG/pg_ctl -D "$TMPDIR/bench-test-pg" -l "$TMPDIR/bench-test-pg.log" -w start \
+  -o "-p 55433 -c listen_addresses=127.0.0.1 -c unix_socket_directories= -c fsync=off"
+export BENCH_TEST_DATABASE_URL=postgres://postgres@127.0.0.1:55433/postgres
+```
+
+`BENCH_TEST_DATABASE_URL` names an existing server, as a superuser, and its admin database. Each
+suite creates a `bench_test_*` database there and drops it when it ends. Stop the cluster with
+`$PG/pg_ctl -D "$TMPDIR/bench-test-pg" stop`. In CI (`CI=true`), a runner with neither Docker nor
+the variable fails the suite instead of skipping it.
 
 `next build` never touches the database: every page and route is request-rendered
 (`force-dynamic` or request-URL-dependent), so builds are reproducible with no `BENCH_DB_*`
@@ -34,11 +51,10 @@ Connection config is read by `lib/db.ts`:
 | `BENCH_DB_NAME`                 | yes                | Database name.                                                                                                                                |
 | `BENCH_DB_USER`                 | yes                | Role to connect as.                                                                                                                           |
 | `BENCH_DB_PORT`                 | no (5432)          | Port.                                                                                                                                         |
-| `BENCH_DB_PASSWORD`             | no                 | Static password. When unset, each new connection authenticates with a freshly minted RDS IAM token instead.                                   |
-| `BENCH_DB_REGION`               | for IAM            | AWS region for the RDS IAM signer; required when no password is set. IAM token signing also needs AWS credentials in the runtime environment. |
+| `BENCH_DB_PASSWORD`             | yes                | Password for the role in `BENCH_DB_USER` (`bench_read` in production).                                                                        |
 | `BENCH_DB_SSL`                  | no (`verify-full`) | `verify-full` validates the certificate chain and hostname; `disable` is for local non-TLS containers only. Any other value fails loudly.     |
 | `BENCH_DB_CA`                   | prod               | PEM contents of the Amazon RDS CA bundle; Node's trust store does not include the RDS roots, so `verify-full` against RDS fails without it.   |
-| `BENCH_DB_POOL_MAX`             | no (8)             | Max pool connections per serverless instance; the per-render summary fan-out (`SUMMARY_CONCURRENCY`) is sized to this default.                |
+| `BENCH_DB_POOL_MAX`             | no (8)             | Max pool connections per serverless instance; the per-render summary fan-out (`QUERY_CONCURRENCY`) is sized to this default.                |
 | `BENCH_DB_IDLE_TIMEOUT_MS`      | no (5000)          | Idle connection timeout in ms. Must be a positive integer within Node's timer range. |
 | `BENCH_DB_CONNECTION_TIMEOUT_MS` | no (5000)          | Timeout in ms for a new connection or a free pool slot. Must be a positive integer within Node's timer range. |
 | `BENCH_DB_STATEMENT_TIMEOUT_MS` | no (30000)         | PostgreSQL server-side timeout for each web statement. `0` disables the timeout.                                                              |
@@ -102,17 +118,14 @@ One-time operator setup:
    production URL as `https://<domain>`. The keep-warm workflow uses the same variable.
    Production deployment requires it before uploading and verifies the public domain after
    deployment.
-3. Configure `BENCH_DB_*` on the Vercel project (Production and Preview environments). Two open
-   wiring choices are deliberately left to this step, per environment:
+3. Configure `BENCH_DB_*` on the Vercel project (Production and Preview environments). Two
+   wiring points are set in this step, per environment:
    - **Endpoint**: the public RDS instance endpoint (the same endpoint CI writers use). There is
      no RDS Proxy: the one provisioned earlier was VPC-internal, so Vercel functions could not
      reach it, and it was deleted on 2026-10-28.
-   - **Auth**: a static `BENCH_DB_PASSWORD` for the read-only `bench_read` role. This is the
-     currently supported mode: migration `005_read_role.sql` creates `bench_read` with **NO
-     `rds_iam` grant** (and idempotently revokes it if a pre-existing role carries it), because
-     on RDS `rds_iam` membership forces IAM-only auth and the Vercel runtime has no AWS
-     credentials to mint IAM tokens. IAM auth is therefore **not available for `bench_read` as
-     shipped**: enabling it would require BOTH a follow-up migration granting `rds_iam` to a
-     read role (which atomically disables that role's password auth) AND AWS credentials in the
-     function runtime (for example Vercel's OIDC federation to an AWS role with
-     `rds-db:connect`).
+   - **Auth**: the app signs in only with `BENCH_DB_PASSWORD`, for the read-only `bench_read`
+     role. Migration `005_read_role.sql` creates `bench_read` with **no `rds_iam` grant** (and
+     revokes it if a pre-existing role carries it), because on RDS `rds_iam` membership forces
+     IAM-only auth. Moving the read path to IAM would need app code, a migration and AWS
+     credentials in the function runtime (for example Vercel's OIDC federation to an AWS role
+     with `rds-db:connect`).

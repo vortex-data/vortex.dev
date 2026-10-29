@@ -12,7 +12,9 @@
  * window at or after the earliest commit with a row in the fact table), then a
  * fact-row pass that threads values onto that x-axis through a
  * [`SeriesAccumulator`]. The result is a [`ChartResponse`] with the same wire
- * shape the Axum server emits.
+ * shape the Axum server emits. [`groupChartPayloads`] builds the same payloads
+ * for every chart of one group with two statements, or more in slices of 25
+ * charts for large groups.
  *
  * Behaviour-preservation notes (this is a substrate migration, DuckDB ->
  * Postgres):
@@ -30,11 +32,12 @@
  *    whole-second, UTC) git commit timestamps.
  */
 
+import type { PoolClient } from 'pg';
 import { getPool } from './db';
 import { randomAccessStorage } from './random-access';
 import { groupDescription } from './descriptions';
 import type { FilterUniverse } from './chart-format';
-import { compareCodeUnits, FAMILIES, type GroupKind } from './families';
+import { type ChartKind, compareCodeUnits, FAMILIES, type GroupKind } from './families';
 import { chartKeyFromSlug, chartKeyToSlug, groupKeyFromSlug, groupKeyToSlug } from './slug';
 import type { ChartKey, GroupKey } from './slug';
 import { collectGroupSummary, type Summary } from './summary';
@@ -276,7 +279,7 @@ async function seededCommitsInWindow(
      ORDER BY timestamp ASC, commit_sha ASC
   `;
   const rows = (await getPool().query<SeededCommitRow>(text, params.values)).rows;
-  const totalCommits = rows.length > 0 ? rows[0].total_commits : 0;
+  const totalCommits = rows.length > 0 ? rows[0]!.total_commits : 0;
   const commits: CommitPoint[] = rows.map((row) => ({
     sha: row.commit_sha,
     timestamp: row.ts_text,
@@ -354,6 +357,81 @@ type FormatRow = ValueRow & { format: string };
 type RandomAccessRow = ValueRow & { format: string; open_mode: 'cached' | 'reopen' };
 type FlavorRow = ValueRow & { flavor: string };
 
+/** A fact row of any family. Each family fills the columns that name its series. */
+export type FactRow = {
+  commit_sha: string;
+  value: number;
+  engine?: string;
+  format?: string;
+  op?: string;
+  open_mode?: 'cached' | 'reopen';
+  flavor?: string;
+};
+
+/**
+ * The series a fact row belongs to, with its engine/format tag. Vector-search
+ * series carry neither, so they are never tagged and the chart omits
+ * `series_meta`.
+ */
+export function seriesFor(
+  kind: ChartKind,
+  row: FactRow,
+): { key: string; engine: string | undefined; format: string | undefined } {
+  switch (kind) {
+    case 'QueryMeasurement':
+      return { key: `${row.engine}:${row.format}`, engine: row.engine, format: row.format };
+    case 'CompressionTime':
+      return { key: `${row.format}:${row.op}`, engine: undefined, format: row.format };
+    case 'CompressionSize':
+      return { key: `${row.format}`, engine: undefined, format: row.format };
+    case 'RandomAccess': {
+      const mode = row.open_mode === 'cached' ? 'hot' : 'cold';
+      return { key: `${row.format}:${mode}`, engine: undefined, format: row.format };
+    }
+    case 'VectorSearch':
+      return { key: `${row.flavor}`, engine: undefined, format: undefined };
+  }
+}
+
+/** Thread one fact row onto the seeded x-axis. A row off the seeded commits is dropped. */
+function recordRow(acc: SeriesAccumulator, kind: ChartKind, row: FactRow): void {
+  const idx = acc.commitIdx(row.commit_sha);
+  if (idx === undefined) {
+    return;
+  }
+  const { key, engine, format } = seriesFor(kind, row);
+  acc.record(key, idx, row.value);
+  acc.tag(key, engine, format);
+}
+
+/** A chart's `display_name`, built from its key alone. */
+function chartDisplayName(key: ChartKey): string {
+  switch (key.k) {
+    case 'QueryMeasurement': {
+      let name = key.dataset;
+      if (key.dataset_variant !== null) {
+        name += `/${key.dataset_variant}`;
+      }
+      if (key.scale_factor !== null) {
+        name += ` sf=${key.scale_factor}`;
+      }
+      return `${name} Q${key.query_idx} [${key.storage}]`;
+    }
+    case 'CompressionTime':
+    case 'CompressionSize':
+      return key.dataset_variant === null ? key.dataset : `${key.dataset}/${key.dataset_variant}`;
+    case 'RandomAccess':
+      return key.dataset;
+    case 'VectorSearch':
+      return `${key.dataset} / ${key.layout} (threshold=${key.threshold})`;
+  }
+}
+
+/** A chart's base `unit_kind`: sizes are bytes, everything else is a time. */
+function chartUnitKind(key: ChartKey): UnitKind {
+  return key.k === 'CompressionSize' ? 'bytes' : 'time_ns';
+}
+
 async function collectQueryChart(
   key: QueryMeasurementKey,
   window: CommitWindow,
@@ -396,24 +474,9 @@ async function collectQueryChart(
   `;
   const rows = (await getPool().query<QueryRow>(text, params.values)).rows;
   for (const row of rows) {
-    const idx = acc.commitIdx(row.commit_sha);
-    if (idx === undefined) {
-      continue;
-    }
-    const seriesKey = `${row.engine}:${row.format}`;
-    acc.record(seriesKey, idx, row.value);
-    acc.tag(seriesKey, row.engine, row.format);
+    recordRow(acc, key.k, row);
   }
-
-  let name = dataset;
-  if (dataset_variant !== null) {
-    name += `/${dataset_variant}`;
-  }
-  if (scale_factor !== null) {
-    name += ` sf=${scale_factor}`;
-  }
-  name += ` Q${query_idx} [${storage}]`;
-  return acc.finish(name, 'time_ns', seeded.history);
+  return acc.finish(chartDisplayName(key), chartUnitKind(key), seeded.history);
 }
 
 async function collectCompressionTimeChart(
@@ -448,20 +511,9 @@ async function collectCompressionTimeChart(
   `;
   const rows = (await getPool().query<CompressionTimeRow>(text, params.values)).rows;
   for (const row of rows) {
-    const idx = acc.commitIdx(row.commit_sha);
-    if (idx === undefined) {
-      continue;
-    }
-    const seriesKey = `${row.format}:${row.op}`;
-    acc.record(seriesKey, idx, row.value);
-    acc.tag(seriesKey, undefined, row.format);
+    recordRow(acc, key.k, row);
   }
-
-  let name = dataset;
-  if (dataset_variant !== null) {
-    name += `/${dataset_variant}`;
-  }
-  return acc.finish(name, 'time_ns', seeded.history);
+  return acc.finish(chartDisplayName(key), chartUnitKind(key), seeded.history);
 }
 
 async function collectCompressionSizeChart(
@@ -496,19 +548,9 @@ async function collectCompressionSizeChart(
   `;
   const rows = (await getPool().query<FormatRow>(text, params.values)).rows;
   for (const row of rows) {
-    const idx = acc.commitIdx(row.commit_sha);
-    if (idx === undefined) {
-      continue;
-    }
-    acc.record(row.format, idx, row.value);
-    acc.tag(row.format, undefined, row.format);
+    recordRow(acc, key.k, row);
   }
-
-  let name = dataset;
-  if (dataset_variant !== null) {
-    name += `/${dataset_variant}`;
-  }
-  return acc.finish(name, 'bytes', seeded.history);
+  return acc.finish(chartDisplayName(key), chartUnitKind(key), seeded.history);
 }
 
 async function collectRandomAccessChart(
@@ -543,17 +585,9 @@ async function collectRandomAccessChart(
   `;
   const rows = (await getPool().query<RandomAccessRow>(text, params.values)).rows;
   for (const row of rows) {
-    const idx = acc.commitIdx(row.commit_sha);
-    if (idx === undefined) {
-      continue;
-    }
-    const mode = row.open_mode === 'cached' ? 'hot' : 'cold';
-    const series = `${row.format}:${mode}`;
-    acc.record(series, idx, row.value);
-    acc.tag(series, undefined, row.format);
+    recordRow(acc, key.k, row);
   }
-
-  return acc.finish(dataset, 'time_ns', seeded.history);
+  return acc.finish(chartDisplayName(key), chartUnitKind(key), seeded.history);
 }
 
 async function collectVectorSearchChart(
@@ -590,16 +624,9 @@ async function collectVectorSearchChart(
   `;
   const rows = (await getPool().query<FlavorRow>(text, params.values)).rows;
   for (const row of rows) {
-    const idx = acc.commitIdx(row.commit_sha);
-    if (idx === undefined) {
-      continue;
-    }
-    // Vector-search series carry no engine/format, so they are never tagged
-    // and the chart's `series_meta` is omitted from the wire.
-    acc.record(row.flavor, idx, row.value);
+    recordRow(acc, key.k, row);
   }
-
-  return acc.finish(`${dataset} / ${layout} (threshold=${threshold})`, 'time_ns', seeded.history);
+  return acc.finish(chartDisplayName(key), chartUnitKind(key), seeded.history);
 }
 
 /**
@@ -625,6 +652,436 @@ export function chartPayload(key: ChartKey, window: CommitWindow): Promise<Chart
     case 'VectorSearch':
       return collectVectorSearchChart(key, window);
   }
+}
+
+/**
+ * Where a chart's loaded commits sit in its history of `totalCommits` eligible
+ * commits: the last `min(n, total)` of them, or all of them for `?n=all`. The
+ * same placement [`seededCommitsInWindow`] derives from the rows it returns.
+ */
+export function historyFor(totalCommits: number, window: CommitWindow): ChartHistory {
+  const limit = commitWindowLimit(window);
+  const loaded = limit === null ? totalCommits : Math.min(limit, totalCommits);
+  return {
+    total_commits: totalCommits,
+    start_index: Math.max(0, totalCommits - loaded),
+    loaded_commits: loaded,
+    complete: loaded === totalCommits,
+  };
+}
+
+type CommitRow = { commit_sha: string; ts_text: string; message: string; url: string };
+
+/**
+ * The last `n` commits of all (every commit for `?n=all`), oldest first. Each
+ * chart's x-axis is a suffix of this list. A `null` `LIMIT` is no limit. It
+ * runs on [`groupChartPayloads`]'s client, inside that build's `REPEATABLE READ`
+ * transaction, so it sees the same snapshot as the group's rows statements.
+ */
+async function windowCommits(client: PoolClient, window: CommitWindow): Promise<CommitPoint[]> {
+  const text = `
+    SELECT commit_sha,
+           to_char(timestamp AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI:SS"+00"') AS ts_text,
+           COALESCE(message, '') AS message,
+           url
+      FROM (SELECT * FROM commits ORDER BY timestamp DESC, commit_sha DESC LIMIT $1) w
+     ORDER BY timestamp ASC, commit_sha ASC
+  `;
+  const rows = (await client.query<CommitRow>(text, [commitWindowLimit(window)])).rows;
+  return rows.map((row) => ({
+    sha: row.commit_sha,
+    timestamp: row.ts_text,
+    message: row.message,
+    url: row.url,
+  }));
+}
+
+/** Whether `key` is one of the charts discovery puts in `group`. */
+function chartInGroup(group: GroupKey, key: ChartKey): boolean {
+  switch (group.k) {
+    case 'QueryGroup':
+      return (
+        key.k === 'QueryMeasurement' &&
+        key.dataset === group.dataset &&
+        key.dataset_variant === group.dataset_variant &&
+        key.scale_factor === group.scale_factor &&
+        key.storage === group.storage
+      );
+    case 'CompressionTimeGroup':
+      return key.k === 'CompressionTime';
+    case 'CompressionSizeGroup':
+      return key.k === 'CompressionSize';
+    case 'RandomAccessGroup':
+      return key.k === 'RandomAccess' && randomAccessStorage(key.dataset) === group.storage;
+    case 'VectorSearchGroup':
+      return (
+        key.k === 'VectorSearch' && key.dataset === group.dataset && key.layout === group.layout
+      );
+  }
+}
+
+/** Narrow a group's chart keys to its family. The SQL pins the group's own dimensions, so a key
+ * from another group would get the wrong rows; refuse it instead. */
+function chartsOf<K extends ChartKind>(
+  group: GroupKey,
+  charts: readonly ChartKey[],
+  kind: K,
+): Extract<ChartKey, { k: K }>[] {
+  return charts.map((key) => {
+    if (key.k !== kind || !chartInGroup(group, key)) {
+      throw new Error(`chart ${chartKeyToSlug(key)} is not in group ${groupKeyToSlug(group)}`);
+    }
+    return key as Extract<ChartKey, { k: K }>;
+  });
+}
+
+/**
+ * The earliest `commit_timestamp` of the query chart `pins` selects (its
+ * `query_idx` is `ch.query_idx`): the value of the collector's
+ * `MIN(q2.commit_timestamp)`, without reading the chart's whole history.
+ *
+ * That `MIN` reads every row of the chart, ~27K heap rows for a TPC-DS query,
+ * and a group of 99 charts in one statement pays it 99 times on one
+ * connection. Instead, a recursive skip scan of `idx_query_measurements_summary`
+ * finds the chart's (engine, format) series, and one backward descent per series
+ * finds its oldest non-NULL timestamp, which the index orders last. The minimum
+ * over series is the minimum over rows, NULLs ignored as `MIN` ignores them.
+ * The successor probe and the full-prefix `ORDER BY` follow
+ * `collectQuerySummary` in `summary.ts`, which explains both.
+ */
+function queryChartEarliest(pins: (alias: string) => string): string {
+  const order =
+    'q.dataset, q.dataset_variant, q.scale_factor, q.storage, q.query_idx, q.engine, q.format';
+  const oldestFirst =
+    'q.dataset DESC, q.dataset_variant DESC, q.scale_factor DESC, q.storage DESC, ' +
+    'q.query_idx DESC, q.engine DESC, q.format DESC, q.commit_timestamp';
+  return `WITH RECURSIVE series AS (
+             (SELECT q.engine, q.format
+                FROM query_measurements q
+               WHERE ${pins('q')}
+               ORDER BY ${order}
+               LIMIT 1)
+             UNION ALL
+             SELECT nxt.engine, nxt.format
+               FROM series s
+              CROSS JOIN LATERAL (
+                (SELECT 1 AS br, q.engine, q.format
+                   FROM query_measurements q
+                  WHERE ${pins('q')}
+                    AND q.engine = s.engine
+                    AND q.format > s.format
+                  ORDER BY ${order}
+                  LIMIT 1)
+                UNION ALL
+                (SELECT 2 AS br, q.engine, q.format
+                   FROM query_measurements q
+                  WHERE ${pins('q')}
+                    AND q.engine > s.engine
+                  ORDER BY ${order}
+                  LIMIT 1)
+                ORDER BY br
+                LIMIT 1
+              ) nxt
+           )
+           SELECT MIN(oldest.commit_timestamp)
+             FROM series s
+            CROSS JOIN LATERAL (
+              SELECT q.commit_timestamp
+                FROM query_measurements q
+               WHERE ${pins('q')}
+                 AND q.engine = s.engine
+                 AND q.format = s.format
+                 AND q.commit_timestamp IS NOT NULL
+               ORDER BY ${oldestFirst}
+               LIMIT 1
+            ) oldest`;
+}
+
+/** One per-chart column of a [`groupRowsQuery`] block: its name in `ch`, element type, values. */
+type ChartColumn = readonly [name: string, type: string, values: readonly unknown[]];
+
+/**
+ * One row per (chart, fact row in the window), plus one row with NULL fact
+ * columns for a chart with no rows there. `ord` is the chart's 1-based position
+ * in `charts`; `total_commits` counts the commits at or after its first row.
+ *
+ * Each block unnests the charts' key columns as `ch`, then joins two
+ * per-chart subqueries, with the chart's binds replaced by `ch.<column>`:
+ *  - `e`, the timestamp of the chart's first row: the collector's own `MIN`,
+ *    except for query charts ([`queryChartEarliest`]). It is an aggregate, so
+ *    the planner cannot flatten it into the outer query and run it once per
+ *    output row.
+ *  - `d`, the collector's own row query.
+ *
+ * `total_commits` is the collectors' `count(*)` of commits at or after `e`,
+ * found by binary search: `width_bucket` counts the sorted timestamps up to its
+ * argument, and timestamps are whole microseconds, so one microsecond before
+ * `e` counts the commits before it. A `count(*)` per chart scans `commits`
+ * 99 times for a TPC-DS group.
+ *
+ * There is no `ORDER BY`: each (series, commit) cell is unique by the fact
+ * tables' natural keys and `finish()` sorts the series, so row order cannot
+ * show.
+ */
+function groupRowsQuery(
+  group: GroupKey,
+  charts: readonly ChartKey[],
+  window: CommitWindow,
+): { text: string; values: unknown[] } {
+  const params = new QueryParams();
+  const blocks: string[] = [];
+  const block = (
+    fields: readonly string[],
+    positions: readonly number[],
+    columns: readonly ChartColumn[],
+    earliest: string,
+    rows: string,
+  ): void => {
+    const arrays = [
+      `${params.bind(positions)}::int[]`,
+      ...columns.map(([, type, values]) => `${params.bind(values)}::${type}[]`),
+    ];
+    const names = ['ord', ...columns.map(([name]) => name)];
+    blocks.push(`
+      SELECT ch.ord,
+             COALESCE(cardinality(t.sorted)
+                      - width_bucket(e.first_ts - interval '1 microsecond', t.sorted), 0)
+               AS total_commits,
+             d.commit_sha, ${fields.map((f) => `d.${f}`).join(', ')}, d.value
+        FROM commit_times t
+       CROSS JOIN unnest(${arrays.join(', ')}) AS ch(${names.join(', ')})
+       CROSS JOIN LATERAL (
+             ${earliest}
+             ) e(first_ts)
+        LEFT JOIN LATERAL (
+             ${rows}
+             ) d ON true`);
+  };
+  switch (group.k) {
+    case 'QueryGroup': {
+      const keys = chartsOf(group, charts, 'QueryMeasurement');
+      const dataset = params.bind(group.dataset);
+      const storage = params.bind(group.storage);
+      const pins = (alias: string): string =>
+        `${alias}.dataset = ${dataset}
+           AND ${sargableDimEq(params, `${alias}.dataset_variant`, group.dataset_variant)}
+           AND ${sargableDimEq(params, `${alias}.scale_factor`, group.scale_factor)}
+           AND ${alias}.storage = ${storage}
+           AND ${alias}.query_idx = ch.query_idx`;
+      block(
+        ['engine', 'format'],
+        keys.map((_, i) => i + 1),
+        [['query_idx', 'int', keys.map((k) => k.query_idx)]],
+        queryChartEarliest(pins),
+        `SELECT q.commit_sha,
+                q.engine, q.format, q.value_ns::float8 AS value
+           FROM query_measurements q
+          WHERE ${pins('q')}${queryMeasurementWindowFilter(params, window)}`,
+      );
+      break;
+    }
+    case 'CompressionTimeGroup':
+    case 'CompressionSizeGroup': {
+      const time = group.k === 'CompressionTimeGroup';
+      const table = time ? 'compression_times' : 'compression_sizes';
+      const value = time ? 'value_ns' : 'value_bytes';
+      const fields = time ? ['format', 'op'] : ['format'];
+      const keys = chartsOf(group, charts, time ? 'CompressionTime' : 'CompressionSize');
+      // `dataset_variant` varies per chart. `IS NOT DISTINCT FROM ch.dataset_variant` would plan
+      // as if it matched one row and rescan the window per fact row, so split the charts by
+      // whether the variant is NULL and pin each block sargably, as `sargableDimEq` does.
+      for (const nullVariant of [true, false]) {
+        const positions: number[] = [];
+        const picked: typeof keys = [];
+        keys.forEach((key, i) => {
+          if ((key.dataset_variant === null) === nullVariant) {
+            positions.push(i + 1);
+            picked.push(key);
+          }
+        });
+        if (picked.length === 0) {
+          continue;
+        }
+        const columns: ChartColumn[] = [['dataset', 'text', picked.map((k) => k.dataset)]];
+        if (!nullVariant) {
+          columns.push(['dataset_variant', 'text', picked.map((k) => k.dataset_variant)]);
+        }
+        const pins = (alias: string): string =>
+          `${alias}.dataset = ch.dataset
+           AND ${alias}.dataset_variant ${nullVariant ? 'IS NULL' : '= ch.dataset_variant'}`;
+        block(
+          fields,
+          positions,
+          columns,
+          `SELECT MIN(c2.timestamp)
+             FROM ${table} f2
+             JOIN commits c2 ON c2.commit_sha = f2.commit_sha
+            WHERE ${pins('f2')}`,
+          `SELECT f.commit_sha,
+                  ${fields.map((field) => `f.${field}`).join(', ')}, f.${value}::float8 AS value
+             FROM ${table} f
+             JOIN commits c USING (commit_sha)
+            WHERE ${pins('f')}${factWindowFilter(params, window)}`,
+        );
+      }
+      break;
+    }
+    case 'RandomAccessGroup': {
+      const keys = chartsOf(group, charts, 'RandomAccess');
+      block(
+        ['format', 'open_mode'],
+        keys.map((_, i) => i + 1),
+        [['dataset', 'text', keys.map((k) => k.dataset)]],
+        `SELECT MIN(c2.timestamp)
+           FROM random_access_times r2
+           JOIN commits c2 ON c2.commit_sha = r2.commit_sha
+          WHERE r2.dataset = ch.dataset`,
+        `SELECT r.commit_sha,
+                r.format,
+                r.open_mode AS open_mode,
+                r.value_ns::float8 AS value
+           FROM random_access_times r
+           JOIN commits c USING (commit_sha)
+          WHERE r.dataset = ch.dataset${factWindowFilter(params, window)}`,
+      );
+      break;
+    }
+    case 'VectorSearchGroup': {
+      const keys = chartsOf(group, charts, 'VectorSearch');
+      const dataset = params.bind(group.dataset);
+      const layout = params.bind(group.layout);
+      block(
+        ['flavor'],
+        keys.map((_, i) => i + 1),
+        [['threshold', 'float8', keys.map((k) => k.threshold)]],
+        `SELECT MIN(c2.timestamp)
+           FROM vector_search_runs v2
+           JOIN commits c2 ON c2.commit_sha = v2.commit_sha
+          WHERE v2.dataset = ${dataset}
+            AND v2.layout = ${layout}
+            AND v2.threshold = ch.threshold`,
+        `SELECT v.commit_sha,
+                v.flavor, v.value_ns::float8 AS value
+           FROM vector_search_runs v
+           JOIN commits c USING (commit_sha)
+          WHERE v.dataset = ${dataset}
+            AND v.layout = ${layout}
+            AND v.threshold = ch.threshold${factWindowFilter(params, window)}`,
+      );
+      break;
+    }
+  }
+  const text = `
+    WITH commit_times AS (
+      SELECT array_agg(timestamp ORDER BY timestamp) AS sorted FROM commits
+    )${blocks.join('\n      UNION ALL')}`;
+  return { text, values: params.values };
+}
+
+/** A [`groupRowsQuery`] row: a fact row, or NULL fact columns for a chart with none. */
+type GroupRow = { ord: number; total_commits: number } & (FactRow | { commit_sha: null });
+
+/**
+ * Charts per rows statement. At `?n=all` a TPC-DS group has ~2.7M fact rows,
+ * and holding them in one result peaked the process at 1.6x the memory of the
+ * old per-chart fan-out on the 2026-10-28 dump. Slices run one after another,
+ * so only one slice's rows are alive at a time.
+ */
+const GROUP_ROWS_CHUNK = 25;
+
+/**
+ * Build the payloads of `charts`, every one of which must belong to `group`:
+ * one statement for the shared commit window ([`windowCommits`]) and one for
+ * every [`GROUP_ROWS_CHUNK`] charts' fact rows ([`groupRowsQuery`]), so two for
+ * most groups and five for TPC-DS's 99 charts. The result follows the order of
+ * `charts`, with `null` for a chart with no rows, and each payload is
+ * byte-identical to [`chartPayload`]'s.
+ *
+ * A chart's eligible commits (at or after its first row) are a suffix of all
+ * commits in (timestamp, sha) order, so its last-`n` window is the last
+ * `min(n, total)` commits of the shared window, ties included: exactly what
+ * [`seededCommitsInWindow`] returns.
+ *
+ * That holds only if every statement sees the same commits, so they run one
+ * after another on one connection, in a `REPEATABLE READ` transaction that
+ * shares one snapshot. An ingest landing mid-build cannot then count a commit
+ * the window lacks, or drop a chart's first commit from it.
+ */
+export async function groupChartPayloads(
+  group: GroupKey,
+  charts: readonly ChartKey[],
+  window: CommitWindow,
+): Promise<(ChartResponse | null)[]> {
+  // Build every statement first, so a chart from another group throws before any query runs.
+  const slices: { charts: readonly ChartKey[]; query: { text: string; values: unknown[] } }[] = [];
+  for (let start = 0; start < charts.length; start += GROUP_ROWS_CHUNK) {
+    const slice = charts.slice(start, start + GROUP_ROWS_CHUNK);
+    slices.push({ charts: slice, query: groupRowsQuery(group, slice, window) });
+  }
+  if (slices.length === 0) {
+    return [];
+  }
+  const client = await getPool().connect();
+  // A client whose connection dropped or whose ROLLBACK failed is broken; release it with the
+  // error so the pool discards it. pg emits a dropped connection as `'error'` on the client, and
+  // the pool listens only while the client is idle, so without this listener the event would be
+  // an uncaught exception. (`pool.query` attaches the same kind of listener for its query.)
+  let broken: Error | undefined;
+  const onError = (error: Error): void => {
+    broken ??= error;
+  };
+  client.on('error', onError);
+  try {
+    await client.query('BEGIN ISOLATION LEVEL REPEATABLE READ, READ ONLY');
+    const commits = await windowCommits(client, window);
+    const payloads: (ChartResponse | null)[] = [];
+    for (const slice of slices) {
+      const result = await client.query<GroupRow>(slice.query);
+      payloads.push(...payloadsFromRows(slice.charts, commits, result.rows, window));
+    }
+    await client.query('COMMIT');
+    return payloads;
+  } catch (error) {
+    try {
+      await client.query('ROLLBACK');
+    } catch (rollbackError) {
+      broken = rollbackError instanceof Error ? rollbackError : new Error(String(rollbackError));
+    }
+    throw error;
+  } finally {
+    client.removeListener('error', onError);
+    client.release(broken);
+  }
+}
+
+/** Fold one [`groupRowsQuery`] result into the payloads of its `charts`, in their order. */
+function payloadsFromRows(
+  charts: readonly ChartKey[],
+  commits: readonly CommitPoint[],
+  rows: readonly GroupRow[],
+  window: CommitWindow,
+): (ChartResponse | null)[] {
+  const totals = new Array<number>(charts.length).fill(0);
+  const rowsByChart = charts.map((): FactRow[] => []);
+  for (const row of rows) {
+    totals[row.ord - 1] = row.total_commits;
+    if (row.commit_sha !== null) {
+      rowsByChart[row.ord - 1]!.push(row);
+    }
+  }
+  return charts.map((key, i) => {
+    const total = totals[i]!;
+    if (total === 0) {
+      return null;
+    }
+    const history = historyFor(total, window);
+    const acc = new SeriesAccumulator();
+    acc.seedCommits(commits.slice(commits.length - history.loaded_commits));
+    for (const row of rowsByChart[i]!) {
+      recordRow(acc, key.k, row);
+    }
+    return acc.finish(chartDisplayName(key), chartUnitKind(key), history);
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -1101,13 +1558,15 @@ function discoverGroups(groupKind: GroupKind): Promise<Group[]> {
 
 /**
  * Bound on how many queries one request runs concurrently: the per-group
- * summaries in [`collectGroups`] (PR-5.1.5 fix e) and the per-chart payloads in
- * [`collectGroupCharts`]. Kept one below the `BENCH_DB_POOL_MAX` default because
- * a cached fill holds one pool connection for its advisory lock. Excess work
+ * summaries in [`collectGroups`] (PR-5.1.5 fix e). [`collectGroupCharts`] no
+ * longer fans out; it runs two statements per group, or more in slices of 25
+ * charts for large groups, one after another on one connection, after the
+ * summaries finish. Kept one below the `BENCH_DB_POOL_MAX` default because a
+ * cached fill holds one pool connection for its advisory lock. Excess work
  * waits here, not on `pg`'s acquire list, where a wait longer than
  * `BENCH_DB_CONNECTION_TIMEOUT_MS` fails the query. A smaller pool still queues
- * the excess on that list. Overlapping the queries is what turns the sequential
- * sum of round trips into roughly the slowest query's wall-clock.
+ * the excess on that list. Overlapping the queries is what turns the
+ * sequential sum of round trips into roughly the slowest query's wall-clock.
  */
 const QUERY_CONCURRENCY = 7;
 
@@ -1132,7 +1591,7 @@ async function mapWithConcurrency<T, R>(
       if (i >= items.length) {
         return;
       }
-      results[i] = await fn(items[i], i);
+      results[i] = await fn(items[i]!, i);
     }
   });
   await Promise.all(workers);
@@ -1175,9 +1634,11 @@ export async function collectGroups(): Promise<Group[]> {
 /**
  * Collect every chart inside one group with its full payload inlined, or `null`
  * when the group has no data (callers render a 404). Re-runs the full
- * [`collectGroups`] discovery to resolve the group by slug, then fetches each
- * chart link's payload, dropping links whose chart has no rows. Mirrors the
- * Rust `collect_group_charts` (including its per-call re-discovery).
+ * [`collectGroups`] discovery to resolve the group by slug, then fetches every
+ * chart link's payload with [`groupChartPayloads`] (two statements, or more in
+ * slices of 25 charts for large groups), dropping links whose chart has no
+ * rows. Mirrors the Rust `collect_group_charts` (including its per-call
+ * re-discovery).
  *
  * The full re-discovery makes this materially more query work than resolving the
  * one group directly; it inherits the Rust source's `TODO(#7812)` deferral of that
@@ -1192,20 +1653,18 @@ export async function collectGroupCharts(
   if (group === undefined) {
     return null;
   }
-  // Fetch chart payloads concurrently rather than in a sequential `await` loop:
-  // on a Data Cache MISS a large group otherwise pays one SQL round-trip per
-  // chart back-to-back (99 for TPC-DS), which dominates the cold-start latency.
-  // [`QUERY_CONCURRENCY`] caps the queries in flight, so the rest wait here and
-  // not on the pool, whose acquire wait times out. The result keeps chart order.
-  const settled = await mapWithConcurrency(
-    group.charts,
-    QUERY_CONCURRENCY,
-    async (link): Promise<NamedChartResponse | null> => {
-      const chart = await chartPayload(chartKeyFromSlug(link.slug), window);
-      return chart === null ? null : { name: link.name, slug: link.slug, ...chart };
-    },
+  const payloads = await groupChartPayloads(
+    key,
+    group.charts.map((link) => chartKeyFromSlug(link.slug)),
+    window,
   );
-  const charts = settled.filter((chart): chart is NamedChartResponse => chart !== null);
+  const charts: NamedChartResponse[] = [];
+  group.charts.forEach((link, i) => {
+    const chart = payloads[i] as ChartResponse | null;
+    if (chart !== null) {
+      charts.push({ name: link.name, slug: link.slug, ...chart });
+    }
+  });
   if (charts.length === 0) {
     return null;
   }

@@ -13,7 +13,6 @@ vi.mock('next/cache', () => ({
   revalidateTag: () => {},
 }));
 
-import type { StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import {
   collectGroupCharts,
   collectGroups,
@@ -26,14 +25,16 @@ import { READ_API_CACHE_CONTROL } from './cache';
 import { collectGroupSummary } from './summary';
 import { chartKeyToSlug, groupKeyFromSlug, groupKeyToSlug } from './slug';
 import {
+  type BenchDatabase,
   commitUrl,
-  dockerAvailable,
+  integrationDatabaseAvailable,
   seedChartFixture,
-  startBenchContainer,
+  startBenchDatabase,
   TREE_SHA,
 } from './test-harness';
 import { parseCommitWindow } from './window';
 import { getPool, resetPool } from './db';
+import { withGroupCacheFillLock } from './cache-fill';
 import { GET as getGroups } from '@/app/api/groups/route';
 import { GET as getGroup } from '@/app/api/group/[slug]/route';
 
@@ -44,16 +45,18 @@ function expectDefined<T>(value: T | null | undefined, message: string): T {
   return value;
 }
 
+const databaseAvailable = integrationDatabaseAvailable();
+
 // The canonical fixture's summary maths (ratio 2.0, geomean 0.5, the query
 // missing-series penalty) reproduce the v2-contract values asserted by
 // `server/tests/group_api.rs`; see `seedChartFixture` in `./test-harness`.
-describe.skipIf(!dockerAvailable())(
+describe.skipIf(!databaseAvailable)(
   'collectGroups + group endpoints (testcontainers Postgres)',
   () => {
-    let container: StartedPostgreSqlContainer;
+    let container: BenchDatabase;
 
     beforeAll(async () => {
-      container = await startBenchContainer();
+      container = await startBenchDatabase();
       await seedChartFixture(getPool());
     });
 
@@ -83,9 +86,9 @@ describe.skipIf(!dockerAvailable())(
       if (summary.type !== 'randomAccess') {
         throw new Error(`expected randomAccess summary, got ${summary.type}`);
       }
-      expect(summary.hotRankings[0].name).toBe('vortex-file-compressed');
-      expect(summary.hotRankings[1].name).toBe('parquet');
-      expect(summary.hotRankings[2].name).toBe('arrow-ipc');
+      expect(summary.hotRankings[0]!.name).toBe('vortex-file-compressed');
+      expect(summary.hotRankings[1]!.name).toBe('parquet');
+      expect(summary.hotRankings[2]!.name).toBe('arrow-ipc');
       expect(summary.coldRankings.map((r) => r.name)).toEqual([
         'vortex-file-compressed',
         'parquet',
@@ -93,12 +96,12 @@ describe.skipIf(!dockerAvailable())(
       ]);
       // The fixture's newest commit has vortex=100_500 and parquet=201_000 on
       // the one `taxi` chart. Arrow IPC is 301_500 on the same chart.
-      expect(summary.hotRankings[0].score).toBeCloseTo(1.0, 6);
-      expect(summary.hotRankings[1].score).toBeCloseTo(1.9999005, 6);
-      expect(summary.hotRankings[2].score).toBeCloseTo(2.999801, 6);
-      expect(summary.hotRankings[0].totalRuntime).toBeCloseTo(100_500, 6);
-      expect(summary.hotRankings[1].totalRuntime).toBeCloseTo(201_000, 6);
-      expect(summary.hotRankings[2].totalRuntime).toBeCloseTo(301_500, 6);
+      expect(summary.hotRankings[0]!.score).toBeCloseTo(1.0, 6);
+      expect(summary.hotRankings[1]!.score).toBeCloseTo(1.9999005, 6);
+      expect(summary.hotRankings[2]!.score).toBeCloseTo(2.999801, 6);
+      expect(summary.hotRankings[0]!.totalRuntime).toBeCloseTo(100_500, 6);
+      expect(summary.hotRankings[1]!.totalRuntime).toBeCloseTo(201_000, 6);
+      expect(summary.hotRankings[2]!.totalRuntime).toBeCloseTo(301_500, 6);
       expect(summary.hotRankings.map((r) => [r.measured, r.total])).toEqual([
         [1, 1],
         [1, 1],
@@ -117,9 +120,9 @@ describe.skipIf(!dockerAvailable())(
       }
       expect(summary.title).toBe('Vector Search Performance');
       expect(summary.rankings.map((r) => r.name)).toEqual(['vortex-turboquant']);
-      expect(summary.rankings[0].score).toBeCloseTo(1.0, 6);
+      expect(summary.rankings[0]!.score).toBeCloseTo(1.0, 6);
       // The newest commit's value for the group's single threshold.
-      expect(summary.rankings[0].totalRuntime).toBeCloseTo(107_000, 6);
+      expect(summary.rankings[0]!.totalRuntime).toBeCloseTo(107_000, 6);
     });
 
     it('computes compression rankings with Parquet and Lance baselines', async () => {
@@ -191,9 +194,9 @@ describe.skipIf(!dockerAvailable())(
       if (summary.type !== 'queryBenchmark') {
         throw new Error(`expected queryBenchmark summary, got ${summary.type}`);
       }
-      expect(summary.rankings[0].name).toBe('datafusion:vortex-file-compressed');
-      expect(summary.rankings[1].name).toBe('duckdb:parquet');
-      expect(summary.rankings[0].score).toBeLessThan(summary.rankings[1].score);
+      expect(summary.rankings[0]!.name).toBe('datafusion:vortex-file-compressed');
+      expect(summary.rankings[1]!.name).toBe('duckdb:parquet');
+      expect(summary.rankings[0]!.score).toBeLessThan(summary.rankings[1]!.score);
       // Exact geomean scores pin the penalty model (not just the ordering). At the
       // latest commit datafusion has Q1=1_100_000, Q2=700_000 and duckdb has only
       // Q1=900_000; bestByQuery is {Q1: 900_000, Q2: 700_000}. datafusion scores
@@ -201,10 +204,10 @@ describe.skipIf(!dockerAvailable())(
       // missing Q2 so it takes the penalty max(900_000,300_000)*2 = 1_800_000,
       // scoring sqrt(1 * (10+1_800_000)/(10+700_000)) = sqrt(1800010/700010). The
       // penalty is what pushes duckdb (best raw Q1) below datafusion.
-      expect(summary.rankings[0].score).toBeCloseTo(1.10554, 5);
-      expect(summary.rankings[1].score).toBeCloseTo(1.60356, 5);
+      expect(summary.rankings[0]!.score).toBeCloseTo(1.10554, 5);
+      expect(summary.rankings[1]!.score).toBeCloseTo(1.60356, 5);
       // datafusion series has Q1 + Q2; duckdb series has Q1 only.
-      expect(summary.rankings[0].totalRuntime).toBeCloseTo(1_800_000, 6);
+      expect(summary.rankings[0]!.totalRuntime).toBeCloseTo(1_800_000, 6);
       expect(JSON.stringify(summary)).toContain('"totalRuntime"');
     });
 
@@ -258,7 +261,7 @@ describe.skipIf(!dockerAvailable())(
         'TPC-H benchmark queries on local NVMe storage at SF=1 (~1GB of data)',
       );
       expect(group.charts.map((c) => c.name)).toEqual(['Q1', 'Q2']);
-      const q1 = group.charts[0];
+      const q1 = group.charts[0]!;
       // The chart link's slug round-trips to the same `/api/chart` slug.
       expect(q1.slug).toBe(
         chartKeyToSlug({
@@ -343,7 +346,7 @@ describe.skipIf(!dockerAvailable())(
         ),
         'cached-only random access group',
       );
-      expect(Object.keys(group.charts[0].series).sort()).toEqual([
+      expect(Object.keys(group.charts[0]!.series).sort()).toEqual([
         'arrow-ipc:hot',
         'parquet:hot',
         'vortex-file-compressed:hot',
@@ -363,8 +366,8 @@ describe.skipIf(!dockerAvailable())(
 //  Query-summary penalty model:
 //  - the 300_000 ns penalty floor is exercised (all runtimes below it) so a
 //    missing query flips the ranking, pinning the floor + ratio formula.
-describe.skipIf(!dockerAvailable())('summary math fidelity (testcontainers Postgres)', () => {
-  let container: StartedPostgreSqlContainer;
+describe.skipIf(!databaseAvailable)('summary math fidelity (testcontainers Postgres)', () => {
+  let container: BenchDatabase;
   let measurementId = 0;
 
   function nextId(): number {
@@ -415,7 +418,7 @@ describe.skipIf(!dockerAvailable())('summary math fidelity (testcontainers Postg
   }
 
   beforeAll(async () => {
-    container = await startBenchContainer();
+    container = await startBenchDatabase();
   });
 
   afterAll(async () => {
@@ -481,8 +484,8 @@ describe.skipIf(!dockerAvailable())('summary math fidelity (testcontainers Postg
     for (const [index, storage] of (['nvme', 's3'] as const).entries()) {
       const datasets =
         storage === 'nvme' ? ['taxi', 'taxi/uniform'] : ['taxi-s3', 'taxi-s3/uniform'];
-      expect(groupKeyFromSlug(groups[index].slug)).toEqual({ k: 'RandomAccessGroup', storage });
-      expect(groups[index].charts).toEqual(
+      expect(groupKeyFromSlug(groups[index]!.slug)).toEqual({ k: 'RandomAccessGroup', storage });
+      expect(groups[index]!.charts).toEqual(
         datasets.map((dataset) => ({
           name: dataset,
           slug: chartKeyToSlug({ k: 'RandomAccess', dataset }),
@@ -541,9 +544,9 @@ describe.skipIf(!dockerAvailable())('summary math fidelity (testcontainers Postg
     }
     expect(summary.hotRankings.map((r) => r.name)).toEqual(['vortex-file-compressed', 'lance']);
     // vortex: cbrt(1100000/350000 * 1 * 1); lance: cbrt(1 * 3 * 3).
-    expect(summary.hotRankings[0].score).toBeCloseTo(Math.cbrt(1_100_010 / 350_010), 5);
-    expect(summary.hotRankings[1].score).toBeCloseTo(Math.cbrt((3_000_010 / 1_000_010) ** 2), 5);
-    expect(summary.hotRankings[0].totalRuntime).toBeCloseTo(3_100_000 / 3, 6);
+    expect(summary.hotRankings[0]!.score).toBeCloseTo(Math.cbrt(1_100_010 / 350_010), 5);
+    expect(summary.hotRankings[1]!.score).toBeCloseTo(Math.cbrt((3_000_010 / 1_000_010) ** 2), 5);
+    expect(summary.hotRankings[0]!.totalRuntime).toBeCloseTo(3_100_000 / 3, 6);
   });
 
   it('keeps an intermittently benchmarked format at its own latest run', async () => {
@@ -640,9 +643,9 @@ describe.skipIf(!dockerAvailable())('summary math fidelity (testcontainers Postg
       throw new Error(`expected vectorSearch summary, got ${summary.type}`);
     }
     expect(summary.rankings.map((r) => r.name)).toEqual(['vortex-turboquant', 'vortex-flat']);
-    expect(summary.rankings[0].score).toBeCloseTo(1.0, 6);
+    expect(summary.rankings[0]!.score).toBeCloseTo(1.0, 6);
     // sqrt((2010/1010) * (8010/2010)).
-    expect(summary.rankings[1].score).toBeCloseTo(Math.sqrt((2010 / 1010) * (8010 / 2010)), 6);
+    expect(summary.rankings[1]!.score).toBeCloseTo(Math.sqrt((2010 / 1010) * (8010 / 2010)), 6);
   });
 
   it('keeps a sub-second latest commit timestamp (no whole-second truncation)', async () => {
@@ -681,8 +684,8 @@ describe.skipIf(!dockerAvailable())('summary math fidelity (testcontainers Postg
       'vortex-file-compressed',
       'parquet',
     ]);
-    expect(size.rankings[0].ratio).toBeCloseTo(0.25, 6);
-    expect(size.rankings[1].ratio).toBeCloseTo(1.0, 6);
+    expect(size.rankings[0]!.ratio).toBeCloseTo(0.25, 6);
+    expect(size.rankings[1]!.ratio).toBeCloseTo(1.0, 6);
   });
 
   it('selects one commit when the latest timestamps collide', async () => {
@@ -748,7 +751,7 @@ describe.skipIf(!dockerAvailable())('summary math fidelity (testcontainers Postg
       'encode:vortex-file-compressed',
       'encode:parquet',
     ]);
-    expect(summary.rankings[0].ratio).toBeCloseTo(3.0, 6);
+    expect(summary.rankings[0]!.ratio).toBeCloseTo(3.0, 6);
   });
 
   it('falls back to the latest decode timestamp when there is no encode pair', async () => {
@@ -767,7 +770,7 @@ describe.skipIf(!dockerAvailable())('summary math fidelity (testcontainers Postg
       'decode:vortex-file-compressed',
       'decode:parquet',
     ]);
-    expect(summary.rankings[0].ratio).toBeCloseTo(2.0, 6);
+    expect(summary.rankings[0]!.ratio).toBeCloseTo(2.0, 6);
   });
 
   it('applies the 300_000 penalty floor so a missing query flips the ranking', async () => {
@@ -803,51 +806,70 @@ describe.skipIf(!dockerAvailable())('summary math fidelity (testcontainers Postg
       'datafusion:vortex-file-compressed',
       'duckdb:parquet',
     ]);
-    expect(summary.rankings[0].score).toBeCloseTo(1.414143, 5);
-    expect(summary.rankings[1].score).toBeCloseTo(1.732022, 5);
+    expect(summary.rankings[0]!.score).toBeCloseTo(1.414143, 5);
+    expect(summary.rankings[1]!.score).toBeCloseTo(1.732022, 5);
   });
 
-  // A cold group fill runs one chart query per chart. pg fails a query that
-  // waits BENCH_DB_CONNECTION_TIMEOUT_MS for a free pool slot, so the fill must
-  // keep its fan-out below the pool size. Otherwise a large group (99 TPC-DS
-  // charts) fails on a healthy database. The bound is 7: one below the default
-  // pool size of 8, because a cached fill holds one connection for its lock.
-  it('keeps a group fill within the pool size', async () => {
+  // A cached group fill holds one connection for its advisory lock while it runs the group
+  // discovery (one statement per family, five at once) and the summaries (QUERY_CONCURRENCY, 7, at
+  // once) through `pool.query`, then builds the group's charts on one `connect()`ed client. pg fails
+  // a request that waits BENCH_DB_CONNECTION_TIMEOUT_MS for a free pool slot, so the fill must never
+  // ask for more connections at once than the default pool size, 8: the lock plus 7 summaries. The
+  // test counts requests, not checked-out clients, because a pool of 8 never checks out more than
+  // 8: a wider fan-out would only queue.
+  it('keeps a cached group fill within the pool size', async () => {
     const sha = 'b'.repeat(40);
     await insertCommit(sha, '2026-04-23T12:00:00Z');
     for (let queryIdx = 1; queryIdx <= 12; queryIdx += 1) {
       await insertQuery(sha, queryIdx, 'datafusion', 'parquet', 100_000);
     }
+    // Eight sibling groups, so the summaries fill all seven slots.
+    for (let scaleFactor = 2; scaleFactor <= 9; scaleFactor += 1) {
+      await getPool().query(
+        `INSERT INTO query_measurements
+             (measurement_id, commit_sha, dataset, dataset_variant, scale_factor,
+              query_idx, storage, engine, format, value_ns, all_runtimes_ns,
+              commit_timestamp)
+           VALUES ($1, $2, 'tpch', NULL, $3, 1, 'nvme', 'datafusion', 'parquet', 100000,
+                   '{1}'::bigint[], (SELECT timestamp FROM commits WHERE commit_sha = $2))`,
+        [nextId(), sha, String(scaleFactor)],
+      );
+    }
 
     const pool = getPool();
-    const original = pool.query;
-    let inFlight = 0;
+    const connect = pool.connect.bind(pool);
+    let requested = 0;
     let peak = 0;
-    pool.query = (async (...args: unknown[]) => {
-      inFlight += 1;
-      peak = Math.max(peak, inFlight);
-      try {
-        return await (original as (...a: unknown[]) => Promise<unknown>).apply(pool, args);
-      } finally {
-        inFlight -= 1;
-      }
-    }) as typeof pool.query;
+    // `pool.query` takes its client through `this.connect`, so this sees every request.
+    const connectSpy = vi.spyOn(pool, 'connect').mockImplementation(((...args: unknown[]) => {
+      requested += 1;
+      peak = Math.max(peak, requested);
+      return (connect as (...a: unknown[]) => unknown)(...args);
+    }) as never);
+    const onRelease = (): void => {
+      requested -= 1;
+    };
+    pool.on('release', onRelease);
     try {
-      const bundle = await collectGroupCharts(
-        {
-          k: 'QueryGroup',
-          dataset: 'tpch',
-          dataset_variant: null,
-          scale_factor: '1',
-          storage: 'nvme',
-        },
-        parseCommitWindow(null),
+      const bundle = await withGroupCacheFillLock(() =>
+        collectGroupCharts(
+          {
+            k: 'QueryGroup',
+            dataset: 'tpch',
+            dataset_variant: null,
+            scale_factor: '1',
+            storage: 'nvme',
+          },
+          parseCommitWindow(null),
+        ),
       );
       expect(bundle?.charts).toHaveLength(12);
     } finally {
-      pool.query = original;
+      pool.off('release', onRelease);
+      connectSpy.mockRestore();
     }
-    expect(peak).toBeLessThanOrEqual(7);
+    expect(requested).toBe(0);
+    expect(peak).toBeLessThanOrEqual(8);
   });
 });
 
@@ -858,16 +880,16 @@ describe.skipIf(!dockerAvailable())('summary math fidelity (testcontainers Postg
 // NULL-stamped row must not beat an older stamped row; an all-NULL series must
 // still appear via the fallback arm), and most of the discovery successor's
 // NULL-partition branches never execute. This block seeds exactly those shapes.
-describe.skipIf(!dockerAvailable())(
+describe.skipIf(!databaseAvailable)(
   'read-path skip-scan fidelity (testcontainers Postgres)',
   () => {
-    let container: StartedPostgreSqlContainer;
+    let container: BenchDatabase;
 
     const COMMIT_A = 'a'.repeat(40);
     const COMMIT_B = 'b'.repeat(40);
 
     beforeAll(async () => {
-      container = await startBenchContainer();
+      container = await startBenchDatabase();
       const pool = getPool();
       // COMMIT_B is NEWER than COMMIT_A: the NULLS-LAST probe must still prefer
       // COMMIT_A's stamped row over COMMIT_B's unstamped one.

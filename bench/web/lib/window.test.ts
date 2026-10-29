@@ -4,7 +4,6 @@
 import { describe, expect, it } from 'vitest';
 import {
   commitWindowLimit,
-  commitWindowUrlValue,
   DEFAULT_COMMIT_WINDOW,
   MAX_NUMERIC_COMMIT_WINDOW,
   parseCommitWindow,
@@ -51,12 +50,5 @@ describe('commitWindowLimit', () => {
     expect(commitWindowLimit({ kind: 'last', n: 42 })).toBe(42);
     expect(commitWindowLimit({ kind: 'all' })).toBeNull();
     expect(commitWindowLimit(parseCommitWindow(undefined))).toBe(100);
-  });
-});
-
-describe('commitWindowUrlValue', () => {
-  it('renders the URL value', () => {
-    expect(commitWindowUrlValue({ kind: 'last', n: 100 })).toBe('100');
-    expect(commitWindowUrlValue({ kind: 'all' })).toBe('all');
   });
 });

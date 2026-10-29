@@ -10,6 +10,8 @@
     "moduleResolution": "bundler",
     "noUnusedLocals": true,
     "noUnusedParameters": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "react-jsx",

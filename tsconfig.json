@@ -4,8 +4,6 @@
     "alwaysStrict": true,
     "target": "ES2022",
     "forceConsistentCasingInFileNames": true,
-    "noUncheckedIndexedAccess": true,
-    "exactOptionalPropertyTypes": true,
     "paths": {
       "@/*": ["./src/*"],
       "#site/content": ["./.velite"]
