@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   canonicalHistory,
+  chartAriaLabel,
   chartHasRecentData,
   chartPriority,
   clampRangeWindow,
@@ -22,6 +23,7 @@ import {
   IDENTITY_UNIT,
   INTERACTION_FULL_PRIORITY,
   LAZY_HYDRATION_ROOT_MARGIN,
+  latestValuesSentence,
   lttbIndices,
   magnitudeReference,
   MAX_VISIBLE_POINTS,
@@ -197,6 +199,70 @@ describe('seriesOrder', () => {
 
   it('keeps the whole Vortex pair in front of the whole Parquet pair', () => {
     expect(ord('duckdb', 'vortex-file-compressed')).toBeLessThan(ord('datafusion', 'parquet'));
+  });
+});
+
+describe('the chart canvas label', () => {
+  const MS = pickDisplayUnit('time_ns', [2_500_000]);
+
+  it('names the chart alone before it has data', () => {
+    expect(chartAriaLabel('tpch q1', null)).toBe('tpch q1 chart');
+  });
+
+  const COMMITS = [
+    { timestamp: '2026-10-25T10:00:00Z' },
+    { timestamp: '2026-10-26T10:00:00Z' },
+    { timestamp: '2026-10-27T10:00:00Z' },
+  ];
+
+  it("states each series' latest value in the display unit, in one dated sentence", () => {
+    const sentence = latestValuesSentence(
+      [
+        { label: 'duckdb:parquet', values: [3_000_000, 2_000_000, 2_500_000] },
+        { label: 'duckdb:vortex-file-compressed', values: [1_200_000, 1_100_000, 1_000_000] },
+      ],
+      COMMITS,
+      MS,
+    );
+    expect(sentence).toBe(
+      'Latest commit with data (2026-10-27): duckdb:parquet 2.50 ms, duckdb:vortex 1.00 ms.',
+    );
+    expect(chartAriaLabel('tpch q1', sentence)).toBe(
+      'tpch q1 chart. Latest commit with data (2026-10-27): duckdb:parquet 2.50 ms, duckdb:vortex 1.00 ms.',
+    );
+  });
+
+  it('takes the latest commit where any series has a value, and leaves out a series without one there', () => {
+    expect(
+      latestValuesSentence(
+        [
+          { label: 'datafusion:parquet', values: [3_000_000, null, null] },
+          { label: 'duckdb:parquet', values: [3_000_000, 2_000_000, null] },
+          { label: 'duckdb:lance', values: [Number.NaN, Number.NaN, Number.NaN] },
+          { label: 'duckdb:arrow', values: [] },
+        ],
+        // The newest commit has no results yet; a padded slot has no commit.
+        [null, ...COMMITS],
+        MS,
+      ),
+    ).toBe('Latest commit with data (2026-10-25): duckdb:parquet 2.00 ms.');
+  });
+
+  it('says so when no series is shown, or none has data', () => {
+    expect(latestValuesSentence([], COMMITS, MS)).toBe('No series is shown.');
+    expect(
+      latestValuesSentence([{ label: 'vortex', values: [null, null, null] }], COMMITS, MS),
+    ).toBe('No visible series has data.');
+  });
+
+  it('gives a dimensionless value without a unit, and no date when the commit has none', () => {
+    expect(
+      latestValuesSentence(
+        [{ label: 'vortex', values: [4.25] }],
+        [{ timestamp: undefined as unknown as string }],
+        pickDisplayUnit('ratio', [4.25]),
+      ),
+    ).toBe('Latest commit with data: vortex 4.25.');
   });
 });
 

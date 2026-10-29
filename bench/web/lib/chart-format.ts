@@ -542,6 +542,64 @@ export function formatDisplayValue(
 }
 
 // ---------------------------------------------------------------------------
+// The chart canvas's accessible name.
+// ---------------------------------------------------------------------------
+
+/** A visible series: its label and its raw values, one per payload commit. */
+export interface VisibleSeries {
+  label: string;
+  values: readonly (number | null | undefined)[];
+}
+
+function isMeasured(value: number | null | undefined): value is number {
+  return value !== null && value !== undefined && Number.isFinite(value);
+}
+
+/**
+ * One sentence with each visible series' value at the latest commit that has
+ * data, in the chart's display unit, formatted as the tooltip formats it:
+ * `Latest commit with data (2026-10-27): duckdb:parquet 2.50 ms, duckdb:vortex
+ * 1.00 ms.` The newest commits in a window often have no results yet, so the
+ * sentence takes the latest commit where any visible series has a value, and
+ * dates it. A series with no value at that commit is left out.
+ */
+export function latestValuesSentence(
+  series: readonly VisibleSeries[],
+  commits: readonly (Pick<CommitPoint, 'timestamp'> | null)[],
+  displayUnit: DisplayUnit,
+): string {
+  if (series.length === 0) {
+    return 'No series is shown.';
+  }
+  let latest = -1;
+  for (let i = commits.length - 1; i >= 0 && latest < 0; i--) {
+    if (series.some((s) => isMeasured(s.values[i]))) {
+      latest = i;
+    }
+  }
+  if (latest < 0) {
+    return 'No visible series has data.';
+  }
+  const parts: string[] = [];
+  for (const { label, values } of series) {
+    const value = values[latest];
+    if (isMeasured(value)) {
+      parts.push(`${displaySeriesLabel(label)} ${formatDisplayValue(value, displayUnit)}`);
+    }
+  }
+  const date = shortDate(commits[latest]?.timestamp);
+  return `Latest commit with data${date ? ` (${date})` : ''}: ${parts.join(', ')}.`;
+}
+
+/**
+ * The `aria-label` of a chart's canvas (`role="img"`): it names the chart and,
+ * once its data has loaded, adds the [`latestValuesSentence`].
+ */
+export function chartAriaLabel(name: string, latestValues: string | null): string {
+  return latestValues === null ? `${name} chart` : `${name} chart. ${latestValues}`;
+}
+
+// ---------------------------------------------------------------------------
 // Throttle.
 // ---------------------------------------------------------------------------
 

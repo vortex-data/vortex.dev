@@ -18,6 +18,12 @@ describe('Chart (server-rendered card markup)', () => {
     expect(html).toContain('<canvas data-chart-index="7"');
   });
 
+  it('labels the canvas as an image named for the chart', () => {
+    expect(html).toContain(
+      '<canvas data-chart-index="7" role="img" aria-label="gnomad chart"></canvas>',
+    );
+  });
+
   it('renders the title permalink and the hidden downsample badge inside it', () => {
     expect(html).toContain('href="/chart/ra.eyJhIjoxfQ"');
     expect(html).toContain('data-role="downsample-badge"');
