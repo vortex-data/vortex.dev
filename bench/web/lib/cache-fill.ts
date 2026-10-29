@@ -28,6 +28,15 @@ export class GroupCacheFillInProgressError extends Error {
  */
 export async function withGroupCacheFillLock<T>(fill: () => Promise<T>): Promise<T> {
   const client = await getPool().connect();
+  // A client whose connection dropped or whose unlock failed is broken; release it with the error
+  // so the pool discards it, which ends its session and any lock the session still holds. pg emits
+  // a dropped connection as `'error'` on the client, and the pool listens only while the client is
+  // idle, so without this listener the event would be an uncaught exception.
+  let broken: Error | undefined;
+  const onError = (error: Error): void => {
+    broken ??= error;
+  };
+  client.on('error', onError);
   let acquired = false;
   try {
     const result = await client.query<{ acquired: boolean }>(
@@ -41,11 +50,18 @@ export async function withGroupCacheFillLock<T>(fill: () => Promise<T>): Promise
     return await fill();
   } finally {
     try {
-      if (acquired) {
-        await client.query('SELECT pg_advisory_unlock($1, $2)', [...GROUP_CACHE_FILL_LOCK]);
+      // A dropped connection ended the session, and the lock with it.
+      if (acquired && broken === undefined) {
+        await client
+          .query('SELECT pg_advisory_unlock($1, $2)', [...GROUP_CACHE_FILL_LOCK])
+          .catch((unlockError: unknown) => {
+            broken ??= unlockError instanceof Error ? unlockError : new Error(String(unlockError));
+            throw unlockError;
+          });
       }
     } finally {
-      client.release();
+      client.removeListener('error', onError);
+      client.release(broken);
     }
   }
 }

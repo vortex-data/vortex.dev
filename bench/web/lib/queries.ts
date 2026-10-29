@@ -674,7 +674,9 @@ type CommitRow = { commit_sha: string; ts_text: string; message: string; url: st
 
 /**
  * The last `n` commits of all (every commit for `?n=all`), oldest first. Each
- * chart's x-axis is a suffix of this list. A `null` `LIMIT` is no limit.
+ * chart's x-axis is a suffix of this list. A `null` `LIMIT` is no limit. It
+ * runs on [`groupChartPayloads`]'s client, inside that build's `REPEATABLE READ`
+ * transaction, so it sees the same snapshot as the group's rows statements.
  */
 async function windowCommits(client: PoolClient, window: CommitWindow): Promise<CommitPoint[]> {
   const text = `
@@ -1020,8 +1022,15 @@ export async function groupChartPayloads(
     return [];
   }
   const client = await getPool().connect();
-  // A client whose ROLLBACK failed is broken; release it with the error so the pool discards it.
+  // A client whose connection dropped or whose ROLLBACK failed is broken; release it with the
+  // error so the pool discards it. pg emits a dropped connection as `'error'` on the client, and
+  // the pool listens only while the client is idle, so without this listener the event would be
+  // an uncaught exception. (`pool.query` attaches the same kind of listener for its query.)
   let broken: Error | undefined;
+  const onError = (error: Error): void => {
+    broken ??= error;
+  };
+  client.on('error', onError);
   try {
     await client.query('BEGIN ISOLATION LEVEL REPEATABLE READ, READ ONLY');
     const commits = await windowCommits(client, window);
@@ -1040,6 +1049,7 @@ export async function groupChartPayloads(
     }
     throw error;
   } finally {
+    client.removeListener('error', onError);
     client.release(broken);
   }
 }

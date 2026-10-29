@@ -101,7 +101,9 @@ function sqlText(query: unknown): string {
 /**
  * Run `build` and return what it issued on pooled clients: its data statements
  * without the transaction's `BEGIN` and `COMMIT`, which it checks are there. It
- * also checks that nothing went through `pool.query`.
+ * also checks that nothing went through `pool.query`, that every statement ran
+ * on one client, which the shared snapshot depends on, and that the build took
+ * its `'error'` listener off that client.
  */
 async function statementsOf<T>(
   build: () => Promise<T>,
@@ -111,6 +113,10 @@ async function statementsOf<T>(
   const result = await build();
   const texts = clientQuery.mock.calls.map((call) => sqlText(call[0]).trim());
   expect(poolQuery).not.toHaveBeenCalled();
+  const clients = new Set(clientQuery.mock.contexts as Client[]);
+  expect(clients.size).toBe(1);
+  // Only the pool's own idle listener is left on the released client.
+  expect([...clients][0]!.listenerCount('error')).toBe(1);
   expect(texts[0]).toBe('BEGIN ISOLATION LEVEL REPEATABLE READ, READ ONLY');
   expect(texts.at(-1)).toBe('COMMIT');
   clientQuery.mockRestore();
@@ -218,6 +224,51 @@ describe.skipIf(!databaseAvailable)('groupChartPayloads on the canonical fixture
     clientQuery.mockRestore();
     expect(pool.idleCount).toBe(pool.totalCount);
     // The released client still works.
+    const payloads = await groupChartPayloads(TPCH, [Q1], parseCommitWindow(null));
+    expect(payloads[0]).not.toBeNull();
+  });
+
+  // pg rejects the running statement when the connection drops, then emits `'error'` on the
+  // client. A checked-out client has no pool listener for it, so the build must hold one, or the
+  // event is an uncaught exception.
+  it('discards its client when the connection drops mid-build', async () => {
+    const pool = getPool();
+    const original = Client.prototype.query;
+    let backendPid: number | undefined;
+    const clientQuery = vi.spyOn(Client.prototype, 'query').mockImplementation(function (
+      this: Client,
+      ...args: unknown[]
+    ) {
+      if (sqlText(args[0]).includes('commit_times')) {
+        backendPid = (this as Client & { processID: number }).processID;
+        return (original as (...a: unknown[]) => unknown).call(this, 'SELECT pg_sleep(5)');
+      }
+      return (original as (...a: unknown[]) => unknown).apply(this, args);
+    } as never);
+    const uncaught = vi.fn();
+    process.on('uncaughtException', uncaught);
+    try {
+      const build = groupChartPayloads(TPCH, [Q1], parseCommitWindow(null));
+      await vi.waitFor(
+        async () => {
+          expect(backendPid).toBeDefined();
+          const { rows } = await pool.query<{ wait_event: string | null }>(
+            'SELECT wait_event FROM pg_stat_activity WHERE pid = $1',
+            [backendPid],
+          );
+          expect(rows[0]?.wait_event).toBe('PgSleep');
+        },
+        { timeout: 4_000 },
+      );
+      await pool.query('SELECT pg_terminate_backend($1)', [backendPid]);
+      await expect(build).rejects.toThrow('terminating connection due to administrator command');
+    } finally {
+      process.off('uncaughtException', uncaught);
+    }
+    expect(uncaught).not.toHaveBeenCalled();
+    clientQuery.mockRestore();
+    expect(pool.idleCount).toBe(pool.totalCount);
+    // The pool replaces the discarded client.
     const payloads = await groupChartPayloads(TPCH, [Q1], parseCommitWindow(null));
     expect(payloads[0]).not.toBeNull();
   });

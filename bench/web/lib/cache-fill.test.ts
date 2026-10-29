@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
+import { EventEmitter } from 'node:events';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { connect, query, release } = vi.hoisted(() => ({
@@ -20,11 +21,15 @@ import {
 } from '@/lib/cache-fill';
 
 describe('group cache fill lock', () => {
+  // An `EventEmitter`, like pg's client: emitting `'error'` with no listener throws.
+  let client: EventEmitter;
+
   beforeEach(() => {
     connect.mockReset();
     query.mockReset();
     release.mockReset();
-    connect.mockResolvedValue({ query, release });
+    client = Object.assign(new EventEmitter(), { query, release });
+    connect.mockResolvedValue(client);
   });
 
   it('holds the advisory lock for the fill and releases its client', async () => {
@@ -38,6 +43,8 @@ describe('group cache fill lock', () => {
     expect(query.mock.calls[1]![0]).toContain('pg_advisory_unlock');
     expect(query.mock.calls[0]![1]).toEqual(query.mock.calls[1]![1]);
     expect(release).toHaveBeenCalledOnce();
+    expect(release.mock.calls[0]![0]).toBeUndefined();
+    expect(client.listenerCount('error')).toBe(0);
   });
 
   it('fails fast on contention without running the fill', async () => {
@@ -65,6 +72,33 @@ describe('group cache fill lock', () => {
 
     expect(query.mock.calls[1]![0]).toContain('pg_advisory_unlock');
     expect(release).toHaveBeenCalledOnce();
+  });
+
+  it('discards a client whose connection drops during the fill', async () => {
+    query.mockResolvedValueOnce({ rows: [{ acquired: true }] });
+    const dropped = new Error('Connection terminated unexpectedly');
+
+    await expect(
+      withGroupCacheFillLock(async () => {
+        client.emit('error', dropped);
+        return 'groups';
+      }),
+    ).resolves.toBe('groups');
+
+    // The lock went with the session, so there is nothing to unlock.
+    expect(query).toHaveBeenCalledOnce();
+    expect(release).toHaveBeenCalledExactlyOnceWith(dropped);
+    expect(client.listenerCount('error')).toBe(0);
+  });
+
+  it('discards a client whose unlock fails, so its session cannot keep the lock', async () => {
+    const failure = new Error('canceling statement due to statement timeout');
+    query.mockResolvedValueOnce({ rows: [{ acquired: true }] }).mockRejectedValueOnce(failure);
+
+    await expect(withGroupCacheFillLock(async () => 'groups')).rejects.toBe(failure);
+
+    expect(release).toHaveBeenCalledExactlyOnceWith(failure);
+    expect(client.listenerCount('error')).toBe(0);
   });
 });
 
