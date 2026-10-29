@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from 'vite
 import { LandingState } from '@/components/LandingState';
 import { noteGroupBodyOpen, resetGroupBodies } from '@/lib/group-bodies';
 import { setAllGroupsOpen } from '@/lib/open-groups';
+import type { NavigationKind, SavedScroll } from '@/lib/scroll-restore';
 
 // Three groups in page order, as the landing page renders them.
 const GROUPS = [
@@ -18,12 +19,58 @@ const GROUPS = [
   { anchor: 'clickbench', slug: 'qm.click' },
 ];
 
+// The first group's anchor: the fragment of a page with only it open, and the
+// key its saved position lives under.
+const FIRST = 'tpc-h-nvme-sf-1';
+const FIRST_KEY = `bench-scroll:/#${FIRST}`;
+const SAVED: SavedScroll = { kind: 'chart', slug: 'c2', offset: 120 };
+
 /** Let jsdom's queued `toggle` and `hashchange` tasks, and the promise chains
  * after them, run. */
 async function flush(): Promise<void> {
   await act(async () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
   });
+}
+
+/** Run everything pending, then one animation frame past it, so a restore's
+ * second pass has had its chance. */
+async function nextFrame(): Promise<void> {
+  await flush();
+  await act(async () => {
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+  });
+  await flush();
+}
+
+/** Report this document's navigation as `type`, as the timing entry does. */
+function navigation(type: NavigationKind): void {
+  vi.spyOn(performance, 'getEntriesByType').mockReturnValue([
+    { type } as unknown as PerformanceEntry,
+  ]);
+}
+
+/** Give `el` a layout: its rect starts `top` px below the viewport top. */
+function place(el: Element, top: number, height = 420): void {
+  vi.spyOn(el, 'getBoundingClientRect').mockReturnValue({
+    x: 0,
+    y: top,
+    top,
+    left: 0,
+    right: 800,
+    bottom: top + height,
+    width: 800,
+    height,
+    toJSON: () => ({}),
+  } as DOMRect);
+}
+
+function chartCard(slug: string): HTMLElement {
+  const el = document.querySelector<HTMLElement>(`[data-chart-slug="${slug}"]`);
+  if (!el) {
+    throw new Error(`no card ${slug}`);
+  }
+  return el;
 }
 
 function disclosure(anchor: string): HTMLDetailsElement {
@@ -44,23 +91,38 @@ describe('LandingState', () => {
   let container: HTMLElement;
   let root: Root | null = null;
   let scrollSpy: Mock;
+  let scrollTo: Mock;
   let onError: Mock;
+  const originalScrollTo = window.scrollTo;
 
   beforeEach(() => {
     (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
     resetGroupBodies();
+    sessionStorage.clear();
+    window.history.scrollRestoration = 'auto';
+    // A fresh visit, unless a test says otherwise.
+    vi.spyOn(performance, 'getEntriesByType').mockReturnValue([]);
     // jsdom does not implement scrollIntoView; stub it so the call is observable.
     scrollSpy = vi.fn();
     Element.prototype.scrollIntoView = scrollSpy;
+    // A stub, so `scrollY` stays 0 and the restore's target is the card's rect.
+    scrollTo = vi.fn();
+    window.scrollTo = scrollTo as unknown as typeof window.scrollTo;
     onError = vi.fn();
     window.addEventListener('error', onError);
+    // Each group as the landing page renders it; the first has one chart card,
+    // as its body mounts it once open.
     document.body.innerHTML =
       '<div id="group-nav-panel"></div>' +
       GROUPS.map(
-        ({ anchor, slug }) =>
+        ({ anchor, slug }, i) =>
           `<section class="group-details" id="${anchor}" data-group-slug="${slug}">` +
-          `<details class="group-disclosure"><summary>${anchor}</summary></details>` +
-          '</section>',
+          `<details class="group-disclosure"><summary>${anchor}</summary>` +
+          (i === 0
+            ? '<div class="group-body"><section class="chart-card" data-chart-slug="c2">' +
+              '<h3 class="chart-card-title"><a href="/chart/c2">q2</a></h3></section></div>'
+            : '') +
+          '</details></section>',
       ).join('');
     container = document.createElement('div');
     document.body.appendChild(container);
@@ -73,6 +135,9 @@ describe('LandingState', () => {
     root = null;
     window.removeEventListener('error', onError);
     vi.restoreAllMocks();
+    window.scrollTo = originalScrollTo;
+    sessionStorage.clear();
+    window.history.scrollRestoration = 'auto';
     window.history.replaceState(null, '', '/');
     document.body.innerHTML = '';
   });
@@ -184,6 +249,23 @@ describe('LandingState', () => {
     expect(scrollSpy.mock.contexts[0]).toBe(document.getElementById('clickbench'));
   });
 
+  it('rewrites the fragment to the open set after a hashchange that toggles nothing', async () => {
+    await mount('/');
+    await setOpen(FIRST, true);
+    await setOpen('clickbench', true);
+    expect(window.location.hash).toBe(`#${FIRST},clickbench`);
+
+    // Already open: no toggle fires, so only the hashchange can fix the URL.
+    window.location.hash = 'clickbench';
+    await flush();
+    expect(window.location.hash).toBe(`#${FIRST},clickbench`);
+
+    window.location.hash = 'unknown';
+    await flush();
+    expect(window.location.hash).toBe(`#${FIRST},clickbench`);
+    expect(openStates()).toEqual([true, false, true]);
+  });
+
   it('stops listening once unmounted', async () => {
     await mount('/');
     await act(async () => {
@@ -197,5 +279,146 @@ describe('LandingState', () => {
     await flush();
     expect(replace).not.toHaveBeenCalled();
     expect(disclosure('random-access').open).toBe(false);
+
+    place(chartCard('c2'), 30);
+    window.dispatchEvent(new Event('pagehide'));
+    expect(sessionStorage.length).toBe(0);
+  });
+
+  describe('scroll restoration', () => {
+    it('switches the page to manual scroll restoration and restores the old mode on unmount', async () => {
+      await mount('/');
+      expect(window.history.scrollRestoration).toBe('manual');
+
+      await act(async () => {
+        root?.unmount();
+      });
+      root = null;
+      expect(window.history.scrollRestoration).toBe('auto');
+    });
+
+    it('saves the reading position on pagehide and when a chart link is followed', async () => {
+      await mount(`/#${FIRST}`);
+      await flush();
+      place(chartCard('c2'), 30);
+
+      window.dispatchEvent(new Event('pagehide'));
+      expect(JSON.parse(sessionStorage.getItem(FIRST_KEY) ?? 'null')).toEqual({
+        kind: 'chart',
+        slug: 'c2',
+        offset: 30,
+      });
+
+      sessionStorage.clear();
+      // jsdom cannot navigate; stop the link after the page's own listener.
+      const stop = (event: Event): void => event.preventDefault();
+      document.addEventListener('click', stop);
+      chartCard('c2').querySelector('a')?.click();
+      document.removeEventListener('click', stop);
+      expect(JSON.parse(sessionStorage.getItem(FIRST_KEY) ?? 'null')).toEqual({
+        kind: 'chart',
+        slug: 'c2',
+        offset: 30,
+      });
+    });
+
+    it('saves nothing when a click is not on a chart link', async () => {
+      await mount(`/#${FIRST}`);
+      await flush();
+      place(chartCard('c2'), 30);
+
+      disclosure(FIRST).querySelector('summary')?.click();
+      expect(sessionStorage.length).toBe(0);
+    });
+
+    it.each(['reload', 'back_forward'] as const)(
+      'on %s, restores the saved element instead of scrolling to the fragment',
+      async (type) => {
+        navigation(type);
+        sessionStorage.setItem(FIRST_KEY, JSON.stringify(SAVED));
+        place(chartCard('c2'), 900);
+        await mount(`/#${FIRST}`);
+        await flush();
+        expect(scrollTo).not.toHaveBeenCalled();
+
+        noteGroupBodyOpen('qm.tpch', Promise.resolve());
+        await nextFrame();
+        expect(scrollTo).toHaveBeenCalledWith({ top: 780, behavior: 'instant' });
+        expect(scrollSpy).not.toHaveBeenCalled();
+      },
+    );
+
+    it('on a fresh visit, scrolls to the fragment and ignores a saved position', async () => {
+      navigation('navigate');
+      sessionStorage.setItem(FIRST_KEY, JSON.stringify(SAVED));
+      place(chartCard('c2'), 900);
+      await mount(`/#${FIRST}`);
+
+      noteGroupBodyOpen('qm.tpch', Promise.resolve());
+      await nextFrame();
+      expect(scrollSpy).toHaveBeenCalledTimes(1);
+      expect(scrollSpy.mock.contexts[0]).toBe(document.getElementById(FIRST));
+      expect(scrollTo).not.toHaveBeenCalled();
+    });
+
+    it('on reload, falls back to the fragment scroll when the saved element is gone', async () => {
+      navigation('reload');
+      sessionStorage.setItem(FIRST_KEY, JSON.stringify({ ...SAVED, slug: 'gone' }));
+      await mount(`/#${FIRST}`);
+
+      noteGroupBodyOpen('qm.tpch', Promise.resolve());
+      await nextFrame();
+      expect(scrollSpy).toHaveBeenCalledTimes(1);
+      expect(scrollSpy.mock.contexts[0]).toBe(document.getElementById(FIRST));
+      expect(scrollTo).not.toHaveBeenCalled();
+    });
+
+    it('falls back to the fragment scroll on Back when storage is blocked', async () => {
+      navigation('back_forward');
+      vi.spyOn(window, 'sessionStorage', 'get').mockImplementation(() => {
+        throw new DOMException('blocked', 'SecurityError');
+      });
+      await mount(`/#${FIRST}`);
+
+      noteGroupBodyOpen('qm.tpch', Promise.resolve());
+      await nextFrame();
+      expect(scrollSpy).toHaveBeenCalledTimes(1);
+      expect(scrollTo).not.toHaveBeenCalled();
+
+      window.dispatchEvent(new Event('pagehide'));
+      expect(onError).not.toHaveBeenCalled();
+    });
+
+    it('lets a later hashchange take over from a pending restore', async () => {
+      navigation('reload');
+      sessionStorage.setItem(FIRST_KEY, JSON.stringify(SAVED));
+      place(chartCard('c2'), 900);
+      await mount(`/#${FIRST}`);
+
+      window.location.hash = 'clickbench';
+      await flush();
+      noteGroupBodyOpen('qm.tpch', Promise.resolve());
+      noteGroupBodyOpen('qm.click', Promise.resolve());
+      await nextFrame();
+      expect(scrollTo).not.toHaveBeenCalled();
+      expect(scrollSpy).toHaveBeenCalledTimes(1);
+      expect(scrollSpy.mock.contexts[0]).toBe(document.getElementById('clickbench'));
+    });
+
+    it('stops a pending restore once unmounted', async () => {
+      navigation('reload');
+      sessionStorage.setItem(FIRST_KEY, JSON.stringify(SAVED));
+      place(chartCard('c2'), 900);
+      await mount(`/#${FIRST}`);
+      await act(async () => {
+        root?.unmount();
+      });
+      root = null;
+
+      noteGroupBodyOpen('qm.tpch', Promise.resolve());
+      await nextFrame();
+      expect(scrollTo).not.toHaveBeenCalled();
+      expect(scrollSpy).not.toHaveBeenCalled();
+    });
   });
 });
