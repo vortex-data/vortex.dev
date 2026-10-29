@@ -26,75 +26,64 @@ const group = (gs: ReturnType<typeof groups>, name: string) => {
   return g;
 };
 
-// The six panels from the fixture: bench's own values in each panel's unit,
-// unrounded, and bench's geomean ratios as the scores. The card prints each
-// value as bench does (benchmark-card.js's formatValue), so the site does not
+// The six panels from the fixture: bench's published geomean scores,
+// unrounded, with bench's coverage where it gives one. The card prints each
+// score as bench does (benchmark-card.js's formatScore), so the site does not
 // round them. Titles join their parts with commas, so a line breaks cleanly.
-const ms = (ns: number) => ns / 1e6;
-const sec = (ns: number) => ns / 1e9;
-const mbs = (gbs: number) => gbs * 1000;
 const PANELS: Panel[] = [
   {
     title: "Scan throughput",
-    unit: "GB/s",
+    unit: "× Parquet",
     kind: "speed",
     better: "higher",
     rows: [
-      { system: "Vortex", value: 52.80140431414844, score: 5.11549948136936 },
-      { system: "Parquet", value: 10.352550037395476, score: 1 },
-      { system: "Lance", value: 8.055826318938774, score: 0.9003144780651322 }
+      { system: "Vortex", score: 5.11549948136936 },
+      { system: "Parquet", score: 1 },
+      { system: "Lance", score: 0.9003144780651322 }
     ]
   },
   {
     title: "Random access, NVMe, cold",
-    unit: "ms",
+    unit: "× fastest",
     kind: "speed",
     better: "lower",
     rows: [
-      { system: "Vortex", value: ms(2714824.5), score: 1.181104702076434 },
-      { system: "Parquet", value: ms(79664887.75), score: 38.20111652800704 },
-      { system: "Lance", value: ms(4562481.25), score: 1.8986894799471206 }
+      { system: "Vortex", score: 1.181104702076434, measured: 4, total: 4 },
+      { system: "Parquet", score: 38.20111652800704, measured: 4, total: 4 },
+      { system: "Lance", score: 1.8986894799471206, measured: 4, total: 4 }
     ]
   },
   {
     title: "Random access, S3, cold",
-    unit: "ms",
+    unit: "× fastest",
     kind: "speed",
     better: "lower",
     rows: [
-      { system: "Vortex", value: ms(267387075.75), score: 1 },
-      { system: "Parquet", value: ms(702031921.25), score: 2.5452014906806983 },
-      { system: "Lance", value: ms(611145129.5), score: 2.184430006681497 }
+      { system: "Vortex", score: 1, measured: 4, total: 4 },
+      { system: "Parquet", score: 2.5452014906806983, measured: 4, total: 4 },
+      { system: "Lance", score: 2.184430006681497, measured: 4, total: 4 }
     ]
   },
   {
     title: "Write throughput",
-    unit: "MB/s",
+    unit: "× Parquet",
     kind: "speed",
     better: "higher",
     rows: [
-      {
-        system: "Vortex",
-        value: mbs(2.126803164522734),
-        score: 1.5744172249047315
-      },
-      { system: "Parquet", value: mbs(1.4890905627917235), score: 1 },
-      {
-        system: "Lance",
-        value: mbs(0.7544222237550358),
-        score: 0.5357674304281903
-      }
+      { system: "Vortex", score: 1.5744172249047315 },
+      { system: "Parquet", score: 1 },
+      { system: "Lance", score: 0.5357674304281903 }
     ]
   },
   {
     title: "ClickBench on DataFusion",
-    unit: "s",
+    unit: "× fastest",
     kind: "speed",
     better: "lower",
     rows: [
-      { system: "Vortex", value: sec(3860580527), score: 1.2606848438809655 },
-      { system: "Parquet", value: sec(5906166895), score: 2.0073889499374 },
-      { system: "Lance", value: sec(48019835749), score: 17.499514076001677 }
+      { system: "Vortex", score: 1.2606848438809655, measured: 43, total: 43 },
+      { system: "Parquet", score: 2.0073889499374, measured: 43, total: 43 },
+      { system: "Lance", score: 17.499514076001677, measured: 43, total: 43 }
     ]
   },
   {
@@ -103,9 +92,9 @@ const PANELS: Panel[] = [
     kind: "size",
     better: "lower",
     rows: [
-      { system: "Vortex", value: 1.0679702496972, score: 1.0679702496972 },
-      { system: "Parquet", value: 1, score: 1 },
-      { system: "Lance", value: 1.9857446360880464, score: 1.9857446360880464 }
+      { system: "Vortex", score: 1.0679702496972 },
+      { system: "Parquet", score: 1 },
+      { system: "Lance", score: 1.9857446360880464 }
     ]
   }
 ];
@@ -122,16 +111,12 @@ describe("panelsFrom", () => {
       (r) => !(r.name === "lance" && r.operation === "decode")
     );
     const scan = panelsFrom(gs)?.[0];
-    assert.deepEqual(scan?.rows[2], {
-      system: "Lance",
-      value: null,
-      score: null
-    });
+    assert.deepEqual(scan?.rows[2], { system: "Lance", score: null });
     // The write panel reads the same group and keeps its Lance row.
-    assert.equal(panelsFrom(gs)?.[3]?.rows[2]?.value, mbs(0.7544222237550358));
+    assert.equal(panelsFrom(gs)?.[3]?.rows[2]?.score, 0.5357674304281903);
   });
 
-  it("treats a system measured on only some datasets as Not measured", () => {
+  it("passes bench's coverage on, so the card can say Not measured", () => {
     const gs = groups();
     const lance = group(gs, "Random Access (NVMe)").summary.coldRankings?.find(
       (r) => r.name === "lance"
@@ -140,12 +125,20 @@ describe("panelsFrom", () => {
     lance.measured = 3;
     assert.deepEqual(panelsFrom(gs)?.[1]?.rows[2], {
       system: "Lance",
-      value: null,
-      score: null
+      score: 1.8986894799471206,
+      measured: 3,
+      total: 4
     });
   });
 
-  it("drops a score that is not a positive number, and keeps the value", () => {
+  it("gives null when no system in a group ran the whole workload", () => {
+    const gs = groups();
+    for (const r of group(gs, "Clickbench").summary.rankings ?? [])
+      r.measured = 1;
+    assert.equal(panelsFrom(gs), null);
+  });
+
+  it("drops a score that is not a positive number", () => {
     const gs = groups();
     const parquet = group(gs, "Clickbench").summary.rankings?.find(
       (r) => r.name === "datafusion:parquet"
@@ -154,8 +147,9 @@ describe("panelsFrom", () => {
     parquet.score = "2.0";
     assert.deepEqual(panelsFrom(gs)?.[4]?.rows[1], {
       system: "Parquet",
-      value: sec(5906166895),
-      score: null
+      score: null,
+      measured: 43,
+      total: 43
     });
   });
 

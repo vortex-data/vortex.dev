@@ -4,11 +4,15 @@ const GROUPS_URL = "https://bench.vortex.dev/api/groups";
 const DAY_SECONDS = 86400;
 const TIMEOUT_MS = 5000;
 
-/** One system in a panel: the value bench shows and bench's geomean ratio. */
+/**
+ * One system in a panel: bench's published geomean score, and how many of
+ * the benchmark's datasets or queries bench ran it on, when bench says.
+ */
 export type Row = {
   system: string;
-  value: number | null;
   score: number | null;
+  measured?: number;
+  total?: number;
 };
 
 /** One panel of the BenchmarkCard, as `benchmark-card.js` reads it. */
@@ -32,13 +36,16 @@ const SYSTEMS = [
 
 type Ranking = Record<string, unknown>;
 
-// Values and scores stay as bench publishes them. The design system's
-// benchmark-card.js prints each value as bench's own summary cards do, by
-// unit, so every figure on the card is one a reader finds on bench, and the
-// bars measure the unrounded values.
+// The card claims bench's score and nothing else: its big figure is
+// Parquet's score against Vortex's, and its bars are the three scores, so
+// the bars show what the figure measures (Charts.md). A timing score is the
+// geomean of a system's time against the fastest series on bench; a
+// throughput or size score is the geomean ratio to Parquet. Scores stay as
+// bench publishes them, and benchmark-card.js prints them as bench does.
 
 type Source = {
   title: string;
+  /** What the scores are measured against. */
   unit: string;
   kind: Panel["kind"];
   better: Panel["better"];
@@ -49,74 +56,63 @@ type Source = {
   name: (format: string) => string;
   /** Extra fields a ranking must match, as the compression group's operation. */
   where?: Ranking;
-  value: (r: Ranking) => unknown;
-  score: (r: Ranking) => unknown;
+  /** The ranking's field that holds the score. */
+  score: "score" | "ratio";
 };
-
-const NS_PER_MS = 1e6;
-const NS_PER_S = 1e9;
-const ns = (r: Ranking, per: number) =>
-  typeof r.totalRuntime === "number" ? r.totalRuntime / per : undefined;
 
 // The six panels, in the card's order, and where bench keeps each one.
 const SOURCES: Source[] = [
   {
     title: "Scan throughput",
-    unit: "GB/s",
+    unit: "× Parquet",
     kind: "speed",
     better: "higher",
     group: "Compression",
     rankings: (s) => s.rankings,
     name: (f) => f,
     where: { operation: "decode" },
-    value: (r) => r.throughputGbS,
-    score: (r) => r.ratio
+    score: "ratio"
   },
   {
     title: "Random access, NVMe, cold",
-    unit: "ms",
+    unit: "× fastest",
     kind: "speed",
     better: "lower",
     group: "Random Access (NVMe)",
     rankings: (s) => s.coldRankings,
     name: (f) => f,
-    value: (r) => ns(r, NS_PER_MS),
-    score: (r) => r.score
+    score: "score"
   },
   {
     title: "Random access, S3, cold",
-    unit: "ms",
+    unit: "× fastest",
     kind: "speed",
     better: "lower",
     group: "Random Access (S3)",
     rankings: (s) => s.coldRankings,
     name: (f) => f,
-    value: (r) => ns(r, NS_PER_MS),
-    score: (r) => r.score
+    score: "score"
   },
   {
     title: "Write throughput",
-    unit: "MB/s",
+    unit: "× Parquet",
     kind: "speed",
     better: "higher",
     group: "Compression",
     rankings: (s) => s.rankings,
     name: (f) => f,
     where: { operation: "encode" },
-    value: (r) =>
-      typeof r.throughputGbS === "number" ? r.throughputGbS * 1000 : undefined,
-    score: (r) => r.ratio
+    score: "ratio"
   },
   {
     title: "ClickBench on DataFusion",
-    unit: "s",
+    unit: "× fastest",
     kind: "speed",
     better: "lower",
     group: "Clickbench",
     rankings: (s) => s.rankings,
     name: (f) => `datafusion:${f}`,
-    value: (r) => ns(r, NS_PER_S),
-    score: (r) => r.score
+    score: "score"
   },
   {
     title: "File size against Parquet + zstd",
@@ -126,8 +122,7 @@ const SOURCES: Source[] = [
     group: "Compression Size",
     rankings: (s) => s.rankings,
     name: (f) => f,
-    value: (r) => r.ratio,
-    score: (r) => r.ratio
+    score: "ratio"
   }
 ];
 
@@ -135,34 +130,38 @@ const isObject = (x: unknown): x is Ranking =>
   typeof x === "object" && x !== null && !Array.isArray(x);
 const positive = (x: unknown): x is number =>
   typeof x === "number" && Number.isFinite(x) && x > 0;
+const count = (x: unknown) =>
+  typeof x === "number" && Number.isInteger(x) && x >= 0 ? x : undefined;
 
-// A system that bench measured on only some of a group's datasets or queries
-// did not run the same workload as the others, so the card shows it as not
-// measured rather than set a partial total beside full ones (Charts.md, and
-// the rule benchmark-card.js applies to `measured < total`).
-const complete = (r: Ranking) =>
-  !(typeof r.measured === "number" && typeof r.total === "number") ||
-  (r.measured > 0 && r.measured >= r.total);
+// Whether bench ran the system on the whole workload, as benchmark-card.js
+// decides it.
+const measured = (r: Row) =>
+  r.score !== null &&
+  !(r.measured !== undefined && r.total !== undefined && r.measured < r.total);
 
+// Bench's coverage passes through: benchmark-card.js shows a system measured
+// on only part of the workload as "Not measured".
 function rowFor(source: Source, rankings: Ranking[], format: string) {
   const name = source.name(format);
   const where = Object.entries(source.where ?? {});
   const r = rankings.find(
     (x) => x.name === name && where.every(([k, v]) => x[k] === v)
   );
-  if (!r || !complete(r)) return { value: null, score: null };
-  const value = source.value(r);
-  const score = source.score(r);
+  if (!r) return { score: null };
+  const score = r[source.score];
+  const measured = count(r.measured);
+  const total = count(r.total);
   return {
-    value: positive(value) ? value : null,
-    score: positive(score) ? score : null
+    score: positive(score) ? score : null,
+    ...(measured === undefined ? {} : { measured }),
+    ...(total === undefined ? {} : { total })
   };
 }
 
 /**
  * The BenchmarkCard's six panels from bench's `/api/groups` payload (its
  * `groups` array). Each panel lists Vortex, Parquet and Lance. A system bench
- * did not report keeps its row with no value, so the card says "Not
+ * did not report keeps its row with no score, so the card says "Not
  * measured". A group that is missing, or that reports none of the three, gives
  * `null`: the card shows six panels or none.
  */
@@ -179,7 +178,7 @@ export function panelsFrom(groups: unknown): Panel[] | null {
       system,
       ...rowFor(source, rankings, format)
     }));
-    if (rows.every((r) => r.value === null)) return null;
+    if (rows.every((r) => !measured(r))) return null;
     const { title, unit, kind, better } = source;
     panels.push({ title, unit, kind, better, rows });
   }

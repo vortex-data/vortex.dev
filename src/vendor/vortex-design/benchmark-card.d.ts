@@ -2,10 +2,8 @@
 
 export type BenchRow = {
   system: string;
-  /** The figure bench shows, or null when bench did not measure it. */
-  value: number | null;
-  /** Bench's published geomean ratio for the system. */
-  score?: number | null;
+  /** Bench's published geomean score for the system, or null when bench did not measure it. */
+  score: number | null;
   /** The datasets or queries bench ran the system on. Below `total`, the row is "Not measured". */
   measured?: number | null;
   /** All the datasets or queries in the benchmark. */
@@ -15,7 +13,7 @@ export type BenchRow = {
 export type BenchPanel = {
   /** The metric's name, with parts a line can break between: "Random access, NVMe, cold". */
   title: string;
-  /** The value's unit. It keeps its case, and sets how values print (see formatValue). */
+  /** What the scores are measured against: "× fastest", "× Parquet", or "×" for file size. */
   unit: string;
   kind: "speed" | "size";
   better: "higher" | "lower";
@@ -24,30 +22,29 @@ export type BenchPanel = {
 
 export type PanelRow = {
   system: string;
-  /** The value, or null when it is not measured. */
-  value: number | null;
-  /** The value as a percentage of the panel's largest, 0 when not measured. */
+  /** The score, or null when it is not measured. */
+  score: number | null;
+  /** The score as a percentage of the panel's largest, 0 when not measured. */
   width: number;
-  /** The value as bench prints it, or "Not measured". */
+  /** The score as bench prints it, or "Not measured". */
   label: string;
   ours: boolean;
 };
 
 export type Versus = {
-  /** At least 1, or null when Vortex or Parquet is not measured. */
+  /** Parquet's score against Vortex's, at least 1, or null when either is not measured. */
   factor: number | null;
   vortexWins: boolean | null;
-  estimated: boolean;
   /** The system that is not measured, Vortex first, or null when both are. */
   missing: "Vortex" | "Parquet" | null;
 };
 
-export function formatValue(value: number, unit: string): string;
+export function formatScore(score: number, unit: string): string;
 
 export function panelRows(
   rows: readonly BenchRow[],
   better: BenchPanel["better"],
-  unit?: string
+  unit: string
 ): PanelRow[];
 
 export function versusParquet(
@@ -59,7 +56,7 @@ export function formatFactor(f: number | null): string;
 
 export function panelNote(
   kind: BenchPanel["kind"],
-  vs: Pick<Versus, "vortexWins" | "estimated"> & Partial<Pick<Versus, "missing">>
+  vs: Pick<Versus, "vortexWins"> & Partial<Pick<Versus, "missing">>
 ): string;
 
 export function renderPanel(panel: BenchPanel): string;

@@ -25,26 +25,26 @@ describe("BenchPanel", () => {
       );
   });
 
-  it("matches renderPanel for a missing system and for estimated factors", () => {
+  it("matches renderPanel for a missing and a partial system", () => {
     const panel: Panel = {
-      title: "Scan throughput",
-      unit: "GB/s",
+      title: "Random access, NVMe, cold",
+      unit: "× fastest",
       kind: "speed",
-      better: "higher",
+      better: "lower",
       rows: [
-        { system: "Vortex", value: 52.8, score: null },
-        { system: "Parquet", value: 10.35, score: null },
-        { system: "Lance", value: null, score: null }
+        { system: "Vortex", score: 1.18, measured: 4, total: 4 },
+        { system: "Parquet", score: 38.2, measured: 3, total: 4 },
+        { system: "Lance", score: null }
       ]
     };
     const html = renderToStaticMarkup(<BenchPanel panel={panel} />);
     assert.equal(html, renderPanel(panel));
-    assert.match(html, /faster than Parquet \(estimated\)/);
-    assert.match(html, /Not measured/);
+    assert.match(html, /Parquet not measured/);
+    assert.equal(html.match(/Not measured/g)?.length, 2);
     const noVortex = {
       ...panel,
       rows: panel.rows.map((r) =>
-        r.system === "Vortex" ? { ...r, value: null } : r
+        r.system === "Vortex" ? { ...r, score: null } : r
       )
     };
     assert.equal(
@@ -81,7 +81,9 @@ describe("BenchmarkCard", () => {
     assert.equal(html.match(/class="vx-bench-panel"/g)?.length, 6);
   });
 
-  it("prints bench's unrounded values as bench's own cards do", () => {
+  // Note 34: the bars and the big figure read the same scores, so NVMe's bars
+  // give the 32× above them, not the 29× that bench's totals gave.
+  it("prints bench's scores as bench does, and the bars agree with the factor", () => {
     assert.ok(PANELS);
     const html = renderToStaticMarkup(
       <BenchmarkCard panels={PANELS} readAt={new Date("2026-10-29")} />
@@ -92,13 +94,17 @@ describe("BenchmarkCard", () => {
     assert.deepEqual(
       values,
       [
-        ["52.80", "10.35", "8.06"],
-        ["2.71", "4.56", "79.66"],
-        ["267.39", "611.15", "702.03"],
-        ["2127", "1489", "754"],
-        ["3.86", "5.91", "48.02"],
+        ["5.12", "1.00", "0.90"],
+        ["1.18", "1.90", "38.20"],
+        ["1.00", "2.18", "2.55"],
+        ["1.57", "1.00", "0.54"],
+        ["1.26", "2.01", "17.50"],
         ["1", "1.07", "1.99"]
       ].flat()
     );
+    const factors = [
+      ...html.matchAll(/class="vx-stat vx-bench-big">([^<]*)</g)
+    ].map((m) => m[1]);
+    assert.deepEqual(factors, ["5.1×", "32×", "2.5×", "1.6×", "1.6×", "1.07×"]);
   });
 });

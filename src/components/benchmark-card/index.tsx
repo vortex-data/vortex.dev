@@ -37,7 +37,7 @@ export function BenchPanel({ panel }: { panel: Panel }) {
           <div key={r.system} className={r.ours ? "vx-bar is-ours" : "vx-bar"}>
             <span>{r.system}</span>
             <span className="vx-bar-track">
-              {r.value !== null && (
+              {r.score !== null && (
                 <span
                   className="vx-bar-fill"
                   style={{ width: `${Math.max(1.5, r.width)}%` }}
