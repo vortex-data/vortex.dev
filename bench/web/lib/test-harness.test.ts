@@ -16,7 +16,9 @@ describe('testDatabaseSettings', () => {
   });
 
   it('decodes the password and defaults the port and admin database', () => {
-    expect(testDatabaseSettings('postgresql://will:p%40ss@localhost')).toEqual({
+    // A made-up credential for the parser, not a secret.
+    const url = 'postgresql://will:p%40ss@localhost'; // trufflehog:ignore
+    expect(testDatabaseSettings(url)).toEqual({
       host: 'localhost',
       port: 5432,
       user: 'will',
