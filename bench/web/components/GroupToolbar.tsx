@@ -13,7 +13,6 @@ import {
   getGlobalFilterSnapshot,
   getGroupSnapshot,
   groupSeriesIsVisible,
-  initGroupFilter,
   resetGroup,
   setGroupY,
   setShowEmptyCharts,
@@ -22,16 +21,15 @@ import {
   toggleGroupSeries,
 } from '@/lib/chart-store';
 
-const NO_INITIAL_HIDDEN_SERIES: string[] = [];
-const NO_INITIAL_SHOWN_SERIES: string[] = [];
-
 /**
  * The per-group toolbar between a group's summary card and its chart grid, the
  * client port of `landing.rs::per_group_toolbar` plus the section-17 wiring of
  * `chart-init.js`: group-level Y-axis buttons on the left, a centered "Filter
  * series" dropdown, and an empty-charts toggle plus a Reset button on the
- * right. CSS hides the toolbar while the enclosing `<details>` is closed,
- * mirroring the chart-grid rule.
+ * right. It mounts only while its group is open: [`GroupBody`] renders it,
+ * with the chart grid, inside the open `<details>`. The URL's series overrides
+ * are seeded once per page load by the body, not here, so a reopen keeps the
+ * user's changes.
  *
  * The empty-charts toggle appears only once the group's hydration (the bundle
  * fetch or per-chart fallbacks) has classified at least one chart as having no
@@ -51,13 +49,9 @@ const NO_INITIAL_SHOWN_SERIES: string[] = [];
 export function GroupToolbar({
   groupSlug,
   universe,
-  initialHiddenSeries = NO_INITIAL_HIDDEN_SERIES,
-  initialShownSeries = NO_INITIAL_SHOWN_SERIES,
 }: {
   groupSlug: string;
   universe: FilterUniverse;
-  initialHiddenSeries?: string[];
-  initialShownSeries?: string[];
 }) {
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -78,12 +72,6 @@ export function GroupToolbar({
     getGlobalFilterSnapshot,
     getGlobalFilterSnapshot,
   );
-
-  // Restore a shared group permalink after mount. This preserves any series
-  // metadata that chart hydration has already added to the same store.
-  useEffect(() => {
-    initGroupFilter(groupSlug, initialHiddenSeries, initialShownSeries);
-  }, [groupSlug, initialHiddenSeries, initialShownSeries]);
 
   // Close on outside click and on Escape, mirroring the global dropdown.
   useEffect(() => {

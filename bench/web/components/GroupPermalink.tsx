@@ -13,17 +13,20 @@ const COPIED_FEEDBACK_MS = 1500;
 
 /**
  * Build the shareable URL for a group: the landing page with the group's
- * human-readable anchor (see `lib/anchor.ts`) as the fragment. When the group
- * has local series overrides, repeated `hide` and `show` parameters preserve
- * them and a `group` parameter carries the same readable anchor. Other query
- * parameters, such as the global engine and format filters, stay unchanged.
- * [`GroupSection`] stamps the anchor as the section's `id`, so the fragment is
- * a real anchor even without JavaScript; with JavaScript, [`GroupNav`]'s
- * hash-jump effect also expands the group's disclosure on load.
+ * human-readable anchor (see `lib/anchor.ts`) as the fragment, so the link
+ * opens that one group whatever else is open now. When the group has local
+ * series overrides, repeated `hide` and `show` parameters preserve them and a
+ * `group` parameter carries the same readable anchor. Other query parameters,
+ * such as the global engine and format filters, stay unchanged.
+ * [`GroupSection`] stamps the anchor as the section's `id`, so the fragment
+ * names a real element on the page. On load, the pre-paint script
+ * ([`OpenGroupsScript`]) opens the group before it paints ([`LandingState`]
+ * does after a client navigation), and on a fresh visit `LandingState` scrolls
+ * to it, unless the reader moved before hydration.
  *
  * Anchors are already fragment-safe (`[a-z0-9-]`), but the fragment is
  * percent-encoded anyway so a future anchor shape cannot silently produce an
- * invalid URL; the hash-jump effect decodes symmetrically.
+ * invalid URL; the fragment reader (`parseOpenFragment`) decodes each token.
  *
  * Exported so the URL shape is unit-testable without a clipboard.
  */
@@ -52,10 +55,13 @@ export function groupPermalinkUrl(
 /**
  * The copy-link button in a group's summary header. Clicking it copies the
  * group's permalink (see [`groupPermalinkUrl`]) to the clipboard, including
- * its current series overrides. It mirrors the URL into the address bar
- * via `history.replaceState` (so the URL is shareable even where the Clipboard
- * API is unavailable, e.g. plain-HTTP dev hosts), and swaps the link glyph for
- * a checkmark for a moment as confirmation.
+ * its current series overrides, and once the copy has succeeded swaps the
+ * link glyph for a checkmark for a moment as confirmation.
+ *
+ * It leaves the address bar alone: the fragment there holds the page's open
+ * groups (`lib/open-groups.ts`), not a single group's link. Where the browser
+ * has no Clipboard API (plain-HTTP hosts) or refuses the write, nothing was
+ * copied, so the button claims nothing.
  *
  * The button lives inside the disclosure's `<summary>`, where any unhandled
  * click toggles the group open/closed; `preventDefault` suppresses that
@@ -72,17 +78,34 @@ export function GroupPermalink({
 }) {
   const [copied, setCopied] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mountedRef = useRef(false);
 
   // Cancel a pending feedback reset on unmount so it never fires after the
-  // island is gone.
-  useEffect(
-    () => () => {
+  // island is gone, and note the unmount so a copy that settles later shows
+  // nothing.
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
       if (timerRef.current !== null) {
         clearTimeout(timerRef.current);
       }
-    },
-    [],
-  );
+    };
+  }, []);
+
+  const showCopied = (): void => {
+    if (!mountedRef.current) {
+      return;
+    }
+    setCopied(true);
+    if (timerRef.current !== null) {
+      clearTimeout(timerRef.current);
+    }
+    timerRef.current = setTimeout(() => {
+      setCopied(false);
+      timerRef.current = null;
+    }, COPIED_FEEDBACK_MS);
+  };
 
   return (
     <button
@@ -102,22 +125,15 @@ export function GroupPermalink({
           snapshot.shownSeries,
           window.location,
         );
-        // Reflect the URL in the address bar first: it is the no-clipboard
-        // fallback, and replaceState does not navigate, so the page stays put.
-        const next = new URL(url);
-        window.history.replaceState(null, '', `${next.pathname}${next.search}${next.hash}`);
-        void navigator.clipboard?.writeText(url).catch(() => {
-          // Clipboard denied or unavailable: the address bar already carries
-          // the fragment, so there is nothing further to do.
-        });
-        setCopied(true);
-        if (timerRef.current !== null) {
-          clearTimeout(timerRef.current);
+        // Older browsers and plain-HTTP hosts have no Clipboard API.
+        const clipboard = navigator.clipboard as Clipboard | undefined;
+        if (clipboard === undefined) {
+          return;
         }
-        timerRef.current = setTimeout(() => {
-          setCopied(false);
-          timerRef.current = null;
-        }, COPIED_FEEDBACK_MS);
+        void clipboard.writeText(url).then(showCopied, () => {
+          // The browser refused the write: nothing was copied, so the button
+          // does not say otherwise.
+        });
       }}
     >
       {copied ? <CheckIcon /> : <LinkIcon />}

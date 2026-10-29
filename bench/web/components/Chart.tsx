@@ -6,7 +6,12 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 
 import { ChartController } from '@/components/chart/controller';
-import { LAZY_HYDRATION_ROOT_MARGIN, throttle, ZOOM_THROTTLE_MS } from '@/lib/chart-format';
+import {
+  chartPriority,
+  LAZY_HYDRATION_ROOT_MARGIN,
+  throttle,
+  ZOOM_THROTTLE_MS,
+} from '@/lib/chart-format';
 import {
   abortGroupBundle,
   chartIsHiddenAsEmpty,
@@ -44,10 +49,15 @@ import type { ChartResponse } from '@/lib/queries';
  *   tooltip markup, `dataset.data` rebuilds) stay imperative on refs, exactly
  *   as v3 mutated the DOM; React state is reserved for low-frequency bits (the
  *   Y-button highlight, the loading/error indicators).
- * - Group open/close stays native `<details>` behavior; the island listens for
- *   the `toggle` event of its enclosing disclosure (fired for both user and
- *   scripted changes, which is how Expand All reaches the islands without a
- *   shared React tree).
+ * - Group open/close stays native `<details>` behavior. On the landing page the
+ *   island exists only while its group is open: [`GroupBody`] mounts the cards
+ *   on the disclosure's `toggle` event (fired for user clicks and for scripted
+ *   `open` writes such as Expand All), and at hydration, from a layout effect,
+ *   for a group that is already open (the pre-paint script opened it, or the
+ *   reader did before hydration). It unmounts them on close, so teardown
+ *   runs through the mount effect's cleanup and `ChartController.destroy()`.
+ *   The island's own `toggle` listener only disarms early when a close reaches
+ *   it before React unmounts the island.
  */
 
 /** Props for one chart island. */
@@ -210,16 +220,18 @@ export function Chart({ slug, name, index, groupSlug, initialPayload }: ChartIsl
       // Landing page: hydrate each card lazily when it scrolls near the viewport
       // (reusing the permalink page's IntersectionObserver shape), so opening a
       // big group hydrates only the ~visible charts, top-first by visual index,
-      // and the rest hydrate on scroll. The `toggle` event also fires for
-      // scripted `details.open` writes, which is how Expand All reaches every
-      // island. Closing the group disconnects the observer and aborts in-flight
-      // fetches; reopening re-arms.
+      // and the rest hydrate on scroll. The island mounts only into an open
+      // group (see [`GroupBody`]), so it arms at mount. Closing the group
+      // unmounts it: the cleanup below disconnects the observer, `destroy()`
+      // aborts its fetches, and GroupBody aborts the bundle. A reopen mounts a
+      // fresh island. The `toggle` listener disarms early only if the close
+      // reaches it before React unmounts the island.
       // Top cards drain first: priority `0` for the first card, negative `index`
       // for the rest (the queue sorts highest-priority-first). The `index === 0`
       // branch yields `+0` not `-0`; runtime sorting treats them identically, but
       // the visual-order test asserts `Math.max(...).toBe(0)`, and `toBe`'s
       // `Object.is` check distinguishes `-0` from `0`.
-      const priority = index === 0 ? 0 : -index;
+      const priority = chartPriority(index);
       // The bundle kick + close abort only run on the landing page, where the
       // island has a group slug; bind a non-null local so the closures below can
       // pass it without re-narrowing.

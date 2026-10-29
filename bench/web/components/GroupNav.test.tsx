@@ -8,16 +8,11 @@ import { createRoot, type Root } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import {
-  GroupNav,
-  jumpToGroup,
-  jumpToLocationHash,
-  type GroupNavItem,
-} from '@/components/GroupNav';
+import { GroupNav, jumpToGroup, type GroupNavItem } from '@/components/GroupNav';
 
 const GROUPS: GroupNavItem[] = [
-  { name: 'Random Access', slug: 'random_access.abc', anchor: 'random-access' },
-  { name: 'PolarSignals Profiling', slug: 'qmg.polar', anchor: 'polarsignals-profiling' },
+  { name: 'Random Access', slug: 'random_access.abc' },
+  { name: 'PolarSignals Profiling', slug: 'qmg.polar' },
 ];
 
 describe('GroupNav markup', () => {
@@ -82,63 +77,6 @@ describe('jumpToGroup', () => {
     expect(jumpToGroup('does-not-exist', document)).toBe(false);
     expect(scrollSpy).not.toHaveBeenCalled();
   });
-
-  describe('jumpToLocationHash', () => {
-    afterEach(() => {
-      window.history.replaceState(null, '', '/');
-    });
-
-    it('expands and scrolls to the group whose anchor id the fragment names', () => {
-      seedSections();
-      const scrollSpy = vi.fn();
-      Element.prototype.scrollIntoView = scrollSpy;
-      window.history.replaceState(null, '', '#random-access');
-
-      expect(jumpToLocationHash(document)).toBe(true);
-      const disclosure = document
-        .querySelector('#random-access')
-        ?.querySelector<HTMLDetailsElement>('details.group-disclosure');
-      expect(disclosure?.open).toBe(true);
-      expect(scrollSpy).toHaveBeenCalledTimes(1);
-    });
-
-    it('falls back to the opaque-slug match for legacy fragments, decoding them', () => {
-      seedSections();
-      const scrollSpy = vi.fn();
-      Element.prototype.scrollIntoView = scrollSpy;
-      // Links copied before anchors became readable carried the API slug,
-      // percent-encoded by GroupPermalink; the jump decodes symmetrically.
-      window.history.replaceState(null, '', `#${encodeURIComponent('random_access.abc')}`);
-
-      expect(jumpToLocationHash(document)).toBe(true);
-      const disclosure = document
-        .querySelector('[data-group-slug="random_access.abc"]')
-        ?.querySelector<HTMLDetailsElement>('details.group-disclosure');
-      expect(disclosure?.open).toBe(true);
-      expect(scrollSpy).toHaveBeenCalledTimes(1);
-    });
-
-    it('is a no-op for an empty or unknown fragment', () => {
-      seedSections();
-      const scrollSpy = vi.fn();
-      Element.prototype.scrollIntoView = scrollSpy;
-
-      expect(jumpToLocationHash(document)).toBe(false);
-      window.history.replaceState(null, '', '#does-not-exist');
-      expect(jumpToLocationHash(document)).toBe(false);
-      expect(scrollSpy).not.toHaveBeenCalled();
-    });
-
-    it('ignores fragments naming a non-group element id', () => {
-      seedSections();
-      const scrollSpy = vi.fn();
-      Element.prototype.scrollIntoView = scrollSpy;
-      window.history.replaceState(null, '', '#group-nav-panel');
-
-      expect(jumpToLocationHash(document)).toBe(false);
-      expect(scrollSpy).not.toHaveBeenCalled();
-    });
-  });
 });
 
 describe('GroupNav jump-menu clicks', () => {
@@ -153,7 +91,7 @@ describe('GroupNav jump-menu clicks', () => {
     window.history.replaceState(null, '', '/');
   });
 
-  it('expands the group, mirrors its anchor into the URL, and closes the panel', () => {
+  it('opens the group, adds it to the fragment, and closes the panel', () => {
     (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
     document.body.innerHTML = `
       <section id="random-access" data-group-slug="random_access.abc">
@@ -188,6 +126,33 @@ describe('GroupNav jump-menu clicks', () => {
     expect(disclosure?.open).toBe(true);
     expect(scrollSpy).toHaveBeenCalledTimes(1);
     expect(container.querySelector('.group-nav-panel--open')).toBeNull();
+  });
+
+  it('adds the group to the fragment after groups already open, in page order', () => {
+    (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+    document.body.innerHTML = `
+      <section id="polarsignals-profiling" data-group-slug="qmg.polar">
+        <details class="group-disclosure" open><summary>PolarSignals</summary></details>
+      </section>
+      <section id="random-access" data-group-slug="random_access.abc">
+        <details class="group-disclosure"><summary>Random Access</summary></details>
+      </section>`;
+    Element.prototype.scrollIntoView = vi.fn();
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    root = createRoot(container);
+    act(() => {
+      root?.render(<GroupNav groups={GROUPS} />);
+    });
+
+    const link = Array.from(container.querySelectorAll<HTMLButtonElement>('.group-nav-link')).find(
+      (b) => b.textContent === 'Random Access',
+    );
+    act(() => {
+      link?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    });
+
+    expect(window.location.hash).toBe('#polarsignals-profiling,random-access');
   });
 
   it('does not touch the URL when the jump target is missing', () => {

@@ -113,28 +113,34 @@ describe('GroupPermalink click behavior', () => {
     return { button, details };
   }
 
-  it('copies the permalink, mirrors the fragment, and never toggles the disclosure', () => {
+  /** Click the button and let the clipboard write settle. */
+  async function click(button: HTMLButtonElement): Promise<MouseEvent> {
+    const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+    await act(async () => {
+      button.dispatchEvent(event);
+    });
+    return event;
+  }
+
+  it('copies a link to this one group and leaves the address bar alone', async () => {
+    window.history.replaceState(null, '', '/?engine=duckdb#clickbench,random-access');
+    const before = window.location.href;
     const { button, details } = mount();
 
-    const click = new MouseEvent('click', { bubbles: true, cancelable: true });
-    act(() => {
-      button.dispatchEvent(click);
-    });
+    const event = await click(button);
 
-    expect(copiedText).toEqual([`${window.location.origin}/#random-access`]);
-    expect(window.location.hash).toBe('#random-access');
+    expect(copiedText).toEqual([`${window.location.origin}/?engine=duckdb#random-access`]);
+    expect(window.location.href).toBe(before);
     // preventDefault suppresses the <summary> activation that would otherwise
     // toggle the group open.
-    expect(click.defaultPrevented).toBe(true);
+    expect(event.defaultPrevented).toBe(true);
     expect(details.open).toBe(false);
   });
 
-  it('shows the copied state, then reverts after the feedback window', () => {
+  it('shows the copied state, then reverts after the feedback window', async () => {
     const { button } = mount();
 
-    act(() => {
-      button.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
-    });
+    await click(button);
     expect(button.className).toContain('group-permalink--copied');
 
     act(() => {
@@ -143,36 +149,49 @@ describe('GroupPermalink click behavior', () => {
     expect(button.className).not.toContain('group-permalink--copied');
   });
 
-  it('copies and mirrors the current group-local series filter', () => {
+  it.each(['missing', 'rejected'])(
+    'does not claim a copy the browser refused (%s)',
+    async (clipboard) => {
+      Object.defineProperty(navigator, 'clipboard', {
+        value:
+          clipboard === 'missing'
+            ? undefined
+            : {
+                writeText: () => Promise.reject(new DOMException('denied', 'NotAllowedError')),
+              },
+        configurable: true,
+      });
+      const { button } = mount();
+
+      await click(button);
+
+      expect(button.className).not.toContain('group-permalink--copied');
+      expect(button.querySelector('[role="status"]')?.textContent).toBe('');
+    },
+  );
+
+  it('copies the current group-local series filter', async () => {
     const { button } = mount();
     toggleGroupSeries('random_access', 'duckdb:vortex');
     toggleGroupSeries('random_access', 'datafusion parquet');
 
-    act(() => {
-      button.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
-    });
+    await click(button);
 
     expect(copiedText).toEqual([
       `${window.location.origin}/?group=random-access&hide=datafusion+parquet&hide=duckdb%3Avortex#random-access`,
     ]);
-    expect(window.location.search).toBe(
-      '?group=random-access&hide=datafusion+parquet&hide=duckdb%3Avortex',
-    );
   });
 
-  it('preserves a local override that restores a globally hidden series', () => {
+  it('preserves a local override that restores a globally hidden series', async () => {
     const { button } = mount();
     initGlobalFilter({ engines: [], formats: ['parquet', 'lance'] }, [], []);
     noteGroupSeries('random_access', { lance: { format: 'lance' } });
     toggleGroupSeries('random_access', 'lance');
 
-    act(() => {
-      button.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
-    });
+    await click(button);
 
     expect(copiedText).toEqual([
       `${window.location.origin}/?group=random-access&show=lance#random-access`,
     ]);
-    expect(window.location.search).toBe('?group=random-access&show=lance');
   });
 });
