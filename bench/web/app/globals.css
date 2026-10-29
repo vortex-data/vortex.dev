@@ -410,39 +410,6 @@ main {
   font-style: italic;
 }
 
-.summary-loading {
-  display: grid;
-  min-height: calc(100vh - var(--header-height) - 5rem);
-  place-items: center;
-}
-
-.summary-loading-panel {
-  width: min(28rem, 100%);
-  padding: 2.5rem;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--card-bg);
-  box-shadow: var(--shadow-md);
-  text-align: center;
-}
-
-.summary-loading-panel h2 {
-  margin: 1rem 0 0.25rem;
-  font-size: 1.25rem;
-}
-
-.summary-loading-panel p {
-  margin: 0;
-  color: var(--muted);
-  font-size: 0.875rem;
-}
-
-.chart-spinner.summary-loading-spinner {
-  width: 1.75rem;
-  height: 1.75rem;
-  border-width: 3px;
-}
-
 .group-details {
   width: 100%;
   max-width: none;

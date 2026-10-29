@@ -256,13 +256,16 @@ headline, and its summary table, both server-rendered. Its toolbar and cards
 ([`GroupBody`](../../web/components/GroupBody.tsx)) mount only while it is open,
 so a collapsed group hydrates no island. The open groups live in
 the URL fragment (`/#compression,clickbench`), which the CDN never sees. An
-inline script after the last group
-([`OpenGroupsScript`](../../web/components/OpenGroupsScript.tsx)) opens them
-while they are still in React's hidden streamed segment, so a reload or Back
-never shows them collapsed first. It also leaves a marker for the client code: a
-group the reader opens or closes before hydration stays that way, and a reader
-who scrolls, touches, clicks or presses a key before hydration is not moved,
-neither by the restore nor by the scroll to a link's first group. Scroll is
+inline script before the first group
+([`OpenGroupsScript`](../../web/components/OpenGroupsScript.tsx)) opens each
+listed group as soon as the parser inserts it: its `MutationObserver` callback
+runs before the browser can paint the new nodes. So a reload or Back never
+shows them collapsed first, even on a connection slow enough that the first
+groups paint before the last arrive. A second script after the last group ends
+the work and leaves a marker for the client code: a group the reader opens or
+closes before hydration stays that way, and a reader who scrolls, touches,
+clicks or presses a key before hydration is not moved, neither by the restore
+nor by the scroll to a link's first group. Scroll is
 restored by element, not by pixel
 ([`lib/scroll-restore.ts`](../../web/lib/scroll-restore.ts)): the open bodies
 mount only after hydration, so a saved `scrollY` would land against a shorter
@@ -278,8 +281,7 @@ with one-off scripts that are not in this repository.
 - The groups first paint at 413 → 182 ms. First contentful paint rises
   124 → 184 ms, because the previous build first paints its "Loading benchmark
   summaries…" card and shows it until its 2.3 MB page has parsed. The new page
-  is small enough that its first paint already shows the groups; the card shows
-  only while a slow network holds them back.
+  is small enough that its first paint already shows the groups.
 - Back and Reload with two groups open put the same card within 1 px of its
   saved offset. The reader sees the top of the page for 1–2 frames, then that
   spot. The Layout Instability API scores these loads at 1.4–1.8. It counts
@@ -288,6 +290,24 @@ with one-off scripts that are not in this repository.
   two scrolls cancel both, so the reader sees no shift after the jump.
 - Expand All mounts all 791 islands in the toggle tasks that follow the click:
   574 ms of blocking time against 500 ms.
+
+The landing page has no Suspense boundary. With one, the groups streamed into a
+hidden segment that only React's inline script reveals, so a reader with
+JavaScript off saw the "Loading benchmark summaries…" card and nothing else.
+Now the server sends the groups as visible HTML, and the browser shows nothing
+until they have been read. Measured as above against the build before the
+change (511c316), the cold runs on a server restarted with an empty Data Cache:
+
+- Data Cache miss: time to first byte 40 → 586 ms, first contentful paint
+  184 → 772 ms. The old first paint was the loading card; its groups were laid
+  out at 613 ms, the new page's at 628 ms.
+- Data Cache hit: time to first byte 12 → 13 ms, first contentful paint
+  96 → 176 ms. The old page laid its groups out at 368 ms, after React's reveal;
+  the new first paint already holds them.
+- In production a miss costs the cold database read, seconds after an idle gap
+  (see "The cost being hidden"), which a reader now spends on a blank page
+  rather than on the card. The CDN and the 24-hour Data Cache backstop keep
+  misses rare.
 
 ### Visual downsampling (LTTB)
 

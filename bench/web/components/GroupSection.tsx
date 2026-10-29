@@ -24,11 +24,8 @@ const NO_INITIAL_SHOWN_SERIES: string[] = [];
  * by default, whose only content is the `<summary>` row; then the group's
  * [`SummaryCard`]; then its [`GroupBody`]. The summary card sits outside the
  * `<details>`, so a collapsed group still shows its rankings table, and it is
- * server-rendered, so it shows before hydration. Opening the group mounts the
- * body's toolbar and charts below the card. (With JavaScript off, the page
- * shows no group at all: the groups stream inside the landing page's Suspense
- * boundary, whose hidden segment only React's inline script reveals; see
- * `app/page.tsx`.)
+ * server-rendered, so it shows before hydration and with JavaScript off.
+ * Opening the group mounts the body's toolbar and charts below the card.
  *
  * [`GroupBody`] is a client component. It server-renders as an empty
  * `<div class="group-body">` and mounts the group toolbar (group Y override,

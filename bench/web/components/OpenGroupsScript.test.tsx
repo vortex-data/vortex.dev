@@ -9,7 +9,11 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
 import { GroupSection } from '@/components/GroupSection';
-import { OPEN_GROUPS_BOOTSTRAP, OpenGroupsScript } from '@/components/OpenGroupsScript';
+import {
+  OPEN_GROUPS_BOOTSTRAP,
+  OPEN_GROUPS_FINISH,
+  OpenGroupsScript,
+} from '@/components/OpenGroupsScript';
 import { groupAnchors } from '@/lib/anchor';
 import type { FilterUniverse } from '@/lib/chart-format';
 import {
@@ -41,8 +45,7 @@ function load(hash: string, beforeParse?: (window: DOMWindow) => void) {
   const html = renderToStaticMarkup(
     <main>
       <div id="group-nav-panel" />
-      {SECTIONS}
-      <OpenGroupsScript />
+      <OpenGroupsScript>{SECTIONS}</OpenGroupsScript>
     </main>,
   );
   const virtualConsole = new VirtualConsole();
@@ -90,16 +93,30 @@ function spellings(word: string, count: number): string[] {
 }
 
 describe('OpenGroupsScript', () => {
-  it('renders the constant bootstrap as it is', () => {
-    expect(renderToStaticMarkup(<OpenGroupsScript />)).toBe(
-      `<script data-role="open-groups-bootstrap">${OPEN_GROUPS_BOOTSTRAP}</script>`,
+  it('renders the constant scripts as they are, before the first group and after the last', () => {
+    expect(
+      renderToStaticMarkup(
+        <OpenGroupsScript>
+          <section id="g" />
+        </OpenGroupsScript>,
+      ),
+    ).toBe(
+      `<script data-role="open-groups-bootstrap">${OPEN_GROUPS_BOOTSTRAP}</script>` +
+        '<section id="g"></section>' +
+        `<script data-role="open-groups-finish">${OPEN_GROUPS_FINISH}</script>`,
     );
   });
 
-  it('is ES5 wrapped in a try, so no browser fails to parse it and no error escapes', () => {
-    expect(OPEN_GROUPS_BOOTSTRAP).toMatch(/^\(function\(\)\{try\{.*\}catch\(e\)\{\}\}\)\(\);$/);
-    expect(OPEN_GROUPS_BOOTSTRAP).not.toMatch(/=>|`|\blet\b|\bconst\b|\bclass\b/);
-  });
+  it.each([
+    ['bootstrap', OPEN_GROUPS_BOOTSTRAP],
+    ['finish step', OPEN_GROUPS_FINISH],
+  ])(
+    'keeps the %s ES5 wrapped in a try, so no browser fails to parse it and no error escapes',
+    (_, script) => {
+      expect(script).toMatch(/^\(function\(\)\{try\{.*\}catch\(e\)\{\}\}\)\(\);$/);
+      expect(script).not.toMatch(/=>|`|\blet\b|\bconst\b|\bclass\b/);
+    },
+  );
 
   it('opens the listed groups while the page parses', () => {
     const { doc, errors } = load('#clickbench,tpc-h-nvme-sf-1');
@@ -213,6 +230,117 @@ describe('OpenGroupsScript', () => {
       });
       expect(takeOpenGroupsBootstrap(doc)).toBeNull();
       expect(errors).toEqual([]);
+    });
+  });
+
+  // On a slow connection the browser paints the first groups before the rest
+  // have arrived, so each listed group must open as soon as it is parsed. The
+  // observer runs at the end of the parser task that inserted the group,
+  // before the browser can paint it; `settle` lets it run.
+  describe('while the page is still arriving', () => {
+    const SECTION_HTML = SECTIONS.map((section) => renderToStaticMarkup(section));
+
+    /** A page whose `<main>` holds only the bootstrap, as a browser has it
+     * before the first group arrives. `append` adds markup to the end of
+     * `<main>`, as the parser does, and `finish` runs the finish step. */
+    function stream(hash: string) {
+      const virtualConsole = new VirtualConsole();
+      const errors: unknown[] = [];
+      virtualConsole.on('jsdomError', (e) => errors.push(e));
+      const dom = new JSDOM(
+        `<!DOCTYPE html><body><main><script>${OPEN_GROUPS_BOOTSTRAP}</script></main></body>`,
+        { url: `https://bench.vortex.dev/${hash}`, runScripts: 'dangerously', virtualConsole },
+      );
+      const doc = dom.window.document;
+      const main = doc.querySelector('main');
+      if (main === null) {
+        throw new Error('no main');
+      }
+      return {
+        window: dom.window,
+        doc,
+        main,
+        errors,
+        append: (html: string) => main.insertAdjacentHTML('beforeend', html),
+        settle: () => new Promise((resolve) => setTimeout(resolve, 0)),
+        finish: () => {
+          const script = doc.createElement('script');
+          script.textContent = OPEN_GROUPS_FINISH;
+          main.appendChild(script);
+        },
+      };
+    }
+
+    it('opens a listed group as soon as it is parsed, before the later groups arrive', async () => {
+      const page = stream('#random-access');
+      page.append(SECTION_HTML[0]!);
+      await page.settle();
+      expect(openAnchors(page.doc)).toEqual([]);
+
+      page.append(SECTION_HTML[1]!);
+      await page.settle();
+      expect(openAnchors(page.doc)).toEqual(['random-access']);
+      // The marker waits for the finish step.
+      expect((page.doc as unknown as Record<string, unknown>).__benchOpenGroups).toBeUndefined();
+
+      page.append(SECTION_HTML[2]!);
+      page.finish();
+      expect(openAnchors(page.doc)).toEqual(['random-access']);
+      expect(takeOpenGroupsBootstrap(page.doc)).toEqual({ input: false });
+      expect(page.errors).toEqual([]);
+    });
+
+    it('opens a listed group whose disclosure arrives after its section', async () => {
+      const page = stream('#random-access');
+      const section = page.doc.createElement('section');
+      section.id = 'random-access';
+      section.setAttribute('data-group-slug', 'random_access.eyJ');
+      page.main.appendChild(section);
+      await page.settle();
+
+      const details = page.doc.createElement('details');
+      details.className = 'group-disclosure';
+      section.appendChild(details);
+      await page.settle();
+      expect(details.open).toBe(true);
+    });
+
+    it('keeps closed a listed group the reader closed before the last group arrived', async () => {
+      const page = stream('#tpc-h-nvme-sf-1,clickbench');
+      page.append(SECTION_HTML[0]!);
+      await page.settle();
+      expect(openAnchors(page.doc)).toEqual(['tpc-h-nvme-sf-1']);
+
+      const first = page.doc.querySelector<HTMLDetailsElement>('details.group-disclosure');
+      if (first === null) {
+        throw new Error('no disclosure');
+      }
+      first.open = false;
+      page.append(SECTION_HTML[1]! + SECTION_HTML[2]!);
+      await page.settle();
+      page.finish();
+      expect(openAnchors(page.doc)).toEqual(['clickbench']);
+    });
+
+    it('opens a group the fragment lists by its slug only at the end, when no group can still claim it as an anchor', async () => {
+      const page = stream(`#${encodeURIComponent('random_access.eyJ')}`);
+      for (const html of SECTION_HTML) {
+        page.append(html);
+        await page.settle();
+      }
+      expect(openAnchors(page.doc)).toEqual([]);
+
+      page.finish();
+      expect(openAnchors(page.doc)).toEqual(['random-access']);
+    });
+
+    it('records input from before the last group arrived', () => {
+      const page = stream('#clickbench');
+      page.append(SECTION_HTML[0]!);
+      page.window.dispatchEvent(new page.window.Event('keydown'));
+      page.append(SECTION_HTML[1]! + SECTION_HTML[2]!);
+      page.finish();
+      expect(takeOpenGroupsBootstrap(page.doc)).toEqual({ input: true });
     });
   });
 });

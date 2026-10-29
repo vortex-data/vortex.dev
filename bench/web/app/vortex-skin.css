@@ -84,7 +84,6 @@ body {
 
 /* 6px cards, 4px controls. Circles (the info icon, spinners, swatches) keep their 50%. */
 .group-details,
-.summary-loading-panel,
 .chart-card {
   border-radius: 6px;
 }
