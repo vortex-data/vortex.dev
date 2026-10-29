@@ -45,13 +45,14 @@
   container-type: size;
 }
 
-/* The mark scales with its host's height, and loses its sides in a host
-   taller than about its width. So the host is never taller than 9/10 of the
-   cell's width, and sits in the cell's middle. */
+/* The mark scales with its host's height. In a host taller than it is wide
+   the mark shrinks to keep its sides (fitFov), so the host is at most square,
+   and sits in the cell's middle. Square keeps the mark at the size it had
+   when the text column was narrower. */
 .markHost {
   position: absolute;
   inset: 0;
-  height: min(100cqh, 90cqw);
+  height: min(100cqh, 100cqw);
   margin: auto 0;
 }
 
