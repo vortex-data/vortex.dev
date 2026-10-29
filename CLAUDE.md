@@ -9,7 +9,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `bun lint` - Run Biome lint
 - `bun start` - Start production server
 
-bench is a member of the root Bun workspace. `bun install` at the root installs both apps; run bench's scripts with `bun run --cwd bench/web <script>`: `dev`, `build`, `lint`, `format`, `format:check`, `test`. `lint` and `format` are Biome, as at the root. The Postgres integration suite needs Docker and skips without it.
+bench is a member of the root Bun workspace. `bun install` at the root installs both apps; run bench's scripts with `bun run --cwd bench/web <script>`: `dev`, `build`, `lint`, `format`, `format:check`, `test`. `lint` and `format` are Biome, as at the root. The Postgres integration suite needs Docker or a local Postgres named by `BENCH_TEST_DATABASE_URL` (`bench/web/README.md` has the commands), and skips without either, except when `CI=true`, where it fails.
 
 ## Repository layout
 

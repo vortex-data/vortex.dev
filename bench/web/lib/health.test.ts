@@ -2,16 +2,21 @@
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import type { StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import { collectHealth } from './health';
 import { resetPool } from './db';
-import { dockerAvailable, startBenchContainer } from './test-harness';
+import {
+  type BenchDatabase,
+  integrationDatabaseAvailable,
+  startBenchDatabase,
+} from './test-harness';
 
-describe.skipIf(!dockerAvailable())('collectHealth (testcontainers Postgres)', () => {
-  let container: StartedPostgreSqlContainer;
+const databaseAvailable = integrationDatabaseAvailable();
+
+describe.skipIf(!databaseAvailable)('collectHealth (testcontainers Postgres)', () => {
+  let container: BenchDatabase;
 
   beforeAll(async () => {
-    container = await startBenchContainer({ applySchema: false });
+    container = await startBenchDatabase({ applySchema: false });
     vi.stubEnv('VERCEL_GIT_COMMIT_SHA', undefined);
   });
 

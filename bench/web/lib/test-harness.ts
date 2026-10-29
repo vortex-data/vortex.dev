@@ -2,24 +2,75 @@
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
 /**
- * Shared testcontainers harness for the DB-backed vitest suites. This module
- * is imported only by `*.test.ts` files; it never reaches a production bundle.
+ * Shared harness for the DB-backed vitest suites. This module is imported only
+ * by `*.test.ts` files; it never reaches a production bundle.
  *
  * It centralizes the pieces the suites previously copy-pasted (and that had
- * already begun to drift in name): the Docker probe, the migration runner, the
- * container-boot + `BENCH_DB_*` env wiring, and the canonical three-commit
+ * already begun to drift in name): the database probe, the migration runner,
+ * the database boot + `BENCH_DB_*` env wiring, and the canonical three-commit
  * chart fixture mirroring `server/tests/common/mod.rs`.
+ *
+ * A suite gets its database from one of two places. With
+ * `BENCH_TEST_DATABASE_URL` set it gets a throwaway database on that server;
+ * otherwise it gets a throwaway Postgres container from Docker.
  */
 
 import { execFileSync, execSync } from 'node:child_process';
+import { randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
-import type { Pool } from 'pg';
+import { PostgreSqlContainer } from '@testcontainers/postgresql';
+import { Client, type Pool } from 'pg';
 
-// Mirror the repo's Python `_docker_available()` precedent: the integration
-// tests need a Docker daemon, so they are skipped (not failed) when one is
-// absent.
-export function dockerAvailable(): boolean {
+/** A disposable Postgres database. Callers own teardown: resetPool(), then stop(). */
+export interface BenchDatabase {
+  stop(): Promise<void>;
+}
+
+/** How to reach the server named by `BENCH_TEST_DATABASE_URL`. */
+export interface TestDatabaseSettings {
+  host: string;
+  port: number;
+  user: string;
+  password: string;
+  adminDatabase: string;
+}
+
+const URL_VARIABLE = 'BENCH_TEST_DATABASE_URL';
+
+/** Trust auth ignores the password, but `BENCH_DB_PASSWORD` must not be empty. */
+const TRUST_PASSWORD = 'trust';
+
+/** Serializes first applies of the migrations: they create cluster-wide roles, and two at once
+ * race on `CREATE ROLE`. The two keys spell "benc" and "test". */
+const MIGRATION_LOCK_KEYS: readonly [number, number] = [0x62656e63, 0x74657374];
+
+/** Read the server address from a `postgres://user[:password]@host[:port][/database]` URL. */
+export function testDatabaseSettings(url: string): TestDatabaseSettings {
+  const invalid = new Error(
+    `${URL_VARIABLE} must be a postgres:// URL that names a user, such as ` +
+      'postgres://postgres@127.0.0.1:55433/postgres',
+  );
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw invalid;
+  }
+  if ((parsed.protocol !== 'postgres:' && parsed.protocol !== 'postgresql:') || !parsed.username) {
+    throw invalid;
+  }
+  return {
+    host: parsed.hostname.replace(/^\[|\]$/g, ''),
+    port: parsed.port === '' ? 5432 : Number(parsed.port),
+    user: decodeURIComponent(parsed.username),
+    password: parsed.password === '' ? TRUST_PASSWORD : decodeURIComponent(parsed.password),
+    adminDatabase: decodeURIComponent(parsed.pathname.slice(1)) || 'postgres',
+  };
+}
+
+// Mirror the repo's Python `_docker_available()` precedent: without a database
+// URL, the integration tests need a Docker daemon.
+function dockerAvailable(): boolean {
   try {
     execSync('docker info', { stdio: 'ignore' });
     return true;
@@ -28,48 +79,161 @@ export function dockerAvailable(): boolean {
   }
 }
 
-/** Start a disposable Postgres instance and apply the actual migration runner.
- * Callers own teardown: resetPool(), then container.stop(). Requires uv on PATH.
+/** Whether the integration suites can get a database: `BENCH_TEST_DATABASE_URL` is set, or Docker
+ * runs. The suites skip (not fail) when neither is true, except in CI, where a skip would let a
+ * broken runner pass with the database suites silently off, so it throws.
  */
-export async function startBenchContainer(
-  options: { applySchema?: boolean } = {},
-): Promise<StartedPostgreSqlContainer> {
-  const container = await new PostgreSqlContainer('postgres:16-alpine').start();
-  process.env.BENCH_DB_HOST = container.getHost();
-  process.env.BENCH_DB_PORT = String(container.getPort());
-  process.env.BENCH_DB_NAME = container.getDatabase();
-  process.env.BENCH_DB_USER = container.getUsername();
-  process.env.BENCH_DB_PASSWORD = container.getPassword();
+export function integrationDatabaseAvailable(
+  env: Readonly<Record<string, string | undefined>> = process.env,
+  docker: () => boolean = dockerAvailable,
+): boolean {
+  const url = env[URL_VARIABLE];
+  if (url !== undefined && url !== '') {
+    return true;
+  }
+  if (docker()) {
+    return true;
+  }
+  if (env.CI === 'true') {
+    throw new Error(
+      `The integration tests need Docker or ${URL_VARIABLE}, and CI has neither. Refusing to skip them.`,
+    );
+  }
+  return false;
+}
+
+/** Apply the actual migration runner to one database. Requires uv on PATH. */
+function applyMigrations(settings: {
+  host: string;
+  port: number;
+  database: string;
+  user: string;
+  password: string;
+}): void {
+  execFileSync(
+    'uv',
+    [
+      'run',
+      '--no-project',
+      fileURLToPath(new URL('../../scripts/migrate-schema.py', import.meta.url)),
+      'apply',
+    ],
+    {
+      env: {
+        ...process.env,
+        PGHOST: settings.host,
+        PGPORT: String(settings.port),
+        PGDATABASE: settings.database,
+        PGUSER: settings.user,
+        PGPASSWORD: settings.password,
+        PGSSLMODE: 'disable',
+      },
+      stdio: 'pipe',
+    },
+  );
+}
+
+function exportConnectionEnv(settings: {
+  host: string;
+  port: number;
+  database: string;
+  user: string;
+  password: string;
+}): void {
+  process.env.BENCH_DB_HOST = settings.host;
+  process.env.BENCH_DB_PORT = String(settings.port);
+  process.env.BENCH_DB_NAME = settings.database;
+  process.env.BENCH_DB_USER = settings.user;
+  process.env.BENCH_DB_PASSWORD = settings.password;
   process.env.BENCH_DB_SSL = 'disable';
-  if (options.applySchema !== false) {
+}
+
+async function withAdminClient<T>(
+  settings: TestDatabaseSettings,
+  run: (admin: Client) => Promise<T>,
+): Promise<T> {
+  const admin = new Client({
+    host: settings.host,
+    port: settings.port,
+    user: settings.user,
+    password: settings.password,
+    database: settings.adminDatabase,
+    ssl: false,
+  });
+  await admin.connect();
+  try {
+    return await run(admin);
+  } finally {
+    await admin.end();
+  }
+}
+
+/** Create a throwaway database on the server `BENCH_TEST_DATABASE_URL` names. */
+async function startDatabaseOnServer(
+  settings: TestDatabaseSettings,
+  applySchema: boolean,
+): Promise<BenchDatabase> {
+  const name = `bench_test_${process.pid}_${randomBytes(4).toString('hex')}`;
+  const drop = (): Promise<void> =>
+    withAdminClient(settings, async (admin) => {
+      await admin.query(`DROP DATABASE IF EXISTS "${name}" WITH (FORCE)`);
+    });
+
+  await withAdminClient(settings, async (admin) => {
+    await admin.query('SELECT pg_advisory_lock($1, $2)', [...MIGRATION_LOCK_KEYS]);
     try {
-      execFileSync(
-        'uv',
-        [
-          'run',
-          '--no-project',
-          fileURLToPath(new URL('../../scripts/migrate-schema.py', import.meta.url)),
-          'apply',
-        ],
-        {
-          env: {
-            ...process.env,
-            PGHOST: container.getHost(),
-            PGPORT: String(container.getPort()),
-            PGDATABASE: container.getDatabase(),
-            PGUSER: container.getUsername(),
-            PGPASSWORD: container.getPassword(),
-            PGSSLMODE: 'disable',
-          },
-          stdio: 'pipe',
-        },
-      );
+      await admin.query(`CREATE DATABASE "${name}"`);
+      if (applySchema) {
+        try {
+          applyMigrations({ ...settings, database: name });
+        } catch (error) {
+          await drop();
+          throw error;
+        }
+      }
+    } finally {
+      await admin.query('SELECT pg_advisory_unlock($1, $2)', [...MIGRATION_LOCK_KEYS]);
+    }
+  });
+  exportConnectionEnv({ ...settings, database: name });
+  return { stop: drop };
+}
+
+/** Start a disposable Postgres database and apply the actual migration runner. With
+ * `BENCH_TEST_DATABASE_URL` set it creates a database on that server; otherwise it starts a
+ * container. Callers own teardown: resetPool(), then stop(). Requires uv on PATH.
+ */
+export async function startBenchDatabase(
+  options: { applySchema?: boolean } = {},
+): Promise<BenchDatabase> {
+  const applySchema = options.applySchema !== false;
+  const url = process.env[URL_VARIABLE];
+  if (url !== undefined && url !== '') {
+    return startDatabaseOnServer(testDatabaseSettings(url), applySchema);
+  }
+
+  const container = await new PostgreSqlContainer('postgres:16-alpine').start();
+  const settings = {
+    host: container.getHost(),
+    port: container.getPort(),
+    database: container.getDatabase(),
+    user: container.getUsername(),
+    password: container.getPassword(),
+  };
+  exportConnectionEnv(settings);
+  if (applySchema) {
+    try {
+      applyMigrations(settings);
     } catch (error) {
       await container.stop();
       throw error;
     }
   }
-  return container;
+  return {
+    stop: async () => {
+      await container.stop();
+    },
+  };
 }
 
 // The canonical web UI fixture contains three oldest-first commits. Vortex and

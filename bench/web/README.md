@@ -17,8 +17,25 @@ bun run --cwd bench/web dev           # needs BENCH_DB_* pointing at a database 
 bun run --cwd bench/web format:check  # biome format
 bun run --cwd bench/web lint          # biome lint
 bun run --cwd bench/web build         # next build; deliberately works WITHOUT a database
-bun run --cwd bench/web test          # vitest; the Postgres integration suite needs Docker and uv
+bun run --cwd bench/web test          # vitest; the Postgres integration suite needs Docker, or BENCH_TEST_DATABASE_URL, and uv
 ```
+
+Without Docker, run the integration suite against a local Postgres. This starts a throwaway
+cluster in `$TMPDIR` on port 55433, which stays clear of the parity cluster on 55432. `--locale=C`
+matches the collation of the CI container:
+
+```bash
+PG=/opt/homebrew/opt/postgresql@16/bin
+$PG/initdb -D "$TMPDIR/bench-test-pg" -U postgres -A trust -E UTF8 --locale=C
+$PG/pg_ctl -D "$TMPDIR/bench-test-pg" -l "$TMPDIR/bench-test-pg.log" -w start \
+  -o "-p 55433 -c listen_addresses=127.0.0.1 -c unix_socket_directories= -c fsync=off"
+export BENCH_TEST_DATABASE_URL=postgres://postgres@127.0.0.1:55433/postgres
+```
+
+`BENCH_TEST_DATABASE_URL` names an existing server, as a superuser, and its admin database. Each
+suite creates a `bench_test_*` database there and drops it when it ends. Stop the cluster with
+`$PG/pg_ctl -D "$TMPDIR/bench-test-pg" stop`. In CI (`CI=true`), a runner with neither Docker nor
+the variable fails the suite instead of skipping it.
 
 `next build` never touches the database: every page and route is request-rendered
 (`force-dynamic` or request-URL-dependent), so builds are reproducible with no `BENCH_DB_*`

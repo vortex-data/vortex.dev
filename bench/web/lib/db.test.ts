@@ -2,9 +2,12 @@
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import { Signer } from '@aws-sdk/rds-signer';
-import { dockerAvailable, startBenchContainer } from './test-harness';
+import {
+  type BenchDatabase,
+  integrationDatabaseAvailable,
+  startBenchDatabase,
+} from './test-harness';
 import {
   buildQuery,
   getPool,
@@ -34,15 +37,17 @@ vi.mock('@aws-sdk/rds-signer', () => ({
   }),
 }));
 
-describe.skipIf(!dockerAvailable())('db pool roundtrip (testcontainers Postgres)', () => {
-  let container: StartedPostgreSqlContainer;
+const databaseAvailable = integrationDatabaseAvailable();
+
+describe.skipIf(!databaseAvailable)('db pool roundtrip (testcontainers Postgres)', () => {
+  let container: BenchDatabase;
 
   beforeAll(async () => {
     // The pool roundtrip needs no schema; the BENCH_DB_PASSWORD fixture path
     // set by the harness means IAM token generation is bypassed.
     vi.stubEnv('BENCH_DB_POOL_MAX', '1');
     vi.stubEnv('BENCH_DB_CONNECTION_TIMEOUT_MS', '1000');
-    container = await startBenchContainer({ applySchema: false });
+    container = await startBenchDatabase({ applySchema: false });
   });
 
   afterAll(async () => {

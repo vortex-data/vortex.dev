@@ -13,7 +13,6 @@ vi.mock('next/cache', () => ({
   revalidateTag: () => {},
 }));
 
-import type { StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import {
   collectGroupCharts,
   collectGroups,
@@ -26,10 +25,11 @@ import { READ_API_CACHE_CONTROL } from './cache';
 import { collectGroupSummary } from './summary';
 import { chartKeyToSlug, groupKeyFromSlug, groupKeyToSlug } from './slug';
 import {
+  type BenchDatabase,
   commitUrl,
-  dockerAvailable,
+  integrationDatabaseAvailable,
   seedChartFixture,
-  startBenchContainer,
+  startBenchDatabase,
   TREE_SHA,
 } from './test-harness';
 import { parseCommitWindow } from './window';
@@ -44,16 +44,18 @@ function expectDefined<T>(value: T | null | undefined, message: string): T {
   return value;
 }
 
+const databaseAvailable = integrationDatabaseAvailable();
+
 // The canonical fixture's summary maths (ratio 2.0, geomean 0.5, the query
 // missing-series penalty) reproduce the v2-contract values asserted by
 // `server/tests/group_api.rs`; see `seedChartFixture` in `./test-harness`.
-describe.skipIf(!dockerAvailable())(
+describe.skipIf(!databaseAvailable)(
   'collectGroups + group endpoints (testcontainers Postgres)',
   () => {
-    let container: StartedPostgreSqlContainer;
+    let container: BenchDatabase;
 
     beforeAll(async () => {
-      container = await startBenchContainer();
+      container = await startBenchDatabase();
       await seedChartFixture(getPool());
     });
 
@@ -363,8 +365,8 @@ describe.skipIf(!dockerAvailable())(
 //  Query-summary penalty model:
 //  - the 300_000 ns penalty floor is exercised (all runtimes below it) so a
 //    missing query flips the ranking, pinning the floor + ratio formula.
-describe.skipIf(!dockerAvailable())('summary math fidelity (testcontainers Postgres)', () => {
-  let container: StartedPostgreSqlContainer;
+describe.skipIf(!databaseAvailable)('summary math fidelity (testcontainers Postgres)', () => {
+  let container: BenchDatabase;
   let measurementId = 0;
 
   function nextId(): number {
@@ -415,7 +417,7 @@ describe.skipIf(!dockerAvailable())('summary math fidelity (testcontainers Postg
   }
 
   beforeAll(async () => {
-    container = await startBenchContainer();
+    container = await startBenchDatabase();
   });
 
   afterAll(async () => {
@@ -858,16 +860,16 @@ describe.skipIf(!dockerAvailable())('summary math fidelity (testcontainers Postg
 // NULL-stamped row must not beat an older stamped row; an all-NULL series must
 // still appear via the fallback arm), and most of the discovery successor's
 // NULL-partition branches never execute. This block seeds exactly those shapes.
-describe.skipIf(!dockerAvailable())(
+describe.skipIf(!databaseAvailable)(
   'read-path skip-scan fidelity (testcontainers Postgres)',
   () => {
-    let container: StartedPostgreSqlContainer;
+    let container: BenchDatabase;
 
     const COMMIT_A = 'a'.repeat(40);
     const COMMIT_B = 'b'.repeat(40);
 
     beforeAll(async () => {
-      container = await startBenchContainer();
+      container = await startBenchDatabase();
       const pool = getPool();
       // COMMIT_B is NEWER than COMMIT_A: the NULLS-LAST probe must still prefer
       // COMMIT_A's stamped row over COMMIT_B's unstamped one.
