@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
 /**
- * The one-line headline on a folded landing-page group: how Vortex compares
+ * The one-line headline in a landing-page group's header row: how Vortex compares
  * with Parquet, derived from the `summary` the group already carries.
  *
  * Pure and server-safe. It reads the same rankings the summary card shows and

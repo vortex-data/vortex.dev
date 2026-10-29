@@ -19,29 +19,29 @@ const NO_INITIAL_SHOWN_SERIES: string[] = [];
  * One group's landing-page section, the server-component port of
  * `server/src/html/landing.rs`'s per-group markup.
  *
- * Everything lives inside one native `<details class="group-disclosure">`,
- * folded by default: the `<summary>` row, then the group's [`SummaryCard`],
- * then its [`GroupBody`]. Nothing follows the `<details>` inside the section.
- * While folded, the browser itself hides everything but the summary row, so
- * this holds before hydration too. The summary card is server-rendered, so an
- * open group shows its rankings before hydration. (With JavaScript off, the
- * page shows no group at all: the groups stream inside the landing page's
- * Suspense boundary, whose hidden segment only React's inline script reveals;
- * see `app/page.tsx`.)
+ * The section holds a native `<details class="group-disclosure">`, collapsed
+ * by default, whose only content is the `<summary>` row; then the group's
+ * [`SummaryCard`]; then its [`GroupBody`]. The summary card sits outside the
+ * `<details>`, so a collapsed group still shows its rankings table, and it is
+ * server-rendered, so it shows before hydration. Opening the group mounts the
+ * body's toolbar and charts below the card. (With JavaScript off, the page
+ * shows no group at all: the groups stream inside the landing page's Suspense
+ * boundary, whose hidden segment only React's inline script reveals; see
+ * `app/page.tsx`.)
  *
  * [`GroupBody`] is a client component. It server-renders as an empty
  * `<div class="group-body">` and mounts the group toolbar (group Y override,
  * series filter, empty-charts toggle, reset) and the chart grid only while the
- * disclosure is open, unmounting them on close. A folded group therefore ships
- * no chart markup and hydrates no chart island. Each chart is a [`Chart`]
+ * disclosure is open, unmounting them on close. A collapsed group therefore
+ * ships no chart markup and hydrates no chart island. Each chart is a [`Chart`]
  * island carrying `data-chart-slug` and a page-unique `data-chart-index`; the
  * island lazily loads its data through the group's bundle when it mounts into
  * an open group, and keeps listening for the disclosure's native `toggle`
  * event.
  *
  * The summary row ends with the group's headline (`lib/headline.ts`): one line
- * of text saying how Vortex compares with Parquet, so a folded group still
- * says something. It is plain text inside the `<summary>`; the tone on each
+ * of text saying how Vortex compares with Parquet, so the row alone says how
+ * the group came out. It is plain text inside the `<summary>`; the tone on each
  * part only styles it, and a slower result reads in words, never by color
  * alone. A group whose summary has nothing honest to say shows no headline.
  *
@@ -130,16 +130,16 @@ export function GroupSection({
             )}
           </span>
         </summary>
-        <SummaryCard summary={group.summary} />
-        <GroupBody
-          groupSlug={group.slug}
-          charts={group.charts}
-          startIndex={startIndex}
-          universe={universe}
-          initialHiddenSeries={initialHiddenSeries}
-          initialShownSeries={initialShownSeries}
-        />
       </details>
+      <SummaryCard summary={group.summary} />
+      <GroupBody
+        groupSlug={group.slug}
+        charts={group.charts}
+        startIndex={startIndex}
+        universe={universe}
+        initialHiddenSeries={initialHiddenSeries}
+        initialShownSeries={initialShownSeries}
+      />
     </section>
   );
 }

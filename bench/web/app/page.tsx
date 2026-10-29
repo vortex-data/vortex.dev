@@ -30,9 +30,9 @@ export const dynamic = 'force-dynamic';
 
 /**
  * The landing page: a server-rendered section per group in canonical
- * `GROUP_ORDER`, each a folded row with its headline that opens to its summary
- * card, per-group toolbar and a grid of chart-card client islands (mounted
- * only while the group is open). `data-chart-index` is assigned page-wide so
+ * `GROUP_ORDER`, each collapsed to its header row (with the headline) and its
+ * summary card, and opening to its per-group toolbar and a grid of chart-card
+ * client islands (mounted only while the group is open). `data-chart-index` is assigned page-wide so
  * each chart's index is unique across every group (matching v3's
  * `landing_body` counter).
  *
@@ -55,7 +55,7 @@ export const dynamic = 'force-dynamic';
  * The content (`HomeContent`) renders inside a Suspense boundary. A browser
  * gets it streamed into a hidden segment that React reveals with an inline
  * script, so with JavaScript off it never shows: a reader without JavaScript
- * sees only the [`HomeLoading`] fallback. This predates the folded page.
+ * sees only the [`HomeLoading`] fallback. This predates the collapsed groups.
  */
 export default async function Home({
   searchParams,

@@ -132,7 +132,7 @@ describe('GroupSection', () => {
     expect(html).toContain('aria-label="Copy link to Random Access"');
   });
 
-  it('renders the summary card inside the disclosure, after the summary row', () => {
+  it('renders the summary card after the disclosure, so a collapsed group shows it', () => {
     const html = renderToStaticMarkup(
       <GroupSection
         group={RANDOM_ACCESS}
@@ -141,15 +141,16 @@ describe('GroupSection', () => {
         universe={UNIVERSE}
       />,
     );
-    // The card sits between `</summary>` and `</details>`, so the browser
-    // shows it only while the group is open, with or without JavaScript.
+    // The `<details>` holds only the summary row; the card follows it, so the
+    // browser shows the card whether the group is open or not.
     const card = html.indexOf('benchmark-scores-summary--random-access');
-    expect(card).toBeGreaterThan(html.indexOf('</summary>'));
-    expect(card).toBeLessThan(html.indexOf('</details>'));
+    expect(html).toContain('</summary></details>');
+    expect(card).toBeGreaterThan(html.indexOf('</details>'));
+    expect(card).toBeLessThan(html.indexOf('class="group-body"'));
     expect(html).toContain('>Hot</h3>');
   });
 
-  it('renders an empty group body and no chart or toolbar markup while folded', () => {
+  it('renders an empty group body and no chart or toolbar markup while collapsed', () => {
     const html = renderToStaticMarkup(
       <GroupSection
         group={RANDOM_ACCESS}
@@ -159,9 +160,9 @@ describe('GroupSection', () => {
       />,
     );
     // The body mounts its toolbar and chart cards only once the group opens.
-    // It is the disclosure's last child, and nothing follows the disclosure.
+    // It is the section's last child, after the disclosure and the card.
     expect(html).toContain('<div class="group-body"></div>');
-    expect(html.endsWith('<div class="group-body"></div></details></section>')).toBe(true);
+    expect(html.endsWith('<div class="group-body"></div></section>')).toBe(true);
     expect(html).not.toContain('class="chart-card"');
     expect(html).not.toContain('data-role="group-toolbar"');
     expect(html).not.toContain('<canvas');

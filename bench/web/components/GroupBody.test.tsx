@@ -106,8 +106,8 @@ describe('GroupBody', () => {
   async function render(open = false, props: Partial<GroupBodyProps> = {}): Promise<void> {
     container.innerHTML =
       '<section class="group-details" data-group-slug="g">' +
-      `<details class="group-disclosure"${open ? ' open' : ''}><summary>g</summary>` +
-      '<div id="body"></div></details>' +
+      `<details class="group-disclosure"${open ? ' open' : ''}><summary>g</summary></details>` +
+      '<div id="body"></div>' +
       '</section>';
     body = container.querySelector('#body') as HTMLElement;
     root = createRoot(body);
@@ -125,7 +125,7 @@ describe('GroupBody', () => {
     });
   }
 
-  it('renders an empty body while folded', () => {
+  it('renders an empty body while collapsed', () => {
     expect(renderToStaticMarkup(<GroupBody {...PROPS} />)).toBe('<div class="group-body"></div>');
   });
 

@@ -181,8 +181,9 @@ gated by an `IntersectionObserver` with `LAZY_HYDRATION_ROOT_MARGIN = '300px
 0px'` (a card begins hydrating just before it scrolls into view) and scheduled by
 `priority = -index` so the top cards render first. Only the ~6 visible charts
 hydrate on open; the rest hydrate on scroll. The initial latest-100 fetches are
-capped per tab (`HYDRATION_CONCURRENCY = 4`). A folded group has no islands at
-all: its cards mount only when it opens (see "A folded landing page" below).
+capped per tab (`HYDRATION_CONCURRENCY = 4`). A collapsed group has no islands
+at all: its cards mount only when it opens (see "Collapsed groups on the landing
+page" below).
 
 ### Full history is opt-in
 
@@ -240,16 +241,17 @@ first. The cache is per-session by design: a close/reopen costs zero fetches, an
 the small staleness window for an already-open tab after a server-side
 revalidation is accepted (a refresh gets fresh data).
 
-### A folded landing page
+### Collapsed groups on the landing page
 
-Every group starts folded, one row with its Vortex-vs-Parquet headline. Its
-toolbar and cards ([`GroupBody`](../../web/components/GroupBody.tsx)) mount only
-while it is open, so a folded group hydrates no island. The open groups live in
+Every group starts collapsed: its header row, with the Vortex-vs-Parquet
+headline, and its summary table, both server-rendered. Its toolbar and cards
+([`GroupBody`](../../web/components/GroupBody.tsx)) mount only while it is open,
+so a collapsed group hydrates no island. The open groups live in
 the URL fragment (`/#compression,clickbench`), which the CDN never sees. An
 inline script after the last group
 ([`OpenGroupsScript`](../../web/components/OpenGroupsScript.tsx)) opens them
 while they are still in React's hidden streamed segment, so a reload or Back
-never shows them folded first. It also leaves a marker for the client code: a
+never shows them collapsed first. It also leaves a marker for the client code: a
 group the reader opens or closes before hydration stays that way, and a reader
 who scrolls, touches, clicks or presses a key before hydration is not moved,
 neither by the restore nor by the scroll to a link's first group. Scroll is

@@ -30,10 +30,11 @@ export interface GroupBodyProps {
 
 /**
  * The open part of a landing-page group: its [`GroupToolbar`] and its chart
- * grid, one [`Chart`] island per chart. It renders inside the group's
- * `<details class="group-disclosure">`, after the summary card, and mounts its
- * content only while that disclosure is open. A folded group therefore ships
- * an empty `<div class="group-body">` and hydrates no chart island.
+ * grid, one [`Chart`] island per chart. It renders in the group's section,
+ * after the `<details class="group-disclosure">` and the summary card, and
+ * mounts its content only while that disclosure is open. A collapsed group
+ * therefore ships an empty `<div class="group-body">` and hydrates no chart
+ * island.
  *
  * Open state stays native `<details>` behavior. The body listens for the
  * disclosure's `toggle` event, which fires for user clicks and for scripted
@@ -67,7 +68,9 @@ export function GroupBody({
   }, [groupSlug, initialHiddenSeries, initialShownSeries]);
 
   useLayoutEffect(() => {
-    const details = ref.current?.closest<HTMLDetailsElement>('details.group-disclosure');
+    const details = ref.current
+      ?.closest('.group-details')
+      ?.querySelector<HTMLDetailsElement>('details.group-disclosure');
     if (!details) {
       return;
     }

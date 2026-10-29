@@ -96,7 +96,7 @@ describe.skipIf(!databaseAvailable || !BUILD_PRESENT)(
       await container.stop();
     });
 
-    it('serves the landing page with header chrome and folded group rows, and no chart islands', async () => {
+    it('serves the landing page with header chrome and collapsed groups, and no chart islands', async () => {
       const html = await (await fetch(`${BASE}/`)).text();
       // Header chrome (PR-4.4.b islands, server-rendered).
       expect(html).toContain('data-role="nav-mobile-toggle"');
@@ -106,7 +106,7 @@ describe.skipIf(!databaseAvailable || !BUILD_PRESENT)(
       // The fixture's engines surface as filter chips via collectFilterUniverse.
       expect(html).toContain('data-value="datafusion"');
       expect(html).toContain('data-value="duckdb"');
-      // Folded group rows with their headlines. Each group body is empty until
+      // Collapsed groups with their headlines. Each group body is empty until
       // its group opens, so no toolbar or chart-card island is in the HTML.
       expect(html).toContain('class="group-details"');
       expect(html).toContain('class="group-body"');

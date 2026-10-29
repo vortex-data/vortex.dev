@@ -580,7 +580,7 @@ describe('PR-5.0.97 group-bundle hydration', () => {
     await act(async () => {
       await Promise.resolve();
     });
-    // Folded: no island exists, so nothing observes or fetches.
+    // Collapsed: no island exists, so nothing observes or fetches.
     expect(container.querySelectorAll('.chart-card')).toHaveLength(0);
     expect(MockIO.instances).toHaveLength(0);
     expect(fetchCalls).toEqual([]);

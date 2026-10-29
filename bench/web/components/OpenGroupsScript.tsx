@@ -5,7 +5,7 @@
  * The pre-paint bootstrap for the landing page's open groups: it opens the
  * groups the URL fragment lists before the browser first paints them, so a
  * reload, Back from a chart page or a shared link shows those groups open at
- * once, with no flash of folded rows. The scroll is not the browser's: once
+ * once, with no flash of collapsed groups. The scroll is not the browser's: once
  * the open groups' bodies mount, `LandingState` restores it by element
  * (`lib/scroll-restore.ts`).
  *

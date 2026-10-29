@@ -696,6 +696,12 @@ main {
   margin: 0;
 }
 
+/* A collapsed group ends with its summary card: the section's own border
+ * closes it. */
+.group-disclosure:not([open]) ~ .benchmark-scores-summary {
+  border-bottom: 0;
+}
+
 .group-body > .chart-grid .chart-card:last-child {
   margin-bottom: 0;
 }
