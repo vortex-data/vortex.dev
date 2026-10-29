@@ -160,7 +160,7 @@ function createPool(config: DbConfig = readConfig()): Pool {
 
 // A single pool is shared across warm serverless invocations and survives
 // Next.js dev HMR module reloads by caching on `globalThis`.
-const globalForPool = globalThis as unknown as { __benchDbPool?: Pool };
+const globalForPool = globalThis as unknown as { __benchDbPool?: Pool | undefined };
 
 /** Returns the process-wide singleton connection pool, creating it on first use. */
 export function getPool(): Pool {

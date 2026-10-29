@@ -85,9 +85,9 @@ describe.skipIf(!databaseAvailable)(
       if (summary.type !== 'randomAccess') {
         throw new Error(`expected randomAccess summary, got ${summary.type}`);
       }
-      expect(summary.hotRankings[0].name).toBe('vortex-file-compressed');
-      expect(summary.hotRankings[1].name).toBe('parquet');
-      expect(summary.hotRankings[2].name).toBe('arrow-ipc');
+      expect(summary.hotRankings[0]!.name).toBe('vortex-file-compressed');
+      expect(summary.hotRankings[1]!.name).toBe('parquet');
+      expect(summary.hotRankings[2]!.name).toBe('arrow-ipc');
       expect(summary.coldRankings.map((r) => r.name)).toEqual([
         'vortex-file-compressed',
         'parquet',
@@ -95,12 +95,12 @@ describe.skipIf(!databaseAvailable)(
       ]);
       // The fixture's newest commit has vortex=100_500 and parquet=201_000 on
       // the one `taxi` chart. Arrow IPC is 301_500 on the same chart.
-      expect(summary.hotRankings[0].score).toBeCloseTo(1.0, 6);
-      expect(summary.hotRankings[1].score).toBeCloseTo(1.9999005, 6);
-      expect(summary.hotRankings[2].score).toBeCloseTo(2.999801, 6);
-      expect(summary.hotRankings[0].totalRuntime).toBeCloseTo(100_500, 6);
-      expect(summary.hotRankings[1].totalRuntime).toBeCloseTo(201_000, 6);
-      expect(summary.hotRankings[2].totalRuntime).toBeCloseTo(301_500, 6);
+      expect(summary.hotRankings[0]!.score).toBeCloseTo(1.0, 6);
+      expect(summary.hotRankings[1]!.score).toBeCloseTo(1.9999005, 6);
+      expect(summary.hotRankings[2]!.score).toBeCloseTo(2.999801, 6);
+      expect(summary.hotRankings[0]!.totalRuntime).toBeCloseTo(100_500, 6);
+      expect(summary.hotRankings[1]!.totalRuntime).toBeCloseTo(201_000, 6);
+      expect(summary.hotRankings[2]!.totalRuntime).toBeCloseTo(301_500, 6);
       expect(summary.hotRankings.map((r) => [r.measured, r.total])).toEqual([
         [1, 1],
         [1, 1],
@@ -119,9 +119,9 @@ describe.skipIf(!databaseAvailable)(
       }
       expect(summary.title).toBe('Vector Search Performance');
       expect(summary.rankings.map((r) => r.name)).toEqual(['vortex-turboquant']);
-      expect(summary.rankings[0].score).toBeCloseTo(1.0, 6);
+      expect(summary.rankings[0]!.score).toBeCloseTo(1.0, 6);
       // The newest commit's value for the group's single threshold.
-      expect(summary.rankings[0].totalRuntime).toBeCloseTo(107_000, 6);
+      expect(summary.rankings[0]!.totalRuntime).toBeCloseTo(107_000, 6);
     });
 
     it('computes compression rankings with Parquet and Lance baselines', async () => {
@@ -193,9 +193,9 @@ describe.skipIf(!databaseAvailable)(
       if (summary.type !== 'queryBenchmark') {
         throw new Error(`expected queryBenchmark summary, got ${summary.type}`);
       }
-      expect(summary.rankings[0].name).toBe('datafusion:vortex-file-compressed');
-      expect(summary.rankings[1].name).toBe('duckdb:parquet');
-      expect(summary.rankings[0].score).toBeLessThan(summary.rankings[1].score);
+      expect(summary.rankings[0]!.name).toBe('datafusion:vortex-file-compressed');
+      expect(summary.rankings[1]!.name).toBe('duckdb:parquet');
+      expect(summary.rankings[0]!.score).toBeLessThan(summary.rankings[1]!.score);
       // Exact geomean scores pin the penalty model (not just the ordering). At the
       // latest commit datafusion has Q1=1_100_000, Q2=700_000 and duckdb has only
       // Q1=900_000; bestByQuery is {Q1: 900_000, Q2: 700_000}. datafusion scores
@@ -203,10 +203,10 @@ describe.skipIf(!databaseAvailable)(
       // missing Q2 so it takes the penalty max(900_000,300_000)*2 = 1_800_000,
       // scoring sqrt(1 * (10+1_800_000)/(10+700_000)) = sqrt(1800010/700010). The
       // penalty is what pushes duckdb (best raw Q1) below datafusion.
-      expect(summary.rankings[0].score).toBeCloseTo(1.10554, 5);
-      expect(summary.rankings[1].score).toBeCloseTo(1.60356, 5);
+      expect(summary.rankings[0]!.score).toBeCloseTo(1.10554, 5);
+      expect(summary.rankings[1]!.score).toBeCloseTo(1.60356, 5);
       // datafusion series has Q1 + Q2; duckdb series has Q1 only.
-      expect(summary.rankings[0].totalRuntime).toBeCloseTo(1_800_000, 6);
+      expect(summary.rankings[0]!.totalRuntime).toBeCloseTo(1_800_000, 6);
       expect(JSON.stringify(summary)).toContain('"totalRuntime"');
     });
 
@@ -260,7 +260,7 @@ describe.skipIf(!databaseAvailable)(
         'TPC-H benchmark queries on local NVMe storage at SF=1 (~1GB of data)',
       );
       expect(group.charts.map((c) => c.name)).toEqual(['Q1', 'Q2']);
-      const q1 = group.charts[0];
+      const q1 = group.charts[0]!;
       // The chart link's slug round-trips to the same `/api/chart` slug.
       expect(q1.slug).toBe(
         chartKeyToSlug({
@@ -345,7 +345,7 @@ describe.skipIf(!databaseAvailable)(
         ),
         'cached-only random access group',
       );
-      expect(Object.keys(group.charts[0].series).sort()).toEqual([
+      expect(Object.keys(group.charts[0]!.series).sort()).toEqual([
         'arrow-ipc:hot',
         'parquet:hot',
         'vortex-file-compressed:hot',
@@ -483,8 +483,8 @@ describe.skipIf(!databaseAvailable)('summary math fidelity (testcontainers Postg
     for (const [index, storage] of (['nvme', 's3'] as const).entries()) {
       const datasets =
         storage === 'nvme' ? ['taxi', 'taxi/uniform'] : ['taxi-s3', 'taxi-s3/uniform'];
-      expect(groupKeyFromSlug(groups[index].slug)).toEqual({ k: 'RandomAccessGroup', storage });
-      expect(groups[index].charts).toEqual(
+      expect(groupKeyFromSlug(groups[index]!.slug)).toEqual({ k: 'RandomAccessGroup', storage });
+      expect(groups[index]!.charts).toEqual(
         datasets.map((dataset) => ({
           name: dataset,
           slug: chartKeyToSlug({ k: 'RandomAccess', dataset }),
@@ -543,9 +543,9 @@ describe.skipIf(!databaseAvailable)('summary math fidelity (testcontainers Postg
     }
     expect(summary.hotRankings.map((r) => r.name)).toEqual(['vortex-file-compressed', 'lance']);
     // vortex: cbrt(1100000/350000 * 1 * 1); lance: cbrt(1 * 3 * 3).
-    expect(summary.hotRankings[0].score).toBeCloseTo(Math.cbrt(1_100_010 / 350_010), 5);
-    expect(summary.hotRankings[1].score).toBeCloseTo(Math.cbrt((3_000_010 / 1_000_010) ** 2), 5);
-    expect(summary.hotRankings[0].totalRuntime).toBeCloseTo(3_100_000 / 3, 6);
+    expect(summary.hotRankings[0]!.score).toBeCloseTo(Math.cbrt(1_100_010 / 350_010), 5);
+    expect(summary.hotRankings[1]!.score).toBeCloseTo(Math.cbrt((3_000_010 / 1_000_010) ** 2), 5);
+    expect(summary.hotRankings[0]!.totalRuntime).toBeCloseTo(3_100_000 / 3, 6);
   });
 
   it('keeps an intermittently benchmarked format at its own latest run', async () => {
@@ -642,9 +642,9 @@ describe.skipIf(!databaseAvailable)('summary math fidelity (testcontainers Postg
       throw new Error(`expected vectorSearch summary, got ${summary.type}`);
     }
     expect(summary.rankings.map((r) => r.name)).toEqual(['vortex-turboquant', 'vortex-flat']);
-    expect(summary.rankings[0].score).toBeCloseTo(1.0, 6);
+    expect(summary.rankings[0]!.score).toBeCloseTo(1.0, 6);
     // sqrt((2010/1010) * (8010/2010)).
-    expect(summary.rankings[1].score).toBeCloseTo(Math.sqrt((2010 / 1010) * (8010 / 2010)), 6);
+    expect(summary.rankings[1]!.score).toBeCloseTo(Math.sqrt((2010 / 1010) * (8010 / 2010)), 6);
   });
 
   it('keeps a sub-second latest commit timestamp (no whole-second truncation)', async () => {
@@ -683,8 +683,8 @@ describe.skipIf(!databaseAvailable)('summary math fidelity (testcontainers Postg
       'vortex-file-compressed',
       'parquet',
     ]);
-    expect(size.rankings[0].ratio).toBeCloseTo(0.25, 6);
-    expect(size.rankings[1].ratio).toBeCloseTo(1.0, 6);
+    expect(size.rankings[0]!.ratio).toBeCloseTo(0.25, 6);
+    expect(size.rankings[1]!.ratio).toBeCloseTo(1.0, 6);
   });
 
   it('selects one commit when the latest timestamps collide', async () => {
@@ -750,7 +750,7 @@ describe.skipIf(!databaseAvailable)('summary math fidelity (testcontainers Postg
       'encode:vortex-file-compressed',
       'encode:parquet',
     ]);
-    expect(summary.rankings[0].ratio).toBeCloseTo(3.0, 6);
+    expect(summary.rankings[0]!.ratio).toBeCloseTo(3.0, 6);
   });
 
   it('falls back to the latest decode timestamp when there is no encode pair', async () => {
@@ -769,7 +769,7 @@ describe.skipIf(!databaseAvailable)('summary math fidelity (testcontainers Postg
       'decode:vortex-file-compressed',
       'decode:parquet',
     ]);
-    expect(summary.rankings[0].ratio).toBeCloseTo(2.0, 6);
+    expect(summary.rankings[0]!.ratio).toBeCloseTo(2.0, 6);
   });
 
   it('applies the 300_000 penalty floor so a missing query flips the ranking', async () => {
@@ -805,8 +805,8 @@ describe.skipIf(!databaseAvailable)('summary math fidelity (testcontainers Postg
       'datafusion:vortex-file-compressed',
       'duckdb:parquet',
     ]);
-    expect(summary.rankings[0].score).toBeCloseTo(1.414143, 5);
-    expect(summary.rankings[1].score).toBeCloseTo(1.732022, 5);
+    expect(summary.rankings[0]!.score).toBeCloseTo(1.414143, 5);
+    expect(summary.rankings[1]!.score).toBeCloseTo(1.732022, 5);
   });
 
   // A cold group fill runs one chart query per chart. pg fails a query that

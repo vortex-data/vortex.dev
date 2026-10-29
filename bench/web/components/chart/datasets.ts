@@ -50,7 +50,9 @@ export function buildDatasets(payload: NormalizedChartPayload): BenchDataset[] {
         borderColor: style.color,
         backgroundColor: `${style.color}20`,
         borderWidth: style.width,
-        borderDash: coldRandomAccess ? [6, 4] : undefined,
+        // `undefined` draws a solid line. Chart.js's types forbid an explicit
+        // `undefined` under `exactOptionalPropertyTypes`; the cast changes no value.
+        borderDash: (coldRandomAccess ? [6, 4] : undefined) as number[],
         // Layer the hero series on top: Vortex in front ... arrow at the back,
         // datafusion ahead of duckdb. Lower `order` renders on top in Chart.js.
         order: seriesOrder(name, seriesMeta),

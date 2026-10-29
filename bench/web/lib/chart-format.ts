@@ -13,7 +13,7 @@
  * `lib/chart-store.ts`; the Chart.js wiring lives in `components/Chart.tsx`.
  */
 
-import type { ChartHistory, ChartResponse, CommitPoint, SeriesTag, UnitKind } from '@/lib/queries';
+import type { ChartHistory, ChartResponse, CommitPoint, UnitKind } from '@/lib/queries';
 
 // ---------------------------------------------------------------------------
 // Constants (ported verbatim from `chart-init.js`).
@@ -189,8 +189,8 @@ export function seriesOrder(
 ): number {
   const { engine, format } = seriesDims(name, meta);
   const formatRank =
-    format && format in FORMAT_ORDER ? FORMAT_ORDER[format] : FORMAT_ORDER_FALLBACK;
-  const engineRank = engine && engine in ENGINE_ORDER ? ENGINE_ORDER[engine] : 0;
+    format && format in FORMAT_ORDER ? FORMAT_ORDER[format]! : FORMAT_ORDER_FALLBACK;
+  const engineRank = engine && engine in ENGINE_ORDER ? ENGINE_ORDER[engine]! : 0;
   return formatRank * 10 + engineRank;
 }
 
@@ -260,7 +260,7 @@ export function parsePrNumber(message: unknown): string | null {
     return null;
   }
   const m = message.match(/\(#(\d+)\)/);
-  return m ? m[1] : null;
+  return m ? m[1]! : null;
 }
 
 /**
@@ -305,6 +305,9 @@ export function commitDateLabel(commit: CommitPoint | null | undefined): string 
     return '';
   }
   const [year, month, day] = ts.slice(0, 10).split('-');
+  if (month === undefined || day === undefined) {
+    return '';
+  }
   const monthIdx = Number.parseInt(month, 10) - 1;
   const dayNum = Number.parseInt(day, 10);
   if (!(monthIdx >= 0 && monthIdx < 12) || !Number.isFinite(dayNum)) {
@@ -413,7 +416,7 @@ export function magnitudeReference(values: readonly (number | null | undefined)[
   }
   sample.sort((a, b) => a - b);
   const mid = Math.floor(sample.length / 2);
-  return sample.length % 2 ? sample[mid] : (sample[mid - 1] + sample[mid]) / 2;
+  return sample.length % 2 ? sample[mid]! : (sample[mid - 1]! + sample[mid]!) / 2;
 }
 
 /**
@@ -621,8 +624,8 @@ export function lttbIndices(
     let ax = 0;
     let ay = 0;
     for (let j = nextStart; j < nextEnd; j++) {
-      ax += xs[j];
-      ay += ys[j];
+      ax += xs[j]!;
+      ay += ys[j]!;
     }
     ax /= count;
     ay /= count;
@@ -631,12 +634,12 @@ export function lttbIndices(
     // `(a, avg_next)`.
     const rangeStart = Math.floor(bi * bucket) + 1;
     const rangeEnd = Math.floor((bi + 1) * bucket) + 1;
-    const pax = xs[a];
-    const pay = ys[a];
+    const pax = xs[a]!;
+    const pay = ys[a]!;
     let maxArea = -1;
     let maxIdx = rangeStart;
     for (let k = rangeStart; k < rangeEnd; k++) {
-      const area = Math.abs((pax - ax) * (ys[k] - pay) - (pax - xs[k]) * (ay - pay)) * 0.5;
+      const area = Math.abs((pax - ax) * (ys[k]! - pay) - (pax - xs[k]!) * (ay - pay)) * 0.5;
       if (area > maxArea) {
         maxArea = area;
         maxIdx = k;
@@ -710,7 +713,7 @@ export function decimateSeries(
   const budget = Math.max(2, Math.floor(maxPoints / perSeries.length));
   for (const series of perSeries) {
     for (const local of lttbIndices(series.idxs, series.vals, budget)) {
-      kept.add(series.idxs[local]);
+      kept.add(series.idxs[local]!);
     }
   }
   return { kept, downsampled: true };
@@ -737,7 +740,7 @@ export interface NormalizedChartPayload extends Omit<ChartResponse, 'commits'> {
  * or derived from full coverage.
  */
 export function canonicalHistory(
-  payload: Pick<ChartResponse, 'commits'> & { history?: Partial<ChartHistory> | null },
+  payload: Pick<ChartResponse, 'commits'> & { history?: Partial<ChartHistory> | null | undefined },
 ): ChartHistory {
   const commits = Array.isArray(payload?.commits) ? payload.commits : [];
   const history = payload?.history ?? {};
@@ -780,7 +783,7 @@ export function normalizeChartPayload(payload: ChartResponse): NormalizedChartPa
   const start = history.start_index;
   const normalizedCommits = new Array<CommitPoint | null>(total).fill(null);
   for (let ci = 0; ci < commits.length && start + ci < total; ci++) {
-    normalizedCommits[start + ci] = commits[ci];
+    normalizedCommits[start + ci] = commits[ci]!;
   }
 
   const rawSeries = payload.series ?? {};
@@ -789,7 +792,7 @@ export function normalizeChartPayload(payload: ChartResponse): NormalizedChartPa
     const out = new Array<number | null>(total).fill(null);
     if (Array.isArray(values)) {
       for (let vi = 0; vi < values.length && start + vi < total; vi++) {
-        out[start + vi] = values[vi];
+        out[start + vi] = values[vi]!;
       }
     }
     normalizedSeries[name] = out;
@@ -968,7 +971,7 @@ export function seedActiveFormats(
  * have no engine dimension.
  */
 export function seriesPassesFilter(
-  meta: SeriesTag | undefined,
+  meta: { engine?: string | undefined; format?: string | undefined } | undefined,
   active: GlobalFilterState,
   universe: FilterUniverse,
 ): boolean {

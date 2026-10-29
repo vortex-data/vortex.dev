@@ -79,7 +79,7 @@ async function HomeContent({
         groups={groups.map((group, i) => ({
           name: group.name,
           slug: group.slug,
-          anchor: anchors[i],
+          anchor: anchors[i]!,
         }))}
       />
       <main>
@@ -99,7 +99,7 @@ async function HomeContent({
                 <GroupSection
                   key={group.slug}
                   group={group}
-                  anchor={anchors[i]}
+                  anchor={anchors[i]!}
                   startIndex={startIndex}
                   universe={universe}
                   initialHiddenSeries={

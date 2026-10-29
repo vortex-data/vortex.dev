@@ -528,7 +528,7 @@ describe.skipIf(!databaseAvailable)('groupChartPayloads at the window edges', ()
 
   it('gives each random-access and vector-search chart its own window', async () => {
     const window = parseCommitWindow('4');
-    const [ra, rb] = await groupChartPayloads(...OTHER_FAMILIES[0], window);
+    const [ra, rb] = await groupChartPayloads(...OTHER_FAMILIES[0]!, window);
     expect(ra?.history).toEqual({
       total_commits: 6,
       start_index: 2,
@@ -543,7 +543,7 @@ describe.skipIf(!databaseAvailable)('groupChartPayloads at the window edges', ()
     });
     expect(rb?.commits.map((c) => c.sha)).toEqual([D, E, F]);
     expect(rb?.series).toEqual({ 'f1:hot': [null, 51, 52] });
-    const [, tenth, short] = await groupChartPayloads(...OTHER_FAMILIES[1], window);
+    const [, tenth, short] = await groupChartPayloads(...OTHER_FAMILIES[1]!, window);
     expect(tenth?.history).toEqual({
       total_commits: 4,
       start_index: 0,

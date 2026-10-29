@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
-import type { Chart as ChartJs } from 'chart.js';
+import type { Chart as ChartJs, ChartDataset } from 'chart.js';
 
 import {
   CHART_FETCH_N,
@@ -571,6 +571,8 @@ export class ChartController {
         state.stripRender?.();
       }, PAN_THROTTLE_MS);
 
+      // Chart.js's types do not let a line chart widen to `Chart` under
+      // `exactOptionalPropertyTypes`. The cast changes no value.
       const chart = new Chart(
         canvas,
         lineChartConfig({
@@ -583,7 +585,7 @@ export class ChartController {
           legendPosition,
           onZoom: throttledRebuild,
         }),
-      );
+      ) as ChartJs;
 
       state.chart = chart;
       this.cb.setConstructed(true);
@@ -737,7 +739,9 @@ export class ChartController {
       }
     }
     chart.data.labels = newLabels;
-    chart.data.datasets = newDatasets;
+    // Line datasets widen to the generic `ChartDataset` only by a cast, as the
+    // chart does in `maybeConstruct`. The cast changes no value.
+    chart.data.datasets = newDatasets as ChartDataset[];
     this.applyFilters();
     if (this.groupSlug) {
       noteGroupSeries(this.groupSlug, payload.series_meta);

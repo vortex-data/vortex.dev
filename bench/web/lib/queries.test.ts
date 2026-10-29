@@ -145,7 +145,7 @@ describe.skipIf(!databaseAvailable)('chartPayload (testcontainers Postgres)', ()
     expect(compTime?.series_meta?.['vortex-file-compressed:encode']).toEqual({
       format: 'vortex-file-compressed',
     });
-    expect(compTime?.series_meta?.['vortex-file-compressed:encode'].engine).toBeUndefined();
+    expect(compTime?.series_meta?.['vortex-file-compressed:encode']?.engine).toBeUndefined();
   });
 
   it('omits series_meta entirely for vector-search charts (no engine/format)', async () => {
@@ -175,7 +175,7 @@ describe.skipIf(!databaseAvailable)('chartPayload (testcontainers Postgres)', ()
     const one = await chartPayload(QUERY_Q1, parseCommitWindow('1'));
     expect(one?.commits).toHaveLength(1);
     // ?n keeps the most recent commit (oldest-first array, so the last one).
-    expect(one?.commits[0].sha).toBe('3'.repeat(40));
+    expect(one?.commits[0]?.sha).toBe('3'.repeat(40));
 
     const all = await chartPayload(QUERY_Q1, parseCommitWindow('all'));
     expect(all?.commits).toHaveLength(3);
@@ -313,7 +313,7 @@ describe.skipIf(!databaseAvailable)('chartPayload (testcontainers Postgres)', ()
     });
     expect(ra?.series_meta?.['parquet:hot']).toEqual({ format: 'parquet' });
     expect(ra?.series_meta?.['parquet:cold']).toEqual({ format: 'parquet' });
-    expect(ra?.series_meta?.['parquet:hot'].engine).toBeUndefined();
+    expect(ra?.series_meta?.['parquet:hot']?.engine).toBeUndefined();
     expect(ra?.series['parquet:cold']).toEqual([10_000, 1_010_000, 2_010_000]);
 
     const cs = await chartPayload(

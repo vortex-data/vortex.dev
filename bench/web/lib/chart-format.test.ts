@@ -364,7 +364,7 @@ describe('lttbIndices', () => {
     expect(kept).toContain(50);
     // Indices are strictly increasing.
     for (let i = 1; i < kept.length; i++) {
-      expect(kept[i]).toBeGreaterThan(kept[i - 1]);
+      expect(kept[i]).toBeGreaterThan(kept[i - 1]!);
     }
   });
 });

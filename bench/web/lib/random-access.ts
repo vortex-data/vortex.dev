@@ -8,5 +8,5 @@ export type RandomAccessStorage = 'nvme' | 's3';
  * `taxi-s3`), since random_access_times has no separate storage dimension.
  */
 export function randomAccessStorage(dataset: string): RandomAccessStorage {
-  return dataset.split('/')[0].endsWith('-s3') ? 's3' : 'nvme';
+  return dataset.split('/')[0]!.endsWith('-s3') ? 's3' : 'nvme';
 }

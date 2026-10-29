@@ -12,7 +12,7 @@ export interface BenchDataset extends ChartDataset<'line', (number | null)[]> {
    * which indices LTTB kept in `data`. */
   rawData: (number | null)[];
   /** Engine/format tag used by the global filter's bulk hide/show. */
-  benchMeta: { engine?: string; format?: string };
+  benchMeta: { engine?: string | undefined; format?: string | undefined };
 }
 
 /** The per-island mutable state, the port of the v3 `canvas.__bench_*` contract. */

@@ -32,7 +32,7 @@ const crosshairPlugin: Plugin<'line'> = {
     if (!active || active.length === 0) {
       return;
     }
-    const x = active[0].element.x;
+    const x = active[0]!.element.x;
     const ya = chart.scales?.y;
     if (!ya || !Number.isFinite(x)) {
       return;
@@ -96,7 +96,7 @@ export function lineChartConfig(input: {
         if (points.length === 0) {
           return;
         }
-        const commit = state.payload?.commits?.[points[0].index];
+        const commit = state.payload?.commits?.[points[0]!.index];
         if (!commit) {
           return;
         }

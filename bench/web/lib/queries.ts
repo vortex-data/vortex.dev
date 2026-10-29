@@ -279,7 +279,7 @@ async function seededCommitsInWindow(
      ORDER BY timestamp ASC, commit_sha ASC
   `;
   const rows = (await getPool().query<SeededCommitRow>(text, params.values)).rows;
-  const totalCommits = rows.length > 0 ? rows[0].total_commits : 0;
+  const totalCommits = rows.length > 0 ? rows[0]!.total_commits : 0;
   const commits: CommitPoint[] = rows.map((row) => ({
     sha: row.commit_sha,
     timestamp: row.ts_text,
@@ -1056,18 +1056,18 @@ function payloadsFromRows(
   for (const row of rows) {
     totals[row.ord - 1] = row.total_commits;
     if (row.commit_sha !== null) {
-      rowsByChart[row.ord - 1].push(row);
+      rowsByChart[row.ord - 1]!.push(row);
     }
   }
   return charts.map((key, i) => {
-    const total = totals[i];
+    const total = totals[i]!;
     if (total === 0) {
       return null;
     }
     const history = historyFor(total, window);
     const acc = new SeriesAccumulator();
     acc.seedCommits(commits.slice(commits.length - history.loaded_commits));
-    for (const row of rowsByChart[i]) {
+    for (const row of rowsByChart[i]!) {
       recordRow(acc, key.k, row);
     }
     return acc.finish(chartDisplayName(key), chartUnitKind(key), history);
@@ -1581,7 +1581,7 @@ async function mapWithConcurrency<T, R>(
       if (i >= items.length) {
         return;
       }
-      results[i] = await fn(items[i], i);
+      results[i] = await fn(items[i]!, i);
     }
   });
   await Promise.all(workers);
@@ -1650,7 +1650,7 @@ export async function collectGroupCharts(
   );
   const charts: NamedChartResponse[] = [];
   group.charts.forEach((link, i) => {
-    const chart = payloads[i];
+    const chart = payloads[i]!;
     if (chart !== null) {
       charts.push({ name: link.name, slug: link.slug, ...chart });
     }

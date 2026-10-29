@@ -34,9 +34,9 @@ describe('group cache fill lock', () => {
     await expect(withGroupCacheFillLock(fill)).resolves.toBe('groups');
 
     expect(fill).toHaveBeenCalledOnce();
-    expect(query.mock.calls[0][0]).toContain('pg_try_advisory_lock');
-    expect(query.mock.calls[1][0]).toContain('pg_advisory_unlock');
-    expect(query.mock.calls[0][1]).toEqual(query.mock.calls[1][1]);
+    expect(query.mock.calls[0]![0]).toContain('pg_try_advisory_lock');
+    expect(query.mock.calls[1]![0]).toContain('pg_advisory_unlock');
+    expect(query.mock.calls[0]![1]).toEqual(query.mock.calls[1]![1]);
     expect(release).toHaveBeenCalledOnce();
   });
 
@@ -63,7 +63,7 @@ describe('group cache fill lock', () => {
       }),
     ).rejects.toBe(failure);
 
-    expect(query.mock.calls[1][0]).toContain('pg_advisory_unlock');
+    expect(query.mock.calls[1]![0]).toContain('pg_advisory_unlock');
     expect(release).toHaveBeenCalledOnce();
   });
 });
