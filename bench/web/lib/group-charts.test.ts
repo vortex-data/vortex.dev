@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
+import { Client } from 'pg';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { getPool, resetPool } from './db';
@@ -92,6 +93,31 @@ describe('seriesFor', () => {
 
 const databaseAvailable = integrationDatabaseAvailable();
 
+/** The SQL text of a `query` call, whether it passed a string or a config object. */
+function sqlText(query: unknown): string {
+  return typeof query === 'string' ? query : (query as { text: string }).text;
+}
+
+/**
+ * Run `build` and return what it issued on pooled clients: its data statements
+ * without the transaction's `BEGIN` and `COMMIT`, which it checks are there. It
+ * also checks that nothing went through `pool.query`.
+ */
+async function statementsOf<T>(
+  build: () => Promise<T>,
+): Promise<{ result: T; statements: string[] }> {
+  const clientQuery = vi.spyOn(Client.prototype, 'query');
+  const poolQuery = vi.spyOn(getPool(), 'query');
+  const result = await build();
+  const texts = clientQuery.mock.calls.map((call) => sqlText(call[0]).trim());
+  expect(poolQuery).not.toHaveBeenCalled();
+  expect(texts[0]).toBe('BEGIN ISOLATION LEVEL REPEATABLE READ, READ ONLY');
+  expect(texts.at(-1)).toBe('COMMIT');
+  clientQuery.mockRestore();
+  poolQuery.mockRestore();
+  return { result, statements: texts.slice(1, -1) };
+}
+
 /** The oracle: each link's `chartPayload`, named and flattened as the group route does. */
 async function expectedCharts(group: Group, window: CommitWindow): Promise<string> {
   const charts: unknown[] = [];
@@ -150,9 +176,10 @@ describe.skipIf(!databaseAvailable)('groupChartPayloads on the canonical fixture
     const group = (await collectGroups()).find((g) => g.name === 'TPC-H (NVMe) (SF=1)');
     const keys = (group?.charts ?? []).map((link) => chartKeyFromSlug(link.slug));
     expect(keys.length).toBeGreaterThan(1);
-    const spy = vi.spyOn(getPool(), 'query');
-    const payloads = await groupChartPayloads(TPCH, keys, parseCommitWindow(null));
-    expect(spy).toHaveBeenCalledTimes(2);
+    const { result: payloads, statements } = await statementsOf(() =>
+      groupChartPayloads(TPCH, keys, parseCommitWindow(null)),
+    );
+    expect(statements).toHaveLength(2);
     expect(payloads.every((payload) => payload !== null)).toBe(true);
   });
 
@@ -162,11 +189,37 @@ describe.skipIf(!databaseAvailable)('groupChartPayloads on the canonical fixture
     const empty = Array.from({ length: 25 }, (_, i) => ({ ...Q1, query_idx: 100 + i }));
     const keys: ChartKey[] = [...empty, { ...Q1, query_idx: 2 }, Q1];
     const expected = await Promise.all(keys.map((key) => chartPayload(key, window)));
-    const spy = vi.spyOn(getPool(), 'query');
-    const payloads = await groupChartPayloads(TPCH, keys, window);
-    expect(spy).toHaveBeenCalledTimes(3);
+    const { result: payloads, statements } = await statementsOf(() =>
+      groupChartPayloads(TPCH, keys, window),
+    );
+    expect(statements).toHaveLength(3);
     expect(payloads.slice(25).every((payload) => payload !== null)).toBe(true);
     expect(JSON.stringify(payloads)).toBe(JSON.stringify(expected));
+  });
+
+  it('rolls back and releases its client when a statement fails', async () => {
+    const pool = getPool();
+    const original = Client.prototype.query;
+    const clientQuery = vi.spyOn(Client.prototype, 'query').mockImplementation(function (
+      this: Client,
+      ...args: unknown[]
+    ) {
+      if (sqlText(args[0]).includes('commit_times')) {
+        return Promise.reject(new Error('rows statement failed'));
+      }
+      return (original as (...a: unknown[]) => unknown).apply(this, args);
+    } as never);
+    await expect(groupChartPayloads(TPCH, [Q1], parseCommitWindow(null))).rejects.toThrow(
+      'rows statement failed',
+    );
+    const texts = clientQuery.mock.calls.map((call) => sqlText(call[0]).trim());
+    expect(texts.at(-1)).toBe('ROLLBACK');
+    expect(texts).not.toContain('COMMIT');
+    clientQuery.mockRestore();
+    expect(pool.idleCount).toBe(pool.totalCount);
+    // The released client still works.
+    const payloads = await groupChartPayloads(TPCH, [Q1], parseCommitWindow(null));
+    expect(payloads[0]).not.toBeNull();
   });
 
   it('returns null in place of a chart with no rows', async () => {
@@ -301,6 +354,67 @@ describe.skipIf(!databaseAvailable)('groupChartPayloads at the window edges', ()
         [measurementId, sha, dataset, variant, valueNs],
       );
     }
+    // Random access: `ra` on every commit in both open modes, `rb` from E on (tied with D).
+    for (const [i, sha] of ALL_SHAS.entries()) {
+      for (const [openMode, valueNs] of [
+        ['cached', 40 + i],
+        ['reopen', 400 + i],
+      ] as const) {
+        measurementId += 1;
+        await getPool().query(
+          `INSERT INTO random_access_times
+               (measurement_id, commit_sha, dataset, format, open_mode, value_ns, all_runtimes_ns)
+             VALUES ($1, $2, 'ra', 'f1', $3, $4, '{1}'::bigint[])`,
+          [measurementId, sha, openMode, valueNs],
+        );
+      }
+    }
+    for (const [sha, valueNs] of [
+      [E, 51],
+      [F, 52],
+    ] as const) {
+      measurementId += 1;
+      await getPool().query(
+        `INSERT INTO random_access_times
+             (measurement_id, commit_sha, dataset, format, open_mode, value_ns, all_runtimes_ns)
+           VALUES ($1, $2, 'rb', 'f1', 'cached', $3, '{1}'::bigint[])`,
+        [measurementId, sha, valueNs],
+      );
+    }
+    // Vector search: 0.75 on every commit, 0.1 (not a dyadic fraction) from C2, 0.3 on F only.
+    for (const [threshold, shas] of [
+      [0.75, ALL_SHAS],
+      [0.1, [C2, D, E, F]],
+      [0.3, [F]],
+    ] as const) {
+      for (const [i, sha] of shas.entries()) {
+        measurementId += 1;
+        await getPool().query(
+          `INSERT INTO vector_search_runs
+               (measurement_id, commit_sha, dataset, layout, flavor, threshold, value_ns,
+                all_runtimes_ns, matches, rows_scanned, bytes_scanned, iterations)
+             VALUES ($1, $2, 'vs', 'l', 'fl', $3, $4, '{1}'::bigint[], 1, 1, 1, 1)`,
+          [measurementId, sha, threshold, 600 + i],
+        );
+      }
+    }
+    // Compression sizes: a NULL-variant chart and two non-NULL ones with different first commits.
+    for (const [sha, dataset, variant, valueBytes] of [
+      [C0, 'sx', null, 71],
+      [F, 'sx', null, 72],
+      [D, 'sx', 'v1', 81],
+      [E, 'sx', 'v1', 82],
+      [F, 'sy', 'v2', 91],
+    ] as const) {
+      measurementId += 1;
+      await getPool().query(
+        `INSERT INTO compression_sizes
+             (measurement_id, commit_sha, dataset, dataset_variant, format, value_bytes,
+              uncompressed_bytes)
+           VALUES ($1, $2, $3, $4, 'f1', $5, 1000)`,
+        [measurementId, sha, dataset, variant, valueBytes],
+      );
+    }
   });
 
   afterAll(async () => {
@@ -363,12 +477,83 @@ describe.skipIf(!databaseAvailable)('groupChartPayloads at the window edges', ()
       ];
       const expected = await Promise.all(keys.map((key) => chartPayload(key, window)));
       expect(expected[2]).toBeNull();
-      const spy = vi.spyOn(getPool(), 'query');
-      const payloads = await groupChartPayloads({ k: 'CompressionTimeGroup' }, keys, window);
-      expect(spy).toHaveBeenCalledTimes(2);
+      const { result: payloads, statements } = await statementsOf(() =>
+        groupChartPayloads({ k: 'CompressionTimeGroup' }, keys, window),
+      );
+      expect(statements).toHaveLength(2);
       expect(JSON.stringify(payloads)).toBe(JSON.stringify(expected));
     },
   );
+
+  const OTHER_FAMILIES: ReadonlyArray<readonly [GroupKey, ChartKey[]]> = [
+    [
+      { k: 'RandomAccessGroup', storage: 'nvme' },
+      [
+        { k: 'RandomAccess', dataset: 'ra' },
+        { k: 'RandomAccess', dataset: 'rb' },
+      ],
+    ],
+    [
+      { k: 'VectorSearchGroup', dataset: 'vs', layout: 'l' },
+      [0.75, 0.1, 0.3].map((threshold) => ({
+        k: 'VectorSearch' as const,
+        dataset: 'vs',
+        layout: 'l',
+        threshold,
+      })),
+    ],
+    [
+      { k: 'CompressionSizeGroup' },
+      [
+        { k: 'CompressionSize', dataset: 'sx', dataset_variant: 'v1' },
+        { k: 'CompressionSize', dataset: 'sx', dataset_variant: null },
+        { k: 'CompressionSize', dataset: 'sy', dataset_variant: 'v2' },
+      ],
+    ],
+  ];
+
+  it.each(['1', '2', '3', '4', 'all'])(
+    'matches chartPayload for random-access, vector-search and compression-size groups at ?n=%s',
+    async (n) => {
+      const window = parseCommitWindow(n);
+      for (const [group, keys] of OTHER_FAMILIES) {
+        const expected = await Promise.all(keys.map((key) => chartPayload(key, window)));
+        expect(expected.every((payload) => payload !== null)).toBe(true);
+        expect(JSON.stringify(await groupChartPayloads(group, keys, window))).toBe(
+          JSON.stringify(expected),
+        );
+      }
+    },
+  );
+
+  it('gives each random-access and vector-search chart its own window', async () => {
+    const window = parseCommitWindow('4');
+    const [ra, rb] = await groupChartPayloads(...OTHER_FAMILIES[0], window);
+    expect(ra?.history).toEqual({
+      total_commits: 6,
+      start_index: 2,
+      loaded_commits: 4,
+      complete: false,
+    });
+    expect(rb?.history).toEqual({
+      total_commits: 3,
+      start_index: 0,
+      loaded_commits: 3,
+      complete: true,
+    });
+    expect(rb?.commits.map((c) => c.sha)).toEqual([D, E, F]);
+    expect(rb?.series).toEqual({ 'f1:hot': [null, 51, 52] });
+    const [, tenth, short] = await groupChartPayloads(...OTHER_FAMILIES[1], window);
+    expect(tenth?.history).toEqual({
+      total_commits: 4,
+      start_index: 0,
+      loaded_commits: 4,
+      complete: true,
+    });
+    expect(tenth?.series).toEqual({ fl: [600, 601, 602, 603] });
+    expect(short?.commits.map((c) => c.sha)).toEqual([F]);
+    expect(short?.series).toEqual({ fl: [600] });
+  });
 
   it('keeps sibling groups apart', async () => {
     const window = parseCommitWindow('all');

@@ -13,7 +13,8 @@
  * fact-row pass that threads values onto that x-axis through a
  * [`SeriesAccumulator`]. The result is a [`ChartResponse`] with the same wire
  * shape the Axum server emits. [`groupChartPayloads`] builds the same payloads
- * for every chart of one group with two statements in all.
+ * for every chart of one group with two statements, or more in slices of 25
+ * charts for large groups.
  *
  * Behaviour-preservation notes (this is a substrate migration, DuckDB ->
  * Postgres):
@@ -31,6 +32,7 @@
  *    whole-second, UTC) git commit timestamps.
  */
 
+import type { PoolClient } from 'pg';
 import { getPool } from './db';
 import { randomAccessStorage } from './random-access';
 import { groupDescription } from './descriptions';
@@ -674,7 +676,7 @@ type CommitRow = { commit_sha: string; ts_text: string; message: string; url: st
  * The last `n` commits of all (every commit for `?n=all`), oldest first. Each
  * chart's x-axis is a suffix of this list. A `null` `LIMIT` is no limit.
  */
-async function windowCommits(window: CommitWindow): Promise<CommitPoint[]> {
+async function windowCommits(client: PoolClient, window: CommitWindow): Promise<CommitPoint[]> {
   const text = `
     SELECT commit_sha,
            to_char(timestamp AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI:SS"+00"') AS ts_text,
@@ -683,7 +685,7 @@ async function windowCommits(window: CommitWindow): Promise<CommitPoint[]> {
       FROM (SELECT * FROM commits ORDER BY timestamp DESC, commit_sha DESC LIMIT $1) w
      ORDER BY timestamp ASC, commit_sha ASC
   `;
-  const rows = (await getPool().query<CommitRow>(text, [commitWindowLimit(window)])).rows;
+  const rows = (await client.query<CommitRow>(text, [commitWindowLimit(window)])).rows;
   return rows.map((row) => ({
     sha: row.commit_sha,
     timestamp: row.ts_text,
@@ -997,6 +999,11 @@ const GROUP_ROWS_CHUNK = 25;
  * commits in (timestamp, sha) order, so its last-`n` window is the last
  * `min(n, total)` commits of the shared window, ties included: exactly what
  * [`seededCommitsInWindow`] returns.
+ *
+ * That holds only if every statement sees the same commits, so they run one
+ * after another on one connection, in a `REPEATABLE READ` transaction that
+ * shares one snapshot. An ingest landing mid-build cannot then count a commit
+ * the window lacks, or drop a chart's first commit from it.
  */
 export async function groupChartPayloads(
   group: GroupKey,
@@ -1012,13 +1019,29 @@ export async function groupChartPayloads(
   if (slices.length === 0) {
     return [];
   }
-  const shared = windowCommits(window);
-  const payloads: (ChartResponse | null)[] = [];
-  for (const slice of slices) {
-    const [commits, result] = await Promise.all([shared, getPool().query<GroupRow>(slice.query)]);
-    payloads.push(...payloadsFromRows(slice.charts, commits, result.rows, window));
+  const client = await getPool().connect();
+  // A client whose ROLLBACK failed is broken; release it with the error so the pool discards it.
+  let broken: Error | undefined;
+  try {
+    await client.query('BEGIN ISOLATION LEVEL REPEATABLE READ, READ ONLY');
+    const commits = await windowCommits(client, window);
+    const payloads: (ChartResponse | null)[] = [];
+    for (const slice of slices) {
+      const result = await client.query<GroupRow>(slice.query);
+      payloads.push(...payloadsFromRows(slice.charts, commits, result.rows, window));
+    }
+    await client.query('COMMIT');
+    return payloads;
+  } catch (error) {
+    try {
+      await client.query('ROLLBACK');
+    } catch (rollbackError) {
+      broken = rollbackError instanceof Error ? rollbackError : new Error(String(rollbackError));
+    }
+    throw error;
+  } finally {
+    client.release(broken);
   }
-  return payloads;
 }
 
 /** Fold one [`groupRowsQuery`] result into the payloads of its `charts`, in their order. */
@@ -1041,20 +1064,9 @@ function payloadsFromRows(
     if (total === 0) {
       return null;
     }
-    let history = historyFor(total, window);
-    const seeded = commits.slice(Math.max(0, commits.length - history.loaded_commits));
-    if (seeded.length < history.loaded_commits) {
-      // The statements run on separate connections, so an ingest that lands between them can
-      // count a commit the window did not return. Describe the commits actually loaded.
-      history = {
-        ...history,
-        start_index: total - seeded.length,
-        loaded_commits: seeded.length,
-        complete: false,
-      };
-    }
+    const history = historyFor(total, window);
     const acc = new SeriesAccumulator();
-    acc.seedCommits(seeded);
+    acc.seedCommits(commits.slice(commits.length - history.loaded_commits));
     for (const row of rowsByChart[i]) {
       recordRow(acc, key.k, row);
     }
@@ -1537,13 +1549,14 @@ function discoverGroups(groupKind: GroupKind): Promise<Group[]> {
 /**
  * Bound on how many queries one request runs concurrently: the per-group
  * summaries in [`collectGroups`] (PR-5.1.5 fix e). [`collectGroupCharts`] no
- * longer fans out; it runs two statements per group. Kept one below the
- * `BENCH_DB_POOL_MAX` default because a cached fill holds one pool connection
- * for its advisory lock. Excess work waits here, not on `pg`'s acquire list,
- * where a wait longer than `BENCH_DB_CONNECTION_TIMEOUT_MS` fails the query. A
- * smaller pool still queues the excess on that list. Overlapping the queries is
- * what turns the sequential sum of round trips into roughly the slowest query's
- * wall-clock.
+ * longer fans out; it runs two statements per group, or more in slices of 25
+ * charts for large groups, one after another on one connection, after the
+ * summaries finish. Kept one below the `BENCH_DB_POOL_MAX` default because a
+ * cached fill holds one pool connection for its advisory lock. Excess work
+ * waits here, not on `pg`'s acquire list, where a wait longer than
+ * `BENCH_DB_CONNECTION_TIMEOUT_MS` fails the query. A smaller pool still queues
+ * the excess on that list. Overlapping the queries is what turns the
+ * sequential sum of round trips into roughly the slowest query's wall-clock.
  */
 const QUERY_CONCURRENCY = 7;
 
@@ -1612,9 +1625,10 @@ export async function collectGroups(): Promise<Group[]> {
  * Collect every chart inside one group with its full payload inlined, or `null`
  * when the group has no data (callers render a 404). Re-runs the full
  * [`collectGroups`] discovery to resolve the group by slug, then fetches every
- * chart link's payload with [`groupChartPayloads`] (two statements for the whole
- * group), dropping links whose chart has no rows. Mirrors the Rust
- * `collect_group_charts` (including its per-call re-discovery).
+ * chart link's payload with [`groupChartPayloads`] (two statements, or more in
+ * slices of 25 charts for large groups), dropping links whose chart has no
+ * rows. Mirrors the Rust `collect_group_charts` (including its per-call
+ * re-discovery).
  *
  * The full re-discovery makes this materially more query work than resolving the
  * one group directly; it inherits the Rust source's `TODO(#7812)` deferral of that

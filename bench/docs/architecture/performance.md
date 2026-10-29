@@ -112,16 +112,18 @@ A group page inlines every chart's payload (99 for TPC-DS, 43 for Clickbench).
 `groupChartPayloads` ([`web/lib/queries.ts`](../../web/lib/queries.ts)) builds
 them from two statements instead of two per chart: the last `n` commits, and
 every chart's rows in that window, one `LATERAL` join per chart (in slices of
-25 charts, one after another, so a TPC-DS group runs five). A chart's x-axis is
-the last `min(n, total)` commits of the shared window, so the JSON is
-byte-identical to `chartPayload`'s, which a test and a dump check pin. On one
-connection the per-chart `MIN` over a query chart's whole history became the
-cost, so it is a skip scan of `idx_query_measurements_summary`, and the commit
-count is a binary search. `QUERY_CONCURRENCY` now bounds only the summaries in
+25 charts, so a TPC-DS group runs five). They run one after another on one
+connection, in one `REPEATABLE READ` snapshot. A chart's x-axis is the last
+`min(n, total)` commits of the shared window, so the JSON is byte-identical to
+`chartPayload`'s, which a test and a dump check pin. On one connection the
+per-chart `MIN` over a query chart's whole history became the cost, so it is a
+skip scan of `idx_query_measurements_summary`, and the commit count is a
+binary search. `QUERY_CONCURRENCY` now bounds only the summaries in
 `collectGroups`. On the 2026-10-28 dump at `n=100`, warm: TPC-DS (NVMe) SF=1
-1.59 s → 0.32 s, Clickbench 0.87 s → 0.14 s, Compression 70 → 120 ms (its
-`MIN` still reads every row). At `?n=all` the TPC-DS group takes 5.3 s against
-4.9 s, with peak memory at most 1.34× the old fan-out's.
+1.57 s → 0.31 s, Clickbench 0.82 s → 0.14 s, Compression 68 → 117 ms (its
+`MIN` still reads every row). At `?n=all` the TPC-DS group takes 5.2 s against
+4.7–4.9 s, and its peak memory stays under 1.5× the old fan-out's (1.2–1.8 GB
+against 1.3 GB over four runs each).
 
 ### `query_measurements` reads filter on a denormalized timestamp
 
