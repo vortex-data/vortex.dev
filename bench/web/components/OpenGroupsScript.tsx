@@ -34,8 +34,9 @@
  * passive capture listeners on the window; `stop` removes them). After hydration,
  * `LandingState` takes the marker on its first mount. It then keeps the open
  * state as the reader left it (a group opened or closed before hydration
- * stays so, and the fragment is written from it), and it skips a scroll
- * restore when `input` is true. A scroll is not input: the browser's own jump
+ * stays so, and the fragment is written from it), and when `input` is true
+ * it does not scroll the page at all: no restore, no scroll to the fragment's
+ * first group. A scroll is not input: the browser's own jump
  * to a single-anchor fragment fires one. The marker is written only after
  * the groups are open, and the outer `try` keeps any failure from reaching the
  * page: without the marker, the groups simply open after hydration instead.

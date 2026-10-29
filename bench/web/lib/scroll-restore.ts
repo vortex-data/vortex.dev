@@ -15,11 +15,11 @@ import type { GroupBodiesReady } from '@/lib/group-bodies';
  *   link is followed, it records the element nearest the top of the viewport
  *   (a chart card, or else a group section) and that element's offset from
  *   the viewport top, in `sessionStorage` under the page's path and fragment.
- * - **Plan.** On a reload or a Back/Forward with something saved, restore,
- *   unless the reader already scrolled, touched or pressed a key before
- *   hydration (the pre-paint script records that). Otherwise scroll to the
- *   fragment's first group, if it names one: a fresh visit always does this,
- *   whatever was saved.
+ * - **Plan.** If the reader already scrolled, touched or pressed a key before
+ *   hydration (the pre-paint script records that), do nothing: they have
+ *   taken over the scroll. Otherwise, on a reload or a Back/Forward with
+ *   something saved, restore; else scroll to the fragment's first group, if
+ *   it names one: a fresh visit always does this, whatever was saved.
  * - **Restore.** Once the open groups' bodies have mounted, scroll the saved
  *   element back to its offset; once their bundles have settled (hiding empty
  *   cards can move it), do it again. Any user input in between stops it.
@@ -217,12 +217,13 @@ export function applySavedScroll(win: Window, saved: SavedScroll): boolean {
 }
 
 /**
- * Choose what the page does with its scroll on mount. A reload or Back/Forward
- * with a saved position restores it, unless the reader gave input before
- * hydration (`inputBeforeMount`): that stops the restore before it starts, as
- * input after mount would, so nothing scrolls. Otherwise, when the fragment
- * names groups, scroll to the first: a fresh visit (which ignores anything
- * saved), or a reload or Back with nothing saved. Otherwise nothing.
+ * Choose what the page does with its scroll on mount. When the reader gave
+ * input before hydration (`inputBeforeMount`), nothing: they have taken over
+ * the scroll, so neither a restore (which input after mount would stop too)
+ * nor a fragment scroll moves them. Otherwise a reload or Back/Forward with a
+ * saved position restores it; else, when the fragment names groups, scroll
+ * to the first: a fresh visit (which ignores anything saved), or a reload or
+ * Back with nothing saved. Otherwise nothing.
  */
 export function planScroll(
   nav: NavigationKind,
@@ -230,8 +231,11 @@ export function planScroll(
   fragmentNamesGroups: boolean,
   inputBeforeMount = false,
 ): ScrollPlan {
+  if (inputBeforeMount) {
+    return { kind: 'none' };
+  }
   if (nav !== 'navigate' && saved !== null) {
-    return inputBeforeMount ? { kind: 'none' } : { kind: 'restore', saved };
+    return { kind: 'restore', saved };
   }
   return fragmentNamesGroups ? { kind: 'fragment' } : { kind: 'none' };
 }

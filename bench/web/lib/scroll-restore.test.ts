@@ -298,13 +298,14 @@ describe('scroll restore', () => {
       expect(planScroll('reload', saved, true)).toEqual({ kind: 'restore', saved });
     });
 
-    // Input before hydration ends a restore before it starts, as input after
-    // it would: no restore, and no fallback to the fragment.
+    // Input before hydration means the reader has taken over the scroll, so
+    // nothing moves them: no restore, no fallback, and no fragment scroll.
     it.each([
       ['reload', saved, true, 'none'],
       ['back_forward', saved, false, 'none'],
-      ['back_forward', null, true, 'fragment'],
-      ['navigate', saved, true, 'fragment'],
+      ['back_forward', null, true, 'none'],
+      ['navigate', saved, true, 'none'],
+      ['navigate', null, true, 'none'],
       ['navigate', null, false, 'none'],
     ] as const)(
       'plans %s (saved %o, fragment %s) after input before hydration as %s',

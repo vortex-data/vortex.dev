@@ -717,6 +717,31 @@ describe('LandingState', () => {
       },
     );
 
+    it('on a fresh visit, does not scroll to the fragment when the reader scrolled before hydration', async () => {
+      await hydrate(`/#clickbench,${FIRST}`, () => {
+        window.dispatchEvent(new Event('wheel'));
+      });
+      expect(openStates()).toEqual([true, false, true]);
+
+      noteGroupBodyOpen('qm.click', Promise.resolve());
+      noteGroupBodyOpen('qm.tpch', Promise.resolve());
+      await nextFrame();
+      expect(scrollSpy).not.toHaveBeenCalled();
+      expect(scrollTo).not.toHaveBeenCalled();
+    });
+
+    it('on a fresh visit, still scrolls to the fragment when the only movement before hydration was a scroll', async () => {
+      await hydrate(`/#clickbench,${FIRST}`, () => {
+        window.dispatchEvent(new Event('scroll'));
+      });
+
+      noteGroupBodyOpen('qm.click', Promise.resolve());
+      noteGroupBodyOpen('qm.tpch', Promise.resolve());
+      await nextFrame();
+      expect(scrollSpy).toHaveBeenCalledTimes(1);
+      expect(scrollSpy.mock.contexts[0]).toBe(document.getElementById('clickbench'));
+    });
+
     it('still restores when the only movement before hydration was a scroll, such as the jump to an anchor', async () => {
       navigation('reload');
       sessionStorage.setItem(FIRST_KEY, JSON.stringify(SAVED));

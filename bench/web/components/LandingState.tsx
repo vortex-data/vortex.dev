@@ -64,13 +64,13 @@ const CHART_LINK = 'a[href^="/chart/"]';
  *   when the tab goes hidden (a mobile browser may discard a hidden tab
  *   without a `pagehide`) and when a chart link is clicked, it saves the
  *   element nearest the top of the viewport. On mount, [`planScroll`]
- *   chooses: a reload or Back/Forward with a saved position restores that
- *   element to its offset (falling back to the fragment scroll if the element
- *   is gone), unless the pre-paint script's marker says the reader already
- *   scrolled, touched or pressed a key, as user input after mount would stop
- *   it; otherwise, if the fragment lists groups, it scrolls to the first one
- *   (a fresh visit ignores anything saved); otherwise it leaves the scroll
- *   alone.
+ *   chooses: if the pre-paint script's marker says the reader already
+ *   scrolled, touched or pressed a key, it leaves the scroll alone (they have
+ *   taken over); otherwise a reload or Back/Forward with a saved position
+ *   restores that element to its offset (falling back to the fragment scroll
+ *   if the element is gone); otherwise, if the fragment lists groups, it
+ *   scrolls to the first one (a fresh visit ignores anything saved);
+ *   otherwise it leaves the scroll alone.
  *
  * Both scrolls wait for the open groups' bodies to mount their cards
  * ([`groupBodiesReady`]): the upper groups' cards push a target down as they
