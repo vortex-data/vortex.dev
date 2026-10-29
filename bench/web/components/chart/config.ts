@@ -170,10 +170,10 @@ export function lineChartConfig(input: {
           external: externalTooltipHandler(state, tooltipHost),
         },
         // A mouse drag draws a selection rectangle and zooms to it (the v3
-        // behavior), never pans. Panning is reserved for the wheel (manual
-        // listener below) and the range strip, so a plain drag highlights a
-        // region without sliding the axes. Wheel-zoom is disabled because
-        // wheel means PAN here.
+        // behavior), never pans. Panning is reserved for the wheel (the manual
+        // listener in `pan-zoom.ts`) and the range strip, so a plain drag
+        // highlights a region without sliding the axes. Wheel-zoom is disabled
+        // because wheel means PAN here.
         zoom: {
           zoom: {
             wheel: { enabled: false },

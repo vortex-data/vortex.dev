@@ -48,7 +48,7 @@ export function renderDownsampleBadge(
 }
 
 /** Render the per-card window chip from controller state. Imperative, like
- * `syncDownsampleBadge`: the chip is hidden for charts born complete, and
+ * `renderDownsampleBadge`: the chip is hidden for charts born complete, and
  * otherwise reflects windowed → loading → complete, with an error → retry
  * path and a hover-revealed "load all N" action. */
 export function renderWindowChip(chip: HTMLButtonElement | null, state: CardState): void {

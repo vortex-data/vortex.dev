@@ -39,9 +39,9 @@ rules below are the parts that were worth keeping.
   LTTB on the visible commit range only.
 - **Don't refetch on every scope change.** Once a chart's payload is in memory,
   pan/zoom/slider/range-strip all rebuild in place via the in-memory LTTB pass on the cached
-  payload ([`web/components/Chart.tsx`](web/components/Chart.tsx)). The single exception is the
-  latest-100 to full-history zoom-out path: when the user first zooms past the materialized
-  window, the chart lazy-fetches `?n=all` once and replaces the payload in place.
+  payload ([`web/components/chart/controller.ts`](web/components/chart/controller.ts)). The single
+  exception is the latest-100 to full-history zoom-out path: when the user first zooms past the
+  materialized window, the chart lazy-fetches `?n=all` once and replaces the payload in place.
 - **Group docs links mirror the monorepo's `Benchmark::doc_path`.**
   [`web/lib/benchmark-docs.ts`](web/lib/benchmark-docs.ts) maps each SQL dataset name to the
   benchmark's explainer doc in `vortex-data/vortex`, which is the same path that the monorepo's PR
@@ -71,7 +71,8 @@ rules below are the parts that were worth keeping.
 
 ## Footguns we have already hit
 
-All in [`web/components/Chart.tsx`](web/components/Chart.tsx):
+All in the chart island, [`web/components/Chart.tsx`](web/components/Chart.tsx) and the modules in
+[`web/components/chart/`](web/components/chart/):
 
 - **Reverse predecessor walk in the tooltip.** `payload.commits[]` is
   sorted oldest-first by SQL - `commits[0]` is the oldest, `commits[N-1]`

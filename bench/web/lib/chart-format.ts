@@ -10,7 +10,7 @@
  * Everything here is pure (no DOM, no module state), so it is importable from
  * server components, client components, and node-environment vitest alike. The
  * stateful counterparts (fetch queues, filter stores) live in
- * `lib/chart-store.ts`; the Chart.js wiring lives in `components/Chart.tsx`.
+ * `lib/chart-store/`; the Chart.js wiring lives in `components/chart/`.
  */
 
 import type { ChartHistory, ChartResponse, CommitPoint, UnitKind } from '@/lib/queries';

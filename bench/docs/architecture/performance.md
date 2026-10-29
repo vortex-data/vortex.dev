@@ -169,8 +169,9 @@ becomes the bottleneck.
 The server makes a single payload cheap; the client decides *when and how many*
 to ask for. The pure helpers below live in
 [`web/lib/chart-format.ts`](../../web/lib/chart-format.ts); the fetch queues are
-in [`web/lib/chart-store.ts`](../../web/lib/chart-store.ts) and the Chart.js
-wiring in [`web/components/Chart.tsx`](../../web/components/Chart.tsx).
+in [`web/lib/chart-store/queues.ts`](../../web/lib/chart-store/queues.ts), the
+chart island in [`web/components/Chart.tsx`](../../web/components/Chart.tsx) and
+the Chart.js wiring in [`web/components/chart/`](../../web/components/chart/).
 
 ### Lazy hydration, top first
 
@@ -229,7 +230,7 @@ chip's retry re-issues the *fetch* (an earlier version only retried chart
 "Expand All" should load everything quickly, but the per-chart, viewport-gated
 path does the opposite — it loads only what is on screen. So a toggle-open kicks a
 single `GET /api/group/{slug}?n=100` **bundle** fetch
-(`ensureGroupBundle`, [`web/lib/chart-store.ts`](../../web/lib/chart-store.ts))
+(`ensureGroupBundle`, [`web/lib/chart-store/bundles.ts`](../../web/lib/chart-store/bundles.ts))
 into a session-lifetime `payloadCache`, priming every chart in the group with one
 request (~150–300 KB gzipped) instead of dozens. The `IntersectionObserver` still
 gates the *Chart.js construction* (the actual CPU cost), and bundles run at
