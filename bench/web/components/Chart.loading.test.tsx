@@ -3,7 +3,7 @@
 
 // @vitest-environment jsdom
 
-import { act } from 'react';
+import { act, StrictMode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -337,6 +337,74 @@ describe('Chart opt-in full-history loading', () => {
     });
     expect(chip?.hasAttribute('hidden')).toBe(true);
     expect(chip?.dataset.state).not.toBe('windowed');
+  });
+
+  it('pans once per wheel event and stops after unmount', async () => {
+    // Pins the construction config and the wheel-pan listener's lifecycle.
+    // StrictMode runs the mount effect as mount, cleanup, remount on the same
+    // canvas node: the first controller's teardown must leave no wheel
+    // listener behind, and unmount must remove the survivor's.
+    interface StubOptions {
+      plugins: { tooltip: { enabled: boolean }; zoom: { limits: { x: unknown } } };
+    }
+    const charts: StubChart[] = [];
+    class StubChart {
+      data: { labels: unknown[]; datasets: unknown[] };
+      options: StubOptions;
+      pan = vi.fn();
+      constructor(
+        _canvas: HTMLCanvasElement,
+        config: { data: { labels: unknown[]; datasets: unknown[] }; options: StubOptions },
+      ) {
+        this.data = { labels: config.data.labels ?? [], datasets: config.data.datasets ?? [] };
+        this.options = config.options;
+        charts.push(this);
+      }
+      update(): void {}
+      destroy(): void {}
+    }
+    vi.mocked(loadChartJs).mockResolvedValueOnce(StubChart as never);
+    responders.push({
+      match: (u) => u.includes('n=100'),
+      respond: () => Promise.resolve(jsonResponse(completePayload(20))),
+    });
+    container.innerHTML =
+      '<section class="group-details">' +
+      '<details class="group-disclosure" open><summary class="group-summary">g</summary></details>' +
+      '<div class="chart-grid"><div id="mount"></div></div>' +
+      '</section>';
+    const mount = container.querySelector('#mount') as HTMLElement;
+    root = createRoot(mount);
+    await act(async () => {
+      root?.render(
+        <StrictMode>
+          <Chart slug="qm.eyJrIjoidHBjaCJ9" name="tpch q1" index={0} groupSlug="tpch" />
+        </StrictMode>,
+      );
+    });
+    // The bundle 404, the per-chart fetch, the loader await and the React
+    // commit each take a few microtask turns; flush generously.
+    await act(async () => {
+      for (let i = 0; i < 20; i++) {
+        await Promise.resolve();
+      }
+    });
+    expect(charts).toHaveLength(1);
+    const stub = charts[0];
+    expect(stub.options.plugins.tooltip.enabled).toBe(false);
+    expect(stub.options.plugins.zoom.limits.x).toEqual({ min: 0, max: 19, minRange: 4 });
+
+    const canvas = container.querySelector('canvas') as HTMLCanvasElement;
+    canvas.dispatchEvent(new WheelEvent('wheel', { deltaY: 40, cancelable: true }));
+    expect(stub.pan).toHaveBeenCalledTimes(1);
+    expect(stub.pan).toHaveBeenCalledWith({ x: 20 }, undefined, 'none');
+
+    await act(async () => {
+      root?.unmount();
+      root = null;
+    });
+    canvas.dispatchEvent(new WheelEvent('wheel', { deltaY: 40, cancelable: true }));
+    expect(stub.pan).toHaveBeenCalledTimes(1);
   });
 
   describe('PR-5.0.95 fetch resilience: timeout + abort', () => {
