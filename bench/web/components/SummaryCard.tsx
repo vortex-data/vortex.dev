@@ -226,7 +226,7 @@ export function SummaryCard({ summary }: { summary?: Summary }) {
       );
     }
     case 'queryBenchmark':
-    case 'vectorSearch':
+    case 'vectorSearch': {
       if (summary.rankings.length === 0) {
         return null;
       }
@@ -257,6 +257,7 @@ export function SummaryCard({ summary }: { summary?: Summary }) {
           <div className="scores-explanation">{summary.explanation}</div>
         </section>
       );
+    }
     default: {
       // Exhaustiveness guard: adding a new `Summary` variant without a render
       // arm above becomes a compile error here instead of a silently blank card.

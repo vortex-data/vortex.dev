@@ -62,13 +62,15 @@ app, all sharing the `bench-data` tag.
 The backstop bounds staleness; `POST /api/revalidate`
 ([`web/app/api/revalidate/route.ts`](../../web/app/api/revalidate/route.ts))
 *removes* it. On a successful ingest the emitter calls it and it runs
-`revalidateTag('bench-data')`, so the next read recomputes against fresh data
-instead of waiting out the 24-hour cap. The endpoint **fails closed** — a missing
-`BENCH_REVALIDATE_TOKEN` is a `503`, never a silent accept — and the post-ingest
-hook is **best-effort**: every failure in it is caught, logged, and swallowed so
-a cache-refresh problem can never change an ingest's exit code. That is why the
-whole path is safe to ship before the emitter cutover wires the token (it is
-inert until both `BENCH_SITE_BASE_URL` and the token are set).
+`revalidateTag('bench-data', { expire: 0 })`, which expires the entries at once
+(the `'max'` profile would serve them stale one more time), so the next read
+recomputes against fresh data instead of waiting out the 24-hour cap. The
+endpoint **fails closed** — a missing `BENCH_REVALIDATE_TOKEN` is a `503`, never
+a silent accept — and the post-ingest hook is **best-effort**: every failure in
+it is caught, logged, and swallowed so a cache-refresh problem can never change
+an ingest's exit code. That is why the whole path is safe to ship before the
+emitter cutover wires the token (it is inert until both `BENCH_SITE_BASE_URL`
+and the token are set).
 
 ### Keeping the function and its connections warm
 

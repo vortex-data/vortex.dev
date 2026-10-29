@@ -84,7 +84,6 @@ describe('GroupPermalink click behavior', () => {
     root = null;
     container.remove();
     vi.useRealTimers();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     delete (navigator as any).clipboard;
     window.history.replaceState(null, '', '/');
     initGroupFilter('random_access', [], []);

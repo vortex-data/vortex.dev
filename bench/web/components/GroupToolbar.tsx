@@ -119,6 +119,7 @@ export function GroupToolbar({
 
   return (
     <section className="group-toolbar" data-role="group-toolbar">
+      {/* biome-ignore lint/a11y/useSemanticElements: a fieldset would change the toolbar's layout. */}
       <div className="toolbar-group group-toolbar-y" role="group" aria-label="Group Y-axis scale">
         <span className="toolbar-label">Y</span>
         <button

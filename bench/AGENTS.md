@@ -88,11 +88,42 @@ All in [`web/components/Chart.tsx`](web/components/Chart.tsx):
 ## Local dev
 
 ```bash
+# From the repository root: bench/web is a member of the root Bun workspace.
 # The web app needs BENCH_DB_* env vars for a real database — see web/README.md.
-cd web && pnpm install && pnpm dev
+bun install && bun run --cwd bench/web dev
 
-pnpm test        # vitest unit tests
-pnpm build       # deliberately works without a database, so CI needs no secrets
+bun run --cwd bench/web test          # vitest unit tests
+bun run --cwd bench/web build         # deliberately works without a database, so CI needs no secrets
+bun run --cwd bench/web lint          # biome lint
+bun run --cwd bench/web format:check  # biome format (`format` rewrites)
 ```
 
 For the full env-var contract see [`web/README.md`](web/README.md).
+
+## Lint and format
+
+bench uses Biome, not ESLint or Prettier. The `bench/**` override in the root `biome.json` keeps the
+style bench had under Prettier (single quotes, trailing commas, 100 columns, 2-space indent), and
+`bun run check:ci` at the root checks bench along with the site. bench CI runs
+`bun run biome ci bench` instead, so `bench/scripts` is checked on bench-only changes too.
+`biome.json` cannot hold comments, so the reasons for each difference from the site's rules are
+here:
+
+- `correctness/useExhaustiveDependencies` is on (the site has it off). It replaces ESLint's
+  `react-hooks/exhaustive-deps`. An effect that omits dependencies on purpose carries a
+  `biome-ignore` comment that says why.
+- The site's `a11y` rules apply to bench unchanged. Seven places in existing markup break one of
+  them on purpose, and each carries an inline `biome-ignore` comment that says why:
+  `useAriaPropsSupportedByRole` for `aria-label` on a plain `div` (the header nav controls, the
+  chart toolbar), `useSemanticElements` for `role="group"` on a `div` in the toolbars (a `fieldset`
+  would change their layout), `useFocusableInteractive` for the pointer-driven range strip, and
+  `noNoninteractiveTabindex` for the group info icon, which takes focus so its tooltip shows for
+  keyboard users. New markup follows the rules, or carries its own `biome-ignore` with a reason.
+- `complexity/noImportantStyles` is off: `!important` overrides Chart.js's inline canvas size and the
+  offscreen prebuild layout in `app/globals.css`.
+- `organizeImports` is off: Prettier never sorted bench's imports, and reordering them would rewrite
+  27 files (25 in `bench/web`, 2 in `bench/scripts`) and could change the order CSS loads in.
+
+Next.js's `core-web-vitals` lint rules have no Biome equivalent; the site accepts that too. The
+site's config also turns off `suspicious/noExplicitAny`, so bench's old typescript-eslint
+`no-explicit-any` check is gone too.
