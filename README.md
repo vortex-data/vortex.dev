@@ -27,7 +27,7 @@ bun dev          # Turbopack dev server on http://localhost:3000
 | `bun run typecheck` | `tsc --noEmit`. Must run after `bun run build` because velite populates `.velite/` and Next emits `next-env.d.ts` during build |
 | `bun run verify` | HTTP suite against a running server: sitemap, robots, RSS, OG, canonicals, JSON-LD, theme parity, `/api/subscribe`, internal links |
 | `bun run test:e2e` | Playwright browser smoke (Chromium desktop + WebKit iPhone-13). One-time setup: `bun run test:e2e:install` |
-| `bun run lighthouse` | Local Lighthouse CI run against `bun run start` |
+| `bun run lighthouse` | Local Lighthouse CI run against `bun run start`. Fetches a pinned `@lhci/cli` with `bunx`; it is not a dependency |
 
 CI runs `check:ci → build → typecheck → start → verify → audit → playwright` on every PR via [.github/workflows/ci.yml](.github/workflows/ci.yml), plus an independent Lighthouse audit via [.github/workflows/lighthouse.yml](.github/workflows/lighthouse.yml) that posts a sticky score table.
 

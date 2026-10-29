@@ -21,7 +21,7 @@
     "check:ci": "biome check",
     "typecheck": "tsc --noEmit",
     "verify": "bun scripts/verify.ts",
-    "lighthouse": "lhci autorun",
+    "lighthouse": "bunx @lhci/cli@0.15.1 autorun",
     "test:e2e": "playwright test",
     "test:e2e:install": "playwright install --with-deps chromium webkit"
   },
@@ -40,7 +40,6 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.15",
-    "@lhci/cli": "^0.15.1",
     "@playwright/test": "^1.64.0",
     "@tailwindcss/postcss": "4.3.3",
     "@types/node": "^24.19.2",
