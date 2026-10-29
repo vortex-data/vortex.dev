@@ -1,0 +1,122 @@
+{
+  "name": "Random Access (NVMe)",
+  "charts": [
+    {
+      "name": "feature-vectors/correlated",
+      "slug": "rat.eyJrIjoiUmFuZG9tQWNjZXNzIiwiZGF0YXNldCI6ImZlYXR1cmUtdmVjdG9ycy9jb3JyZWxhdGVkIn0",
+      "display_name": "feature-vectors/correlated",
+      "unit_kind": "time_ns",
+      "series": {
+        "vortex-file-compressed:cold": [1209291, 1236252, null, null, null],
+        "parquet:cold": [10781974, 10784105, null, null, null],
+        "lance:cold": [951081, 952246, null, null, null],
+        "arrow-ipc:cold": [2044002, 3730718, null, null, null],
+        "vortex-file-compressed:hot": [110418, 107654, null, null, null]
+      }
+    },
+    {
+      "name": "feature-vectors/uniform",
+      "slug": "rat.eyJrIjoiUmFuZG9tQWNjZXNzIiwiZGF0YXNldCI6ImZlYXR1cmUtdmVjdG9ycy91bmlmb3JtIn0",
+      "display_name": "feature-vectors/uniform",
+      "unit_kind": "time_ns",
+      "series": {
+        "vortex-file-compressed:cold": [2356769, 2374317, null, null, null],
+        "parquet:cold": [137559887, 133802206, null, null, null],
+        "lance:cold": [1761123, 1810772, null, null, null],
+        "arrow-ipc:cold": [49861004, 35951190, null, null, null],
+        "vortex-file-compressed:hot": [984853, 1023791, null, null, null]
+      }
+    },
+    {
+      "name": "nested-lists/correlated",
+      "slug": "rat.eyJrIjoiUmFuZG9tQWNjZXNzIiwiZGF0YXNldCI6Im5lc3RlZC1saXN0cy9jb3JyZWxhdGVkIn0",
+      "display_name": "nested-lists/correlated",
+      "unit_kind": "time_ns",
+      "series": {
+        "vortex-file-compressed:cold": [336783, 352557, null, null, null],
+        "parquet:cold": [4912625, 4893052, null, null, null],
+        "lance:cold": [429895, 436339, null, null, null],
+        "arrow-ipc:cold": [100073, 103886, null, null, null],
+        "vortex-file-compressed:hot": [98244, 96734, null, null, null]
+      }
+    },
+    {
+      "name": "nested-lists/uniform",
+      "slug": "rat.eyJrIjoiUmFuZG9tQWNjZXNzIiwiZGF0YXNldCI6Im5lc3RlZC1saXN0cy91bmlmb3JtIn0",
+      "display_name": "nested-lists/uniform",
+      "unit_kind": "time_ns",
+      "series": {
+        "vortex-file-compressed:cold": [850357, 943825, null, null, null],
+        "parquet:cold": [38286166, 38424139, null, null, null],
+        "lance:cold": [1318625, 1346258, null, null, null],
+        "arrow-ipc:cold": [1121795, 1265763, null, null, null],
+        "vortex-file-compressed:hot": [423955, 421067, null, null, null]
+      }
+    },
+    {
+      "name": "nested-structs/correlated",
+      "slug": "rat.eyJrIjoiUmFuZG9tQWNjZXNzIiwiZGF0YXNldCI6Im5lc3RlZC1zdHJ1Y3RzL2NvcnJlbGF0ZWQifQ",
+      "display_name": "nested-structs/correlated",
+      "unit_kind": "time_ns",
+      "series": {
+        "vortex-file-compressed:cold": [422279, 420708, null, null, null],
+        "parquet:cold": [9404889, 9615878, null, null, null],
+        "lance:cold": [490547, 484930, null, null, null],
+        "arrow-ipc:cold": [90364, 89430, null, null, null],
+        "vortex-file-compressed:hot": [120881, 120410, null, null, null]
+      }
+    },
+    {
+      "name": "nested-structs/uniform",
+      "slug": "rat.eyJrIjoiUmFuZG9tQWNjZXNzIiwiZGF0YXNldCI6Im5lc3RlZC1zdHJ1Y3RzL3VuaWZvcm0ifQ",
+      "display_name": "nested-structs/uniform",
+      "unit_kind": "time_ns",
+      "series": {
+        "vortex-file-compressed:cold": [620198, 622078, null, null, null],
+        "parquet:cold": [37850813, 37834446, null, null, null],
+        "lance:cold": [2558267, 2439329, null, null, null],
+        "arrow-ipc:cold": [887290, 938270, null, null, null],
+        "vortex-file-compressed:hot": [265075, 250281, null, null, null]
+      }
+    },
+    {
+      "name": "taxi",
+      "slug": "rat.eyJrIjoiUmFuZG9tQWNjZXNzIiwiZGF0YXNldCI6InRheGkifQ",
+      "display_name": "taxi",
+      "unit_kind": "time_ns",
+      "series": {
+        "vortex-file-compressed:cold": [927198, 922392, null, null, null],
+        "parquet:cold": [17812885, 17913316, null, null, null],
+        "lance:cold": [1251132, 1249864, null, null, null],
+        "arrow-ipc:cold": [168412, 167889, null, null, null],
+        "vortex-file-compressed:hot": [222312, 218772, null, null, null]
+      }
+    },
+    {
+      "name": "taxi/correlated",
+      "slug": "rat.eyJrIjoiUmFuZG9tQWNjZXNzIiwiZGF0YXNldCI6InRheGkvY29ycmVsYXRlZCJ9",
+      "display_name": "taxi/correlated",
+      "unit_kind": "time_ns",
+      "series": {
+        "vortex-file-compressed:cold": [1092553, 1101477, null, null, null],
+        "parquet:cold": [24981353, 25099885, null, null, null],
+        "lance:cold": [1631034, 1631876, null, null, null],
+        "arrow-ipc:cold": [228782, 221890, null, null, null],
+        "vortex-file-compressed:hot": [257170, 252184, null, null, null]
+      }
+    },
+    {
+      "name": "taxi/uniform",
+      "slug": "rat.eyJrIjoiUmFuZG9tQWNjZXNzIiwiZGF0YXNldCI6InRheGkvdW5pZm9ybSJ9",
+      "display_name": "taxi/uniform",
+      "unit_kind": "time_ns",
+      "series": {
+        "vortex-file-compressed:cold": [2916577, 2978837, null, null, null],
+        "parquet:cold": [39590379, 39465964, null, null, null],
+        "lance:cold": [8003975, 7960086, null, null, null],
+        "arrow-ipc:cold": [3097507, 3026104, null, null, null],
+        "vortex-file-compressed:hot": [818962, 829891, null, null, null]
+      }
+    }
+  ]
+}

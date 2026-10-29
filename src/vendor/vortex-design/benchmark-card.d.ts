@@ -2,7 +2,10 @@
 
 export type BenchRow = {
   system: string;
-  /** Bench's published geomean score for the system, or null when bench did not measure it. */
+  /**
+   * The system's number in the panel, or null when it was not measured: in a time panel its geomean
+   * time in ms over the queries bench's score covers, otherwise bench's geomean ratio to Parquet.
+   */
   score: number | null;
   /** The datasets or queries bench ran the system on. Below `total`, the row is "Not measured". */
   measured?: number | null;
@@ -18,7 +21,7 @@ export type BenchRow = {
 export type BenchPanel = {
   /** The metric's name, with parts a line can break between: "Random access, NVMe, cold". */
   title: string;
-  /** What the scores are measured against: "× fastest", "× Parquet", or "×" for file size. */
+  /** The scores' unit: "ms" for a time, "× Parquet" for a throughput ratio, "×" for file size. */
   unit: string;
   kind: "speed" | "size";
   better: "higher" | "lower";
@@ -40,9 +43,9 @@ export type PanelRow = {
   score: number | null;
   /** The score as a percentage of the panel's largest, 0 when not measured. */
   width: number;
-  /** The score as bench prints it, "Not measured" or "N/A". */
+  /** The score as bench prints it with a short unit ("42.25 ms", "5.12×"), "Not measured" or "N/A". */
   label: string;
-  /** For screen readers and the hover title: "38.20× fastest", "Not measured", or "not available, " and the reason. */
+  /** For screen readers and the hover title: "42.25 ms", "5.12× Parquet", "Not measured", or "not available, " and the reason. */
   exact: string;
   state: "measured" | "not-measured" | "n/a";
   ours: boolean;
@@ -73,6 +76,9 @@ export function panelRows(
   unit: string
 ): PanelRow[];
 
+/** The panel's value column: its longest value or "N/A", in ch ("9ch"). */
+export function valueWidth(rows: readonly PanelRow[]): string;
+
 export function versusParquet(
   rows: readonly BenchRow[],
   better: BenchPanel["better"]
@@ -80,9 +86,15 @@ export function versusParquet(
 
 export function formatFactor(f: number | null): string;
 
+/** The big figure: a whole percentage below 2× ("57%"), a factor from 2× up ("5.1×"), "1×" when level, "—" when not measured. */
+export function panelFactor(
+  kind: BenchPanel["kind"],
+  vs: Pick<Versus, "factor" | "vortexWins"> & Partial<Pick<Versus, "tie" | "missing">>
+): string;
+
 export function panelNote(
   kind: BenchPanel["kind"],
-  vs: Pick<Versus, "vortexWins"> & Partial<Pick<Versus, "tie" | "missing">>
+  vs: Pick<Versus, "vortexWins"> & Partial<Pick<Versus, "factor" | "tie" | "missing">>
 ): string;
 
 export function sourceNotes(panels: readonly BenchPanel[]): string[];

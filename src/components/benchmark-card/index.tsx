@@ -1,11 +1,13 @@
+import type { CSSProperties } from "react";
 import { OpenInNewIcon } from "@/components/icons";
 import { formatReadDate, type Panel } from "@/lib/bench-summary";
 import {
-  formatFactor,
+  panelFactor,
   panelNote,
   panelRows,
   pickSystems,
   sourceNotes,
+  valueWidth,
   versusParquet
 } from "@/vendor/vortex-design/benchmark-card.js";
 
@@ -21,25 +23,28 @@ const STATE_CLASS = {
  * One panel of the design system's BenchmarkCard, drawn in JSX from the
  * system's own rules (benchmark-card.js). Its markup is the same as the
  * system's `renderPanel`, and tests/unit/benchmark-card.test.tsx holds it
- * there: the metric, the factor against Parquet with the words that say who
- * won, and the bars best first, each ending in its score. The score with its
- * unit is each bar's title and screen-reader text. A system that cannot run
- * the benchmark is N/A, with its reason.
+ * there: the metric, the figure against Parquet with the words that say who
+ * won, and the bars best first, each ending in its value with a short unit
+ * ("42.25 ms", "5.12×") in a column as wide as the panel's longest value.
+ * The value with its full unit is each bar's title and screen-reader text. A
+ * system that cannot run the benchmark is N/A, with its reason.
  */
 export function BenchPanel({ panel }: { panel: Panel }) {
   const { title, unit, kind, better, rows, systems } = panel;
   const vs = versusParquet(rows, better);
+  const shown = panelRows(pickSystems(rows, systems), better, unit);
+  const column = { "--bar-value": valueWidth(shown) } as CSSProperties;
   return (
     <div className="vx-bench-panel">
       <div className="vx-label-sm vx-bench-title">
         <span className="vx-bench-metric">{title}</span>
       </div>
       <div className="vx-bench-big">
-        <span className="vx-stat">{formatFactor(vs.factor)}</span>{" "}
+        <span className="vx-stat">{panelFactor(kind, vs)}</span>{" "}
         <span className="vx-caption vx-bench-note">{panelNote(kind, vs)}</span>
       </div>
-      <div className="vx-bars">
-        {panelRows(pickSystems(rows, systems), better, unit).map((r) => {
+      <div className="vx-bars" style={column}>
+        {shown.map((r) => {
           const className = `vx-bar${r.ours ? " is-ours" : ""}${STATE_CLASS[r.state]}`;
           const tip = `${r.system}: ${r.exact}`;
           if (r.state === "not-measured")
@@ -93,8 +98,8 @@ export function BenchmarkCard({
         <h2 className="vx-bench-headline">
           Vortex against Parquet, Lance and Arrow{" "}
           <span className="vx-bench-sub">
-            · times against the fastest run, the rest against Parquet, best
-            first
+            · times in ms, the geomean over queries or datasets, the rest
+            against Parquet = 1, best first
           </span>
         </h2>
         <a className="vx-label-sm vx-source vx-nav-link" href={SOURCE_URL}>

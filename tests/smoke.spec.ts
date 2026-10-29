@@ -165,9 +165,10 @@ test.describe("home bands", () => {
   });
 
   // Note 62: each bar ends in its score, with the unit for screen readers
-  // and as its hover title. Lance cannot run in cuDF, so it is N/A there, and
-  // the hand-kept GPU panel's source is named under the panels.
-  test("each bar ends in its score, keeps its unit for screen readers, and the GPU panel names its source", async ({
+  // and as its hover title. Note 63: the value carries a short unit, ms for
+  // a time and × for a ratio. Lance cannot run in cuDF, so it is N/A there,
+  // and the hand-kept GPU panel's source is named under the panels.
+  test("each bar ends in its value and unit, keeps its full unit for screen readers, and the GPU panel names its source", async ({
     page
   }) => {
     await page.goto("/");
@@ -187,16 +188,27 @@ test.describe("home bands", () => {
         expect(b.title).toMatch(/: Not measured$/);
         continue;
       }
-      expect(b.value).toMatch(/^(\d[\d.]*|N\/A)$/);
+      expect(b.value).toMatch(/^(\d[\d.]*(×| ms)|N\/A)$/);
       expect(b.title.endsWith(`: ${b.sr}`)).toBe(true);
     }
-    // The value column is one width in every row, so the bars share a scale.
+    // The value column is one width in every row of a panel, so its bars
+    // share a scale.
     const widths = await card
-      .locator(".vx-bar-track")
-      .evaluateAll((ts) =>
-        ts.map((t) => Math.round(t.getBoundingClientRect().width))
+      .locator(".vx-bars")
+      .evaluateAll((panels) =>
+        panels.map(
+          (p) =>
+            new Set(
+              [...p.querySelectorAll(".vx-bar-track")].map((t) =>
+                Math.round(t.getBoundingClientRect().width)
+              )
+            ).size
+        )
       );
-    expect(new Set(widths).size).toBeLessThanOrEqual(3);
+    expect(widths).toEqual([1, 1, 1, 1, 1, 1]);
+    await expect(card.locator(".vx-bench-sub")).toHaveText(
+      "· times in ms, the geomean over queries or datasets, the rest against Parquet = 1, best first"
+    );
     await expect(
       card.locator(
         '.vx-bar.is-na[title="Lance: not available, no cuDF integration"]'

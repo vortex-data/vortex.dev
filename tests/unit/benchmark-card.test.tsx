@@ -6,10 +6,14 @@ import { BenchmarkCard, BenchPanel } from "@/components/benchmark-card";
 import { type Panel, panelsFrom } from "@/lib/bench-summary";
 import { renderPanel } from "@/vendor/vortex-design/benchmark-card.js";
 
-const PAYLOAD = JSON.parse(
-  readFileSync(new URL("./fixtures/bench-groups.json", import.meta.url), "utf8")
-) as { groups: unknown };
-const PANELS = panelsFrom(PAYLOAD.groups);
+const fixture = (name: string) =>
+  JSON.parse(
+    readFileSync(new URL(`./fixtures/${name}`, import.meta.url), "utf8")
+  ) as Record<string, unknown>;
+const PANELS = panelsFrom(fixture("bench-groups.json").groups, {
+  Clickbench: fixture("bench-group-clickbench.json"),
+  "Random Access (NVMe)": fixture("bench-group-random-access-nvme.json")
+});
 
 // A panel as the system draws it and as the site draws it must be the same
 // markup, so the site cannot drift from the system's BenchmarkCard.
@@ -28,12 +32,12 @@ describe("BenchPanel", () => {
   it("matches renderPanel for a missing and a partial system", () => {
     const panel: Panel = {
       title: "Random access, NVMe, cold",
-      unit: "× fastest",
+      unit: "ms",
       kind: "speed",
       better: "lower",
       rows: [
-        { system: "Vortex", score: 1.18, measured: 4, total: 4 },
-        { system: "Parquet", score: 38.2, measured: 3, total: 4 },
+        { system: "Vortex", score: 2.22, measured: 4, total: 4 },
+        { system: "Parquet", score: 70.36, measured: 3, total: 4 },
         { system: "Lance", score: null }
       ]
     };
@@ -71,7 +75,7 @@ describe("BenchmarkCard", () => {
     );
     assert.ok(
       html.includes(
-        '<h2 class="vx-bench-headline">Vortex against Parquet, Lance and Arrow <span class="vx-bench-sub">· times against the fastest run, the rest against Parquet, best first</span></h2>'
+        '<h2 class="vx-bench-headline">Vortex against Parquet, Lance and Arrow <span class="vx-bench-sub">· times in ms, the geomean over queries or datasets, the rest against Parquet = 1, best first</span></h2>'
       )
     );
     assert.ok(
@@ -83,11 +87,10 @@ describe("BenchmarkCard", () => {
     assert.equal(html.match(/class="vx-bench-panel"/g)?.length, 6);
   });
 
-  // Note 34: the bars and the big figure read the same scores, so NVMe's bars
-  // give the 32× above them, not the 29× that bench's totals gave. Note 62:
-  // each bar ends in its score, and its score with the unit, which the panel
-  // no longer prints, is its screen-reader text and title.
-  it("ends each bar in bench's score, keeps the unit for screen readers and hover, and the bars agree with the factor", () => {
+  // Note 34: the bars and the big figure read the same numbers, so NVMe's
+  // bars give the 32× above them. Note 63: time panels show geomean ms, each
+  // value carries a short unit, and below 2× the figure is a percentage.
+  it("ends each bar in its value and unit, keeps the full unit for screen readers and hover, and the bars agree with the figure", () => {
     assert.ok(PANELS);
     const html = renderToStaticMarkup(
       <BenchmarkCard panels={PANELS} readAt={new Date("2026-10-29")} />
@@ -99,12 +102,12 @@ describe("BenchmarkCard", () => {
     assert.deepEqual(
       values,
       [
-        ["5.12", "1.00", "0.90"],
-        ["1.57", "1.00", "0.54"],
-        ["1.26", "2.01", "17.50"],
-        ["3.90", "1.00", "N/A"],
-        ["1.18", "1.90", "2.10", "38.20"],
-        ["1", "1.07", "1.99", "5.59"]
+        ["4.93×", "1.00×", "0.90×"],
+        ["1.58×", "1.00×", "0.53×"],
+        ["42.25 ms", "65.62 ms", "578.63 ms"],
+        ["17.00 ms", "65.88 ms", "N/A"],
+        ["2.22 ms", "3.53 ms", "3.72 ms", "70.36 ms"],
+        ["1×", "1.07×", "1.99×", "5.59×"]
       ].flat()
     );
     const exact = [...html.matchAll(/class="vx-sr-only">([^<]*)</g)].map(
@@ -113,23 +116,33 @@ describe("BenchmarkCard", () => {
     assert.deepEqual(
       exact,
       [
-        ["5.12× Parquet", "1.00× Parquet", "0.90× Parquet"],
-        ["1.57× Parquet", "1.00× Parquet", "0.54× Parquet"],
-        ["1.26× fastest", "2.01× fastest", "17.50× fastest"],
-        [
-          "3.90× Parquet",
-          "1.00× Parquet",
-          "not available, no cuDF integration"
-        ],
-        ["1.18× fastest", "1.90× fastest", "2.10× fastest", "38.20× fastest"],
+        ["4.93× Parquet", "1.00× Parquet", "0.90× Parquet"],
+        ["1.58× Parquet", "1.00× Parquet", "0.53× Parquet"],
+        ["42.25 ms", "65.62 ms", "578.63 ms"],
+        ["17.00 ms", "65.88 ms", "not available, no cuDF integration"],
+        ["2.22 ms", "3.53 ms", "3.72 ms", "70.36 ms"],
         ["1×", "1.07×", "1.99×", "5.59×"]
       ].flat()
     );
-    assert.match(html, /<div class="vx-bar" title="Arrow: 2\.10× fastest">/);
-    const factors = [
-      ...html.matchAll(/class="vx-bench-big"><span class="vx-stat">([^<]*)</g)
-    ].map((m) => m[1]);
-    assert.deepEqual(factors, ["5.1×", "1.6×", "1.6×", "3.9×", "32×", "1.07×"]);
+    assert.match(html, /<div class="vx-bar" title="Arrow: 3\.72 ms">/);
+    const big = [
+      ...html.matchAll(
+        /class="vx-bench-big"><span class="vx-stat">([^<]*)<\/span> <span class="vx-caption vx-bench-note">([^<]*)</g
+      )
+    ].map((m) => `${m[1]} ${m[2]}`);
+    assert.deepEqual(big, [
+      "4.9× faster than Parquet",
+      "58% faster than Parquet",
+      "55% faster than Parquet",
+      "3.9× faster than Parquet",
+      "32× faster than Parquet",
+      "7% larger than Parquet"
+    ]);
+    // Each panel's value column fits its longest value, so its bars share a scale.
+    const columns = [
+      ...html.matchAll(/<div class="vx-bars" style="--bar-value:(\d+)ch">/g)
+    ].map((m) => Number(m[1]));
+    assert.deepEqual(columns, [5, 5, 9, 8, 8, 5]);
   });
 
   it("shows Arrow only where bench runs it, and Lance in every bench panel", () => {
@@ -167,7 +180,7 @@ describe("BenchmarkCard", () => {
     assert.doesNotMatch(html, /vx-bench-mark|<sup/);
     assert.match(
       html,
-      /<p class="vx-caption vx-bench-foot">GPU analytics with cuDF: end to end, hot, on GH200, NDS-H SF10, from the Vortex UW–Madison talk<\/p><\/section>$/
+      /<p class="vx-caption vx-bench-foot">GPU analytics with cuDF: end to end, hot, on GH200, NDS-H SF10, Parquet the fastest of four configurations per query, from the Vortex UW–Madison talk<\/p><\/section>$/
     );
     assert.equal(html.match(/<a /g)?.length, 1, "one link, to bench");
     assert.ok(

@@ -192,7 +192,12 @@
   opacity: 0.62;
   transition: opacity 150ms ease-out;
 }
-.vx-logos-set img:hover {
+.vx-logos-set a {
+  display: block;
+  flex: none;
+}
+.vx-logos-set img:hover,
+.vx-logos-set a:focus-visible img {
   opacity: 1;
 }
 @keyframes vx-marquee {
@@ -398,6 +403,7 @@
 .vx-footer-mark { height: 12px; width: auto; opacity: 0.85; }
 [data-theme="light"] .vx-footer-mark { filter: invert(1); }
 .vx-footer-text { flex: 1 1 420px; min-width: 0; margin: 0; }
+.vx-footer-credit { display: block; margin-top: var(--space-4); }
 .vx-footer-nav { display: flex; flex-wrap: wrap; gap: var(--space-8) var(--space-16); }
 
 .vx-eyebrow { display: inline-flex; align-items: center; gap: var(--space-8); }
@@ -431,9 +437,11 @@
 .vx-copy .is-check, .vx-copy.is-done .is-copy { display: none; }
 .vx-copy.is-done .is-check { display: block; }
 
-/* A bar's value column has one width in every row, so every track has one length and the bars
-   share a scale. 6ch holds "100.00". */
-.vx-bench { overflow: hidden; container: vx-bench / inline-size; --bar-value: 6ch; }
+/* A bar's value has one width in every row of a panel, so every track has one length and the bars
+   share a scale. renderPanel sets --bar-value on each panel's vx-bars to fit its longest value
+   ("578.63 ms" is 9ch, "5.12×" 5ch), and the value takes it in its own 11px figures. 6ch is the
+   fallback. A name takes 7ch, which holds "Parquet". */
+.vx-bench { overflow: hidden; container: vx-bench / inline-size; --bar-value: 6ch; --bar-name: 7ch; }
 .vx-bench-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--space-8) var(--space-16); padding: var(--space-12) var(--space-20); border-bottom: 1px solid var(--line); }
 .vx-bench-headline { margin: 0; font: 500 14px/1.3 var(--font-sans); color: var(--ink); }
 .vx-bench-sub { color: var(--ink-muted); font-weight: 400; }
@@ -475,19 +483,20 @@
 .vx-bar.is-ours .vx-bar-fill { background: var(--chart-1); }
 .vx-bars.is-lg .vx-bar { gap: var(--space-12); font-size: 12.5px; }
 .vx-bars.is-lg .vx-bar-track { height: 10px; }
-/* The card's bars end in their scores, small and muted, Vortex's included, so the magnitudes read
-   at a glance and the bars and the factor still lead. The score with its unit is the row's title
-   and screen-reader text. A system with no score says "Not measured" where its bar would be. In a
-   panel whose text is narrower than about 175px, a bar beside its name and value was 15 to 50px
-   wide. So there each bar runs the panel's width under its name and value: about 140px on a 375px
-   phone. One column would give 190px bars, but the card would grow taller than a phone's screen. */
+/* The card's bars end in their values with a short unit ("42.25 ms", "5.12×"), small and muted,
+   Vortex's included, so the magnitudes read at a glance and the bars and the factor still lead.
+   The value with its full unit is the row's title and screen-reader text. A system with no score
+   says "Not measured" where its bar would be. In a panel whose text is narrower than about 175px,
+   a bar beside its name and value was 15 to 50px wide. So there each bar runs the panel's width
+   under its name and value: about 140px on a 375px phone. One column would give 190px bars, but
+   the card would grow taller than a phone's screen. */
 .vx-bench .vx-bars { align-content: start; }
 .vx-bench .vx-bar { grid-template-columns: minmax(0, 1fr) auto; row-gap: var(--space-4); }
-.vx-bench .vx-bar-value { font-size: 11px; color: var(--ink-muted); }
+.vx-bench .vx-bar-value { font-size: 11px; color: var(--ink-muted); inline-size: var(--bar-value); }
 .vx-bench .vx-bar-track { grid-column: 1 / -1; grid-row: 2; }
 .vx-bench .vx-bar-missing { grid-column: 1 / -1; grid-row: 2; }
 @container vx-bench (min-width: 410px) {
-  .vx-bench .vx-bar { grid-template-columns: var(--bar-name, 56px) minmax(0, 1fr) var(--bar-value, auto); }
+  .vx-bench .vx-bar { grid-template-columns: var(--bar-name, 56px) minmax(0, 1fr) auto; }
   .vx-bench .vx-bar-track { grid-column: auto; grid-row: auto; }
   .vx-bench .vx-bar-missing { grid-column: 2 / -1; grid-row: auto; }
 }
