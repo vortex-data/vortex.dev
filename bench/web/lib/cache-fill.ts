@@ -3,30 +3,104 @@
 
 import { getPool } from '@/lib/db';
 
-// Stable two-int PostgreSQL advisory-lock key: "benc" / "grps". Every group
-// cache key shares this lock because each fill starts with the same full group
-// discovery and summary pass.
-const GROUP_CACHE_FILL_LOCK = [0x62656e63, 0x67727073] as const;
+// First int of every group cache fill's two-int PostgreSQL advisory-lock key: "benc". The second
+// is a hash of the cache entry's key (`cacheFillLockId`), so fills of different entries run at
+// once and only fills of the same entry wait for each other. A hash collision only makes two
+// entries take turns.
+const GROUP_CACHE_FILL_LOCK_SPACE = 0x62656e63;
 
 const CACHE_FILL_RETRY_DELAYS_MS = [250, 750, 2_000, 4_000, 8_000] as const;
 
-/** Another process is already rebuilding a group cache entry. */
+/**
+ * Fill slots in one process. A fill holds one pool connection for its lock and asks for more while
+ * it runs: a group bundle two at once (its discovery and its summary), the group list seven (the
+ * summaries' `QUERY_CONCURRENCY` in `lib/queries.ts`). The group list takes every slot, so with the
+ * default pool of 8 the fills in one process never ask for more than 8 connections at once: 1 + 7,
+ * or 2 × (1 + 2). A fill waiting for a slot holds no connection.
+ */
+export const CACHE_FILL_SLOTS = 2;
+
+/** Another process is already filling this group cache entry. */
 export class GroupCacheFillInProgressError extends Error {
   constructor() {
-    super('another process is already rebuilding the group cache');
+    super('another process is already filling this group cache entry');
     this.name = 'GroupCacheFillInProgressError';
   }
 }
 
 /**
- * Run one group cache fill under a cross-instance PostgreSQL advisory lock.
+ * The 32-bit FNV-1a hash of `key`, as the signed int4 that `pg_try_advisory_lock(int, int)`
+ * takes.
+ */
+export function cacheFillLockId(key: string): number {
+  let hash = 0x811c9dc5;
+  for (const byte of new TextEncoder().encode(key)) {
+    hash = Math.imul(hash ^ byte, 0x01000193);
+  }
+  return hash | 0;
+}
+
+let freeSlots = CACHE_FILL_SLOTS;
+const slotWaiters: { slots: number; grant: () => void }[] = [];
+
+// First come, first served: a fill that needs every slot waits at the head of the queue for the
+// running fills to finish, and no later fill passes it.
+function grantSlots(): void {
+  while (slotWaiters.length > 0 && slotWaiters[0]!.slots <= freeSlots) {
+    const waiter = slotWaiters.shift()!;
+    freeSlots -= waiter.slots;
+    waiter.grant();
+  }
+}
+
+async function withFillSlots<T>(slots: number, run: () => Promise<T>): Promise<T> {
+  await new Promise<void>((grant) => {
+    slotWaiters.push({ slots, grant });
+    grantSlots();
+  });
+  try {
+    return await run();
+  } finally {
+    freeSlots += slots;
+    grantSlots();
+  }
+}
+
+// Fills running in this process, by cache entry. A second request for an entry shares the
+// running fill instead of queueing for a slot and then losing the entry's lock.
+const runningFills = new Map<string, Promise<unknown>>();
+
+/**
+ * Run one group cache fill for the entry `key`, under a cross-instance PostgreSQL advisory lock
+ * for that entry.
  *
- * Lock contention fails immediately and releases the pool connection. The
- * caller can then retry the Data Cache read without keeping a database
- * connection queued behind the active fill. Session advisory locks disappear
+ * In one process, a fill for an entry that is already filling shares that fill, and fills take
+ * turns for [`CACHE_FILL_SLOTS`]; `exclusive` takes every slot. Lock contention with another
+ * process (another instance, or a preview deployment on the same database) fails immediately and
+ * releases the pool connection. The caller can then retry the Data Cache read without keeping a
+ * database connection queued behind the active fill. Session advisory locks disappear
  * automatically if the function or its database connection terminates.
  */
-export async function withGroupCacheFillLock<T>(fill: () => Promise<T>): Promise<T> {
+export function withGroupCacheFillLock<T>(
+  key: string,
+  fill: () => Promise<T>,
+  { exclusive = false }: { exclusive?: boolean } = {},
+): Promise<T> {
+  const running = runningFills.get(key);
+  if (running !== undefined) {
+    return running as Promise<T>;
+  }
+  const started = withFillSlots(exclusive ? CACHE_FILL_SLOTS : 1, () =>
+    fillUnderLock(cacheFillLockId(key), fill),
+  ).finally(() => {
+    runningFills.delete(key);
+  });
+  runningFills.set(key, started);
+  return started;
+}
+
+async function fillUnderLock<T>(lockId: number, fill: () => Promise<T>): Promise<T> {
+  const lock = [GROUP_CACHE_FILL_LOCK_SPACE, lockId];
   const client = await getPool().connect();
   // A client whose connection dropped or whose unlock failed is broken; release it with the error
   // so the pool discards it, which ends its session and any lock the session still holds. pg emits
@@ -41,7 +115,7 @@ export async function withGroupCacheFillLock<T>(fill: () => Promise<T>): Promise
   try {
     const result = await client.query<{ acquired: boolean }>(
       'SELECT pg_try_advisory_lock($1, $2) AS acquired',
-      [...GROUP_CACHE_FILL_LOCK],
+      lock,
     );
     acquired = result.rows[0]?.acquired === true;
     if (!acquired) {
@@ -53,7 +127,7 @@ export async function withGroupCacheFillLock<T>(fill: () => Promise<T>): Promise
       // A dropped connection ended the session, and the lock with it.
       if (acquired && broken === undefined) {
         await client
-          .query('SELECT pg_advisory_unlock($1, $2)', [...GROUP_CACHE_FILL_LOCK])
+          .query('SELECT pg_advisory_unlock($1, $2)', lock)
           .catch((unlockError: unknown) => {
             broken ??= unlockError instanceof Error ? unlockError : new Error(String(unlockError));
             throw unlockError;
@@ -66,7 +140,7 @@ export async function withGroupCacheFillLock<T>(fill: () => Promise<T>): Promise
   }
 }
 
-/** Retry a Data Cache read while another process owns the group fill lock. */
+/** Retry a Data Cache read while another process owns the entry's fill lock. */
 export async function retryGroupCacheFill<T>(
   read: () => Promise<T>,
   retryDelaysMs: readonly number[] = CACHE_FILL_RETRY_DELAYS_MS,

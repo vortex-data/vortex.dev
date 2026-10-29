@@ -53,10 +53,11 @@ const GROUP_PAYLOAD_CACHE_VERSION = 'v9';
 // The default last-100 group bundle, keyed by group slug. The slug is the cache
 // key (an `unstable_cache` argument), so one wrapper covers every group. A
 // `null` result (the group has no data) is cached too, which is correct: a
-// missing group stays a 404 until the next ingest revalidates the tag.
+// missing group stays a 404 until the next ingest revalidates the tag. Each
+// group fills under its own lock, so different groups fill at once.
 const groupChartsCached = unstable_cache(
   async (slug: string): Promise<GroupChartsResponse | null> =>
-    withGroupCacheFillLock(() =>
+    withGroupCacheFillLock(`group-charts:${slug}`, () =>
       collectGroupCharts(groupKeyFromSlug(slug), { kind: 'last', n: DEFAULT_COMMIT_WINDOW }),
     ),
   [`data-cache:group-charts:${GROUP_PAYLOAD_CACHE_VERSION}:n100`],
@@ -70,8 +71,11 @@ const chartPayloadCached = unstable_cache(
   CACHE_OPTIONS,
 );
 
+// The group list runs every group's summary at once, so it takes every fill
+// slot in its process (see `CACHE_FILL_SLOTS`).
 const groupsCached = unstable_cache(
-  async (): Promise<Group[]> => withGroupCacheFillLock(collectGroups),
+  async (): Promise<Group[]> =>
+    withGroupCacheFillLock('groups', collectGroups, { exclusive: true }),
   [`data-cache:groups:${GROUP_PAYLOAD_CACHE_VERSION}`],
   CACHE_OPTIONS,
 );

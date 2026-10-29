@@ -12,7 +12,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 const { cacheCalls, retryGroupCacheFill, withGroupCacheFillLock } = vi.hoisted(() => ({
   cacheCalls: [] as { keyParts: string[]; options: { tags?: string[]; revalidate?: number } }[],
   retryGroupCacheFill: vi.fn((read: () => Promise<unknown>) => read()),
-  withGroupCacheFillLock: vi.fn((fill: () => Promise<unknown>) => fill()),
+  withGroupCacheFillLock: vi.fn((_key: string, fill: () => Promise<unknown>, _options?: object) =>
+    fill(),
+  ),
 }));
 vi.mock('next/cache', () => ({
   unstable_cache: (
@@ -80,5 +82,14 @@ describe('data-cache wrappers', () => {
     await expect(cachedDefaultChartPayload('cs')).resolves.toEqual({ display_name: 'c' });
     expect(withGroupCacheFillLock).toHaveBeenCalledTimes(2);
     expect(retryGroupCacheFill).toHaveBeenCalledTimes(2);
+  });
+
+  it('locks each group bundle on its own key, and the group list on every fill slot', async () => {
+    await cachedGroups();
+    await cachedDefaultGroupCharts('gs');
+    expect(withGroupCacheFillLock.mock.calls[0]![0]).toBe('groups');
+    expect(withGroupCacheFillLock.mock.calls[0]![2]).toEqual({ exclusive: true });
+    expect(withGroupCacheFillLock.mock.calls[1]![0]).toBe('group-charts:gs');
+    expect(withGroupCacheFillLock.mock.calls[1]![2]).toBeUndefined();
   });
 });

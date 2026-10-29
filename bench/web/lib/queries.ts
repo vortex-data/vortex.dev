@@ -1559,10 +1559,12 @@ function discoverGroups(groupKind: GroupKind): Promise<Group[]> {
 /**
  * Bound on how many queries one request runs concurrently: the per-group
  * summaries in [`collectGroups`] (PR-5.1.5 fix e). [`collectGroupCharts`] no
- * longer fans out; it runs two statements per group, or more in slices of 25
- * charts for large groups, one after another on one connection, after the
- * summaries finish. Kept one below the `BENCH_DB_POOL_MAX` default because a
- * cached fill holds one pool connection for its advisory lock. Excess work
+ * longer fans out; it runs its group's discovery and summary at once, then two
+ * statements per group, or more in slices of 25 charts for large groups, one
+ * after another on one connection. Kept one below the `BENCH_DB_POOL_MAX`
+ * default because a cached fill holds one pool connection for its advisory
+ * lock; the group-list fill runs alone in its process (see
+ * `lib/cache-fill.ts`), so it never shares the pool with another fill. Excess work
  * waits here, not on `pg`'s acquire list, where a wait longer than
  * `BENCH_DB_CONNECTION_TIMEOUT_MS` fails the query. A smaller pool still queues
  * the excess on that list. Overlapping the queries is what turns the
@@ -1614,15 +1616,7 @@ export async function collectGroups(): Promise<Group[]> {
   // of the prior sequential await, which serialized the N+1 summary cost across
   // ~64 groups (PR-5.1.5 fix e).
   await mapWithConcurrency(groups, QUERY_CONCURRENCY, async (group) => {
-    const key = groupKeyFromSlug(group.slug);
-    const summary = await collectGroupSummary(key);
-    if (summary !== null) {
-      group.summary = summary;
-    }
-    const description = groupDescription(group.name);
-    if (description !== null) {
-      group.description = description;
-    }
+    attachGroupDetails(group, await collectGroupSummary(groupKeyFromSlug(group.slug)));
   });
   // Sort by `GROUP_ORDER` position, then by group name as the tiebreaker, so
   // groups outside `GROUP_ORDER` share the trailing bucket and order
@@ -1632,25 +1626,52 @@ export async function collectGroups(): Promise<Group[]> {
 }
 
 /**
+ * Collect one group with its summary and description, or `null` when it has no
+ * data: the entry [`collectGroups`] returns for `key`, built from `key`'s family
+ * discovery and `key`'s summary alone instead of every family and every
+ * group's summary. The two queries run at once.
+ */
+export async function collectGroup(key: GroupKey): Promise<Group | null> {
+  const targetSlug = groupKeyToSlug(key);
+  const [groups, summary] = await Promise.all([discoverGroups(key.k), collectGroupSummary(key)]);
+  const group = groups.find((g) => g.slug === targetSlug);
+  if (group === undefined) {
+    return null;
+  }
+  attachGroupDetails(group, summary);
+  return group;
+}
+
+/**
+ * Attach a discovered group's summary and description, the same way for
+ * [`collectGroups`] and [`collectGroup`].
+ */
+function attachGroupDetails(group: Group, summary: Summary | null): void {
+  if (summary !== null) {
+    group.summary = summary;
+  }
+  const description = groupDescription(group.name);
+  if (description !== null) {
+    group.description = description;
+  }
+}
+
+/**
  * Collect every chart inside one group with its full payload inlined, or `null`
- * when the group has no data (callers render a 404). Re-runs the full
- * [`collectGroups`] discovery to resolve the group by slug, then fetches every
- * chart link's payload with [`groupChartPayloads`] (two statements, or more in
- * slices of 25 charts for large groups), dropping links whose chart has no
- * rows. Mirrors the Rust `collect_group_charts` (including its per-call
- * re-discovery).
- *
- * The full re-discovery makes this materially more query work than resolving the
- * one group directly; it inherits the Rust source's `TODO(#7812)` deferral of that
- * cost, acceptable under the trusted-input plus 5-minute-revalidate calibration.
+ * when the group has no data (callers render a 404). Resolves the group with
+ * [`collectGroup`], then fetches every chart link's payload with
+ * [`groupChartPayloads`] (two statements, or more in slices of 25 charts for
+ * large groups), dropping links whose chart has no rows. The Rust
+ * `collect_group_charts` re-ran the full discovery on every call (its
+ * `TODO(#7812)`); resolving the one group gives the same bundle for one
+ * family's discovery and one summary.
  */
 export async function collectGroupCharts(
   key: GroupKey,
   window: CommitWindow,
 ): Promise<GroupChartsResponse | null> {
-  const targetSlug = groupKeyToSlug(key);
-  const group = (await collectGroups()).find((g) => g.slug === targetSlug);
-  if (group === undefined) {
+  const group = await collectGroup(key);
+  if (group === null) {
     return null;
   }
   const payloads = await groupChartPayloads(
