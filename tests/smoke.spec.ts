@@ -629,6 +629,56 @@ test.describe("theme on client navigation", () => {
   });
 });
 
+// WCAG 2.2.2: the moving banner pauses from its control, by keyboard as well
+// as by pointer, and resumes on a second press.
+test.describe("logo banner pause", () => {
+  const playState = (page: Page) =>
+    page
+      .locator(".vx-logos-track")
+      .evaluate((t) => getComputedStyle(t).animationPlayState);
+
+  test("pauses and resumes from the keyboard", async ({ page }) => {
+    await page.goto("/");
+    const banner = page.getByRole("region", { name: "Who builds on Vortex" });
+    const pause = banner.getByRole("button", { name: "Pause the logos" });
+    await expect(pause).toBeVisible();
+    await expect(pause).toHaveAttribute("aria-pressed", "false");
+    expect(await playState(page)).toBe("running");
+    await pause.focus();
+    // Focus on the control alone does not pause the loop.
+    expect(await playState(page)).toBe("running");
+    const box = await pause.boundingBox();
+    await page.keyboard.press("Space");
+    await expect(pause).toHaveAttribute("aria-pressed", "true");
+    expect(await playState(page)).toBe("paused");
+    // Pressing changes no size, so nothing around it moves.
+    expect(await pause.boundingBox()).toEqual(box);
+    await page.keyboard.press("Enter");
+    await expect(pause).toHaveAttribute("aria-pressed", "false");
+    expect(await playState(page)).toBe("running");
+  });
+
+  test("pauses from a pointer or a tap", async ({ page }) => {
+    await page.goto("/");
+    const pause = page.getByRole("button", { name: "Pause the logos" });
+    await pause.click();
+    await expect(pause).toHaveAttribute("aria-pressed", "true");
+    // Move the pointer off the band, so hover does not hold the loop.
+    await page.mouse.move(0, 0);
+    expect(await playState(page)).toBe("paused");
+  });
+
+  test("is hidden under reduced motion, when nothing moves", async ({
+    page
+  }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto("/");
+    await expect(
+      page.getByRole("button", { name: "Pause the logos" })
+    ).toBeHidden();
+  });
+});
+
 test.describe("logo banner under reduced motion", () => {
   for (const width of [1440, 375]) {
     test(`shows all twelve logos still at ${width}px`, async ({ page }) => {

@@ -106,18 +106,64 @@
 }
 
 /* ------------------------------------------------------------------ brand */
+/* The label, the strip, then the pause control at the end of the row. On a phone the label and
+   the control share the first row, over the strip. */
 .vx-logos {
   display: grid;
-  grid-template-columns: 170px minmax(0, 1fr);
+  grid-template-columns: 170px minmax(0, 1fr) auto;
+  grid-template-areas: "label strip pause";
   align-items: center;
   gap: var(--space-24);
 }
+.vx-logos > .vx-label {
+  grid-area: label;
+}
 @media (max-width: 640px) {
   .vx-logos {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "label pause" "strip strip";
   }
 }
+/* A toggle (WCAG 2.2.2). At rest it is raised with the outline pause in ink-muted. Pressed, it
+   sits on surface in ink with the filled pause, as a pressed switch does, and keeps its box. */
+.vx-logos-pause {
+  grid-area: pause;
+  display: grid;
+  place-items: center;
+  width: var(--control-sm);
+  height: var(--control-sm);
+  margin: 0;
+  padding: 0;
+  color: var(--ink-muted);
+  background: var(--raised);
+  border: 1px solid var(--edge);
+  border-radius: var(--radius-control);
+  cursor: pointer;
+  transition: color 150ms ease-out, background-color 150ms ease-out, border-color 150ms ease-out;
+}
+.vx-logos-pause:hover {
+  color: var(--ink);
+  border-color: var(--ink);
+}
+.vx-logos-pause[aria-pressed="true"] {
+  background: var(--surface);
+  color: var(--ink);
+}
+.vx-logos-pause svg {
+  grid-area: 1 / 1;
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}
+.vx-logos-pause svg + svg,
+.vx-logos-pause[aria-pressed="true"] svg:first-child {
+  visibility: hidden;
+}
+.vx-logos-pause[aria-pressed="true"] svg + svg {
+  visibility: visible;
+}
 .vx-logos-strip {
+  grid-area: strip;
   overflow: hidden;
   mask-image: linear-gradient(90deg, transparent, var(--ink) 8%, var(--ink) 92%, transparent);
 }
@@ -126,7 +172,11 @@
   width: max-content;
   animation: vx-marquee 48s linear infinite;
 }
-.vx-logos-strip:hover .vx-logos-track {
+/* The loop pauses while its control is pressed, under the pointer, and while focus is among the
+   logos. Focus on the control itself does not pause it, so a second press resumes the loop at once. */
+.vx-logos:has(.vx-logos-pause[aria-pressed="true"]) .vx-logos-track,
+.vx-logos-strip:hover .vx-logos-track,
+.vx-logos-strip:focus-within .vx-logos-track {
   animation-play-state: paused;
 }
 .vx-logos-set {
@@ -151,7 +201,7 @@
   }
 }
 /* Reduced motion: no marquee. Every logo sits still in wrapped rows, and the copies that only fed
-   the loop go, so none is left past the strip's edge. */
+   the loop go, so none is left past the strip's edge. With nothing to pause, the control goes too. */
 @media (prefers-reduced-motion: reduce) {
   .vx-logos-strip {
     mask-image: none;
@@ -168,6 +218,17 @@
   }
   .vx-logos-set[aria-hidden="true"] {
     display: none;
+  }
+  .vx-logos-pause {
+    display: none;
+  }
+  .vx-logos {
+    grid-template-areas: "label strip strip";
+  }
+}
+@media (max-width: 640px) and (prefers-reduced-motion: reduce) {
+  .vx-logos {
+    grid-template-areas: "label label" "strip strip";
   }
 }
 

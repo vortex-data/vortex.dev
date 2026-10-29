@@ -45,6 +45,21 @@ describe("LogoBanner", () => {
       CLEARED.map(() => "")
     );
   });
+
+  // WCAG 2.2.2: the loop lasts over 5 seconds, so it has a pause control,
+  // drawn as the design system's LogoBanner card draws it.
+  it("has a pause toggle after its label, not pressed at first", () => {
+    const html = renderToStaticMarkup(<LogoBanner />);
+    const head = html.match(
+      /<span class="vx-label">Who builds on Vortex<\/span>(<button[\s\S]*?<\/button>)<div class="vx-logos-strip">/
+    )?.[1];
+    assert.ok(head, "the control sits between the label and the strip");
+    assert.match(head, /^<button class="vx-logos-pause"/);
+    assert.match(head, /type="button"/);
+    assert.match(head, /aria-pressed="false"/);
+    assert.match(head, /aria-label="Pause the logos"/);
+    assert.equal(head.match(/<svg [^>]*aria-hidden="true"/g)?.length, 2);
+  });
 });
 
 // The patterns below name SPDX tags; REUSE must not read them as this file's own.

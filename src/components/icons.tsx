@@ -4,7 +4,8 @@
 
 // Material Symbols Sharp, outline, weight 400 (Apache-2.0): the Vortex design
 // system's icon set. Each path is copied from google/material-design-icons at
-// commit bd8cb85, `symbols/web/<name>/materialsymbolssharp/<name>_24px.svg`.
+// commit bd8cb85, `symbols/web/<name>/materialsymbolssharp/<name>_24px.svg`,
+// and a filled form from `<name>_fill1_24px.svg`, for a pressed control only.
 // Add an icon from the same path; never redraw one, and never use a text glyph.
 
 function icon(d: string) {
@@ -67,4 +68,14 @@ export const WarningIcon = icon(
 /** `arrow_back`: a post's link back to the blog. */
 export const ArrowBackIcon = icon(
   "m313-440 224 224-57 56-320-320 320-320 57 56-224 224h487v80H313Z"
+);
+
+/** `pause`: the logo banner's pause control at rest. */
+export const PauseIcon = icon(
+  "M520-200v-560h240v560H520Zm-320 0v-560h240v560H200Zm400-80h80v-400h-80v400Zm-320 0h80v-400h-80v400Zm0-400v400-400Zm320 0v400-400Z"
+);
+
+/** `pause`, filled: the logo banner's pause control while pressed. */
+export const PauseFillIcon = icon(
+  "M560-200v-560h160v560H560Zm-320 0v-560h160v560H240Z"
 );
