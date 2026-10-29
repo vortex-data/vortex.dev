@@ -6,7 +6,12 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 
 import { ChartController } from '@/components/chart/controller';
-import { LAZY_HYDRATION_ROOT_MARGIN, throttle, ZOOM_THROTTLE_MS } from '@/lib/chart-format';
+import {
+  chartPriority,
+  LAZY_HYDRATION_ROOT_MARGIN,
+  throttle,
+  ZOOM_THROTTLE_MS,
+} from '@/lib/chart-format';
 import {
   abortGroupBundle,
   chartIsHiddenAsEmpty,
@@ -219,7 +224,7 @@ export function Chart({ slug, name, index, groupSlug, initialPayload }: ChartIsl
       // branch yields `+0` not `-0`; runtime sorting treats them identically, but
       // the visual-order test asserts `Math.max(...).toBe(0)`, and `toBe`'s
       // `Object.is` check distinguishes `-0` from `0`.
-      const priority = index === 0 ? 0 : -index;
+      const priority = chartPriority(index);
       // The bundle kick + close abort only run on the landing page, where the
       // island has a group slug; bind a non-null local so the closures below can
       // pass it without re-narrowing.

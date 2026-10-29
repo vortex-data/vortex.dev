@@ -96,7 +96,7 @@ describe.skipIf(!databaseAvailable || !BUILD_PRESENT)(
       await container.stop();
     });
 
-    it('serves the landing page with header chrome, group sections, and chart islands', async () => {
+    it('serves the landing page with header chrome and folded group rows, and no chart islands', async () => {
       const html = await (await fetch(`${BASE}/`)).text();
       // Header chrome (PR-4.4.b islands, server-rendered).
       expect(html).toContain('data-role="nav-mobile-toggle"');
@@ -106,11 +106,14 @@ describe.skipIf(!databaseAvailable || !BUILD_PRESENT)(
       // The fixture's engines surface as filter chips via collectFilterUniverse.
       expect(html).toContain('data-value="datafusion"');
       expect(html).toContain('data-value="duckdb"');
-      // Group section + per-group toolbar + chart-card islands.
+      // Folded group rows with their headlines. Each group body is empty until
+      // its group opens, so no toolbar or chart-card island is in the HTML.
       expect(html).toContain('class="group-details"');
-      expect(html).toContain('data-role="group-toolbar"');
-      expect(html).toContain('data-role="scope-slider"');
-      expect(html).toContain('data-role="range-strip"');
+      expect(html).toContain('class="group-body"');
+      expect(html).toContain('class="group-headline"');
+      expect(html).toContain('faster than Parquet'); // the fixture's compression group
+      expect(html).not.toContain('class="chart-card"');
+      expect(html).not.toContain('data-role="group-toolbar"');
       // The pre-paint theme bootstrap is inlined in <head>.
       expect(html).toContain('localStorage.getItem("bench-theme")');
     });

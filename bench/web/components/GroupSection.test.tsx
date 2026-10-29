@@ -123,7 +123,7 @@ describe('GroupSection', () => {
     expect(html).toContain('aria-label="Copy link to Random Access"');
   });
 
-  it('renders the summary card inside the section', () => {
+  it('renders the summary card inside the disclosure, after the summary row', () => {
     const html = renderToStaticMarkup(
       <GroupSection
         group={RANDOM_ACCESS}
@@ -132,11 +132,15 @@ describe('GroupSection', () => {
         universe={UNIVERSE}
       />,
     );
-    expect(html).toContain('benchmark-scores-summary--random-access');
+    // The card sits between `</summary>` and `</details>`, so the browser
+    // shows it only while the group is open, with or without JavaScript.
+    const card = html.indexOf('benchmark-scores-summary--random-access');
+    expect(card).toBeGreaterThan(html.indexOf('</summary>'));
+    expect(card).toBeLessThan(html.indexOf('</details>'));
     expect(html).toContain('>Hot</h3>');
   });
 
-  it('renders one chart-card shell per chart with page-wide indices and permalinks', () => {
+  it('renders an empty group body and no chart or toolbar markup while folded', () => {
     const html = renderToStaticMarkup(
       <GroupSection
         group={RANDOM_ACCESS}
@@ -145,15 +149,13 @@ describe('GroupSection', () => {
         universe={UNIVERSE}
       />,
     );
-    expect(html).toContain('class="chart-grid"');
-    // First chart takes startIndex, second takes startIndex + 1.
-    expect(html).toContain('data-chart-index="5"');
-    expect(html).toContain('data-chart-slug="ra.eyJhIjoxfQ"');
-    expect(html).toContain('data-chart-index="6"');
-    expect(html).toContain('data-chart-slug="ra.eyJhIjoyfQ"');
-    expect(html).toContain('href="/chart/ra.eyJhIjoxfQ"');
-    expect(html).toContain('href="/chart/ra.eyJhIjoyfQ"');
-    expect(html).toContain('<canvas');
+    // The body mounts its toolbar and chart cards only once the group opens.
+    // It is the disclosure's last child, and nothing follows the disclosure.
+    expect(html).toContain('<div class="group-body"></div>');
+    expect(html.endsWith('<div class="group-body"></div></details></section>')).toBe(true);
+    expect(html).not.toContain('class="chart-card"');
+    expect(html).not.toContain('data-role="group-toolbar"');
+    expect(html).not.toContain('<canvas');
   });
 
   it('uses the singular "chart" label for a single-chart group and omits a missing description', () => {

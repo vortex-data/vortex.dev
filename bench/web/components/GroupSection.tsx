@@ -3,10 +3,9 @@
 
 import { Fragment } from 'react';
 
-import { Chart } from '@/components/Chart';
+import { GroupBody } from '@/components/GroupBody';
 import { GroupDocsLink } from '@/components/GroupDocsLink';
 import { GroupPermalink } from '@/components/GroupPermalink';
-import { GroupToolbar } from '@/components/GroupToolbar';
 import { SummaryCard } from '@/components/SummaryCard';
 import { groupDocUrl } from '@/lib/benchmark-docs';
 import type { FilterUniverse } from '@/lib/chart-format';
@@ -20,17 +19,22 @@ const NO_INITIAL_SHOWN_SERIES: string[] = [];
  * One group's landing-page section, the server-component port of
  * `server/src/html/landing.rs`'s per-group markup.
  *
- * The `<details>` disclosure wraps ONLY its `<summary>` header; the summary
- * card and the chart grid are siblings inside `.group-details`, so the CSS rule
- * `.group-disclosure:not([open]) ~ .chart-grid` hides the charts while the
- * group is collapsed (native `<details>` toggling, no JavaScript). The summary
- * card is intentionally outside that rule, so the at-a-glance rankings stay
- * visible whether or not the group is expanded.
+ * Everything lives inside one native `<details class="group-disclosure">`,
+ * folded by default: the `<summary>` row, then the group's [`SummaryCard`],
+ * then its [`GroupBody`]. Nothing follows the `<details>` inside the section.
+ * While folded, the browser hides everything but the summary row, with or
+ * without JavaScript. The summary card is server-rendered, so an open group
+ * shows its rankings before any client code runs.
  *
- * Each chart renders as a [`Chart`] client island carrying `data-chart-slug`
- * and a page-unique `data-chart-index`; the island lazily fetches
- * `/api/chart/[slug]` when this group's disclosure opens (it listens for the
- * native `toggle` event of the enclosing `details.group-disclosure`).
+ * [`GroupBody`] is a client component. It server-renders as an empty
+ * `<div class="group-body">` and mounts the group toolbar (group Y override,
+ * series filter, empty-charts toggle, reset) and the chart grid only while the
+ * disclosure is open, unmounting them on close. A folded group therefore ships
+ * no chart markup and hydrates no chart island. Each chart is a [`Chart`]
+ * island carrying `data-chart-slug` and a page-unique `data-chart-index`; the
+ * island lazily loads its data through the group's bundle when it mounts into
+ * an open group, and keeps listening for the disclosure's native `toggle`
+ * event.
  *
  * The summary row ends with the group's headline (`lib/headline.ts`): one line
  * of text saying how Vortex compares with Parquet, so a folded group still
@@ -43,12 +47,9 @@ const NO_INITIAL_SHOWN_SERIES: string[] = [];
  * [`GroupDocsLink`] to the benchmark's explainer doc in the monorepo, which
  * `lib/benchmark-docs.ts` derives from the group slug's dataset name.
  *
- * The per-group toolbar (group Y override + series filter + empty-charts
- * toggle + reset) sits between the summary card and the chart grid, exactly as
- * in v3's `landing_body`; CSS hides it while the disclosure is closed.
- *
  * `startIndex` is the running page-wide chart index of this group's first
- * chart, so `data-chart-index` is unique across every chart on the page.
+ * chart, so `data-chart-index` is unique across every chart on the page and
+ * load priority keeps its page-wide order.
  *
  * The section carries `id={anchor}` — the human-readable anchor the page
  * derives from the group name via `lib/anchor.ts` (`#tpc-h-nvme-sf-1`, not the
@@ -122,25 +123,16 @@ export function GroupSection({
             )}
           </span>
         </summary>
+        <SummaryCard summary={group.summary} />
+        <GroupBody
+          groupSlug={group.slug}
+          charts={group.charts}
+          startIndex={startIndex}
+          universe={universe}
+          initialHiddenSeries={initialHiddenSeries}
+          initialShownSeries={initialShownSeries}
+        />
       </details>
-      <SummaryCard summary={group.summary} />
-      <GroupToolbar
-        groupSlug={group.slug}
-        universe={universe}
-        initialHiddenSeries={initialHiddenSeries}
-        initialShownSeries={initialShownSeries}
-      />
-      <div className="chart-grid">
-        {group.charts.map((link, i) => (
-          <Chart
-            key={link.slug}
-            slug={link.slug}
-            name={link.name}
-            index={startIndex + i}
-            groupSlug={group.slug}
-          />
-        ))}
-      </div>
     </section>
   );
 }

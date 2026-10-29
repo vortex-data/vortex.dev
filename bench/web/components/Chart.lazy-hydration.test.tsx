@@ -8,6 +8,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Chart } from '@/components/Chart';
+import { GroupBody } from '@/components/GroupBody';
 import { FETCH_TIMEOUT_MS } from '@/lib/chart-format';
 import { bundleQueue, hydrationQueue, resetPayloadCache } from '@/lib/chart-store';
 
@@ -114,8 +115,8 @@ describe('PR-5.0.95 landing-page lazy hydration', () => {
     const mounts = Array.from({ length: n }, (_, i) => `<div id="m${i}"></div>`).join('');
     container.innerHTML =
       '<section class="group-details">' +
-      '<details class="group-disclosure" open><summary class="group-summary">g</summary></details>' +
-      `<div class="chart-grid">${mounts}</div>` +
+      '<details class="group-disclosure" open><summary class="group-summary">g</summary>' +
+      `<div class="group-body"><div class="chart-grid">${mounts}</div></div></details>` +
       '</section>';
     // Render each island into its OWN root so each gets its own mount effect.
     const roots: Root[] = [];
@@ -388,8 +389,8 @@ describe('PR-5.0.97 group-bundle hydration', () => {
     const mounts = Array.from({ length: n }, (_, i) => `<div id="m${i}"></div>`).join('');
     container.innerHTML =
       '<section class="group-details">' +
-      '<details class="group-disclosure" open><summary class="group-summary">g</summary></details>' +
-      `<div class="chart-grid">${mounts}</div>` +
+      '<details class="group-disclosure" open><summary class="group-summary">g</summary>' +
+      `<div class="group-body"><div class="chart-grid">${mounts}</div></div></details>` +
       '</section>';
     const roots: Root[] = [];
     await act(async () => {
@@ -536,6 +537,72 @@ describe('PR-5.0.97 group-bundle hydration', () => {
       details.dispatchEvent(new Event('toggle'));
       await Promise.resolve();
     });
+    expect(signals[0]!.aborted).toBe(true);
+  });
+
+  it('GroupBody mounts islands only while open; they share one bundle, and closing aborts it', async () => {
+    const signals: AbortSignal[] = [];
+    vi.stubGlobal('fetch', (url: string | URL, init?: { signal?: AbortSignal }) => {
+      fetchCalls.push(String(url));
+      if (init?.signal) {
+        signals.push(init.signal);
+      }
+      return new Promise<Response>((_res, reject) => {
+        init?.signal?.addEventListener('abort', () =>
+          reject(init.signal?.reason ?? new DOMException('Aborted', 'AbortError')),
+        );
+      });
+    });
+    // The landing page's shape: the body renders inside a CLOSED disclosure.
+    container.innerHTML =
+      '<section class="group-details">' +
+      '<details class="group-disclosure"><summary class="group-summary">g</summary>' +
+      '<div id="body"></div></details>' +
+      '</section>';
+    const bodyRoot = createRoot(container.querySelector('#body') as HTMLElement);
+    root = bodyRoot;
+    await act(async () => {
+      bodyRoot.render(
+        <GroupBody
+          groupSlug="g"
+          charts={[
+            { name: 'q0', slug: 's0' },
+            { name: 'q1', slug: 's1' },
+            { name: 'q2', slug: 's2' },
+          ]}
+          startIndex={0}
+          universe={{ engines: [], formats: [] }}
+          initialHiddenSeries={[]}
+          initialShownSeries={[]}
+        />,
+      );
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    // Folded: no island exists, so nothing observes or fetches.
+    expect(container.querySelectorAll('.chart-card')).toHaveLength(0);
+    expect(MockIO.instances).toHaveLength(0);
+    expect(fetchCalls).toEqual([]);
+
+    const details = container.querySelector('details.group-disclosure') as HTMLDetailsElement;
+    await act(async () => {
+      details.open = true;
+      details.dispatchEvent(new Event('toggle'));
+      await Promise.resolve();
+    });
+    // Open: three islands, one observer each, and one shared bundle request.
+    expect(container.querySelectorAll('.chart-card')).toHaveLength(3);
+    expect(MockIO.instances).toHaveLength(3);
+    expect(fetchCalls).toEqual(['/api/group/g?n=100']);
+
+    await act(async () => {
+      details.open = false;
+      details.dispatchEvent(new Event('toggle'));
+      await Promise.resolve();
+    });
+    // Closed: the islands are gone and the bundle is aborted.
+    expect(container.querySelectorAll('.chart-card')).toHaveLength(0);
     expect(signals[0]!.aborted).toBe(true);
   });
 
@@ -750,12 +817,12 @@ describe('PR-5.0.97 group-bundle hydration', () => {
     // so the top group (index 0) outranks the lower one (index 1).
     container.innerHTML =
       '<section class="group-details" id="ga">' +
-      '<details class="group-disclosure" open><summary class="group-summary">ga</summary></details>' +
-      '<div class="chart-grid"><div id="ma"></div></div>' +
+      '<details class="group-disclosure" open><summary class="group-summary">ga</summary>' +
+      '<div class="group-body"><div class="chart-grid"><div id="ma"></div></div></div></details>' +
       '</section>' +
       '<section class="group-details" id="gb">' +
-      '<details class="group-disclosure" open><summary class="group-summary">gb</summary></details>' +
-      '<div class="chart-grid"><div id="mb"></div></div>' +
+      '<details class="group-disclosure" open><summary class="group-summary">gb</summary>' +
+      '<div class="group-body"><div class="chart-grid"><div id="mb"></div></div></div></details>' +
       '</section>';
     const ra = createRoot(container.querySelector('#ma') as HTMLElement);
     const rb = createRoot(container.querySelector('#mb') as HTMLElement);

@@ -678,7 +678,7 @@ main {
   opacity: 1;
   visibility: visible;
 }
-.group-details > .chart-grid {
+.group-body > .chart-grid {
   padding: 1.25rem;
   /* Page-level surface behind the chart cards. v2's `.benchmark-graphs`
    * uses `--bg-color` (`#101010` in dark mode); `--page-bg` is the v3
@@ -696,33 +696,7 @@ main {
   margin: 0;
 }
 
-.group-disclosure:not([open]) ~ .chart-grid {
-  display: none;
-}
-
-/*
- * During the post-load Chart.js prebuild, render closed groups' chart
- * grids in a hidden offscreen position so each canvas has real layout
- * dimensions for Chart.js to measure. Without this override, charts
- * construct against a 0x0 parent (the closed-group rule above), and the
- * eventual on-toggle resize leaves a brief flash of a blank, full-zoomed
- * canvas before the next frame paints. The width matches the visible
- * content area via `--bench-prebuild-width` (set by `chart-init.js` from
- * the live `<main>` width) so the build dimensions are close enough to
- * the actual on-screen dimensions that Chart.js's ResizeObserver-driven
- * adjust on toggle is a no-op or a single sub-frame tick.
- */
-body.bench-prebuilding .group-disclosure:not([open]) ~ .chart-grid {
-  display: grid !important;
-  position: fixed !important;
-  visibility: hidden !important;
-  pointer-events: none !important;
-  top: -10000px !important;
-  left: 0 !important;
-  width: var(--bench-prebuild-width, 100vw);
-}
-
-.group-details > .chart-grid .chart-card:last-child {
+.group-body > .chart-grid .chart-card:last-child {
   margin-bottom: 0;
 }
 
@@ -1104,8 +1078,8 @@ body.bench-prebuilding .group-disclosure:not([open]) ~ .chart-grid {
  * chart grid. Y-axis buttons on the left, a centered "Filter series"
  * dropdown trigger, and a Reset button on the right. The dropdown panel
  * holds engine/format macro chips and a series row populated by JS as
- * charts in the group hydrate. Hidden alongside `.chart-grid` when the
- * disclosure is closed via the same `:not([open]) ~` rule.
+ * charts in the group hydrate. It lives in `.group-body` inside the
+ * group's `<details>`, which mounts it only while the group is open.
  * ---------------------------------------------------------------------- */
 .group-toolbar {
   display: flex;
@@ -1116,9 +1090,6 @@ body.bench-prebuilding .group-disclosure:not([open]) ~ .chart-grid {
   border-bottom: 1px solid var(--border);
   background: var(--bg);
   font-size: 0.78rem;
-}
-.group-disclosure:not([open]) ~ .group-toolbar {
-  display: none;
 }
 .group-toolbar-y {
   flex: 0 0 auto;
@@ -1738,7 +1709,7 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
     flex-basis: 100%;
     margin-left: 0;
   }
-  .group-details > .chart-grid {
+  .group-body > .chart-grid {
     padding: 0.75rem;
   }
   .benchmark-scores-summary {

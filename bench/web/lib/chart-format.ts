@@ -57,6 +57,19 @@ export const FETCH_TIMEOUT_MS = 30000;
 export const LAZY_HYDRATION_ROOT_MARGIN = '300px 0px';
 
 /**
+ * The landing page's load priority for the chart at page-wide `index`: `0` for
+ * the first chart and `-index` for the rest, so the queues (which run the
+ * highest priority first) drain top cards and top groups first. A group's
+ * bundle uses its first chart's priority.
+ *
+ * The first chart gets `+0`, not `-0`. Runtime sorting treats them the same,
+ * but `toBe`'s `Object.is` check tells them apart.
+ */
+export function chartPriority(index: number): number {
+  return index === 0 ? 0 : -index;
+}
+
+/**
  * Hard cap on how many distinct commit indices (x-positions) a chart renders at
  * once, shared across every series. Below the cap every commit with data
  * renders raw; above it the per-commit max-across-series is LTTB-downsampled to
