@@ -34,6 +34,7 @@ import {
 } from './test-harness';
 import { parseCommitWindow } from './window';
 import { getPool, resetPool } from './db';
+import { withGroupCacheFillLock } from './cache-fill';
 import { GET as getGroups } from '@/app/api/groups/route';
 import { GET as getGroup } from '@/app/api/group/[slug]/route';
 
@@ -809,47 +810,66 @@ describe.skipIf(!databaseAvailable)('summary math fidelity (testcontainers Postg
     expect(summary.rankings[1]!.score).toBeCloseTo(1.732022, 5);
   });
 
-  // A cold group fill runs one chart query per chart. pg fails a query that
-  // waits BENCH_DB_CONNECTION_TIMEOUT_MS for a free pool slot, so the fill must
-  // keep its fan-out below the pool size. Otherwise a large group (99 TPC-DS
-  // charts) fails on a healthy database. The bound is 7: one below the default
-  // pool size of 8, because a cached fill holds one connection for its lock.
-  it('keeps a group fill within the pool size', async () => {
+  // A cached group fill holds one connection for its advisory lock while it runs the group
+  // discovery (one statement per family, five at once) and the summaries (QUERY_CONCURRENCY, 7, at
+  // once) through `pool.query`, then builds the group's charts on one `connect()`ed client. pg fails
+  // a request that waits BENCH_DB_CONNECTION_TIMEOUT_MS for a free pool slot, so the fill must never
+  // ask for more connections at once than the default pool size, 8: the lock plus 7 summaries. The
+  // test counts requests, not checked-out clients, because a pool of 8 never checks out more than
+  // 8: a wider fan-out would only queue.
+  it('keeps a cached group fill within the pool size', async () => {
     const sha = 'b'.repeat(40);
     await insertCommit(sha, '2026-04-23T12:00:00Z');
     for (let queryIdx = 1; queryIdx <= 12; queryIdx += 1) {
       await insertQuery(sha, queryIdx, 'datafusion', 'parquet', 100_000);
     }
+    // Eight sibling groups, so the summaries fill all seven slots.
+    for (let scaleFactor = 2; scaleFactor <= 9; scaleFactor += 1) {
+      await getPool().query(
+        `INSERT INTO query_measurements
+             (measurement_id, commit_sha, dataset, dataset_variant, scale_factor,
+              query_idx, storage, engine, format, value_ns, all_runtimes_ns,
+              commit_timestamp)
+           VALUES ($1, $2, 'tpch', NULL, $3, 1, 'nvme', 'datafusion', 'parquet', 100000,
+                   '{1}'::bigint[], (SELECT timestamp FROM commits WHERE commit_sha = $2))`,
+        [nextId(), sha, String(scaleFactor)],
+      );
+    }
 
     const pool = getPool();
-    const original = pool.query;
-    let inFlight = 0;
+    const connect = pool.connect.bind(pool);
+    let requested = 0;
     let peak = 0;
-    pool.query = (async (...args: unknown[]) => {
-      inFlight += 1;
-      peak = Math.max(peak, inFlight);
-      try {
-        return await (original as (...a: unknown[]) => Promise<unknown>).apply(pool, args);
-      } finally {
-        inFlight -= 1;
-      }
-    }) as typeof pool.query;
+    // `pool.query` takes its client through `this.connect`, so this sees every request.
+    const connectSpy = vi.spyOn(pool, 'connect').mockImplementation(((...args: unknown[]) => {
+      requested += 1;
+      peak = Math.max(peak, requested);
+      return (connect as (...a: unknown[]) => unknown)(...args);
+    }) as never);
+    const onRelease = (): void => {
+      requested -= 1;
+    };
+    pool.on('release', onRelease);
     try {
-      const bundle = await collectGroupCharts(
-        {
-          k: 'QueryGroup',
-          dataset: 'tpch',
-          dataset_variant: null,
-          scale_factor: '1',
-          storage: 'nvme',
-        },
-        parseCommitWindow(null),
+      const bundle = await withGroupCacheFillLock(() =>
+        collectGroupCharts(
+          {
+            k: 'QueryGroup',
+            dataset: 'tpch',
+            dataset_variant: null,
+            scale_factor: '1',
+            storage: 'nvme',
+          },
+          parseCommitWindow(null),
+        ),
       );
       expect(bundle?.charts).toHaveLength(12);
     } finally {
-      pool.query = original;
+      pool.off('release', onRelease);
+      connectSpy.mockRestore();
     }
-    expect(peak).toBeLessThanOrEqual(7);
+    expect(requested).toBe(0);
+    expect(peak).toBeLessThanOrEqual(8);
   });
 });
 

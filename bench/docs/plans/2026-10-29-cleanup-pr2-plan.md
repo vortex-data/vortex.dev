@@ -167,6 +167,17 @@ it('hands the password to pg as a string', () => {
 
 ### Task 3: One query per group
 
+**As built.** The steps below are the plan as written. The code differs from them here:
+
+- `groupChartPayloads` runs its statements one after another on one `getPool().connect()` client, in one `REPEATABLE READ, READ ONLY` transaction, not in parallel with `Promise.all` on the pool. Every statement sees one snapshot, so an ingest that lands mid-build cannot make the shared window and a chart's commit total disagree.
+- The rows statement runs in slices of `GROUP_ROWS_CHUNK = 25` charts, so the 99-chart TPC-DS group runs five. As one result, TPC-DS at `?n=all` (about 2.7M rows) peaked at 1.6× the memory of the old per-chart fan-out.
+- The SQL differs from Step 4 in four places. On one connection, every chart's cost is paid in turn:
+  - A chart's first timestamp comes from an aggregate `LATERAL` subquery (`e`). The planner cannot flatten an aggregate into the outer query and run it once per output row.
+  - `total_commits` is a binary search, `width_bucket` over the sorted commit timestamps, not a `count(*)` of `commits` per chart (99 scans for TPC-DS).
+  - For query charts, the first timestamp comes from a skip scan of `idx_query_measurements_summary` with one descent per series (`queryChartEarliest`), not from a `MIN` that reads the chart's whole history (about 27K rows per TPC-DS chart).
+  - The compression families put NULL-variant and non-NULL-variant charts in separate blocks, each pinned sargably. `IS NOT DISTINCT FROM ch.dataset_variant` planned as a one-row match and rescanned the window for each fact row.
+- `groups.test.ts`'s pool-size test is now `keeps a cached group fill within the pool size`. It counts connection requests during a fill under the advisory lock, and the bound is 8: the lock and seven summaries.
+
 **Files:**
 - Modify: `bench/web/lib/queries.ts`
 - Create: `bench/web/lib/group-charts.test.ts`
