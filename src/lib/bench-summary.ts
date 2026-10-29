@@ -32,13 +32,10 @@ const SYSTEMS = [
 
 type Ranking = Record<string, unknown>;
 
-// Values are rounded as bench's own summary cards print them (SummaryCard and
-// formatTimeNs in bench/web): two places for GB/s, ms and s, whole MB/s, and
-// three significant figures for a size ratio. So every figure on the card is
-// one a reader finds on bench. Scores stay as bench publishes them, because
-// the card divides them for its factor and prints only the result.
-const places = (n: number) => (x: number) => Number(x.toFixed(n));
-const figures = (n: number) => (x: number) => Number(x.toPrecision(n));
+// Values and scores stay as bench publishes them. The design system's
+// benchmark-card.js prints each value as bench's own summary cards do, by
+// unit, so every figure on the card is one a reader finds on bench, and the
+// bars measure the unrounded values.
 
 type Source = {
   title: string;
@@ -54,7 +51,6 @@ type Source = {
   where?: Ranking;
   value: (r: Ranking) => unknown;
   score: (r: Ranking) => unknown;
-  round: (x: number) => number;
 };
 
 const NS_PER_MS = 1e6;
@@ -74,11 +70,10 @@ const SOURCES: Source[] = [
     name: (f) => f,
     where: { operation: "decode" },
     value: (r) => r.throughputGbS,
-    score: (r) => r.ratio,
-    round: places(2)
+    score: (r) => r.ratio
   },
   {
-    title: "Random access · NVMe · cold",
+    title: "Random access, NVMe, cold",
     unit: "ms",
     kind: "speed",
     better: "lower",
@@ -86,11 +81,10 @@ const SOURCES: Source[] = [
     rankings: (s) => s.coldRankings,
     name: (f) => f,
     value: (r) => ns(r, NS_PER_MS),
-    score: (r) => r.score,
-    round: places(2)
+    score: (r) => r.score
   },
   {
-    title: "Random access · S3 · cold",
+    title: "Random access, S3, cold",
     unit: "ms",
     kind: "speed",
     better: "lower",
@@ -98,8 +92,7 @@ const SOURCES: Source[] = [
     rankings: (s) => s.coldRankings,
     name: (f) => f,
     value: (r) => ns(r, NS_PER_MS),
-    score: (r) => r.score,
-    round: places(2)
+    score: (r) => r.score
   },
   {
     title: "Write throughput",
@@ -112,8 +105,7 @@ const SOURCES: Source[] = [
     where: { operation: "encode" },
     value: (r) =>
       typeof r.throughputGbS === "number" ? r.throughputGbS * 1000 : undefined,
-    score: (r) => r.ratio,
-    round: places(0)
+    score: (r) => r.ratio
   },
   {
     title: "ClickBench on DataFusion",
@@ -124,8 +116,7 @@ const SOURCES: Source[] = [
     rankings: (s) => s.rankings,
     name: (f) => `datafusion:${f}`,
     value: (r) => ns(r, NS_PER_S),
-    score: (r) => r.score,
-    round: places(2)
+    score: (r) => r.score
   },
   {
     title: "File size against Parquet + zstd",
@@ -136,8 +127,7 @@ const SOURCES: Source[] = [
     rankings: (s) => s.rankings,
     name: (f) => f,
     value: (r) => r.ratio,
-    score: (r) => r.ratio,
-    round: figures(3)
+    score: (r) => r.ratio
   }
 ];
 
@@ -148,7 +138,8 @@ const positive = (x: unknown): x is number =>
 
 // A system that bench measured on only some of a group's datasets or queries
 // did not run the same workload as the others, so the card shows it as not
-// measured rather than set a partial total beside full ones (Charts.md).
+// measured rather than set a partial total beside full ones (Charts.md, and
+// the rule benchmark-card.js applies to `measured < total`).
 const complete = (r: Ranking) =>
   !(typeof r.measured === "number" && typeof r.total === "number") ||
   (r.measured > 0 && r.measured >= r.total);
@@ -163,7 +154,7 @@ function rowFor(source: Source, rankings: Ranking[], format: string) {
   const value = source.value(r);
   const score = source.score(r);
   return {
-    value: positive(value) ? source.round(value) : null,
+    value: positive(value) ? value : null,
     score: positive(score) ? score : null
   };
 }

@@ -26,8 +26,13 @@ const group = (gs: ReturnType<typeof groups>, name: string) => {
   return g;
 };
 
-// The six panels from the fixture: the values as bench's summary cards show
-// them, and bench's own geomean ratios as the scores.
+// The six panels from the fixture: bench's own values in each panel's unit,
+// unrounded, and bench's geomean ratios as the scores. The card prints each
+// value as bench does (benchmark-card.js's formatValue), so the site does not
+// round them. Titles join their parts with commas, so a line breaks cleanly.
+const ms = (ns: number) => ns / 1e6;
+const sec = (ns: number) => ns / 1e9;
+const mbs = (gbs: number) => gbs * 1000;
 const PANELS: Panel[] = [
   {
     title: "Scan throughput",
@@ -35,31 +40,31 @@ const PANELS: Panel[] = [
     kind: "speed",
     better: "higher",
     rows: [
-      { system: "Vortex", value: 52.8, score: 5.11549948136936 },
-      { system: "Parquet", value: 10.35, score: 1 },
-      { system: "Lance", value: 8.06, score: 0.9003144780651322 }
+      { system: "Vortex", value: 52.80140431414844, score: 5.11549948136936 },
+      { system: "Parquet", value: 10.352550037395476, score: 1 },
+      { system: "Lance", value: 8.055826318938774, score: 0.9003144780651322 }
     ]
   },
   {
-    title: "Random access · NVMe · cold",
+    title: "Random access, NVMe, cold",
     unit: "ms",
     kind: "speed",
     better: "lower",
     rows: [
-      { system: "Vortex", value: 2.71, score: 1.181104702076434 },
-      { system: "Parquet", value: 79.66, score: 38.20111652800704 },
-      { system: "Lance", value: 4.56, score: 1.8986894799471206 }
+      { system: "Vortex", value: ms(2714824.5), score: 1.181104702076434 },
+      { system: "Parquet", value: ms(79664887.75), score: 38.20111652800704 },
+      { system: "Lance", value: ms(4562481.25), score: 1.8986894799471206 }
     ]
   },
   {
-    title: "Random access · S3 · cold",
+    title: "Random access, S3, cold",
     unit: "ms",
     kind: "speed",
     better: "lower",
     rows: [
-      { system: "Vortex", value: 267.39, score: 1 },
-      { system: "Parquet", value: 702.03, score: 2.5452014906806983 },
-      { system: "Lance", value: 611.15, score: 2.184430006681497 }
+      { system: "Vortex", value: ms(267387075.75), score: 1 },
+      { system: "Parquet", value: ms(702031921.25), score: 2.5452014906806983 },
+      { system: "Lance", value: ms(611145129.5), score: 2.184430006681497 }
     ]
   },
   {
@@ -68,9 +73,17 @@ const PANELS: Panel[] = [
     kind: "speed",
     better: "higher",
     rows: [
-      { system: "Vortex", value: 2127, score: 1.5744172249047315 },
-      { system: "Parquet", value: 1489, score: 1 },
-      { system: "Lance", value: 754, score: 0.5357674304281903 }
+      {
+        system: "Vortex",
+        value: mbs(2.126803164522734),
+        score: 1.5744172249047315
+      },
+      { system: "Parquet", value: mbs(1.4890905627917235), score: 1 },
+      {
+        system: "Lance",
+        value: mbs(0.7544222237550358),
+        score: 0.5357674304281903
+      }
     ]
   },
   {
@@ -79,9 +92,9 @@ const PANELS: Panel[] = [
     kind: "speed",
     better: "lower",
     rows: [
-      { system: "Vortex", value: 3.86, score: 1.2606848438809655 },
-      { system: "Parquet", value: 5.91, score: 2.0073889499374 },
-      { system: "Lance", value: 48.02, score: 17.499514076001677 }
+      { system: "Vortex", value: sec(3860580527), score: 1.2606848438809655 },
+      { system: "Parquet", value: sec(5906166895), score: 2.0073889499374 },
+      { system: "Lance", value: sec(48019835749), score: 17.499514076001677 }
     ]
   },
   {
@@ -90,9 +103,9 @@ const PANELS: Panel[] = [
     kind: "size",
     better: "lower",
     rows: [
-      { system: "Vortex", value: 1.07, score: 1.0679702496972 },
+      { system: "Vortex", value: 1.0679702496972, score: 1.0679702496972 },
       { system: "Parquet", value: 1, score: 1 },
-      { system: "Lance", value: 1.99, score: 1.9857446360880464 }
+      { system: "Lance", value: 1.9857446360880464, score: 1.9857446360880464 }
     ]
   }
 ];
@@ -115,7 +128,7 @@ describe("panelsFrom", () => {
       score: null
     });
     // The write panel reads the same group and keeps its Lance row.
-    assert.equal(panelsFrom(gs)?.[3]?.rows[2]?.value, 754);
+    assert.equal(panelsFrom(gs)?.[3]?.rows[2]?.value, mbs(0.7544222237550358));
   });
 
   it("treats a system measured on only some datasets as Not measured", () => {
@@ -141,7 +154,7 @@ describe("panelsFrom", () => {
     parquet.score = "2.0";
     assert.deepEqual(panelsFrom(gs)?.[4]?.rows[1], {
       system: "Parquet",
-      value: 5.91,
+      value: sec(5906166895),
       score: null
     });
   });

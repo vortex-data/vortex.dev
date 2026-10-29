@@ -33,7 +33,7 @@ export function BenchPanel({ panel }: { panel: Panel }) {
         <span className="vx-caption vx-bench-note">{panelNote(kind, vs)}</span>
       </div>
       <div className="vx-bars">
-        {panelRows(rows, better).map((r) => (
+        {panelRows(rows, better, unit).map((r) => (
           <div key={r.system} className={r.ours ? "vx-bar is-ours" : "vx-bar"}>
             <span>{r.system}</span>
             <span className="vx-bar-track">
@@ -71,7 +71,7 @@ export function BenchmarkCard({
         <h2 className="vx-bench-headline">
           Vortex against Parquet and Lance{" "}
           <span className="vx-bench-sub">
-            · six CPU benchmarks, best first in each
+            · six benchmarks, best first in each
           </span>
         </h2>
         <a className="vx-label-sm vx-source vx-nav-link" href={SOURCE_URL}>

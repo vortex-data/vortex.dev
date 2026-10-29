@@ -69,7 +69,7 @@ describe("BenchmarkCard", () => {
     );
     assert.ok(
       html.includes(
-        '<h2 class="vx-bench-headline">Vortex against Parquet and Lance <span class="vx-bench-sub">· six CPU benchmarks, best first in each</span></h2>'
+        '<h2 class="vx-bench-headline">Vortex against Parquet and Lance <span class="vx-bench-sub">· six benchmarks, best first in each</span></h2>'
       )
     );
     assert.ok(
@@ -79,5 +79,26 @@ describe("BenchmarkCard", () => {
       html
     );
     assert.equal(html.match(/class="vx-bench-panel"/g)?.length, 6);
+  });
+
+  it("prints bench's unrounded values as bench's own cards do", () => {
+    assert.ok(PANELS);
+    const html = renderToStaticMarkup(
+      <BenchmarkCard panels={PANELS} readAt={new Date("2026-10-29")} />
+    );
+    const values = [...html.matchAll(/class="vx-bar-value">([^<]*)</g)].map(
+      (m) => m[1]
+    );
+    assert.deepEqual(
+      values,
+      [
+        ["52.80", "10.35", "8.06"],
+        ["2.71", "4.56", "79.66"],
+        ["267.39", "611.15", "702.03"],
+        ["2127", "1489", "754"],
+        ["3.86", "5.91", "48.02"],
+        ["1", "1.07", "1.99"]
+      ].flat()
+    );
   });
 });

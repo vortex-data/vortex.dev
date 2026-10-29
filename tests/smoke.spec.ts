@@ -469,6 +469,51 @@ test.describe("mobile layout", () => {
   });
 });
 
+// On a phone the BenchmarkCard sets its panels two to a row, each bar under
+// its name and value. Beside them, a bar was 15 to 50px wide at 375px.
+test.describe("benchmark card on phones", () => {
+  for (const width of [320, 375]) {
+    test.describe(`at ${width}px`, () => {
+      test.use({ viewport: { width, height: 812 } });
+
+      test("bars are readable, rows are ruled, and figures line up", async ({
+        page
+      }) => {
+        await page.goto("/");
+        const card = page.getByRole("region", { name: "Benchmark summary" });
+        test.skip((await card.count()) === 0, "bench was not read at build");
+        const m = await card.evaluate((el) => {
+          const top = (e: Element | null) =>
+            Math.round(e?.getBoundingClientRect().top ?? 0);
+          const panels = [...el.querySelectorAll(".vx-bench-panel")];
+          const rows = new Map<number, Element[]>();
+          for (const p of panels)
+            rows.set(top(p), [...(rows.get(top(p)) ?? []), p]);
+          const tracks = [...el.querySelectorAll(".vx-bar-track")];
+          return {
+            columns: Math.max(...[...rows.values()].map((r) => r.length)),
+            narrowest: Math.min(
+              ...tracks.map((t) => t.getBoundingClientRect().width)
+            ),
+            misaligned: [...rows.values()].filter(
+              (r) =>
+                new Set(r.map((p) => top(p.querySelector(".vx-bench-big"))))
+                  .size > 1
+            ).length,
+            ruled: panels
+              .filter((p) => top(p) !== top(panels[0] ?? null))
+              .every((p) => getComputedStyle(p).borderTopWidth === "1px")
+          };
+        });
+        expect(m.columns).toBe(2);
+        expect(m.narrowest).toBeGreaterThanOrEqual(100);
+        expect(m.misaligned).toBe(0);
+        expect(m.ruled).toBe(true);
+      });
+    });
+  }
+});
+
 test.describe("narrowest phones", () => {
   test.use({ viewport: { width: 320, height: 640 } });
 
