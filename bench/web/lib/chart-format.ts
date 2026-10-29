@@ -67,59 +67,6 @@ export const LAZY_HYDRATION_ROOT_MARGIN = '300px 0px';
 export const MAX_VISIBLE_POINTS = 500;
 
 // ---------------------------------------------------------------------------
-// Palette + small formatting helpers.
-// ---------------------------------------------------------------------------
-
-/** The fixed series palette; series are colored by sorted-name index. */
-export const PALETTE = [
-  '#2563eb',
-  '#dc2626',
-  '#16a34a',
-  '#ea580c',
-  '#7c3aed',
-  '#0891b2',
-  '#ca8a04',
-  '#db2777',
-  '#65a30d',
-  '#475569',
-] as const;
-
-/** Color for the `i`-th series (wraps around the palette). */
-export function colorFor(i: number): string {
-  return PALETTE[i % PALETTE.length];
-}
-
-/**
- * Stable per-series colors, keyed by series label. Series are colored by
- * FIRST-SEEN order across the lifetime of a chart rather than by their index
- * within whichever payload is currently loaded.
- *
- * Index-within-payload coloring is unstable across a payload reshape: the
- * `?n=all` upgrade adds series that only ran on older commits (and so are absent
- * from the latest-100 window), and any such series that sorts ahead of an
- * existing one shifts every later series onto the next palette slot. That makes
- * recent points appear to vanish -- a color that was drawing a recent-data
- * series gets reassigned to the newly surfaced, recent-data-less older series.
- *
- * `prev` carries the colors already assigned for this chart; existing names keep
- * their color, and new names (folded in sorted order for determinism) take the
- * next palette slots after them. Returns a NEW map so callers can swap it in
- * wholesale.
- */
-export function assignStableColors(
-  prev: ReadonlyMap<string, string>,
-  names: readonly string[],
-): Map<string, string> {
-  const next = new Map(prev);
-  for (const name of [...names].sort()) {
-    if (!next.has(name)) {
-      next.set(name, colorFor(next.size));
-    }
-  }
-  return next;
-}
-
-// ---------------------------------------------------------------------------
 // Series styling by importance, hand-tuned per `engine:format`. Color carries
 // the signal and lines stay solid. The palette is mode-independent: every color
 // is chosen to read on both the light (white) and dark card backgrounds, so the
@@ -247,6 +194,10 @@ export function seriesOrder(
   return formatRank * 10 + engineRank;
 }
 
+// ---------------------------------------------------------------------------
+// Small formatting helpers.
+// ---------------------------------------------------------------------------
+
 /**
  * The user-facing display name for a format string. Vortex's on-disk format is
  * stored as `vortex-file-compressed` everywhere in the data (series keys, filter
@@ -324,12 +275,6 @@ export function escapeHtml(s: unknown): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
-}
-
-/** The x-axis label for one commit slot: the short SHA, or `''` for a virtual
- * (not yet loaded) slot. */
-export function labelForCommit(commit: CommitPoint | null | undefined): string {
-  return commit?.sha ? shortSha(commit.sha) : '';
 }
 
 const MONTH_ABBR = [

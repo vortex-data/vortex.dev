@@ -4,12 +4,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
-  assignStableColors,
   canonicalHistory,
   chartHasRecentData,
   clampRangeWindow,
   collectAllValues,
-  colorFor,
   commitDateLabel,
   decimateSeries,
   displayFormat,
@@ -23,12 +21,10 @@ import {
   IDENTITY_UNIT,
   INTERACTION_FULL_PRIORITY,
   LAZY_HYDRATION_ROOT_MARGIN,
-  labelForCommit,
   lttbIndices,
   magnitudeReference,
   MAX_VISIBLE_POINTS,
   normalizeChartPayload,
-  PALETTE,
   parseFilterCsv,
   parsePrNumber,
   pickDisplayUnit,
@@ -105,17 +101,6 @@ describe('small formatting helpers', () => {
 
   it('escapes the five HTML-significant characters', () => {
     expect(escapeHtml(`<a href="x">&'`)).toBe('&lt;a href=&quot;x&quot;&gt;&amp;&#39;');
-  });
-
-  it('labels commits by short SHA and virtual slots as empty', () => {
-    expect(labelForCommit(commit('abcdef0123'))).toBe('abcdef0');
-    expect(labelForCommit(null)).toBe('');
-  });
-
-  it('cycles the palette', () => {
-    expect(colorFor(0)).toBe(PALETTE[0]);
-    expect(colorFor(PALETTE.length)).toBe(PALETTE[0]);
-    expect(colorFor(3)).toBe(PALETTE[3]);
   });
 });
 
@@ -381,36 +366,6 @@ describe('lttbIndices', () => {
     for (let i = 1; i < kept.length; i++) {
       expect(kept[i]).toBeGreaterThan(kept[i - 1]);
     }
-  });
-});
-
-describe('assignStableColors', () => {
-  it('colors a fresh series set by sorted first-seen order', () => {
-    const colors = assignStableColors(new Map(), ['b', 'a', 'c']);
-    expect(colors.get('a')).toBe(colorFor(0));
-    expect(colors.get('b')).toBe(colorFor(1));
-    expect(colors.get('c')).toBe(colorFor(2));
-  });
-
-  it('keeps an existing series on its color when ?n=all surfaces an older series', () => {
-    // The latest-100 payload only has the always-running series.
-    const windowed = assignStableColors(new Map(), ['duckdb:parquet']);
-    expect(windowed.get('duckdb:parquet')).toBe(colorFor(0));
-    // Loading all data surfaces an older series that SORTS FIRST. Under the old
-    // index-within-payload coloring `duckdb:parquet` would shift to colorFor(1)
-    // and `aengine:aformat` (which has no recent data) would steal colorFor(0),
-    // making the recent points look like they vanished. The existing series must
-    // instead keep its color and the new one take the next slot.
-    const all = assignStableColors(windowed, ['aengine:aformat', 'duckdb:parquet']);
-    expect(all.get('duckdb:parquet')).toBe(colorFor(0));
-    expect(all.get('aengine:aformat')).toBe(colorFor(1));
-    expect(all.get('aengine:aformat')).not.toBe(all.get('duckdb:parquet'));
-  });
-
-  it('is idempotent for an unchanged series set', () => {
-    const first = assignStableColors(new Map(), ['x', 'y']);
-    const second = assignStableColors(first, ['x', 'y']);
-    expect([...second.entries()]).toEqual([...first.entries()]);
   });
 });
 
