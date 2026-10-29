@@ -70,9 +70,9 @@ runs:
       shell: bash
       run: bun run --cwd bench/web build
 
-    # testcontainers self-skips the Postgres integration suite when no Docker daemon
-    # is available (a local-dev convenience); in CI that would silently drop the only
-    # Postgres integration coverage, so fail loudly if the daemon is missing.
+    # The Postgres integration suite runs on Docker here. Locally it skips when there
+    # is neither Docker nor BENCH_TEST_DATABASE_URL; with CI=true the test harness
+    # fails the suite instead. This step fails sooner, with a plainer cause.
     - name: Require Docker for the integration suite
       shell: bash
       run: docker info > /dev/null

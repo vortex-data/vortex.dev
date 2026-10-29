@@ -33,7 +33,7 @@ function versionFromFile(relPath: string, regex: RegExp, label: string): number 
         `moved — update this consistency check and CONTRACT.md together.`,
     );
   }
-  return Number.parseInt(match[1], 10);
+  return Number.parseInt(match[1]!, 10);
 }
 
 describe('SCHEMA_VERSION', () => {

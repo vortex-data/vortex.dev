@@ -36,7 +36,7 @@ export function Header({
   initialEngines,
   initialFormats,
 }: {
-  universe?: FilterUniverse;
+  universe?: FilterUniverse | undefined;
   initialEngines?: string[] | null;
   initialFormats?: string[] | null;
 }) {

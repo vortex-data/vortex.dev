@@ -13,15 +13,15 @@ vi.mock('next/cache', () => ({
   revalidateTag: () => {},
 }));
 
-import type { StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import { READ_API_CACHE_CONTROL } from './cache';
 import { chartPayload, collectFilterUniverse, compareGroupSortKey } from './queries';
 import { chartKeyToSlug, type ChartKey } from './slug';
 import {
+  type BenchDatabase,
   commitUrl,
-  dockerAvailable,
+  integrationDatabaseAvailable,
   seedChartFixture,
-  startBenchContainer,
+  startBenchDatabase,
   TREE_SHA,
 } from './test-harness';
 import { parseCommitWindow } from './window';
@@ -37,11 +37,13 @@ const QUERY_Q1: ChartKey = {
   query_idx: 1,
 };
 
-describe.skipIf(!dockerAvailable())('chartPayload (testcontainers Postgres)', () => {
-  let container: StartedPostgreSqlContainer;
+const databaseAvailable = integrationDatabaseAvailable();
+
+describe.skipIf(!databaseAvailable)('chartPayload (testcontainers Postgres)', () => {
+  let container: BenchDatabase;
 
   beforeAll(async () => {
-    container = await startBenchContainer();
+    container = await startBenchDatabase();
     await seedChartFixture(getPool());
   });
 
@@ -143,7 +145,7 @@ describe.skipIf(!dockerAvailable())('chartPayload (testcontainers Postgres)', ()
     expect(compTime?.series_meta?.['vortex-file-compressed:encode']).toEqual({
       format: 'vortex-file-compressed',
     });
-    expect(compTime?.series_meta?.['vortex-file-compressed:encode'].engine).toBeUndefined();
+    expect(compTime?.series_meta?.['vortex-file-compressed:encode']?.engine).toBeUndefined();
   });
 
   it('omits series_meta entirely for vector-search charts (no engine/format)', async () => {
@@ -173,7 +175,7 @@ describe.skipIf(!dockerAvailable())('chartPayload (testcontainers Postgres)', ()
     const one = await chartPayload(QUERY_Q1, parseCommitWindow('1'));
     expect(one?.commits).toHaveLength(1);
     // ?n keeps the most recent commit (oldest-first array, so the last one).
-    expect(one?.commits[0].sha).toBe('3'.repeat(40));
+    expect(one?.commits[0]?.sha).toBe('3'.repeat(40));
 
     const all = await chartPayload(QUERY_Q1, parseCommitWindow('all'));
     expect(all?.commits).toHaveLength(3);
@@ -311,7 +313,7 @@ describe.skipIf(!dockerAvailable())('chartPayload (testcontainers Postgres)', ()
     });
     expect(ra?.series_meta?.['parquet:hot']).toEqual({ format: 'parquet' });
     expect(ra?.series_meta?.['parquet:cold']).toEqual({ format: 'parquet' });
-    expect(ra?.series_meta?.['parquet:hot'].engine).toBeUndefined();
+    expect(ra?.series_meta?.['parquet:hot']?.engine).toBeUndefined();
     expect(ra?.series['parquet:cold']).toEqual([10_000, 1_010_000, 2_010_000]);
 
     const cs = await chartPayload(
@@ -414,13 +416,13 @@ describe('GET /api/chart/[slug] input validation (no DB)', () => {
 // A long synthetic history exercises the bounded-vs-full window placement math
 // (`history.start_index` / `total_commits` / `complete`), mirroring
 // `chart_api.rs::chart_api_reports_virtual_history_for_bounded_and_full_windows`.
-describe.skipIf(!dockerAvailable())('chartPayload history placement (long synthetic run)', () => {
-  let container: StartedPostgreSqlContainer;
+describe.skipIf(!databaseAvailable)('chartPayload history placement (long synthetic run)', () => {
+  let container: BenchDatabase;
   const N = 125;
   const RANDOM_ACCESS: ChartKey = { k: 'RandomAccess', dataset: 'taxi' };
 
   beforeAll(async () => {
-    container = await startBenchContainer();
+    container = await startBenchDatabase();
     const pool = getPool();
     let id = 0;
     for (let i = 0; i < N; i += 1) {
@@ -491,8 +493,8 @@ describe.skipIf(!dockerAvailable())('chartPayload history placement (long synthe
 // shared fixture (every commit has every row) cannot exercise: the null-gap
 // x-axis seeding, pre-history exclusion, IS NOT DISTINCT FROM NULL-dim equality,
 // and the commit_sha tie-break under identical timestamps.
-describe.skipIf(!dockerAvailable())('chartPayload seeded-window semantics', () => {
-  let container: StartedPostgreSqlContainer;
+describe.skipIf(!databaseAvailable)('chartPayload seeded-window semantics', () => {
+  let container: BenchDatabase;
   // Distinct SHAs. C is pre-history purely by its earlier timestamp (its SHA
   // rank is irrelevant); the tie-break test relies only on E > D lexically.
   const C = 'c'.repeat(40);
@@ -502,7 +504,7 @@ describe.skipIf(!dockerAvailable())('chartPayload seeded-window semantics', () =
   const E = 'e'.repeat(40);
 
   beforeAll(async () => {
-    container = await startBenchContainer();
+    container = await startBenchDatabase();
     const pool = getPool();
     // C is pre-history for the `qn`/`qnull` charts; D and E share a timestamp.
     const commits: ReadonlyArray<readonly [string, string]> = [

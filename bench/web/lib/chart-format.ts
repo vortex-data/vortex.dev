@@ -10,10 +10,10 @@
  * Everything here is pure (no DOM, no module state), so it is importable from
  * server components, client components, and node-environment vitest alike. The
  * stateful counterparts (fetch queues, filter stores) live in
- * `lib/chart-store.ts`; the Chart.js wiring lives in `components/Chart.tsx`.
+ * `lib/chart-store/`; the Chart.js wiring lives in `components/chart/`.
  */
 
-import type { ChartHistory, ChartResponse, CommitPoint, SeriesTag, UnitKind } from '@/lib/queries';
+import type { ChartHistory, ChartResponse, CommitPoint, UnitKind } from '@/lib/queries';
 
 // ---------------------------------------------------------------------------
 // Constants (ported verbatim from `chart-init.js`).
@@ -65,59 +65,6 @@ export const LAZY_HYDRATION_ROOT_MARGIN = '300px 0px';
  * resolve.
  */
 export const MAX_VISIBLE_POINTS = 500;
-
-// ---------------------------------------------------------------------------
-// Palette + small formatting helpers.
-// ---------------------------------------------------------------------------
-
-/** The fixed series palette; series are colored by sorted-name index. */
-export const PALETTE = [
-  '#2563eb',
-  '#dc2626',
-  '#16a34a',
-  '#ea580c',
-  '#7c3aed',
-  '#0891b2',
-  '#ca8a04',
-  '#db2777',
-  '#65a30d',
-  '#475569',
-] as const;
-
-/** Color for the `i`-th series (wraps around the palette). */
-export function colorFor(i: number): string {
-  return PALETTE[i % PALETTE.length];
-}
-
-/**
- * Stable per-series colors, keyed by series label. Series are colored by
- * FIRST-SEEN order across the lifetime of a chart rather than by their index
- * within whichever payload is currently loaded.
- *
- * Index-within-payload coloring is unstable across a payload reshape: the
- * `?n=all` upgrade adds series that only ran on older commits (and so are absent
- * from the latest-100 window), and any such series that sorts ahead of an
- * existing one shifts every later series onto the next palette slot. That makes
- * recent points appear to vanish -- a color that was drawing a recent-data
- * series gets reassigned to the newly surfaced, recent-data-less older series.
- *
- * `prev` carries the colors already assigned for this chart; existing names keep
- * their color, and new names (folded in sorted order for determinism) take the
- * next palette slots after them. Returns a NEW map so callers can swap it in
- * wholesale.
- */
-export function assignStableColors(
-  prev: ReadonlyMap<string, string>,
-  names: readonly string[],
-): Map<string, string> {
-  const next = new Map(prev);
-  for (const name of [...names].sort()) {
-    if (!next.has(name)) {
-      next.set(name, colorFor(next.size));
-    }
-  }
-  return next;
-}
 
 // ---------------------------------------------------------------------------
 // Series styling by importance, hand-tuned per `engine:format`. Color carries
@@ -242,10 +189,14 @@ export function seriesOrder(
 ): number {
   const { engine, format } = seriesDims(name, meta);
   const formatRank =
-    format && format in FORMAT_ORDER ? FORMAT_ORDER[format] : FORMAT_ORDER_FALLBACK;
-  const engineRank = engine && engine in ENGINE_ORDER ? ENGINE_ORDER[engine] : 0;
+    format && format in FORMAT_ORDER ? FORMAT_ORDER[format]! : FORMAT_ORDER_FALLBACK;
+  const engineRank = engine && engine in ENGINE_ORDER ? ENGINE_ORDER[engine]! : 0;
   return formatRank * 10 + engineRank;
 }
+
+// ---------------------------------------------------------------------------
+// Small formatting helpers.
+// ---------------------------------------------------------------------------
 
 /**
  * The user-facing display name for a format string. Vortex's on-disk format is
@@ -309,7 +260,7 @@ export function parsePrNumber(message: unknown): string | null {
     return null;
   }
   const m = message.match(/\(#(\d+)\)/);
-  return m ? m[1] : null;
+  return m ? m[1]! : null;
 }
 
 /**
@@ -324,12 +275,6 @@ export function escapeHtml(s: unknown): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
-}
-
-/** The x-axis label for one commit slot: the short SHA, or `''` for a virtual
- * (not yet loaded) slot. */
-export function labelForCommit(commit: CommitPoint | null | undefined): string {
-  return commit?.sha ? shortSha(commit.sha) : '';
 }
 
 const MONTH_ABBR = [
@@ -360,6 +305,9 @@ export function commitDateLabel(commit: CommitPoint | null | undefined): string 
     return '';
   }
   const [year, month, day] = ts.slice(0, 10).split('-');
+  if (month === undefined || day === undefined) {
+    return '';
+  }
   const monthIdx = Number.parseInt(month, 10) - 1;
   const dayNum = Number.parseInt(day, 10);
   if (!(monthIdx >= 0 && monthIdx < 12) || !Number.isFinite(dayNum)) {
@@ -468,7 +416,7 @@ export function magnitudeReference(values: readonly (number | null | undefined)[
   }
   sample.sort((a, b) => a - b);
   const mid = Math.floor(sample.length / 2);
-  return sample.length % 2 ? sample[mid] : (sample[mid - 1] + sample[mid]) / 2;
+  return sample.length % 2 ? sample[mid]! : (sample[mid - 1]! + sample[mid]!) / 2;
 }
 
 /**
@@ -644,8 +592,9 @@ export function clampRangeWindow(
 
 /**
  * Return the indices into `xs` / `ys` to keep, including index 0 and `n - 1`.
- * `xs` must be strictly increasing. When `threshold >= n` or `threshold < 3`,
- * returns `[0, 1, ..., n - 1]` unchanged.
+ * `xs` must be strictly increasing, and `ys` must have the same length as `xs`.
+ * When `threshold >= n` or `threshold < 3`, returns `[0, 1, ..., n - 1]`
+ * unchanged.
  *
  * Algorithm: <https://skemman.is/handle/1946/15343>. Per bucket, pick the point
  * that forms the largest triangle with the previously kept point and the
@@ -676,8 +625,8 @@ export function lttbIndices(
     let ax = 0;
     let ay = 0;
     for (let j = nextStart; j < nextEnd; j++) {
-      ax += xs[j];
-      ay += ys[j];
+      ax += xs[j]!;
+      ay += ys[j]!;
     }
     ax /= count;
     ay /= count;
@@ -686,12 +635,12 @@ export function lttbIndices(
     // `(a, avg_next)`.
     const rangeStart = Math.floor(bi * bucket) + 1;
     const rangeEnd = Math.floor((bi + 1) * bucket) + 1;
-    const pax = xs[a];
-    const pay = ys[a];
+    const pax = xs[a]!;
+    const pay = ys[a]!;
     let maxArea = -1;
     let maxIdx = rangeStart;
     for (let k = rangeStart; k < rangeEnd; k++) {
-      const area = Math.abs((pax - ax) * (ys[k] - pay) - (pax - xs[k]) * (ay - pay)) * 0.5;
+      const area = Math.abs((pax - ax) * (ys[k]! - pay) - (pax - xs[k]!) * (ay - pay)) * 0.5;
       if (area > maxArea) {
         maxArea = area;
         maxIdx = k;
@@ -765,7 +714,7 @@ export function decimateSeries(
   const budget = Math.max(2, Math.floor(maxPoints / perSeries.length));
   for (const series of perSeries) {
     for (const local of lttbIndices(series.idxs, series.vals, budget)) {
-      kept.add(series.idxs[local]);
+      kept.add(series.idxs[local]!);
     }
   }
   return { kept, downsampled: true };
@@ -792,7 +741,7 @@ export interface NormalizedChartPayload extends Omit<ChartResponse, 'commits'> {
  * or derived from full coverage.
  */
 export function canonicalHistory(
-  payload: Pick<ChartResponse, 'commits'> & { history?: Partial<ChartHistory> | null },
+  payload: Pick<ChartResponse, 'commits'> & { history?: Partial<ChartHistory> | null | undefined },
 ): ChartHistory {
   const commits = Array.isArray(payload?.commits) ? payload.commits : [];
   const history = payload?.history ?? {};
@@ -835,7 +784,7 @@ export function normalizeChartPayload(payload: ChartResponse): NormalizedChartPa
   const start = history.start_index;
   const normalizedCommits = new Array<CommitPoint | null>(total).fill(null);
   for (let ci = 0; ci < commits.length && start + ci < total; ci++) {
-    normalizedCommits[start + ci] = commits[ci];
+    normalizedCommits[start + ci] = commits[ci]!;
   }
 
   const rawSeries = payload.series ?? {};
@@ -844,7 +793,7 @@ export function normalizeChartPayload(payload: ChartResponse): NormalizedChartPa
     const out = new Array<number | null>(total).fill(null);
     if (Array.isArray(values)) {
       for (let vi = 0; vi < values.length && start + vi < total; vi++) {
-        out[start + vi] = values[vi];
+        out[start + vi] = values[vi] as number | null;
       }
     }
     normalizedSeries[name] = out;
@@ -1023,7 +972,7 @@ export function seedActiveFormats(
  * have no engine dimension.
  */
 export function seriesPassesFilter(
-  meta: SeriesTag | undefined,
+  meta: { engine?: string | undefined; format?: string | undefined } | undefined,
   active: GlobalFilterState,
   universe: FilterUniverse,
 ): boolean {

@@ -106,17 +106,24 @@ fast.
 scaling that is not full coverage — but a low-traffic site effectively runs one
 instance, so the ping warms the path the typical first visitor actually takes.
 
-### Parallel group fan-out
+### One query per group
 
-A group page builds one chart payload per chart (99 for TPC-DS, 43 for
-Clickbench). The fan-out in `collectGroupCharts`
-([`web/lib/queries.ts`](../../web/lib/queries.ts)) runs those queries with an
-order-preserving `Promise.all` bounded by the existing `pg` pool (max 8
-connections) rather than a sequential `await` loop, so a Data Cache *miss* on a
-big group does not serialize into dozens of round-trips. The output (chart set,
-order, shape) is unchanged and pinned by an integration test. This was a small,
-low-risk change; batching a whole group into one SQL statement is the larger
-win, deliberately left for later because the chart shapes are heterogeneous.
+A group page inlines every chart's payload (99 for TPC-DS, 43 for Clickbench).
+`groupChartPayloads` ([`web/lib/queries.ts`](../../web/lib/queries.ts)) builds
+them from two statements instead of two per chart: the last `n` commits, and
+every chart's rows in that window, one `LATERAL` join per chart (in slices of
+25 charts, so a TPC-DS group runs five). They run one after another on one
+connection, in one `REPEATABLE READ` snapshot. A chart's x-axis is the last
+`min(n, total)` commits of the shared window, so the JSON is byte-identical to
+`chartPayload`'s, which a test and a dump check pin. On one connection the
+per-chart `MIN` over a query chart's whole history became the cost, so it is a
+skip scan of `idx_query_measurements_summary`, and the commit count is a
+binary search. `QUERY_CONCURRENCY` now bounds only the summaries in
+`collectGroups`. On the 2026-10-28 dump at `n=100`, warm: TPC-DS (NVMe) SF=1
+1.57 s → 0.31 s, Clickbench 0.82 s → 0.14 s, Compression 68 → 117 ms (its
+`MIN` still reads every row). At `?n=all` the TPC-DS group takes 5.2 s against
+4.7–4.9 s, and its peak memory stays under 1.5× the old fan-out's (1.2–1.8 GB
+against 1.3 GB over four runs each).
 
 ### `query_measurements` reads filter on a denormalized timestamp
 
@@ -162,8 +169,9 @@ becomes the bottleneck.
 The server makes a single payload cheap; the client decides *when and how many*
 to ask for. The pure helpers below live in
 [`web/lib/chart-format.ts`](../../web/lib/chart-format.ts); the fetch queues are
-in [`web/lib/chart-store.ts`](../../web/lib/chart-store.ts) and the Chart.js
-wiring in [`web/components/Chart.tsx`](../../web/components/Chart.tsx).
+in [`web/lib/chart-store/queues.ts`](../../web/lib/chart-store/queues.ts), the
+chart island in [`web/components/Chart.tsx`](../../web/components/Chart.tsx) and
+the Chart.js wiring in [`web/components/chart/`](../../web/components/chart/).
 
 ### Lazy hydration, top first
 
@@ -222,7 +230,7 @@ chip's retry re-issues the *fetch* (an earlier version only retried chart
 "Expand All" should load everything quickly, but the per-chart, viewport-gated
 path does the opposite — it loads only what is on screen. So a toggle-open kicks a
 single `GET /api/group/{slug}?n=100` **bundle** fetch
-(`ensureGroupBundle`, [`web/lib/chart-store.ts`](../../web/lib/chart-store.ts))
+(`ensureGroupBundle`, [`web/lib/chart-store/bundles.ts`](../../web/lib/chart-store/bundles.ts))
 into a session-lifetime `payloadCache`, priming every chart in the group with one
 request (~150–300 KB gzipped) instead of dozens. The `IntersectionObserver` still
 gates the *Chart.js construction* (the actual CPU cost), and bundles run at

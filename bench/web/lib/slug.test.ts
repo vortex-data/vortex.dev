@@ -116,7 +116,7 @@ describe('canonical slug encoding', () => {
       query_idx: 7,
     }).split('.');
     expect(prefix).toBe('qm');
-    expect(Buffer.from(payload, 'base64url').toString('utf8')).toBe(
+    expect(Buffer.from(payload!, 'base64url').toString('utf8')).toBe(
       '{"k":"QueryMeasurement","dataset":"tpch","dataset_variant":null,"scale_factor":"1","storage":"nvme","query_idx":7}',
     );
   });
@@ -129,7 +129,7 @@ describe('canonical slug encoding', () => {
       scale_factor: '1',
       storage: 'nvme',
     }).split('.')[1];
-    expect(Buffer.from(payload, 'base64url').toString('utf8')).toBe(
+    expect(Buffer.from(payload!, 'base64url').toString('utf8')).toBe(
       '{"k":"QueryGroup","dataset":"tpch","dataset_variant":null,"scale_factor":"1","storage":"nvme"}',
     );
   });

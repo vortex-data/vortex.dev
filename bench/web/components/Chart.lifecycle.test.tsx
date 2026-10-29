@@ -104,7 +104,7 @@ describe('Chart island lifecycle (StrictMode effect replay)', () => {
     );
     expect(bundleFetches).toHaveLength(1);
     expect(signals).toHaveLength(1);
-    expect(signals[0].aborted).toBe(false);
+    expect(signals[0]!.aborted).toBe(false);
   });
 
   it('replays a pre-existing group-Y override on mount (store outlives mounts)', async () => {

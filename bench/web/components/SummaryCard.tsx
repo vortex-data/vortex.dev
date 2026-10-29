@@ -40,7 +40,7 @@ function formatThroughput(valueGbS: number, operation: 'encode' | 'decode'): str
  *
  * Returns `null` when there is no summary or the variant has no content.
  */
-export function SummaryCard({ summary }: { summary?: Summary }) {
+export function SummaryCard({ summary }: { summary?: Summary | undefined }) {
   if (summary === undefined) {
     return null;
   }

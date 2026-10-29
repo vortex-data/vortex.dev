@@ -3,7 +3,7 @@
 
 // @vitest-environment jsdom
 
-import { act } from 'react';
+import { act, StrictMode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -339,6 +339,74 @@ describe('Chart opt-in full-history loading', () => {
     expect(chip?.dataset.state).not.toBe('windowed');
   });
 
+  it('pans once per wheel event and stops after unmount', async () => {
+    // Pins the construction config and the wheel-pan listener's lifecycle.
+    // StrictMode runs the mount effect as mount, cleanup, remount on the same
+    // canvas node: the first controller's teardown must leave no wheel
+    // listener behind, and unmount must remove the survivor's.
+    interface StubOptions {
+      plugins: { tooltip: { enabled: boolean }; zoom: { limits: { x: unknown } } };
+    }
+    const charts: StubChart[] = [];
+    class StubChart {
+      data: { labels: unknown[]; datasets: unknown[] };
+      options: StubOptions;
+      pan = vi.fn();
+      constructor(
+        _canvas: HTMLCanvasElement,
+        config: { data: { labels: unknown[]; datasets: unknown[] }; options: StubOptions },
+      ) {
+        this.data = { labels: config.data.labels ?? [], datasets: config.data.datasets ?? [] };
+        this.options = config.options;
+        charts.push(this);
+      }
+      update(): void {}
+      destroy(): void {}
+    }
+    vi.mocked(loadChartJs).mockResolvedValueOnce(StubChart as never);
+    responders.push({
+      match: (u) => u.includes('n=100'),
+      respond: () => Promise.resolve(jsonResponse(completePayload(20))),
+    });
+    container.innerHTML =
+      '<section class="group-details">' +
+      '<details class="group-disclosure" open><summary class="group-summary">g</summary></details>' +
+      '<div class="chart-grid"><div id="mount"></div></div>' +
+      '</section>';
+    const mount = container.querySelector('#mount') as HTMLElement;
+    root = createRoot(mount);
+    await act(async () => {
+      root?.render(
+        <StrictMode>
+          <Chart slug="qm.eyJrIjoidHBjaCJ9" name="tpch q1" index={0} groupSlug="tpch" />
+        </StrictMode>,
+      );
+    });
+    // The bundle 404, the per-chart fetch, the loader await and the React
+    // commit each take a few microtask turns; flush generously.
+    await act(async () => {
+      for (let i = 0; i < 20; i++) {
+        await Promise.resolve();
+      }
+    });
+    expect(charts).toHaveLength(1);
+    const stub = charts[0]!;
+    expect(stub.options.plugins.tooltip.enabled).toBe(false);
+    expect(stub.options.plugins.zoom.limits.x).toEqual({ min: 0, max: 19, minRange: 4 });
+
+    const canvas = container.querySelector('canvas') as HTMLCanvasElement;
+    canvas.dispatchEvent(new WheelEvent('wheel', { deltaY: 40, cancelable: true }));
+    expect(stub.pan).toHaveBeenCalledTimes(1);
+    expect(stub.pan).toHaveBeenCalledWith({ x: 20 }, undefined, 'none');
+
+    await act(async () => {
+      root?.unmount();
+      root = null;
+    });
+    canvas.dispatchEvent(new WheelEvent('wheel', { deltaY: 40, cancelable: true }));
+    expect(stub.pan).toHaveBeenCalledTimes(1);
+  });
+
   describe('PR-5.0.95 fetch resilience: timeout + abort', () => {
     // A fetch stub whose `?n=100` response never resolves on its own but DOES
     // reject when its AbortSignal fires, so timeout/destroy aborts are observable.
@@ -368,18 +436,18 @@ describe('Chart opt-in full-history loading', () => {
       const { signals } = stubAbortableWindowFetch();
       await renderOpenGroup();
       expect(signals.length).toBeGreaterThanOrEqual(1);
-      expect(signals[0].aborted).toBe(false);
+      expect(signals[0]!.aborted).toBe(false);
     });
 
     it('aborts a stalled window fetch at FETCH_TIMEOUT_MS and shows an error', async () => {
       vi.useFakeTimers();
       const { signals } = stubAbortableWindowFetch();
       await renderOpenGroup();
-      expect(signals[0].aborted).toBe(false);
+      expect(signals[0]!.aborted).toBe(false);
       await act(async () => {
         await vi.advanceTimersByTimeAsync(FETCH_TIMEOUT_MS);
       });
-      expect(signals[0].aborted).toBe(true);
+      expect(signals[0]!.aborted).toBe(true);
       const err = container.querySelector('.chart-error');
       expect(err).not.toBeNull();
       vi.useRealTimers();
@@ -388,12 +456,12 @@ describe('Chart opt-in full-history loading', () => {
     it('unmount (destroy) aborts an in-flight window fetch', async () => {
       const { signals } = stubAbortableWindowFetch();
       await renderOpenGroup();
-      expect(signals[0].aborted).toBe(false);
+      expect(signals[0]!.aborted).toBe(false);
       await act(async () => {
         root?.unmount();
         root = null;
       });
-      expect(signals[0].aborted).toBe(true);
+      expect(signals[0]!.aborted).toBe(true);
     });
 
     it('a close/destroy abort is silent (no error indicator)', async () => {
@@ -403,7 +471,7 @@ describe('Chart opt-in full-history loading', () => {
         root?.unmount();
         root = null;
       });
-      expect(signals[0].aborted).toBe(true);
+      expect(signals[0]!.aborted).toBe(true);
       // destroy sets disposed, so the rejected fetch must not paint an error.
       expect(container.querySelector('.chart-error')).toBeNull();
     });
@@ -447,14 +515,14 @@ describe('Chart opt-in full-history loading', () => {
         await Promise.resolve();
       });
       expect(signals.length).toBeGreaterThanOrEqual(1);
-      expect(signals[0].aborted).toBe(false);
+      expect(signals[0]!.aborted).toBe(false);
       // Unmounting destroys the controller; the per-fetch aborter is bridged
       // from the controller-lifetime aborter so it must fire immediately.
       await act(async () => {
         root?.unmount();
         root = null;
       });
-      expect(signals[0].aborted).toBe(true);
+      expect(signals[0]!.aborted).toBe(true);
     });
 
     it('a stalled full-history fetch times out and the chip offers retry', async () => {
@@ -477,7 +545,7 @@ describe('Chart opt-in full-history loading', () => {
       await act(async () => {
         await vi.advanceTimersByTimeAsync(FETCH_TIMEOUT_MS);
       });
-      expect(signals[0].aborted).toBe(true);
+      expect(signals[0]!.aborted).toBe(true);
       expect(chip?.dataset.state).toBe('error');
       expect(chip?.textContent).toBe('retry');
       vi.useRealTimers();
