@@ -103,7 +103,7 @@ describe('GroupBody', () => {
     window.history.replaceState(null, '', '/');
   });
 
-  async function render(open = false): Promise<void> {
+  async function render(open = false, props: Partial<GroupBodyProps> = {}): Promise<void> {
     container.innerHTML =
       '<section class="group-details" data-group-slug="g">' +
       `<details class="group-disclosure"${open ? ' open' : ''}><summary>g</summary>` +
@@ -112,7 +112,7 @@ describe('GroupBody', () => {
     body = container.querySelector('#body') as HTMLElement;
     root = createRoot(body);
     await act(async () => {
-      root?.render(<GroupBody {...PROPS} />);
+      root?.render(<GroupBody {...PROPS} {...props} />);
     });
   }
 
@@ -230,7 +230,9 @@ describe('GroupBody', () => {
     expect(urls).toHaveLength(1);
   });
 
-  it("seeds the URL's series overrides once, so a reopen keeps the user's change", async () => {
+  // The once-per-page-load guard itself is pinned in `lib/group-bodies.test.ts`;
+  // here the body stays mounted across the close, so its seed never reruns.
+  it("seeds the URL's series overrides, and keeps the user's later change across a close and reopen", async () => {
     await render();
     await toggle(true);
     expect(getGroupSnapshot('g').hiddenSeries).toEqual(['duckdb:parquet']);
@@ -258,6 +260,20 @@ describe('GroupBody', () => {
 
     responders[0]?.(jsonResponse({ name: 'g', charts: [] }));
     await flush();
+    expect(fired).toEqual(['mounted', 'settled']);
+  });
+
+  it('fetches nothing for a group with no charts, and tells the scroll restorer at once', async () => {
+    const ready = groupBodiesReady(['g']);
+    const fired: string[] = [];
+    void ready.mounted.then(() => fired.push('mounted'));
+    void ready.settled.then(() => fired.push('settled'));
+    await render(false, { charts: [] });
+    await toggle(true);
+    await flush();
+
+    expect(body.querySelector('[data-role="group-toolbar"]')).not.toBeNull();
+    expect(urls).toEqual([]);
     expect(fired).toEqual(['mounted', 'settled']);
   });
 

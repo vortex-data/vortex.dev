@@ -91,17 +91,23 @@ export function GroupBody({
 
   // Tell the scroll restorer the cards are in the DOM, with the bundle they
   // wait for. Child effects run first, so the islands have already started the
-  // bundle at this same priority and this call joins it without a request. The
-  // cleanup (on close or unmount) only withdraws the note, so a wait that
-  // starts later holds for the next mount; it never aborts the bundle, which a
-  // StrictMode replay must not do.
+  // bundle at this same priority and this call joins it without a request. A
+  // group with no charts has no island and no bundle to wait for, so it
+  // requests nothing and its wait resolves at once. The cleanup (on close or
+  // unmount) only withdraws the note, so a wait that starts later holds for
+  // the next mount; it never aborts the bundle, which a StrictMode replay must
+  // not do.
+  const hasCharts = charts.length > 0;
   useEffect(() => {
     if (!open) {
       return;
     }
-    noteGroupBodyOpen(groupSlug, ensureGroupBundle(groupSlug, chartPriority(startIndex)));
+    noteGroupBodyOpen(
+      groupSlug,
+      hasCharts ? ensureGroupBundle(groupSlug, chartPriority(startIndex)) : Promise.resolve(),
+    );
     return () => noteGroupBodyClosed(groupSlug);
-  }, [open, groupSlug, startIndex]);
+  }, [open, groupSlug, startIndex, hasCharts]);
 
   return (
     <div className="group-body" ref={ref}>
