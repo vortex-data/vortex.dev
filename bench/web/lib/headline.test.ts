@@ -89,10 +89,45 @@ describe('groupHeadline', () => {
     expect(line(query(vx('datafusion', 1, 9)))).toBe('Vortex only (partial)');
   });
 
-  it('leaves out an engine that ran only one side', () => {
+  it('leaves out an engine that ran only Vortex', () => {
     expect(line(query(vx('duckdb'), pq('duckdb', 2.5), vx('datafusion')))).toBe(
       'DuckDB 2.5× faster than Parquet',
     );
+  });
+
+  // Its Parquet result is one the row would otherwise hide.
+  it('marks partial when it leaves out an engine that ran only Parquet', () => {
+    expect(line(query(vx('duckdb'), pq('duckdb', 2.5), pq('datafusion', 1)))).toBe(
+      'DuckDB 2.5× faster than Parquet (partial)',
+    );
+    expect(
+      line(query(pq('duckdb', 0.25), vx('duckdb'), vx('datafusion', 1, 0), pq('datafusion', 1))),
+    ).toBe('DuckDB 4.0× slower than Parquet (partial)');
+  });
+
+  it('orders unknown engines after DuckDB and DataFusion, by name, and labels them by name', () => {
+    expect(
+      line(
+        query(
+          vx('polars'),
+          pq('polars', 2),
+          vx('arrow'),
+          pq('arrow', 4),
+          vx('datafusion'),
+          pq('datafusion', 3),
+          vx('duckdb'),
+          pq('duckdb', 5),
+        ),
+      ),
+    ).toBe('DuckDB 5.0× · DataFusion 3.0× · arrow 4.0× · polars 2.0× faster than Parquet');
+  });
+
+  it.each([
+    [9.94, 'DuckDB 9.9× faster than Parquet'],
+    [9.95, 'DuckDB 10× faster than Parquet'],
+    [0.05, 'DuckDB 20× slower than Parquet'],
+  ])('reads a ratio of %s at a display boundary as "%s"', (ratio, expected) => {
+    expect(line(query(vx('duckdb'), pq('duckdb', ratio)))).toBe(expected);
   });
 
   it.each([
@@ -131,11 +166,20 @@ describe('groupHeadline', () => {
     );
   });
 
+  // A multiple once Vortex is twice Parquet's size (by the printed percentage)
+  // or half of it, so no size ever reads "100% larger" or "100% smaller".
   it.each([
     [1.07, '7% larger than Parquet', 'worse'],
     [0.85, '15% smaller than Parquet', 'better'],
     [1.004, 'same size as Parquet', 'same'],
+    [0.996, 'same size as Parquet', 'same'],
     [2.4, '2.4× larger than Parquet', 'worse'],
+    [1.994, '99% larger than Parquet', 'worse'],
+    [1.995, '2.0× larger than Parquet', 'worse'],
+    [2.0, '2.0× larger than Parquet', 'worse'],
+    [0.505, '50% smaller than Parquet', 'better'],
+    [0.5, '2.0× smaller than Parquet', 'better'],
+    [0.004, '250× smaller than Parquet', 'better'],
   ])('reads a size ratio of %s as "%s"', (ratio, expected, tone) => {
     const h = groupHeadline({
       type: 'compressionSize',
@@ -156,6 +200,19 @@ describe('groupHeadline', () => {
     );
   });
 
+  it('reads random access as "Vortex only" when neither side ran Parquet', () => {
+    expect(line(ra([r(VX, 1)], [r(VX, 1)]))).toBe('Vortex only');
+    expect(line(ra([r(VX, 1)], [r(VX, 1, 3, 4), r('parquet', 2, 0)]))).toBe(
+      'Vortex only (partial)',
+    );
+  });
+
+  it('marks random access partial when one side ran only Parquet', () => {
+    expect(line(ra([r(VX, 1), r('parquet', 60.4)], [r('parquet', 32)]))).toBe(
+      'hot 60× faster than Parquet (partial)',
+    );
+  });
+
   it('names the fastest measured vector-search flavor', () => {
     expect(line(vs(r('vortex-turboquant', 1), r('vortex-default', 1.4)))).toBe(
       'fastest: vortex-turboquant',
@@ -164,5 +221,15 @@ describe('groupHeadline', () => {
       'fastest: vortex-default',
     );
     expect(groupHeadline(vs(r('vortex-turboquant', 1)))?.parts[0]?.tone).toBe('neutral');
+  });
+
+  it('names the first of tied vector-search flavors and skips a score that is not a number', () => {
+    expect(line(vs(r('vortex-default', 1.4), r('vortex-turboquant', 1.4)))).toBe(
+      'fastest: vortex-default',
+    );
+    expect(line(vs(r('vortex-turboquant', Number.NaN), r('vortex-default', 1.4)))).toBe(
+      'fastest: vortex-default',
+    );
+    expect(line(vs(r('vortex-turboquant', Number.NaN)))).toBeNull();
   });
 });

@@ -30,7 +30,9 @@ export interface Headline {
   parts: HeadlinePart[];
   /** Trailing words that apply to every part (`faster than Parquet`), if any. */
   suffix: string | null;
-  /** True when a series behind a part has fewer measured buckets than the group has. */
+  /** True when a series behind a part has fewer measured buckets than the group
+   * has, or when an engine (or a hot/cold side) ran Parquet but not Vortex and
+   * is therefore left out. */
   partial: boolean;
 }
 
@@ -199,12 +201,16 @@ function pickPair(rankings: SeriesRanking[]): Omit<Pair, 'label'> {
  * The shared rule for timing families: per pair, `score(parquet) / score(vortex)`.
  * A pair counts only when both sides were measured. When Vortex was measured
  * somewhere but no pair has a Parquet run at all, the headline is `Vortex only`.
+ *
+ * A pair with a Parquet run but no Vortex run is left out, and the headline is
+ * then marked partial: the row would otherwise hide a result without a word.
+ * A pair with only a Vortex run is left out silently.
  */
 function pairedHeadline(pairs: Pair[]): Headline | null {
   if (pairs.every((pair) => pair.parquet === undefined)) {
     return vortexOnly(pairs.flatMap((pair) => (pair.vortex === undefined ? [] : [pair.vortex])));
   }
-  return comparisonHeadline(
+  const headline = comparisonHeadline(
     pairs.flatMap(({ label, vortex, parquet }) =>
       vortex === undefined || parquet === undefined
         ? []
@@ -217,6 +223,8 @@ function pairedHeadline(pairs: Pair[]): Headline | null {
           ],
     ),
   );
+  const parquetOnly = pairs.some((pair) => pair.parquet !== undefined && pair.vortex === undefined);
+  return headline !== null && parquetOnly ? { ...headline, partial: true } : headline;
 }
 
 function vortexOnly(vortexSeries: SeriesRanking[]): Headline | null {
@@ -291,7 +299,10 @@ function queryHeadline(rankings: SeriesRanking[]): Headline | null {
 
 /**
  * `ratio` is Vortex's size over Parquet's, so below 1 is smaller. A size reads
- * as a percentage up to twice Parquet's, and as a multiple from there.
+ * as a percentage between half and twice Parquet's, and as a multiple outside
+ * that: `2.0× larger` once the printed percentage would reach 100 (from 1.995),
+ * and `2.0× smaller` once Parquet is at least twice Vortex's size (ratio 0.5
+ * and below). No size reads "100% larger" or "100% smaller".
  */
 function sizeHeadline(ratio: number | undefined): Headline | null {
   if (ratio === undefined || !isUsableRatio(ratio)) {
@@ -299,8 +310,10 @@ function sizeHeadline(ratio: number | undefined): Headline | null {
   }
   const pct = Math.round(Math.abs(ratio - 1) * 100);
   let part: HeadlinePart;
-  if (ratio >= 2) {
+  if (ratio > 1 && pct >= 100) {
     part = { text: `${multiple(ratio)} larger than Parquet`, tone: 'worse' };
+  } else if (ratio <= 0.5) {
+    part = { text: `${multiple(1 / ratio)} smaller than Parquet`, tone: 'better' };
   } else if (pct === 0) {
     part = { text: 'same size as Parquet', tone: 'same' };
   } else if (ratio > 1) {
