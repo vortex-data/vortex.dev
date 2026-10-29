@@ -140,10 +140,16 @@ gap so idle requests don't pay a fresh TLS+auth connect. Each statement has a
 30-second server-side timeout, so a request timeout cannot leave unbounded work
 running in PostgreSQL.
 
-Group Data Cache fills share a PostgreSQL advisory lock across production and
-preview functions. One invocation runs the group discovery and summary work.
-Contenders release their connections and retry the Data Cache read with bounded
-backoff instead of issuing duplicate summary queries.
+Each group Data Cache entry (the group list, and each group's default bundle)
+fills under its own PostgreSQL advisory lock (`web/lib/cache-fill.ts`), shared
+across production and preview functions. Different entries fill at once; for one
+entry, one invocation runs the fill, and contenders release their connections
+and retry the Data Cache read with bounded backoff instead of issuing duplicate
+queries. A bundle's fill resolves only its own group: one family's discovery and
+one summary, not every group's. In one process, a second request for an entry
+shares the running fill, and fills take turns for two slots, the group list
+taking both, so the fills never ask for more than the default pool of 8
+connections at once.
 
 `bench_read` uses a **static password** rather than RDS IAM auth because the
 Vercel runtime has no AWS credentials to mint an IAM token, and RDS `rds_iam`
