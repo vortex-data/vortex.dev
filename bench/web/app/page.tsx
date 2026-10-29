@@ -1,16 +1,21 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
+import { Suspense } from 'react';
+
 import { Footer } from '@/components/Footer';
 import { GroupNav } from '@/components/GroupNav';
 import { GroupSection } from '@/components/GroupSection';
 import { Header } from '@/components/Header';
+import { HomeLoading } from '@/components/HomeLoading';
 import { LandingState } from '@/components/LandingState';
 import { OpenGroupsScript } from '@/components/OpenGroupsScript';
 import { groupAnchors } from '@/lib/anchor';
-import { parseFilterCsv, singleSearchParam } from '@/lib/chart-format';
+import { type FilterUniverse, parseFilterCsv, singleSearchParam } from '@/lib/chart-format';
 import { cachedFilterUniverse, cachedGroups } from '@/lib/data-cache';
 import { parseGroupFilter } from '@/lib/group-filter';
+import type { Group } from '@/lib/queries';
+import { settlesWithin } from '@/lib/settles-within';
 
 // Rendered per request, with CDN caching layered on by `vercel.json`: each
 // render reads every group from Postgres via `collectGroups()`, and Vercel's
@@ -50,23 +55,62 @@ export const dynamic = 'force-dynamic';
  * group. Neither moves a reader who scrolled, touched, clicked or pressed a
  * key before hydration.
  *
- * The page has no Suspense boundary, so the server sends the groups as
- * ordinary, visible HTML and a reader without JavaScript sees every group's
- * header row and summary table. A boundary would stream them into a hidden
- * segment that only React's inline script reveals. The cost is on a Data Cache
- * miss: the response starts only once the groups have been read, so the
- * browser shows nothing until then (`docs/architecture/performance.md`).
+ * Each request decides how to send the groups. It starts reading the data and
+ * waits up to [`LOADING_VIEW_AFTER_MS`] for it:
+ *
+ * - If the read settles in time (a Data Cache hit, nearly every request), the
+ *   page renders the groups directly, with no Suspense boundary: ordinary,
+ *   visible HTML, so a reader without JavaScript sees every group's header row
+ *   and summary table. A read that fails in time fails the render: a real 500.
+ * - Otherwise (a miss: a cold database read) it renders a Suspense boundary
+ *   whose fallback is the loading view ([`HomeLoading`]), around a component
+ *   that awaits the same read. The loading view streams at once and the groups
+ *   follow into a hidden segment that React's inline script reveals. A client
+ *   navigation to `/` shows the loading view the same way. Without JavaScript
+ *   the reveal never runs, so the loading view says to reload.
+ *
+ * See `docs/architecture/performance.md` for the measured cost of each path.
  */
 export default async function Home({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const [params, groups, universe] = await Promise.all([
+  const data: Promise<LandingData> = Promise.all([
     searchParams,
     cachedGroups(),
     cachedFilterUniverse(),
   ]);
+  if (await settlesWithin(data, LOADING_VIEW_AFTER_MS)) {
+    return <HomeContent data={await data} />;
+  }
+  return (
+    <Suspense fallback={<HomeLoading />}>
+      <HomeStreamed data={data} />
+    </Suspense>
+  );
+}
+
+/**
+ * How long the landing page waits for its data before it streams the loading
+ * view instead. A Data Cache hit reads in a few milliseconds, well inside it,
+ * so the common case stays plain HTML; a miss reads the database, about half a
+ * second locally and seconds in production after an idle gap. Long enough that
+ * a busy server's hit still lands inside it, short enough that a reader on a
+ * miss sees the loading view almost at once.
+ */
+const LOADING_VIEW_AFTER_MS = 150;
+
+type SearchParams = Record<string, string | string[] | undefined>;
+type LandingData = [SearchParams, Group[], FilterUniverse];
+
+/** The groups once a slow read finishes, streamed behind the loading view. */
+async function HomeStreamed({ data }: { data: Promise<LandingData> }) {
+  return <HomeContent data={await data} />;
+}
+
+/** The landing page's header, groups and footer, from data already read. */
+function HomeContent({ data: [params, groups, universe] }: { data: LandingData }) {
   const initialEngines = parseFilterCsv(singleSearchParam(params.engine));
   const initialFormats = parseFilterCsv(singleSearchParam(params.format));
   const initialGroupFilter = parseGroupFilter(params);

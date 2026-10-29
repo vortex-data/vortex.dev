@@ -97,6 +97,11 @@ describe.skipIf(!databaseAvailable || !BUILD_PRESENT)(
     });
 
     it('serves the landing page with header chrome and collapsed groups, and no chart islands', async () => {
+      // The first request may miss the Data Cache, read slowly and stream the
+      // loading view first (app/page.tsx); either way it fills the cache, so
+      // the second takes the plain-HTML path asserted below.
+      const first = await (await fetch(`${BASE}/`)).text();
+      expect(first).toContain('class="group-details"');
       const html = await (await fetch(`${BASE}/`)).text();
       // Header chrome (PR-4.4.b islands, server-rendered).
       expect(html).toContain('data-role="nav-mobile-toggle"');

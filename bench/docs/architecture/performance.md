@@ -291,23 +291,40 @@ with one-off scripts that are not in this repository.
 - Expand All mounts all 791 islands in the toggle tasks that follow the click:
   574 ms of blocking time against 500 ms.
 
-The landing page has no Suspense boundary. With one, the groups streamed into a
-hidden segment that only React's inline script reveals, so a reader with
-JavaScript off saw the "Loading benchmark summaries…" card and nothing else.
-Now the server sends the groups as visible HTML, and the browser shows nothing
-until they have been read. Measured as above against the build before the
-change (511c316), the cold runs on a server restarted with an empty Data Cache:
+Each request to `/` decides how to send the groups
+([`app/page.tsx`](../../web/app/page.tsx)). It starts reading them and waits up
+to 150 ms (`LOADING_VIEW_AFTER_MS`). A Data Cache hit answers well inside that,
+so the page renders the groups directly, with no Suspense boundary: plain,
+visible HTML that a reader with JavaScript off can read in full. A miss gets a
+Suspense boundary instead: the "Loading benchmark summaries…" view streams at
+once and the groups follow into a hidden segment that React's inline script
+reveals. Without JavaScript that reveal never runs, so the loading view says to
+reload in a few minutes (the CDN keeps a copy of `/` for five). A client
+navigation to `/` on a miss shows the same loading view instead of holding the
+previous page. A database failure inside the wait fails the render, so `/`
+returns a real 500; one after it reaches the reader as an error inside a 200
+response that has already started.
 
-- Data Cache miss: time to first byte 40 → 586 ms, first contentful paint
-  184 → 772 ms. The old first paint was the loading card; its groups were laid
-  out at 613 ms, the new page's at 628 ms.
-- Data Cache hit: time to first byte 12 → 13 ms, first contentful paint
-  96 → 176 ms. The old page laid its groups out at 368 ms, after React's reveal;
-  the new first paint already holds them.
-- In production a miss costs the cold database read, seconds after an idle gap
-  (see "The cost being hidden"), which a reader now spends on a blank page
-  rather than on the card. The CDN and the 24-hour Data Cache backstop keep
-  misses rare.
+Measured as above (local dump, desktop, CPU 4×, median of 5; the cold runs on a
+server restarted with an empty Data Cache), against the build that always waited
+for the data (c4e0934, on #120) and, for the first column, the build that always
+streamed the loading view (511c316):
+
+| `/` | Always streamed | Always waited | Decides per request |
+| --- | --- | --- | --- |
+| Miss: time to first byte | 40 ms | 590 ms | 180 ms |
+| Miss: first contentful paint | 184 ms (loading view) | 720 ms | 328 ms (loading view) |
+| Miss: groups laid out | 613 ms | 633 ms | 605 ms |
+| Hit: time to first byte | 12 ms | 12 ms | 13 ms |
+| Hit: first contentful paint | 96 ms (loading view) | 140 ms | 136 ms |
+| Hit: groups laid out | 368 ms | 39 ms | 50 ms |
+| Client navigation on a miss: loading view | (not measured) | never | 175 ms |
+| Client navigation on a miss: groups | (not measured) | 583 ms | 593 ms |
+
+"Groups laid out" is the first animation frame in which a group section has
+layout. In production a miss costs the cold database read, seconds after an idle
+gap (see "The cost being hidden"); the CDN and the 24-hour Data Cache backstop
+keep misses rare.
 
 ### Visual downsampling (LTTB)
 

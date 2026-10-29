@@ -3,12 +3,12 @@
 
 // @vitest-environment jsdom
 
-import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it, vi } from 'vitest';
+import { renderToReadableStream, renderToStaticMarkup } from 'react-dom/server';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { Group } from '@/lib/queries';
 
-const { GROUPS, UNIVERSE } = vi.hoisted(() => {
+const { GROUPS, UNIVERSE, READ } = vi.hoisted(() => {
   const groups: Group[] = [
     {
       name: 'TPC-H NVMe SF=10',
@@ -42,11 +42,16 @@ const { GROUPS, UNIVERSE } = vi.hoisted(() => {
       },
     },
   ];
-  return { GROUPS: groups, UNIVERSE: { engines: ['duckdb'], formats: ['parquet', 'vortex'] } };
+  return {
+    GROUPS: groups,
+    UNIVERSE: { engines: ['duckdb'], formats: ['parquet', 'vortex'] },
+    // How long the mocked group read takes: 0 is a Data Cache hit.
+    READ: { ms: 0 },
+  };
 });
 
 vi.mock('@/lib/data-cache', () => ({
-  cachedGroups: async () => GROUPS,
+  cachedGroups: () => new Promise((resolve) => setTimeout(() => resolve(GROUPS), READ.ms)),
   cachedFilterUniverse: async () => UNIVERSE,
 }));
 
@@ -55,6 +60,12 @@ const { default: Home } = await import('@/app/page');
 /** The landing page's server HTML, as a browser gets it. */
 async function landingHtml(): Promise<string> {
   return renderToStaticMarkup(await Home({ searchParams: Promise.resolve({}) }));
+}
+
+/** The landing page streamed as a browser gets it, in order, until done. */
+async function streamedHtml(): Promise<string> {
+  const stream = await renderToReadableStream(await Home({ searchParams: Promise.resolve({}) }));
+  return new Response(stream).text();
 }
 
 /** The text a reader sees in `html` with JavaScript off: `<noscript>`
@@ -99,5 +110,42 @@ describe('the landing page', () => {
     expect(html.indexOf('data-role="open-groups-finish"')).toBeGreaterThan(
       html.lastIndexOf('class="group-details"'),
     );
+  });
+
+  it('streams the same page with no Suspense boundary on a fast read', async () => {
+    const html = await streamedHtml();
+    expect(html).not.toContain('Loading benchmark summaries');
+    expect(html).not.toContain('<!--$?-->');
+    expect(visibleText(html)).toContain(GROUPS[0]!.name);
+  });
+
+  describe('on a slow read (a Data Cache miss)', () => {
+    afterEach(() => {
+      READ.ms = 0;
+    });
+
+    it('stops waiting at the threshold and renders the loading view in a Suspense boundary', async () => {
+      READ.ms = 400;
+      const started = performance.now();
+      const page = await Home({ searchParams: Promise.resolve({}) });
+      const waited = performance.now() - started;
+      expect(waited).toBeGreaterThanOrEqual(140);
+      expect(waited).toBeLessThan(350);
+      // The boundary's content awaits the read, so a render that cannot wait
+      // shows the fallback: the loading view, which says to reload without
+      // JavaScript. (Next.js streams the groups behind it; the browser checks
+      // in the report cover that.)
+      const html = renderToStaticMarkup(page);
+      const text = visibleText(html);
+      expect(text).toContain('Loading benchmark summaries');
+      expect(text).toContain('Without JavaScript this page cannot finish loading.');
+      expect(text).not.toContain(GROUPS[0]!.name);
+    });
+
+    it('renders the groups once the read finishes', async () => {
+      READ.ms = 400;
+      const html = await streamedHtml();
+      expect(visibleText(html)).toContain(GROUPS[0]!.name);
+    });
   });
 });
