@@ -592,8 +592,9 @@ export function clampRangeWindow(
 
 /**
  * Return the indices into `xs` / `ys` to keep, including index 0 and `n - 1`.
- * `xs` must be strictly increasing. When `threshold >= n` or `threshold < 3`,
- * returns `[0, 1, ..., n - 1]` unchanged.
+ * `xs` must be strictly increasing, and `ys` must have the same length as `xs`.
+ * When `threshold >= n` or `threshold < 3`, returns `[0, 1, ..., n - 1]`
+ * unchanged.
  *
  * Algorithm: <https://skemman.is/handle/1946/15343>. Per bucket, pick the point
  * that forms the largest triangle with the previously kept point and the
@@ -792,7 +793,7 @@ export function normalizeChartPayload(payload: ChartResponse): NormalizedChartPa
     const out = new Array<number | null>(total).fill(null);
     if (Array.isArray(values)) {
       for (let vi = 0; vi < values.length && start + vi < total; vi++) {
-        out[start + vi] = values[vi]!;
+        out[start + vi] = values[vi] as number | null;
       }
     }
     normalizedSeries[name] = out;

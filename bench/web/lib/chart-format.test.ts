@@ -232,6 +232,15 @@ describe('commitDateLabel', () => {
     expect(commitDateLabel(null)).toBe('');
     expect(commitDateLabel({ sha: 'x', timestamp: '', message: '', url: '' })).toBe('');
   });
+
+  it('returns empty when the date prefix has no month or no day', () => {
+    const label = (timestamp: string) =>
+      commitDateLabel({ sha: 'x', timestamp, message: '', url: '' });
+    expect(label('2026/06/19T00:00:00Z')).toBe('');
+    expect(label('abcdefghij')).toBe('');
+    // A valid month but no day.
+    expect(label('1-1xxxxxxxxx')).toBe('');
+  });
 });
 
 describe('magnitudeReference', () => {

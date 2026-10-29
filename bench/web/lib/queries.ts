@@ -1650,7 +1650,7 @@ export async function collectGroupCharts(
   );
   const charts: NamedChartResponse[] = [];
   group.charts.forEach((link, i) => {
-    const chart = payloads[i]!;
+    const chart = payloads[i] as ChartResponse | null;
     if (chart !== null) {
       charts.push({ name: link.name, slug: link.slug, ...chart });
     }
