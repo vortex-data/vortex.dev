@@ -486,6 +486,16 @@ async function checkSubscribeGuards(): Promise<void> {
       status: 403
     },
     {
+      name: "/api/subscribe rejects the same host on another scheme",
+      headers: {
+        Origin: origin.startsWith("https:")
+          ? origin.replace(/^https:/, "http:")
+          : origin.replace(/^http:/, "https:")
+      },
+      body: JSON.stringify({ email: "verify-suite@example.com" }),
+      status: 403
+    },
+    {
       name: "/api/subscribe rejects a request with no Origin or Referer",
       headers: {},
       body: JSON.stringify({ email: "verify-suite@example.com" }),

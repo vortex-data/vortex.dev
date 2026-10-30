@@ -9,18 +9,24 @@ const MAX_BODY_BYTES = 1024;
 // so they blunt one client hammering the endpoint. A person subscribes once.
 const RATE_LIMIT = 10;
 const RATE_WINDOW_MS = 10 * 60 * 1000;
+// At most this many IPs are tracked, so a burst of distinct IPs can't grow the
+// map, or the time spent cleaning it, without bound.
+const MAX_TRACKED_IPS = 10_000;
+// Every window has the same length and a new or renewed window is added at
+// the end, so the Map's insertion order is also oldest-window first.
 const hits = new Map<string, { count: number; resetAt: number }>();
 
 // Browsers send Origin on every POST, and Referer when a privacy setting
-// strips Origin. Requiring one of them to match the host rejects cross-site
-// form posts; it can't stop a non-browser client, which the rate limit covers.
+// strips Origin. Requiring one of them to match this endpoint's full origin
+// (scheme, host and port) rejects cross-site posts, and posts from an http://
+// page on the same host. It can't stop a non-browser client, which the rate
+// limit covers.
 function isSameOrigin(request: NextRequest): boolean {
-  const host = request.headers.get("host");
   const source =
     request.headers.get("origin") ?? request.headers.get("referer");
-  if (!host || !source) return false;
+  if (!source) return false;
   try {
-    return new URL(source).host === host;
+    return new URL(source).origin === request.nextUrl.origin;
   } catch {
     return false;
   }
@@ -39,18 +45,57 @@ function clientIp(request: NextRequest): string {
 // Returns the seconds until the window resets when the client is over the
 // limit, or 0 when the request may go ahead.
 function rateLimited(ip: string, now: number): number {
-  if (hits.size > 10_000) {
-    for (const [key, entry] of hits) {
-      if (entry.resetAt <= now) hits.delete(key);
+  const entry = hits.get(ip);
+  if (entry && entry.resetAt > now) {
+    entry.count += 1;
+    return entry.count > RATE_LIMIT
+      ? Math.ceil((entry.resetAt - now) / 1000)
+      : 0;
+  }
+  // A new window. Delete first so it is re-added at the end.
+  if (entry) hits.delete(ip);
+  if (hits.size >= MAX_TRACKED_IPS) {
+    // Drop the expired windows at the front and, if a burst of distinct IPs
+    // still fills the map, the oldest tenth. Each cleanup then frees room for
+    // a thousand new IPs, so its cost is not paid on every request.
+    let toDrop = hits.size - Math.floor(MAX_TRACKED_IPS * 0.9);
+    for (const [key, oldest] of hits) {
+      if (oldest.resetAt > now && toDrop <= 0) break;
+      hits.delete(key);
+      toDrop -= 1;
     }
   }
-  const entry = hits.get(ip);
-  if (!entry || entry.resetAt <= now) {
-    hits.set(ip, { count: 1, resetAt: now + RATE_WINDOW_MS });
-    return 0;
+  hits.set(ip, { count: 1, resetAt: now + RATE_WINDOW_MS });
+  return 0;
+}
+
+// Reads the body as text, or returns null as soon as it passes `limit` bytes,
+// so an oversized body without a Content-Length is never held in memory.
+async function readBodyWithin(
+  request: NextRequest,
+  limit: number
+): Promise<string | null> {
+  if (!request.body) return "";
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > limit) {
+      await reader.cancel();
+      return null;
+    }
+    chunks.push(value);
   }
-  entry.count += 1;
-  return entry.count > RATE_LIMIT ? Math.ceil((entry.resetAt - now) / 1000) : 0;
+  const bytes = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new TextDecoder().decode(bytes);
 }
 
 export async function POST(request: NextRequest) {
@@ -71,8 +116,8 @@ export async function POST(request: NextRequest) {
     if (declaredLength > MAX_BODY_BYTES) {
       return NextResponse.json({ error: "Request too large" }, { status: 413 });
     }
-    const raw = await request.text();
-    if (new TextEncoder().encode(raw).byteLength > MAX_BODY_BYTES) {
+    const raw = await readBodyWithin(request, MAX_BODY_BYTES);
+    if (raw === null) {
       return NextResponse.json({ error: "Request too large" }, { status: 413 });
     }
 
