@@ -1,13 +1,11 @@
 name: Lighthouse
 
 on:
+  # Every pull request starts this workflow, and the `changes` job skips the
+  # audit when only bench changed. A skipped job reports success, so "Lighthouse
+  # audit" can be a required check; a workflow filtered out by `paths` would
+  # never report and would block the merge.
   pull_request:
-    # Lighthouse audits the marketing site only. It isn't a required check, so
-    # a workflow-level filter is enough here; ci.yml gates its required job with
-    # the changed-paths action instead.
-    paths-ignore:
-      - 'bench/**'
-      - '.github/workflows/bench-*.yml'
   workflow_dispatch:
 
 permissions:
@@ -21,10 +19,29 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Detect changed paths
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      site: ${{ steps.paths.outputs.site }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - id: paths
+        uses: ./.github/actions/changed-paths
+
   lighthouse:
     name: Lighthouse audit
+    needs: changes
+    # Lighthouse audits the marketing site only. Skipped, which counts as
+    # passing, when nothing outside bench/ changed. If the path check itself
+    # fails, run anyway rather than skip.
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.site == 'true') }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
