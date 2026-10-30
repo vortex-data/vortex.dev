@@ -83,6 +83,7 @@
 .vx-source {
   display: inline-flex;
   flex-wrap: wrap;
+  white-space: normal;
   align-items: center;
   gap: var(--space-4);
 }
@@ -484,8 +485,6 @@
    narrow panel. A 4px gap keeps "1.07× larger than Parquet" on one line in six columns. */
 .vx-bench-big { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-4); color: var(--ink); }
 .vx-bench-note { color: var(--ink-muted); }
-/* The sources of panels whose figures are not bench's, under the panels. */
-
 /* A bar chart's rows: name, a bar on its track, the value. Vortex is the one Blue row. */
 .vx-bars { display: grid; gap: var(--space-8); }
 .vx-bar {
@@ -896,5 +895,5 @@
 /* ------------------------------------------------------------------ focus
    One rule for every focusable element, last so that it wins over the resets above. Rows and
    segments inside a clipped container draw it inside their edge. */
-:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
-:where(.vx-docs-nav a, .vx-toc a, .vx-post-row, .vx-tree-node, .vx-filemap-bar > button, .vx-tabs-list button):focus-visible { outline-offset: -2px; }
+:is(a, button, input, select, textarea, summary, [tabindex]):focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+:is(.vx-docs-nav a, .vx-toc a, .vx-post-row, .vx-tree-node, .vx-filemap-bar > button, .vx-tabs-list button):focus-visible { outline-offset: -2px; }

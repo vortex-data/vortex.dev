@@ -1042,6 +1042,27 @@ test.describe("logo banner under reduced motion", () => {
 // carries: the header with a ThemeSwitch, Field, prose lists, numeric cells
 // and the post rows.
 test.describe("design system rules on the blog", () => {
+  // Audit, 30 Oct 2026: the switch's buttons reset with all: unset, which
+  // beat the shared focus rule, so keyboard focus showed no ring.
+  test("the theme switch shows the focus ring", async ({
+    page,
+    browserName
+  }) => {
+    test.skip(
+      browserName === "webkit",
+      "WebKit's Tab key skips buttons by default"
+    );
+    await page.goto("/blog");
+    const button = page.locator(".vx-theme-switch button").first();
+    await button.focus();
+    await page.keyboard.press("Shift+Tab");
+    await page.keyboard.press("Tab");
+    await expect(button).toBeFocused();
+    expect(await button.evaluate((b) => getComputedStyle(b).outlineStyle)).toBe(
+      "solid"
+    );
+  });
+
   const POST = "/blog/btrblocks-compressor";
   // A row's text starts with its meta (the date), which sits in its first column.
   const x = async (page: Page, selector: string) =>
