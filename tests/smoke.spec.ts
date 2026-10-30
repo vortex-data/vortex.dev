@@ -85,15 +85,18 @@ test.describe("home", () => {
     await page.keyboard.press("ArrowRight");
     await expect(tab("Python")).toBeFocused();
     await expect(tab("Python")).toHaveAttribute("aria-selected", "true");
+    // The last tab is Spark, or DataFusion when the Maven lookup fails.
+    const last = page
+      .getByRole("tablist", { name: "Install Vortex" })
+      .getByRole("tab")
+      .last();
     await page.keyboard.press("End");
-    await expect(tab("CLI")).toBeFocused();
-    await expect(page.getByRole("tabpanel")).toContainText(
-      "uvx --from vortex-data vx --help"
-    );
+    await expect(last).toBeFocused();
+    await expect(last).toHaveAttribute("aria-selected", "true");
     await page.keyboard.press("Home");
     await expect(tab("Rust")).toBeFocused();
     await expect(tab("Rust")).toHaveAttribute("tabindex", "0");
-    await expect(tab("CLI")).toHaveAttribute("tabindex", "-1");
+    await expect(last).toHaveAttribute("tabindex", "-1");
   });
 
   test("switching install tabs never changes the block's height", async ({
@@ -241,29 +244,24 @@ test.describe("home bands", () => {
     ).toHaveAttribute("title", /^end to end, hot, .*UW–Madison talk$/);
   });
 
-  test("the logo banner shows the thirteen cleared logos", async ({ page }) => {
+  // The exact list and order are logo-banner.test.tsx's; here the page shows
+  // them, so adding a logo changes only that test.
+  test("the logo banner shows the cleared logos, Spiral third", async ({
+    page
+  }) => {
     await page.goto("/");
-    const banner = page.getByRole("region", { name: "Who builds on Vortex" });
+    const banner = page.getByRole("region", { name: "Ecosystem" });
     await expect(banner).toBeVisible();
     // Only the first set is named; the loop's copies are hidden.
     const names = await banner
       .getByRole("img")
       .evaluateAll((imgs) => imgs.map((i) => i.getAttribute("alt")));
-    expect(names).toEqual([
-      "Microsoft",
-      "Palantir",
-      "Spiral",
-      "Firebolt",
-      "LangChain",
-      "Dash0",
-      "Milvus",
-      "DuckDB",
-      "Apache DataFusion",
-      "Apache Spark",
-      "ClickHouse",
-      "Apache Hudi",
-      "Apache Paimon"
-    ]);
+    expect(names.length).toBeGreaterThanOrEqual(16);
+    expect(names.slice(0, 3)).toEqual(["Microsoft", "Palantir", "Spiral"]);
+    expect(new Set(names).size).toBe(names.length);
+    await expect(
+      banner.getByRole("link", { name: "Apache Iceberg Coming soon" })
+    ).toHaveClass("is-soon");
     // Every mark loads.
     for (const img of await banner.getByRole("img").all())
       await expect
@@ -977,7 +975,7 @@ test.describe("logo banner pause", () => {
 
   test("pauses and resumes from the keyboard", async ({ page }) => {
     await page.goto("/");
-    const banner = page.getByRole("region", { name: "Who builds on Vortex" });
+    const banner = page.getByRole("region", { name: "Ecosystem" });
     const pause = banner.getByRole("button", { name: "Pause the logos" });
     await expect(pause).toBeVisible();
     await expect(pause).toHaveAttribute("aria-pressed", "false");
@@ -1019,16 +1017,19 @@ test.describe("logo banner pause", () => {
 
 test.describe("logo banner under reduced motion", () => {
   for (const width of [1440, 375]) {
-    test(`shows all thirteen logos still at ${width}px`, async ({ page }) => {
+    test(`shows every logo still at ${width}px`, async ({ page }) => {
       await page.emulateMedia({ reducedMotion: "reduce" });
       await page.setViewportSize({ width, height: 900 });
       await page.goto("/");
-      const logos = page.locator(
-        'section[aria-label="Who builds on Vortex"] img:not([alt=""])'
-      );
-      await expect(logos).toHaveCount(13);
-      for (const box of await logos.evaluateAll((imgs) =>
-        imgs.map((i) => i.getBoundingClientRect().toJSON())
+      // The first set holds every logo; the loop's copies are hidden here.
+      const set = page
+        .locator('section[aria-label="Ecosystem"] .vx-logos-set')
+        .first();
+      expect(await set.locator("img").count()).toBeGreaterThanOrEqual(16);
+      // A "Coming soon" tag hangs past its logo, so the tags are checked too.
+      const marks = set.locator(":is(img, .vx-logos-soon)");
+      for (const box of await marks.evaluateAll((els) =>
+        els.map((e) => e.getBoundingClientRect().toJSON())
       )) {
         expect(box.left).toBeGreaterThanOrEqual(0);
         expect(box.right).toBeLessThanOrEqual(width);

@@ -96,6 +96,26 @@ SPDX-FileCopyrightText = "Firebolt Analytics Inc"
 SPDX-License-Identifier = "LicenseRef-Third-Party"
 
 [[annotations]]
+path = "src/assets/logos/spiceai.svg"
+SPDX-FileCopyrightText = "Spice AI, Inc."
+SPDX-License-Identifier = "LicenseRef-Third-Party"
+
+[[annotations]]
+path = "src/assets/logos/datologyai.svg"
+SPDX-FileCopyrightText = "DatologyAI, Inc."
+SPDX-License-Identifier = "LicenseRef-Third-Party"
+
+[[annotations]]
+path = "src/assets/logos/arrow.svg"
+SPDX-FileCopyrightText = "The Apache Software Foundation"
+SPDX-License-Identifier = "LicenseRef-Third-Party"
+
+[[annotations]]
+path = "src/assets/logos/iceberg.svg"
+SPDX-FileCopyrightText = "The Apache Software Foundation"
+SPDX-License-Identifier = "LicenseRef-Third-Party"
+
+[[annotations]]
 path = "src/assets/logos/langchain.svg"
 SPDX-FileCopyrightText = "LangChain Inc."
 SPDX-License-Identifier = "LicenseRef-Third-Party"

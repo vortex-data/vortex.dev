@@ -193,8 +193,24 @@
   transition: opacity 150ms ease-out;
 }
 .vx-logos-set a {
+  position: relative;
   display: block;
   flex: none;
+}
+/* A logo whose Vortex support has not shipped carries a small "Coming soon" tag over its top
+   right corner, so the mark still reads, and the mark dims a little. */
+.vx-logos-set a.is-soon img {
+  opacity: 0.45;
+}
+.vx-logos-soon {
+  position: absolute;
+  top: -10px;
+  right: -18px;
+  padding: 1px var(--space-4);
+  font-size: 9px;
+  white-space: nowrap;
+  background: var(--accent);
+  color: var(--on-accent);
 }
 .vx-logos-set img:hover,
 .vx-logos-set a:focus-visible img {
@@ -422,6 +438,11 @@
   color: var(--ink-muted);
 }
 .vx-tabs-list button:hover { color: var(--ink-body); }
+/* Six tabs fit a 340px phone: below 480px the side padding shrinks with the viewport, down to 4px.
+   Narrower than that, the list scrolls. */
+@media (max-width: 480px) {
+  .vx-tabs-list button { padding-inline: clamp(var(--space-4), 1.6vw, var(--space-12)); }
+}
 .vx-tabs-list button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
 .vx-tabs-code { display: flex; align-items: flex-start; gap: var(--space-12); padding: var(--space-12) var(--space-16); }
 /* Every panel shares one grid cell and only the selected one shows, so the block is always the

@@ -6,15 +6,16 @@ const lines = (tab: ReturnType<typeof installTabs>[number] | undefined) =>
   tab?.lines.map((l) => [l.prompt, l.text]);
 
 describe("installTabs", () => {
-  it("opens on Rust, then Python, DuckDB, Spark and CLI", () => {
+  it("opens on Rust, then Python, CLI, DuckDB, DataFusion and Spark", () => {
     assert.deepEqual(
       installTabs("0.90.0").map((t) => t.label),
-      ["Rust", "Python", "DuckDB", "Spark", "CLI"]
+      ["Rust", "Python", "CLI", "DuckDB", "DataFusion", "Spark"]
     );
   });
 
   it("draws a shell prompt before the shell commands only", () => {
-    const [rust, python, duckdb, spark, cli] = installTabs("0.90.0");
+    const [rust, python, cli, duckdb, datafusion, spark] =
+      installTabs("0.90.0");
     assert.deepEqual(lines(rust), [["$", "cargo add vortex"]]);
     assert.deepEqual(lines(python), [["$", "uv add vortex-data"]]);
     assert.deepEqual(lines(duckdb), [
@@ -23,6 +24,7 @@ describe("installTabs", () => {
         "INSTALL vortex; LOAD vortex; SELECT * FROM read_vortex('data.vortex');"
       ]
     ]);
+    assert.deepEqual(lines(datafusion), [["$", "cargo add vortex-datafusion"]]);
     assert.deepEqual(lines(spark), [
       ["", 'implementation("dev.vortex:vortex-spark_2.13:0.90.0:all")']
     ]);
@@ -32,7 +34,7 @@ describe("installTabs", () => {
   it("offers no Spark tab when the version is unknown, so nothing copies a coordinate Gradle cannot resolve", () => {
     assert.deepEqual(
       installTabs(null).map((t) => t.key),
-      ["rust", "python", "duckdb", "cli"]
+      ["rust", "python", "cli", "duckdb", "datafusion"]
     );
   });
 
@@ -57,10 +59,11 @@ describe("copyText", () => {
     assert.deepEqual(copied, {
       rust: "cargo add vortex",
       python: "uv add vortex-data",
+      cli: "uvx --from vortex-data vx --help",
+      datafusion: "cargo add vortex-datafusion",
       duckdb:
         "INSTALL vortex; LOAD vortex; SELECT * FROM read_vortex('data.vortex');",
-      spark: 'implementation("dev.vortex:vortex-spark_2.13:0.90.0:all")',
-      cli: "uvx --from vortex-data vx --help"
+      spark: 'implementation("dev.vortex:vortex-spark_2.13:0.90.0:all")'
     });
     for (const text of Object.values(copied)) assert.doesNotMatch(text, /^\$/m);
   });

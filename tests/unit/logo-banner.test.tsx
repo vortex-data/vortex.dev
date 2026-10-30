@@ -5,21 +5,26 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { LogoBanner } from "@/components/logo-banner";
 import { LOGOS } from "@/components/logo-banner/logos";
 
-// The adopters Will cleared for public use (spec section 6.5), in the Home
-// card's order. Spiral sits third, so it is in view on load. Dash0 replaced
-// Polar Signals, which it acquired.
+// The logos Will cleared for public use, in the Home card's order: the
+// adopters and the projects that integrate Vortex. Spiral sits third, so it
+// is in view on load. Dash0 replaced Polar Signals, which it acquired.
+// Apache Iceberg is tagged "Coming soon" until its Vortex support ships.
 const CLEARED = [
   "Microsoft",
   "Palantir",
   "Spiral",
   "Firebolt",
+  "Spice AI",
   "LangChain",
+  "DatologyAI",
   "Dash0",
   "Milvus",
   "DuckDB",
   "Apache DataFusion",
+  "Apache Arrow",
   "Apache Spark",
   "ClickHouse",
+  "Apache Iceberg",
   "Apache Hudi",
   "Apache Paimon"
 ];
@@ -30,7 +35,7 @@ describe("LogoBanner", () => {
       LOGOS.map((l) => l.name),
       CLEARED
     );
-    for (const name of ["Google", "DatologyAI", "Spice AI", "Polar Signals"])
+    for (const name of ["Google", "Polar Signals"])
       assert.ok(!LOGOS.some((l) => l.name.includes(name)), name);
   });
 
@@ -48,12 +53,24 @@ describe("LogoBanner", () => {
     );
   });
 
+  it("tags Apache Iceberg, and only Iceberg, as coming soon", () => {
+    const html = renderToStaticMarkup(<LogoBanner />);
+    const first = html.split('<div class="vx-logos-set"')[1] ?? "";
+    const soon = [
+      ...first.matchAll(
+        /<a class="is-soon"[^>]*><img[^>]*alt="([^"]*)"[^>]*\/><span class="vx-label-sm vx-logos-soon">Coming soon<\/span><\/a>/g
+      )
+    ].map((m) => m[1]);
+    assert.deepEqual(soon, ["Apache Iceberg"]);
+    assert.equal(first.match(/vx-logos-soon/g)?.length, 1);
+  });
+
   // WCAG 2.2.2: the loop lasts over 5 seconds, so it has a pause control,
   // drawn as the design system's LogoBanner card draws it.
   it("has a pause toggle after its label, not pressed at first", () => {
     const html = renderToStaticMarkup(<LogoBanner />);
     const head = html.match(
-      /<span class="vx-label">Who builds on Vortex<\/span>(<button[\s\S]*?<\/button>)<div class="vx-logos-strip">/
+      /<span class="vx-label">Ecosystem<\/span>(<button[\s\S]*?<\/button>)<div class="vx-logos-strip">/
     )?.[1];
     assert.ok(head, "the control sits between the label and the strip");
     assert.match(head, /^<button class="vx-logos-pause"/);

@@ -1,16 +1,20 @@
 import type { StaticImageData } from "next/image";
+import arrow from "@/assets/logos/arrow.svg";
 import clickhouse from "@/assets/logos/clickhouse.svg";
 import dash0 from "@/assets/logos/dash0.svg";
 import datafusion from "@/assets/logos/datafusion.svg";
+import datologyai from "@/assets/logos/datologyai.svg";
 import duckdb from "@/assets/logos/duckdb.svg";
 import firebolt from "@/assets/logos/firebolt.svg";
 import hudi from "@/assets/logos/hudi.png";
+import iceberg from "@/assets/logos/iceberg.svg";
 import langchain from "@/assets/logos/langchain.svg";
 import microsoft from "@/assets/logos/microsoft.png";
 import milvus from "@/assets/logos/milvus.svg";
 import paimon from "@/assets/logos/paimon.png";
 import palantir from "@/assets/logos/palantir.svg";
 import spark from "@/assets/logos/spark.svg";
+import spiceai from "@/assets/logos/spiceai.svg";
 import spiral from "@/assets/logos/spiral.svg";
 
 export type Logo = {
@@ -20,9 +24,11 @@ export type Logo = {
   height: number;
   /** The owner's page about its Vortex use, else its homepage. */
   href: string;
+  /** Tagged "Coming soon": its Vortex support has not shipped yet. */
+  soon?: true;
 };
 
-// The adopters cleared for public use, in the Home card's order. Each size is
+// The adopters and integrations cleared for public use, in the Home card's order. Each size is
 // the card's, from the system's tools/logo-fit.mjs (--area 3360 --max 170x40),
 // so every mark carries the same ink. Each file is its owner's own, from the
 // source recorded in the system's assets/Adopters/README.md. Add a mark only once its owner has
@@ -30,7 +36,8 @@ export type Logo = {
 // donated Vortex, sits third, so it is in view when the page loads. Each
 // links to the owner's own page that mentions Vortex where there is one
 // (docs, a post or a list of users), else to the owner's homepage. Dash0
-// links to the Vortex post by Polar Signals, which it acquired.
+// links to the Vortex post by Polar Signals, which it acquired. Apache
+// Iceberg is tagged "Coming soon" until its Vortex support ships.
 export const LOGOS: readonly Logo[] = [
   {
     name: "Microsoft",
@@ -61,11 +68,25 @@ export const LOGOS: readonly Logo[] = [
     href: "https://www.firebolt.io"
   },
   {
+    name: "Spice AI",
+    image: spiceai,
+    width: 126,
+    height: 26,
+    href: "https://spice.ai/blog/vortex-at-spice-ai-the-columnar-format-for-data-intensive-workloads"
+  },
+  {
     name: "LangChain",
     image: langchain,
     width: 136,
     height: 25,
     href: "https://www.langchain.com/blog/introducing-smithdb"
+  },
+  {
+    name: "DatologyAI",
+    image: datologyai,
+    width: 129,
+    height: 27,
+    href: "https://www.datologyai.com"
   },
   {
     name: "Dash0",
@@ -96,6 +117,13 @@ export const LOGOS: readonly Logo[] = [
     href: "https://datafusion.apache.org/user-guide/introduction.html"
   },
   {
+    name: "Apache Arrow",
+    image: arrow,
+    width: 99,
+    height: 36,
+    href: "https://arrow.apache.org"
+  },
+  {
     name: "Apache Spark",
     image: spark,
     width: 78,
@@ -108,6 +136,14 @@ export const LOGOS: readonly Logo[] = [
     width: 156,
     height: 48,
     href: "https://clickhouse.com/docs/reference/formats/Vortex"
+  },
+  {
+    name: "Apache Iceberg",
+    image: iceberg,
+    width: 125,
+    height: 34,
+    href: "https://iceberg.apache.org/blog/apache-iceberg-file-format-api/",
+    soon: true
   },
   {
     name: "Apache Hudi",

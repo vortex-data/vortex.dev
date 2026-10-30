@@ -1,5 +1,5 @@
 // The homepage's install commands, from docs.vortex.dev: getting-started/install,
-// user-guide/duckdb and user-guide/spark.
+// user-guide/duckdb, user-guide/datafusion and user-guide/spark.
 
 /** One line of a command block. `prompt` is "$" for a shell command, else "". */
 export type InstallLine = { prompt: string; text: string };
@@ -10,7 +10,8 @@ const shell = (text: string): InstallLine => ({ prompt: "$", text });
 const code = (text: string): InstallLine => ({ prompt: "", text });
 
 /**
- * The InstallTabs card's tabs, Rust first. `sparkVersion` is from
+ * The InstallTabs card's tabs: Rust, Python, the CLI, then the engines,
+ * DuckDB, DataFusion and Spark. `sparkVersion` is from
  * `getSparkVersion`; without it there is no Spark tab, because a coordinate
  * without a real version would copy a command Gradle cannot resolve.
  */
@@ -23,6 +24,11 @@ export function installTabs(sparkVersion: string | null): InstallTab[] {
       lines: [shell("uv add vortex-data")]
     },
     {
+      key: "cli",
+      label: "CLI",
+      lines: [shell("uvx --from vortex-data vx --help")]
+    },
+    {
       key: "duckdb",
       label: "DuckDB",
       lines: [
@@ -31,6 +37,11 @@ export function installTabs(sparkVersion: string | null): InstallTab[] {
           "INSTALL vortex; LOAD vortex; SELECT * FROM read_vortex('data.vortex');"
         )
       ]
+    },
+    {
+      key: "datafusion",
+      label: "DataFusion",
+      lines: [shell("cargo add vortex-datafusion")]
     },
     ...(sparkVersion
       ? [
@@ -44,12 +55,7 @@ export function installTabs(sparkVersion: string | null): InstallTab[] {
             ]
           }
         ]
-      : []),
-    {
-      key: "cli",
-      label: "CLI",
-      lines: [shell("uvx --from vortex-data vx --help")]
-    }
+      : [])
   ];
   return tabs;
 }

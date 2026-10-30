@@ -49,9 +49,9 @@ export function LogoBanner({ className }: { className?: string | undefined }) {
   return (
     <section
       className={className ? `${className} vx-logos` : "vx-logos"}
-      aria-label="Who builds on Vortex"
+      aria-label="Ecosystem"
     >
-      <span className="vx-label">Who builds on Vortex</span>
+      <span className="vx-label">Ecosystem</span>
       {/* A toggle: the CSS reads aria-pressed, so the name stays the same. */}
       <button
         className="vx-logos-pause"
@@ -73,8 +73,13 @@ export function LogoBanner({ className }: { className?: string | undefined }) {
               className="vx-logos-set"
               aria-hidden={i > 0 ? true : undefined}
             >
-              {LOGOS.map(({ name, image, width, height, href }) => (
-                <a key={name} href={href} tabIndex={i > 0 ? -1 : undefined}>
+              {LOGOS.map(({ name, image, width, height, href, soon }) => (
+                <a
+                  key={name}
+                  className={soon ? "is-soon" : undefined}
+                  href={href}
+                  tabIndex={i > 0 ? -1 : undefined}
+                >
                   <img
                     src={image.src}
                     width={width}
@@ -82,6 +87,11 @@ export function LogoBanner({ className }: { className?: string | undefined }) {
                     alt={i > 0 ? "" : name}
                     decoding="async"
                   />
+                  {soon && (
+                    <span className="vx-label-sm vx-logos-soon">
+                      Coming soon
+                    </span>
+                  )}
                 </a>
               ))}
             </div>
