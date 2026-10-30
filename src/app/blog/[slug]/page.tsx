@@ -6,7 +6,7 @@ import { ArrowBackIcon } from "@/components/icons";
 import { MDXRenderer } from "@/components/MDXRenderer";
 import { getAllPosts, getAllSlugs, getPostBySlug } from "@/lib/blog";
 import { baseUrl, siteName } from "@/lib/constants";
-import { bylineParts, morePosts } from "@/lib/posts";
+import { bylineParts, kindLabel, morePosts } from "@/lib/posts";
 
 interface BlogPostPageProps {
   params: Promise<{ slug: string }>;
@@ -82,8 +82,9 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
   const more = morePosts(getAllPosts(), slug);
   const [date, authors, readingTime] = bylineParts(post);
 
-  // The design system's Article card: the title and a mono byline, then the
-  // post in a 68ch reading column on `surface`, and "More posts" at the end.
+  // The design system's Article card: the kind, the title, the dek and a mono
+  // byline, then the post in a 68ch reading column on `surface`, and "More
+  // posts" at the end.
   return (
     <div className="blog-page">
       <script
@@ -96,7 +97,11 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
       </NextLink>
       <article className="vx-card vx-article vx-reading">
         <header className="vx-article-head">
+          <p className="vx-label vx-eyebrow vx-article-kind">
+            {kindLabel(post.kind)}
+          </p>
           <h1 className="vx-h1 vx-article-title">{post.title}</h1>
+          {post.excerpt && <p className="vx-article-dek">{post.excerpt}</p>}
           <p className="vx-label vx-article-byline">
             <time className="blog-nowrap" dateTime={post.date}>
               {date}

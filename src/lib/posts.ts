@@ -5,6 +5,18 @@ export function formatPostDate(iso: string): string {
   return formatDay(new Date(iso));
 }
 
+export type PostKind = "deep-dive" | "bulletin";
+
+const KIND_LABELS: Record<PostKind, string> = {
+  "deep-dive": "Deep dive",
+  bulletin: "Bulletin"
+};
+
+/** A post's kind as the Article card's eyebrow and the index's lead name it. */
+export function kindLabel(kind: PostKind): string {
+  return KIND_LABELS[kind];
+}
+
 /** The Article card's mono byline, which joins these with middle dots. */
 export function bylineParts(post: {
   date: string;

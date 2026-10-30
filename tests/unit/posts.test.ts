@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { bylineParts, formatPostDate, morePosts } from "@/lib/posts";
+import { bylineParts, formatPostDate, kindLabel, morePosts } from "@/lib/posts";
 
 const post = (slugAsParams: string, date: string) => ({ slugAsParams, date });
 
@@ -9,6 +9,13 @@ describe("formatPostDate", () => {
     assert.equal(formatPostDate("2026-02-26T00:00:00.000Z"), "26 Feb 2026");
     assert.equal(formatPostDate("2025-09-08T00:00:00.000Z"), "8 Sep 2025");
     assert.equal(formatPostDate("2025-12-31T23:30:00.000Z"), "31 Dec 2025");
+  });
+});
+
+describe("kindLabel", () => {
+  it("names a post's kind as the Article card's eyebrow says it", () => {
+    assert.equal(kindLabel("deep-dive"), "Deep dive");
+    assert.equal(kindLabel("bulletin"), "Bulletin");
   });
 });
 

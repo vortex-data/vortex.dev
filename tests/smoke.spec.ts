@@ -315,6 +315,30 @@ test.describe("blog post", () => {
     ).toHaveAttribute("href", "/blog");
   });
 
+  test("the head reads the kind, the title, the dek and the byline", async ({
+    page
+  }) => {
+    await page.goto("/blog/btrblocks-compressor");
+    const head = page.locator("article .vx-article-head");
+    await expect(head.locator(".vx-eyebrow.vx-article-kind")).toHaveText(
+      "Deep dive"
+    );
+    await expect(head.locator(".vx-article-dek")).toHaveText(
+      /BtrBlocks-style codec selection/
+    );
+    await page.goto("/blog/november-2025");
+    await expect(page.locator(".vx-article-kind")).toHaveText("Bulletin");
+    const dek = page.locator(".vx-article-dek");
+    await expect(dek).toContainText("Polar Signals");
+    // Two lines at most.
+    const lines = await dek.evaluate(
+      (e) =>
+        e.getBoundingClientRect().height /
+        Number.parseFloat(getComputedStyle(e).lineHeight)
+    );
+    expect(lines).toBeLessThanOrEqual(2.05);
+  });
+
   test("code blocks take the CodeBlock card and the syntax tokens", async ({
     page
   }) => {
