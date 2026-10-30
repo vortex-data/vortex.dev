@@ -55,3 +55,6 @@ public/static
 /playwright-report/
 /playwright/.cache/
 /test-results/
+
+# Python bytecode
+__pycache__/
