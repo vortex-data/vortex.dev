@@ -36,6 +36,12 @@ describe('Header (server-rendered chrome)', () => {
     expect(matches).toHaveLength(2);
   });
 
+  it('links the Vortex logo to vortex.dev', () => {
+    expect(html).toContain(
+      '<a class="logo-link" href="https://vortex.dev" aria-label="vortex.dev home">',
+    );
+  });
+
   it('renders the theme toggle with the v3 server-default label', () => {
     expect(html).toContain('data-role="theme-toggle"');
     expect(html).toContain('data-next-theme="light"');

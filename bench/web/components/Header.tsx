@@ -3,7 +3,6 @@
 
 'use client';
 
-import Link from 'next/link';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 import { FilterBar } from '@/components/FilterBar';
@@ -24,7 +23,8 @@ import { effectiveTheme } from '@/lib/theme';
  * `server/src/html/render.rs::site_header` plus the section-18 header controls
  * of `chart-init.js`: the hamburger-toggled mobile nav panel (expand/collapse
  * all, the global filter dropdown, and the mobile-only GitHub link), the
- * theme-aware logo, the desktop GitHub link, and the theme toggle.
+ * theme-aware logo (a link to vortex.dev), the desktop GitHub link, and the
+ * theme toggle.
  *
  * Expand/Collapse All writes `details.open` on every group disclosure
  * directly, then schedules one write of the open set into the URL fragment
@@ -139,7 +139,7 @@ export function Header({
           >
             <MenuIcon size={18} />
           </button>
-          <Link className="logo-link" href="/" aria-label="bench.vortex.dev home">
+          <a className="logo-link" href="https://vortex.dev" aria-label="vortex.dev home">
             <img
               className="site-logo logo-light"
               src="/Vortex_Black_NoBG.svg"
@@ -154,7 +154,7 @@ export function Header({
               width={654}
               height={190}
             />
-          </Link>
+          </a>
           <h1 className="site-title">Vortex Benchmarks</h1>
         </div>
         <div className="header-center">
