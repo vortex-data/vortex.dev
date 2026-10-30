@@ -14,7 +14,8 @@
  * the group nav) rewrites the fragment with [`syncOpenFragment`], which uses
  * `history.replaceState`, so a toggle adds no history entry. Toggles go
  * through [`scheduleOpenFragmentSync`], which coalesces a burst of them into
- * two writes (see there for why). Readers: the pre-paint
+ * two writes, on the schedule the filter bar's query writes share
+ * (`lib/url-writes.ts`). Readers: the pre-paint
  * script ([`OpenGroupsScript`]) opens the listed groups before the first
  * paint and leaves a marker on its document ([`takeOpenGroupsBootstrap`]).
  * After hydration, [`LandingState`] takes that marker and writes the fragment
@@ -30,6 +31,16 @@
  * Every helper takes the document or window it acts on and none uses
  * `instanceof`, so a test can run them against a second JSDOM realm.
  */
+
+import {
+  cancelUrlWrite,
+  flushUrlWrites,
+  resetUrlWrites,
+  scheduleUrlWrite,
+  URL_WRITE_DELAY_MS,
+  type UrlEdit,
+  writeUrlNow,
+} from '@/lib/url-writes';
 
 /** One group section on the page: its readable anchor (the section `id`) and
  * its opaque API slug (`data-group-slug`). */
@@ -186,6 +197,18 @@ export function scrollToGroup(doc: Document, anchor: string): boolean {
   return true;
 }
 
+// The fragment's part in the coalesced URL writes (`lib/url-writes.ts`).
+const FRAGMENT_PART = 'open-groups';
+
+/** Write the open groups into `url`'s fragment. A page without group sections is left alone. */
+function editOpenFragment(doc: Document): UrlEdit {
+  return (url) => {
+    if (groupSections(doc).length > 0) {
+      url.hash = formatOpenFragment(openAnchors(doc));
+    }
+  };
+}
+
 /**
  * Write the open groups into the fragment now, keeping the path and the
  * query. It writes with `history.replaceState`, and only when the URL would
@@ -194,124 +217,63 @@ export function scrollToGroup(doc: Document, anchor: string): boolean {
  * next toggle tries again. A page without group sections is left alone.
  * Returns whether it wrote.
  *
- * The write is current, so it also drops a write that
- * [`scheduleOpenFragmentSync`] has pending.
+ * The write is current, so it replaces a write that
+ * [`scheduleOpenFragmentSync`] has pending, and makes any other pending URL
+ * write (the filter bar's) with it.
  */
 export function syncOpenFragment(win: Window): boolean {
-  cancelOpenFragmentSync(win);
-  const doc = win.document;
-  if (groupSections(doc).length === 0) {
-    return false;
-  }
-  const { pathname, search, hash } = win.location;
-  const target = `${pathname}${search}${formatOpenFragment(openAnchors(doc))}`;
-  if (target === `${pathname}${search}${hash}`) {
-    return false;
-  }
-  lastWrites.set(win, win.performance.now());
-  try {
-    win.history.replaceState(null, '', target);
-  } catch {
-    return false;
-  }
-  return true;
+  return writeUrlNow(win, FRAGMENT_PART, editOpenFragment(win.document));
 }
 
 /**
  * The shortest time between two fragment writes from toggles, in
- * milliseconds; also how long the last toggle of a burst waits before its
- * write. At most about three writes a second, whatever the toggling.
+ * milliseconds: the delay of the coalesced URL writes, [`URL_WRITE_DELAY_MS`].
  */
-export const OPEN_FRAGMENT_SYNC_DELAY_MS = 300;
-
-/** A scheduled write: its timer, and the path and fragment when it was
- * scheduled. */
-interface PendingSync {
-  timer: ReturnType<typeof setTimeout>;
-  pathname: string;
-  hash: string;
-}
-
-const pendingSyncs = new WeakMap<Window, PendingSync>();
-// When [`syncOpenFragment`] last called `replaceState`, per window, on the
-// monotonic `performance.now()` clock: a wall clock that jumps forward would
-// let two writes come closer than the delay.
-const lastWrites = new WeakMap<Window, number>();
+export const OPEN_FRAGMENT_SYNC_DELAY_MS = URL_WRITE_DELAY_MS;
 
 /**
- * Write the open groups into the fragment after a toggle, at most once per
- * [`OPEN_FRAGMENT_SYNC_DELAY_MS`]. After a quiet spell (no write and nothing
- * pending for the delay) it writes at once, so the URL of a page with one
- * toggle is current at once, ready for a reload. Inside the delay it waits
- * instead, and each call restarts the wait, so the rest of a burst (fast
- * clicks, or Enter held on a summary) is one more write, made once the burst
- * stops. Writes are therefore always at least the delay apart.
- *
- * Why: Safari throws a `SecurityError` from a document's 101st
- * `history.replaceState` within 10 seconds, and Next.js makes a second call
- * of its own after each of ours (its router re-syncs its history state). Ours
- * is caught; Next's is not, and the App Router then replaces the page with its
- * error page. A write per toggle reached that limit after about 50 toggles.
- * At one write per 300 ms the page makes at most about 68 calls in 10 seconds.
+ * Write the open groups into the fragment after a toggle, through the
+ * coalesced URL writes ([`scheduleUrlWrite`]): at once after a quiet spell,
+ * otherwise once the burst stops, and never closer than
+ * [`OPEN_FRAGMENT_SYNC_DELAY_MS`] to another write. The filter bar's writes
+ * share the same schedule, so toggles and chip clicks together stay under
+ * Safari's limit of 100 `history.replaceState` calls in 10 seconds (see
+ * `lib/url-writes.ts` for why that limit matters).
  *
  * The URL can therefore lag the page by the delay. Code that reads the URL as
  * the open set (the scroll save on leaving the page) calls
  * [`flushOpenFragmentSync`] first.
  */
 export function scheduleOpenFragmentSync(win: Window): void {
-  const lastWrite = lastWrites.get(win);
-  const quiet =
-    !pendingSyncs.has(win) &&
-    (lastWrite === undefined || win.performance.now() - lastWrite >= OPEN_FRAGMENT_SYNC_DELAY_MS);
-  if (quiet) {
-    syncOpenFragment(win);
-    return;
-  }
-  cancelOpenFragmentSync(win);
-  const timer = setTimeout(() => {
-    flushOpenFragmentSync(win);
-  }, OPEN_FRAGMENT_SYNC_DELAY_MS);
-  pendingSyncs.set(win, { timer, pathname: win.location.pathname, hash: win.location.hash });
+  scheduleUrlWrite(win, FRAGMENT_PART, editOpenFragment(win.document), { ownsHash: true });
 }
 
 /**
- * Make a pending write now, instead of after the delay. Returns whether it
- * wrote; with nothing pending it writes nothing.
+ * Make a pending URL write now, instead of after the delay: the fragment's,
+ * and any other part's. Returns whether it wrote; with nothing pending it
+ * writes nothing.
  *
  * A fragment that changed after the write was scheduled is not ours (a link,
  * or one typed into the address bar, whose `hashchange` may not have run
- * yet), so the pending write is dropped rather than written over it; the
- * `hashchange` handler reads that fragment and writes the open set itself.
+ * yet), so the pending fragment write is dropped rather than written over it;
+ * the `hashchange` handler reads that fragment and writes the open set itself.
  * A path that changed means the page is another route's now (a client
  * navigation that has not unmounted the landing page yet), so the write is
  * dropped too.
  */
 export function flushOpenFragmentSync(win: Window): boolean {
-  const pending = pendingSyncs.get(win);
-  if (pending === undefined) {
-    return false;
-  }
-  cancelOpenFragmentSync(win);
-  if (win.location.pathname !== pending.pathname || win.location.hash !== pending.hash) {
-    return false;
-  }
-  return syncOpenFragment(win);
+  return flushUrlWrites(win);
 }
 
-/** Drop a pending write, if any, without writing. */
+/** Drop a pending fragment write, if any, without writing. */
 export function cancelOpenFragmentSync(win: Window): void {
-  const pending = pendingSyncs.get(win);
-  if (pending !== undefined) {
-    clearTimeout(pending.timer);
-    pendingSyncs.delete(win);
-  }
+  cancelUrlWrite(win, FRAGMENT_PART);
 }
 
-/** Drop a pending write and forget the last write's time. TEST-ONLY: a page
- * load starts with neither. */
+/** Drop every pending URL write and forget the last write's time. TEST-ONLY:
+ * a page load starts with neither. */
 export function resetOpenFragmentSync(win: Window): void {
-  cancelOpenFragmentSync(win);
-  lastWrites.delete(win);
+  resetUrlWrites(win);
 }
 
 /**

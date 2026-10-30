@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Chart } from '@/components/Chart';
 import { FETCH_TIMEOUT_MS } from '@/lib/chart-format';
+import { PAGE_LEAVE_GRACE_MS } from '@/lib/page-leave';
 import { fullHistoryQueue } from '@/lib/chart-store';
 import { loadChartJs } from '@/lib/chart-js';
 
@@ -554,6 +555,86 @@ describe('Chart opt-in full-history loading', () => {
       expect(chip?.dataset.state).toBe('error');
       expect(chip?.textContent).toBe('retry');
       vi.useRealTimers();
+    });
+  });
+
+  // Leaving the page cancels its fetches. WebKit rejects them with a `TypeError` ("Load failed")
+  // before the page's `pagehide`, the same error as a real network failure.
+  describe('a fetch cancelled by leaving the page', () => {
+    function stubRejectableFetch(urlPart: string): { reject: (e: unknown) => void } {
+      let rejecter: (e: unknown) => void = () => {};
+      responders.push({
+        match: (u) => u.includes(urlPart),
+        respond: () =>
+          new Promise<Response>((_res, rej) => {
+            rejecter = rej;
+          }),
+      });
+      return { reject: (e) => rejecter(e) };
+    }
+
+    async function leaveThenShow(shown: () => void): Promise<void> {
+      await act(async () => {
+        window.dispatchEvent(new Event('pagehide'));
+        await vi.advanceTimersByTimeAsync(PAGE_LEAVE_GRACE_MS * 5);
+      });
+      shown();
+      // Back from the back/forward cache: the page did lose the data, so now it reports.
+      await act(async () => {
+        window.dispatchEvent(new Event('pageshow'));
+        await vi.advanceTimersByTimeAsync(0);
+      });
+    }
+
+    it('drops the full-history failure quietly', async () => {
+      const full = stubRejectableFetch('n=all');
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const chip = await renderOpenGroup();
+      vi.useFakeTimers();
+      await act(async () => {
+        chip?.click();
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      await act(async () => {
+        full.reject(new TypeError('Load failed'));
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      await leaveThenShow(() => {
+        expect(warn).not.toHaveBeenCalled();
+        expect(chip?.dataset.state).not.toBe('error');
+      });
+      expect(chip?.dataset.state).toBe('error');
+    });
+
+    it('drops the initial fetch failure quietly', async () => {
+      vi.useFakeTimers();
+      const initial = stubRejectableFetch('n=100');
+      await renderOpenGroup();
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+        initial.reject(new TypeError('Load failed'));
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      await leaveThenShow(() => {
+        expect(container.querySelector('.chart-error')).toBeNull();
+      });
+      expect(container.querySelector('.chart-error [data-role="fetch-retry"]')).not.toBeNull();
+    });
+
+    it('still reports a network failure while the page stays', async () => {
+      vi.useFakeTimers();
+      const initial = stubRejectableFetch('n=100');
+      await renderOpenGroup();
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+        initial.reject(new TypeError('Failed to fetch'));
+        await vi.advanceTimersByTimeAsync(PAGE_LEAVE_GRACE_MS - 1);
+      });
+      expect(container.querySelector('.chart-error')).toBeNull();
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1);
+      });
+      expect(container.querySelector('.chart-error')?.textContent).toContain('Failed to fetch');
     });
   });
 

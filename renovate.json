@@ -86,6 +86,13 @@
       "additionalBranchPrefix": "bench-",
       "commitMessageSuffix": "(bench)",
       "addLabels": ["bench"]
+    },
+    {
+      "description": "The root and bench/web package.json pin the same Bun in packageManager. Update both in one branch, without bench's prefix, so the two pins cannot drift. This rule comes after bench's so that it wins.",
+      "matchDepTypes": ["packageManager"],
+      "groupName": "Bun package manager",
+      "additionalBranchPrefix": "",
+      "commitMessageSuffix": ""
     }
   ]
 }

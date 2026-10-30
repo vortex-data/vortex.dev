@@ -54,10 +54,16 @@ const CHART_LINK = 'a[href^="/chart/"]';
  *   the new fragment, then opens what it lists, rewrites the fragment to the
  *   whole open set (a group that was already open fires no `toggle`, so
  *   nothing else would) and scrolls to the first listed group.
- * - **Scroll** (`lib/scroll-restore.ts`). While mounted, the page sets
- *   `history.scrollRestoration = 'manual'`, and on unmount sets back the mode
- *   it found (the browser's own on a fresh history entry; after a reload or
- *   Back, it may be the `manual` this page left on the entry). On `pagehide`,
+ * - **Scroll** (`lib/scroll-restore.ts`). While no group is open, the page
+ *   keeps `history.scrollRestoration = 'auto'`: the collapsed list is as tall
+ *   before hydration as after, so the browser's own restoration lands right,
+ *   and lands before the first paint. While a group is open it sets `manual`,
+ *   because the open bodies exist only after hydration, and restores by
+ *   element itself. It switches on every open and close, so the mode on the
+ *   history entry when the page is left is the one the browser uses on Reload
+ *   or Back. On unmount it sets back the mode it found (the browser's own on a
+ *   fresh history entry; after a reload or Back, the one this page left on the
+ *   entry). On `pagehide`,
  *   when the tab goes hidden (a mobile browser may discard a hidden tab
  *   without a `pagehide`) and when a chart link is clicked, it saves the
  *   element nearest the top of the viewport. On mount, [`planScroll`]
@@ -65,9 +71,10 @@ const CHART_LINK = 'a[href^="/chart/"]';
  *   scrolled, touched, clicked or pressed a key, it leaves the scroll alone
  *   (they have taken over); otherwise a reload or Back/Forward with a saved
  *   position restores that element to its offset (falling back to the
- *   fragment scroll if the element is gone); otherwise, if the fragment lists
- *   groups, it scrolls to the first one (a fresh visit ignores anything
- *   saved); otherwise it leaves the scroll alone.
+ *   fragment scroll if the element is gone), unless no group is open and the
+ *   entry's mode was `auto`, where the browser has restored it already;
+ *   otherwise, if the fragment lists groups, it scrolls to the first one (a
+ *   fresh visit ignores anything saved); otherwise it leaves the scroll alone.
  *
  * Both scrolls wait for the open groups' bodies to mount their cards
  * ([`groupBodiesReady`]): the upper groups' cards push a target down as they
@@ -83,11 +90,19 @@ export function LandingState(): null {
   useEffect(() => {
     let active = true;
     const { history } = window;
+    // Before anything here changes it: on a reload or Back, the mode the
+    // history entry kept, which the browser has just used.
+    firstRun.current ??= openOnFirstRun();
     const previousRestoration = history.scrollRestoration;
-    history.scrollRestoration = 'manual';
+    // `manual` while a group is open, `auto` otherwise (see above).
+    const syncRestoration = (): void => {
+      history.scrollRestoration = openGroupSlugs(document).length > 0 ? 'manual' : 'auto';
+    };
+    syncRestoration();
     const onToggle = (event: Event): void => {
       const target = event.target as Element | null;
       if (target?.matches?.('details.group-disclosure')) {
+        syncRestoration();
         scheduleOpenFragmentSync(window);
       }
     };
@@ -131,12 +146,20 @@ export function LandingState(): null {
         }
       });
     };
-    firstRun.current ??= openOnFirstRun();
-    const { saved, listed, inputBeforeMount } = firstRun.current;
-    const ready = groupBodiesReady(openGroupSlugs(document));
+    const { saved, listed, inputBeforeMount, arrivalRestoration } = firstRun.current;
+    const openSlugs = openGroupSlugs(document);
+    const ready = groupBodiesReady(openSlugs);
     const fragmentScroll = (): void => scrollToGroupAfter(ready.mounted, listed[0]);
     let cancelRestore = (): void => {};
-    const plan = planScroll(navigationKind(window), saved, listed.length > 0, inputBeforeMount);
+    // With no group open and the entry in `auto` mode, the browser restored
+    // the collapsed list itself.
+    const restoredNatively = openSlugs.length === 0 && arrivalRestoration === 'auto';
+    const plan = planScroll(
+      navigationKind(window),
+      restoredNatively ? null : saved,
+      listed.length > 0,
+      inputBeforeMount,
+    );
     if (plan.kind === 'restore') {
       pendingRestore = plan.saved;
       cancelRestore = restoreScroll(window, plan.saved, ready, fragmentScroll, () => {
@@ -151,6 +174,7 @@ export function LandingState(): null {
       cancelOpenFragmentSync(window);
       cancelRestore();
       const listedNow = openGroupsFromHash(document, window.location.hash);
+      syncRestoration();
       syncOpenFragment(window);
       scrollToGroupAfter(groupBodiesReady(openGroupSlugs(document)).mounted, listedNow[0]);
     };
@@ -176,16 +200,19 @@ export function LandingState(): null {
   return null;
 }
 /** What [`LandingState`]'s first run found: the saved position, the listed
- * groups that are open, and whether the reader moved before hydration. */
+ * groups that are open, whether the reader moved before hydration, and the
+ * scroll restoration mode the page arrived with. */
 interface FirstRun {
   saved: SavedScroll | null;
   listed: string[];
   inputBeforeMount: boolean;
+  arrivalRestoration: ScrollRestoration;
 }
 /** Take the pre-paint script's marker, read the saved position and open the
  * listed groups (or, after the script, keep what the reader left open and
  * write it to the fragment). */
 function openOnFirstRun(): FirstRun {
+  const arrivalRestoration = window.history.scrollRestoration;
   const bootstrap = takeOpenGroupsBootstrap(document);
   // Read the saved position before anything can rewrite the fragment that
   // keys it.
@@ -195,10 +222,11 @@ function openOnFirstRun(): FirstRun {
       saved,
       listed: openGroupsFromHash(document, window.location.hash),
       inputBeforeMount: false,
+      arrivalRestoration,
     };
   }
   // The script opened the listed groups; what is open now is the reader's.
   const listed = listedOpenAnchors(document, window.location.hash);
   syncOpenFragment(window);
-  return { saved, listed, inputBeforeMount: bootstrap.input };
+  return { saved, listed, inputBeforeMount: bootstrap.input, arrivalRestoration };
 }

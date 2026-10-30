@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Chart } from '@/components/Chart';
 import { GroupBody } from '@/components/GroupBody';
 import { FETCH_TIMEOUT_MS } from '@/lib/chart-format';
+import { PAGE_LEAVE_GRACE_MS } from '@/lib/page-leave';
 import { bundleQueue, hydrationQueue, resetPayloadCache } from '@/lib/chart-store';
 
 vi.mock('@/lib/chart-js', () => ({
@@ -511,6 +512,43 @@ describe('PR-5.0.97 group-bundle hydration', () => {
       expect([...chips].every((chip) => chip.dataset.state === 'windowed')).toBe(true);
     },
   );
+
+  // Leaving the page cancels the bundle fetch. WebKit rejects it with a `TypeError` ("Load
+  // failed") before the page's `pagehide`, the same error as a real network failure.
+  it('drops a bundle failure quietly when the page is being left', async () => {
+    vi.useFakeTimers();
+    let reject: (e: unknown) => void = () => {};
+    vi.stubGlobal('fetch', (url: string | URL) => {
+      fetchCalls.push(String(url));
+      return new Promise<Response>((_resolve, rej) => {
+        reject = rej;
+      });
+    });
+    await renderGroup(2);
+    await act(async () => {
+      MockIO.instances[0]!.fire();
+      MockIO.instances[1]!.fire();
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(bundleFetchCount()).toBe(1);
+    await act(async () => {
+      reject(new TypeError('Load failed'));
+      await vi.advanceTimersByTimeAsync(0);
+      window.dispatchEvent(new Event('pagehide'));
+      await vi.advanceTimersByTimeAsync(PAGE_LEAVE_GRACE_MS * 5);
+    });
+    expect(container.querySelectorAll('[data-role="fetch-retry"]')).toHaveLength(0);
+    expect(container.querySelectorAll('.chart-error')).toHaveLength(0);
+    expect(chartFetchCount()).toBe(0);
+
+    // Back from the back/forward cache: the group did lose its charts, so the retry shows.
+    await act(async () => {
+      window.dispatchEvent(new Event('pageshow'));
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(container.querySelectorAll('[data-role="fetch-retry"]')).toHaveLength(2);
+    expect(chartFetchCount()).toBe(0);
+  });
 
   it('closing the group aborts the in-flight bundle (its fetch signal aborts)', async () => {
     const signals: AbortSignal[] = [];

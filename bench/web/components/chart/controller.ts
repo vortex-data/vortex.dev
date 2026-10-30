@@ -42,6 +42,7 @@ import {
   retryGroupBundle,
   subscribeGroupBundleRetry,
 } from '@/lib/chart-store';
+import { unlessPageLeft } from '@/lib/page-leave';
 import type { ChartResponse } from '@/lib/queries';
 import { effectiveTheme, onThemeChange } from '@/lib/theme';
 
@@ -365,15 +366,23 @@ export class ChartController {
         if (err instanceof DOMException && err.name === 'AbortError') {
           return;
         }
-        this.cb.setLoading(false);
-        const message =
-          err instanceof DOMException && err.name === 'TimeoutError'
-            ? 'timed out'
-            : err instanceof Error
-              ? err.message
-              : 'unknown error';
-        this.cb.setError(`failed to load: ${message}`);
-        this.cb.setRetryable(true);
+        // Leaving the page cancels the fetch with what looks like a network failure; that is
+        // dropped quietly (`lib/page-leave.ts`). By the time a failure reports, the island may be
+        // gone, or a reopen may have started a newer fetch whose loading state this must keep.
+        return unlessPageLeft(err, () => {
+          if (state.disposed || state.payload || state.initialFetchEntry !== null) {
+            return;
+          }
+          this.cb.setLoading(false);
+          const message =
+            err instanceof DOMException && err.name === 'TimeoutError'
+              ? 'timed out'
+              : err instanceof Error
+                ? err.message
+                : 'unknown error';
+          this.cb.setError(`failed to load: ${message}`);
+          this.cb.setRetryable(true);
+        });
       },
     );
   }
@@ -494,10 +503,17 @@ export class ChartController {
         if (err instanceof DOMException && err.name === 'AbortError') {
           return;
         }
-        // Quiet: the latest-100 payload is still usable. Surface to the console
-        // for debugging; the chip exposes the retry affordance.
-        console.warn('bench: full history fetch failed', err);
-        state.chipError = true;
+        // Leaving the page cancels the fetch with what looks like a network failure; that is
+        // dropped quietly (`lib/page-leave.ts`). Otherwise quiet too: the latest-100 payload is
+        // still usable. Surface to the console for debugging; the chip exposes the retry
+        // affordance.
+        return unlessPageLeft(err, () => {
+          if (state.disposed) {
+            return;
+          }
+          console.warn('bench: full history fetch failed', err);
+          state.chipError = true;
+        });
       })
       .then(() => {
         if (state.fullFetchEntry === entry) {
