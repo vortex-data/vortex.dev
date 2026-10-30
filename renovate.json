@@ -80,11 +80,6 @@
       "additionalBranchPrefix": "bench-",
       "commitMessageSuffix": "(bench)",
       "addLabels": ["bench"]
-    },
-    {
-      "description": "No required check runs a deploy, so review updates to bench's Vercel CLI by hand. bench-deploy.yml deploys a preview on each of their PRs.",
-      "matchFileNames": [".github/vercel-cli/**"],
-      "automerge": false
     }
   ]
 }
