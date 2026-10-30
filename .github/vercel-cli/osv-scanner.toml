@@ -1,0 +1,13 @@
+# Read by osv-scanner, which OpenSSF Scorecard runs on package-lock.json here.
+
+# Both advisories are for the npm package `sandbox` before 1.0.0, an unrelated
+# 2011 package whose name Vercel now publishes under. The OSV records give no
+# upper bound, so osv-scanner flags every version, including Vercel's 4.x that
+# the CLI depends on. GitHub's advisory database scopes both to < 1.0.0.
+[[IgnoredVulns]]
+id = "GHSA-gc25-3vc5-2jf9"
+reason = "Affects npm sandbox < 1.0.0 only; this tree has Vercel's sandbox 4.x."
+
+[[IgnoredVulns]]
+id = "GHSA-fm4j-4xhm-xpwx"
+reason = "Affects npm sandbox < 1.0.0 only; this tree has Vercel's sandbox 4.x."
