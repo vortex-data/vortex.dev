@@ -313,8 +313,14 @@ export function panelsFrom(
       const timed = times
         ? timeRows({ ...source, times: source.times }, rankings, times)
         : null;
-      const has = (name: string) =>
-        timed?.some((r) => r.system === name && measured(r));
+      // A window that holds only some of the queries would give a geomean
+      // over a partial set, so the times must cover every bucket bench's
+      // score covers.
+      const has = (name: string) => {
+        const t = timed?.find((r) => r.system === name);
+        const s = rows.find((r) => r.system === name);
+        return !!t && measured(t) && t.total === s?.total;
+      };
       if (timed && has("Vortex") && has("Parquet")) rows = timed;
       else unit = "× fastest";
     }

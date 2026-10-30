@@ -87,6 +87,27 @@ describe("BenchmarkCard", () => {
     assert.equal(html.match(/class="vx-bench-panel"/g)?.length, 6);
   });
 
+  // When a time panel falls back to bench's scores, the caption says so,
+  // because those values are against the fastest, not against Parquet.
+  it("describes a score fallback in the caption", () => {
+    const fallback = panelsFrom(fixture("bench-groups.json").groups, {
+      "Random Access (NVMe)": fixture("bench-group-random-access-nvme.json")
+    });
+    assert.ok(fallback);
+    const html = renderToStaticMarkup(
+      <BenchmarkCard
+        panels={fallback}
+        readAt={new Date("2026-10-28T22:55:18Z")}
+      />
+    );
+    assert.ok(
+      html.includes(
+        "· times in ms, the geomean over queries or datasets, scores against the fastest = 1, the rest against Parquet = 1, best first"
+      ),
+      html
+    );
+  });
+
   // Note 34: the bars and the big figure read the same numbers, so NVMe's
   // bars give the 32× above them. Note 63: time panels show geomean ms, each
   // value carries a short unit, and below 2× the figure is a percentage.
