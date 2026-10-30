@@ -418,6 +418,13 @@ async function checkThemeParity(): Promise<void> {
 // In environments where RESEND_API_KEY *is* set (e.g. a dev with .env.local
 // + the var exported into the verify shell), the test is skipped rather
 // than calling the real Resend API.
+//
+// The handler rate-limits by client IP, and its counts outlive one run of this
+// suite on a warm server. Each run claims its own client identity, so reruns
+// within the rate window stay deterministic. Vercel replaces X-Real-IP with
+// the real address, so this only isolates runs against a local server.
+const VERIFY_CLIENT_IP = `verify-${crypto.randomUUID()}`;
+
 async function checkSubscribe(): Promise<void> {
   if (process.env.RESEND_API_KEY) {
     pass("/api/subscribe", "skipped (RESEND_API_KEY is set in this shell)");
@@ -430,7 +437,8 @@ async function checkSubscribe(): Promise<void> {
       headers: {
         "Content-Type": "application/json",
         // The handler rejects requests that don't come from the site itself.
-        Origin: new URL(BASE).origin
+        Origin: new URL(BASE).origin,
+        "X-Real-IP": VERIFY_CLIENT_IP
       },
       body: JSON.stringify({ email: "verify-suite@example.com" })
     });
@@ -512,7 +520,11 @@ async function checkSubscribeGuards(): Promise<void> {
     try {
       const res = await fetch(`${BASE}/api/subscribe`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...c.headers },
+        headers: {
+          "Content-Type": "application/json",
+          "X-Real-IP": VERIFY_CLIENT_IP,
+          ...c.headers
+        },
         body: c.body
       });
       if (res.status === c.status) pass(c.name, String(res.status));
