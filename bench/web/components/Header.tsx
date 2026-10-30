@@ -17,6 +17,7 @@ import {
 } from '@/components/icons';
 import { GitHubIcon } from '@/components/mark-github';
 import { setAllGroupsOpen } from '@/lib/open-groups';
+import { effectiveTheme } from '@/lib/theme';
 
 /**
  * The sticky site header, the full client port of
@@ -233,16 +234,4 @@ export function Header({
       </div>
     </header>
   );
-}
-
-/** The forced or media-derived effective theme (`chart-init.js::effectiveTheme`). */
-function effectiveTheme(): 'light' | 'dark' {
-  const forced = document.documentElement.getAttribute('data-theme');
-  if (forced === 'light' || forced === 'dark') {
-    return forced;
-  }
-  if (window.matchMedia?.('(prefers-color-scheme: dark)').matches) {
-    return 'dark';
-  }
-  return 'light';
 }

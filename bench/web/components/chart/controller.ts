@@ -43,6 +43,7 @@ import {
   subscribeGroupBundleRetry,
 } from '@/lib/chart-store';
 import type { ChartResponse } from '@/lib/queries';
+import { effectiveTheme, onThemeChange } from '@/lib/theme';
 
 import {
   renderDownsampleBadge,
@@ -51,7 +52,7 @@ import {
   setSliderFromRange,
 } from './card-dom';
 import { lineChartConfig } from './config';
-import { benchDatasets, buildDatasets } from './datasets';
+import { benchDatasets, buildDatasets, recolorDatasets } from './datasets';
 import { attachWheelPan, bindRangeStrip } from './pan-zoom';
 import type { CardCallbacks, CardElements, CardState } from './types';
 
@@ -105,6 +106,9 @@ export class ChartController {
       wheelAttached: false,
       disposed: false,
     };
+    // The palette has one set of colors per card theme: recolor a drawn chart
+    // when the reader toggles the theme or the system preference changes.
+    onThemeChange(() => this.recolor(), this.aborter.signal);
     if (groupSlug) {
       this.unsubscribeBundleRetry = subscribeGroupBundleRetry(groupSlug, () => {
         if (this.bundleFailed && this.groupIsOpen() && !this.state.disposed) {
@@ -114,6 +118,17 @@ export class ChartController {
         }
       });
     }
+  }
+
+  /** Recolor the drawn chart for the current theme. Idempotent; a card that has
+   * not drawn yet picks up the theme when it builds its datasets. */
+  private recolor(): void {
+    const chart = this.state.chart;
+    if (!chart || this.state.disposed) {
+      return;
+    }
+    recolorDatasets(benchDatasets(chart), effectiveTheme());
+    chart.update('none');
   }
 
   /** Seed the permalink page's server-fetched payload before any fetch runs. */
@@ -556,7 +571,7 @@ export class ChartController {
       state.displayUnit = pickDisplayUnit(payload.unit_kind, collectAllValues(payload));
 
       const labels = payload.commits.map(commitDateLabel);
-      const datasets = buildDatasets(payload);
+      const datasets = buildDatasets(payload, effectiveTheme());
       const range = visibleRange(labels.length, state.ui.scope);
       const legendPosition = window.matchMedia?.('(max-width: 768px)').matches ? 'top' : 'bottom';
 
@@ -731,7 +746,7 @@ export class ChartController {
       yAxis.title.text = state.displayUnit.axisLabel;
     }
     const newLabels = payload.commits.map(commitDateLabel);
-    const newDatasets = buildDatasets(payload);
+    const newDatasets = buildDatasets(payload, effectiveTheme());
     // Honour any explicit legend toggles the user had made already.
     for (const ds of newDatasets) {
       if (ds.label && state.overrides[ds.label]) {

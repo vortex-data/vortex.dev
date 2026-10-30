@@ -7,6 +7,7 @@ import {
   seriesOrder,
   seriesPassesFilter,
   seriesStyle,
+  type ChartTheme,
   type NormalizedChartPayload,
 } from '@/lib/chart-format';
 import { getGlobalFilterSnapshot } from '@/lib/chart-store';
@@ -19,12 +20,24 @@ export function benchDatasets(chart: ChartJs): BenchDataset[] {
 }
 
 /**
- * Build the per-series dataset shells. `data` starts as a full-length
+ * Recolor drawn datasets for a card theme, keeping everything else. The
+ * caller runs `chart.update()` afterwards.
+ */
+export function recolorDatasets(datasets: BenchDataset[], theme: ChartTheme): void {
+  for (const dataset of datasets) {
+    const color = seriesStyle(String(dataset.label), dataset.benchMeta, theme).color;
+    dataset.borderColor = color;
+    dataset.backgroundColor = `${color}20`;
+  }
+}
+
+/**
+ * Build the per-series dataset shells for a card theme. `data` starts as a full-length
  * null-padded array; `rebuildVisibleAndUpdate` fills it in based on the current
  * visible range. `rawData` holds a reference to the original payload so the
  * tooltip can show raw values regardless of LTTB.
  */
-export function buildDatasets(payload: NormalizedChartPayload): BenchDataset[] {
+export function buildDatasets(payload: NormalizedChartPayload, theme: ChartTheme): BenchDataset[] {
   const raw = payload.series ?? {};
   const meta = payload.series_meta ?? {};
   const n = payload.commits.length;
@@ -34,9 +47,9 @@ export function buildDatasets(payload: NormalizedChartPayload): BenchDataset[] {
     .map((name) => {
       const seriesMeta = meta[name] ?? {};
       const rawValues = Array.isArray(raw[name]) ? raw[name] : [];
-      // Tier-based style: the named Vortex/Parquet series get vivid, thicker
-      // lines; everything else is muted and thin (see `seriesStyle`).
-      const style = seriesStyle(name, seriesMeta);
+      // The format's color for this card theme and its tier width (see
+      // `seriesStyle`).
+      const style = seriesStyle(name, seriesMeta, theme);
       const coldRandomAccess = name.endsWith(':cold');
       // `data` starts null-padded; `rebuildVisibleAndUpdate` fills the current
       // visible window with raw or LTTB-kept values. With `spanGaps: true` the

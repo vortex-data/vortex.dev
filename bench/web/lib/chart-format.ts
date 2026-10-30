@@ -80,19 +80,29 @@ export function chartPriority(index: number): number {
 export const MAX_VISIBLE_POINTS = 500;
 
 // ---------------------------------------------------------------------------
-// Series styling by importance, hand-tuned per `engine:format`. Color carries
-// the signal and lines stay solid. The palette is mode-independent: every color
-// is chosen to read on both the light (white) and dark card backgrounds, so the
-// chart never recolors when the page theme toggles.
+// Series styling by importance. Each format has a color tied to its identity:
+// Vortex is the design system's cobalt, vortex-compact red, Parquet teal, Lance
+// purple, DuckDB yellow, and Arrow orange. The duckdb runs of a format are a
+// shade of the format's color: lighter on the Dark card, and on the Light card
+// whichever shade keeps the lines apart. Widths carry the importance tiers.
 //
-// The named series are the comparison that matters and get the loud, thick
-// lines: Vortex (bright red on datafusion, neon green on duckdb) and Parquet
-// (light / dark blue). A notch quieter: vortex-compact (purple) and the duckdb
-// native format (gold). Everything else is muted and thin so it recedes and
-// never out-shouts the comparison -- lance is neutral slate (it is the least
-// important and is hidden by default soon), and `datafusion:arrow` keeps an
-// orange where it is still worth reading.
+// The palette has one set of colors per card theme, because one set cannot
+// stay legible on both cards: a color with 3:1 contrast against both the
+// white and the #171716 card has to sit in a narrow band of lightness, and
+// ten lines do not fit in it. Each set meets these rules on its own card
+// (`chart-format.test.ts` checks them):
+//
+// - every color has at least 3:1 contrast against the card;
+// - every two formats differ by at least ΔE2000 25, and by at least 12 under
+//   simulated protanopia and deuteranopia;
+// - every other two lines in a query chart (a duckdb shade against any other
+//   line) differ by at least ΔE2000 15, and 5 under the simulations.
+//
+// The chart controller recolors a drawn chart when the theme changes.
 // ---------------------------------------------------------------------------
+
+/** The card theme a chart draws on. */
+export type ChartTheme = 'dark' | 'light';
 
 /** The resolved line style for one series: a color and a width (px). */
 export interface SeriesStyle {
@@ -107,45 +117,61 @@ const SECONDARY_WIDTH = 2.0;
 const NATIVE_WIDTH = 1.7;
 const MUTED_WIDTH = 1.4;
 
-/** The query series, keyed by `engine:format`, each with a hand-picked color and
- * an importance-tier width. The Vortex hero is the on-disk `vortex-file-compressed`
- * format -- red on datafusion, green on duckdb. The two lance engines carry
- * distinct slate shades so they stay apart. A pair not listed here falls through
- * to the per-format defaults in `FORMAT`. */
-const KEYED: Record<string, SeriesStyle> = {
-  'datafusion:vortex-file-compressed': { color: '#ef4444', width: HERO_WIDTH }, // bright red
-  'duckdb:vortex-file-compressed': { color: '#22c55e', width: HERO_WIDTH }, // neon green
-  'datafusion:vortex-compact': { color: '#a855f7', width: COMPACT_WIDTH }, // bright purple
-  'duckdb:vortex-compact': { color: '#7e22ce', width: COMPACT_WIDTH }, // deep purple
-  'datafusion:parquet': { color: '#38bdf8', width: SECONDARY_WIDTH }, // light blue
-  'duckdb:parquet': { color: '#2563eb', width: SECONDARY_WIDTH }, // dark(er) blue
-  'duckdb:duckdb': { color: '#eab308', width: NATIVE_WIDTH }, // gold
-  'datafusion:lance': { color: '#94a3b8', width: MUTED_WIDTH }, // neutral slate
-  'duckdb:lance': { color: '#475569', width: MUTED_WIDTH }, // darker slate
-  'datafusion:arrow': { color: '#f97316', width: MUTED_WIDTH }, // orange
+/** A color per card theme. */
+type Themed = Record<ChartTheme, string>;
+
+/** One format's style: its signature color, the shade its duckdb runs take
+ * (when the format runs on more than one engine), and its width. */
+interface FormatStyle {
+  color: Themed;
+  duckdb?: Themed;
+  width: number;
+}
+
+/** Vortex's cobalt, the design system's Dark accent. It reads on both cards. */
+const VORTEX: Themed = { dark: '#2f63ff', light: '#2f63ff' };
+
+/** Arrow's orange (rust on the Light card), shared by arrow and arrow-ipc. */
+const ARROW: FormatStyle = { color: { dark: '#e08a3c', light: '#914500' }, width: MUTED_WIDTH };
+
+/** Per-format styles. The signature color is used for the engine-less series
+ * (compression time, size, random access), for datafusion, and for any engine
+ * other than duckdb. */
+const FORMAT: Record<string, FormatStyle> = {
+  'vortex-file-compressed': {
+    color: VORTEX,
+    duckdb: { dark: '#8fa9ff', light: '#264494' }, // light and deep cobalt
+    width: HERO_WIDTH,
+  },
+  'vortex-compact': {
+    color: { dark: '#d61f2c', light: '#cb5862' }, // red
+    duckdb: { dark: '#f07a86', light: '#5f1826' }, // pink and maroon
+    width: COMPACT_WIDTH,
+  },
+  parquet: {
+    color: { dark: '#0fb0aa', light: '#009391' }, // teal
+    duckdb: { dark: '#5ff5ee', light: '#0e90c1' }, // aqua and cerulean
+    width: SECONDARY_WIDTH,
+  },
+  duckdb: { color: { dark: '#f2d65a', light: '#9c880b' }, width: NATIVE_WIDTH }, // yellow and gold
+  lance: {
+    color: { dark: '#b03c9e', light: '#532866' }, // purple
+    duckdb: { dark: '#d08ad0', light: '#f628bf' }, // orchid and magenta
+    width: MUTED_WIDTH,
+  },
+  arrow: ARROW,
+  'arrow-ipc': ARROW,
 };
 
-/** Per-format defaults, used for the engine-less compression-time series and as
- * the fallback for any `engine:format` pair not pinned in `KEYED`. Each format's
- * signature color matches its query-series color (Vortex's datafusion red). */
-const FORMAT: Record<string, SeriesStyle> = {
-  'vortex-file-compressed': { color: '#ef4444', width: HERO_WIDTH }, // red
-  'vortex-compact': { color: '#a855f7', width: COMPACT_WIDTH }, // purple
-  parquet: { color: '#38bdf8', width: SECONDARY_WIDTH }, // light blue
-  duckdb: { color: '#eab308', width: NATIVE_WIDTH }, // gold
-  lance: { color: '#94a3b8', width: MUTED_WIDTH }, // slate
-  arrow: { color: '#f97316', width: MUTED_WIDTH }, // orange
-  'arrow-ipc': { color: '#f97316', width: MUTED_WIDTH }, // orange
-};
-
-/** The catch-all style for an otherwise-unknown series. */
-const FALLBACK: SeriesStyle = { color: '#94a3b8', width: MUTED_WIDTH };
+/** The catch-all style for an otherwise-unknown series: a neutral gray with
+ * 3:1 contrast on both cards. */
+const FALLBACK_COLOR = '#8a8a87';
 
 /** Resolve a series' `(engine, format)` from its meta, falling back to splitting
  * the `engine:format` label. */
 function seriesDims(
   name: string,
-  meta: { engine?: string; format?: string } | null | undefined,
+  meta: { engine?: string | undefined; format?: string | undefined } | null | undefined,
 ): { engine: string | undefined; format: string | undefined } {
   const colon = name.indexOf(':');
   const engine = meta?.engine ?? (colon >= 0 ? name.slice(0, colon) : undefined);
@@ -154,23 +180,24 @@ function seriesDims(
 }
 
 /**
- * The line color and width for a series. The named Vortex / Parquet query series
- * get vivid, thicker lines; everything else is muted and thin. An `engine:format`
- * pin wins first; otherwise the format's signature default applies (which also
- * colors the engine-less compression-time series). Color carries the signal, so
- * lines stay solid and the hierarchy reads at a glance. The palette is
- * mode-independent -- each color reads on both the light and dark card.
+ * The line color and width for a series on a card of the given theme. The
+ * format sets both: the Vortex hero gets the thickest line, Parquet and
+ * vortex-compact a notch less, and lance and arrow the thinnest. A duckdb run
+ * takes the format's duckdb shade, so the two engines stay apart in a query
+ * chart. An unknown format gets a thin neutral gray.
  */
 export function seriesStyle(
   name: string,
-  meta: { engine?: string; format?: string } | null | undefined,
+  meta: { engine?: string | undefined; format?: string | undefined } | null | undefined,
+  theme: ChartTheme,
 ): SeriesStyle {
   const { engine, format } = seriesDims(name, meta);
-  const keyed = engine && format ? KEYED[`${engine}:${format}`] : undefined;
-  if (keyed) {
-    return keyed;
+  const style = format ? FORMAT[format] : undefined;
+  if (!style) {
+    return { color: FALLBACK_COLOR, width: MUTED_WIDTH };
   }
-  return (format && FORMAT[format]) || FALLBACK;
+  const shade = engine === 'duckdb' ? style.duckdb : undefined;
+  return { color: (shade ?? style.color)[theme], width: style.width };
 }
 
 /** Format draw priority, front (low) to back (high) -- Chart.js renders a lower
