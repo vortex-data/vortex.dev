@@ -92,13 +92,13 @@ Defense in depth against the npm-worm class (Shai-Hulud, mini-Shai-Hulud, the Ma
 
 ### Node version
 
-Three places must agree, and **Vercel sets the ceiling**: it offers only Node 20.x / 22.x / 24.x, so 24 is the newest deployable major. All three are aligned on it:
+Three places must agree with each other and with what Vercel runs. Vercel offers Node 22.x, 24.x and 26.x, with 26 the default, and all three are aligned on 26:
 
-- `.nvmrc` → `24`, which both CI workflows read via `actions/setup-node`'s `node-version-file`.
-- `package.json` → `engines.node = ">=24"`. Vercel resolves this range against the versions it actually offers and it **overrides the dashboard setting**, so a range no available version satisfies (e.g. `">=26"`) fails the deploy outright rather than falling back.
-- `@types/node` → `^24`, matching the runtime so `tsc` cannot green-light an API that production does not have.
+- `.nvmrc` → `26`, which the CI workflows read via `actions/setup-node`'s `node-version-file`.
+- `package.json` → `engines.node = "26.x"`. Vercel resolves this range against the versions it offers, and it **overrides the dashboard setting**. An open range such as `">=24"` silently moves production to each new major Vercel adds, ahead of CI: that is how production reached 26 while CI still ran 24. A range no offered version satisfies fails the deploy outright. Both Vercel projects are also set to 26.x, so the setting and the range agree.
+- `@types/node` → `^26`, matching the runtime so `tsc` cannot green-light an API that production does not have.
 
-Keep them in lockstep when bumping. Raising `.nvmrc` alone makes CI validate against a runtime newer than production — APIs added after 24 would pass CI and fail in prod. Node 26 is not deployable until Vercel adds 26.x (it reaches LTS in October 2026); check https://vercel.com/docs/functions/runtimes/node-js/node-js-versions before moving.
+Keep them in lockstep when bumping, and move to a new major only after Vercel offers it; check https://vercel.com/docs/functions/runtimes/node-js/node-js-versions first.
 10. **Renovate auto-merge** is patch + minor only via `:automergeStableNonMajor`. Major bumps stay open for human review. The 7-day cooldown is the first gate, and the required checks on `main` are the second. Renovate merges through GitHub's auto-merge, which waits only for required checks: `Lint, build, verify` (lint, typecheck, build, `bun run verify` and Playwright), `dependency-review`, `secret-scan`, `DCO`, `REUSE compliance`, `Submit bun.lock`, `Bench: format, lint, build, test`, `Bench: deploy` and `Vercel`, plus a CodeQL code scanning rule. Lighthouse and `bun audit` are not required, so they don't hold an auto-merge. Lock file maintenance automerges too. Renovate cannot apply `minimumReleaseAge` to a Bun lock refresh, so `renovate.json` turns it off for that update type; `bunfig.toml` enforces the same wait while Bun regenerates `bun.lock`. `biome.json` takes its `$schema` from the installed `@biomejs/biome` package rather than a versioned URL, so a Biome update can't fail on a schema version mismatch, and it leaves Markdown and YAML alone, as Biome 2.5 did.
 
 ### bench/ (Bun workspace member)
@@ -110,7 +110,7 @@ Keep them in lockstep when bumping. Raising `.nvmrc` alone makes CI validate aga
 - **Lifecycle scripts.** pnpm's `allowBuilds` let `sharp` build (and `unrs-resolver`, which left with ESLint). `trustedDependencies` already trusts `sharp`, and stays `["esbuild", "sharp"]`. Bun blocks three bench scripts, `protobufjs`, `ssh2` and `cpu-features`, which pnpm blocked too. With the isolated linker, `bun pm untrusted` lists only packages linked at the top of `node_modules`, so it reports none of them; to audit, install once with `bun install --linker hoisted` in a scratch copy and run it there.
 - **Deploy CLI:** `bench-deploy.yml` installs the Vercel CLI from `.github/vercel-cli` with `npm ci --ignore-scripts`. Its `package.json` pins the version, and its `package-lock.json` locks the whole tree. That job holds `VERCEL_TOKEN`. The lockfile is npm's, not Bun's, so GitHub's dependency graph, Dependabot and dependency review read it natively. To change it, run `npm install --package-lock-only --ignore-scripts --before=<7 days ago>` in that directory (Renovate passes the same `--before`), then `npm audit`. Its `overrides` patch advisories in dependencies the CLI pins; see "bench advisories".
 - **Renovate** keeps bench's updates in their own `bench-` branches (it matches `bench/web/package.json`; the lockfile they change is the shared `bun.lock`, which lock file maintenance refreshes for both apps at once). They automerge like the site's (patch and minor), because `Bench: format, lint, build, test` is a required check. That includes the Vercel CLI in `.github/vercel-cli`: `Bench: deploy` is also required, so a CLI update merges only after a real preview deploy with it succeeds.
-- **Node:** `bench-ci.yml` and `bench-deploy.yml` read `.nvmrc`. Keep `@types/node` in `bench/web/package.json` and the `benchmarks-website` Vercel project's Node version on the same major.
+- **Node:** `bench-ci.yml` and `bench-deploy.yml` read `.nvmrc`. bench deploys prebuilt output, so the `benchmarks-website` project's Node setting (26.x), not `engines`, picks its function runtime; keep it, `.nvmrc` and bench's `@types/node` on the same major. Vercel needs CLI 65.8.0 or later to deploy Node 26 functions from prebuilt output.
 - **Audit:** `bun audit` at the root covers bench; see "bench advisories" below.
 
 ### Audit advisories
@@ -127,7 +127,7 @@ Keep them in lockstep when bumping. Raising `.nvmrc` alone makes CI validate aga
 
 **Cleared, for the record:** postcss-selector-parser `<6.1.5` (GHSA-rj75-hqrm-r3gf) went with `@tailwindcss/typography`, its only parent, when the blog moved to the design system's prose styles and dropped the plugin.
 
-**Held back on purpose:** `@types/node` stays on `^24` to match the deployable runtime (see "Node version"); `renovate.json` caps it with `allowedVersions: "<25"` so Renovate stops opening 25.x / 26.x PRs.
+**Held back on purpose:** `@types/node` stays on `^26` in both apps to match the runtime (see "Node version"); `renovate.json` caps it with `allowedVersions: "<27"` so Renovate does not open 27.x / 28.x PRs ahead of the runtime.
 
 The `audit` job in `.github/workflows/ci.yml` runs a bare `bun audit` and never fails CI; any advisory it finds shows in its job summary, and is recorded here with how it is handled. Merge blocking on advisories is `dependency-review`'s job.
 
@@ -137,8 +137,8 @@ The `audit` job in `.github/workflows/ci.yml` runs a bare `bun audit` and never 
 
 - **Resolved by `overrides` in the root `package.json`:** zod (see "Audit advisories"). sharp needs no override for bench: next 16.4.1 asks for `^0.35.5` itself.
 - **Resolved in the lockfile:** @grpc/grpc-js, brace-expansion, js-yaml, protobufjs (7.6.5, for GHSA-f38q-mgvj-vph7 and GHSA-j3f2-48v5-ccww) and source-map-js, by refreshing within their parents' ranges. vite is a direct dev dependency of bench (`^8.3.4`), because it is vitest's peer: as a direct dependency its range sets the version the lockfile holds, so the vulnerable 8.0.16 cannot come back. (Under pnpm, an override alone left 8.0.16 locked.)
-- **Resolved by `overrides` in `.github/vercel-cli/package.json`, the Vercel CLI (65.2.0) that `bench-deploy.yml` runs:** tar (one critical), undici, path-to-regexp, minimatch, js-yaml, smol-toml, zod and ajv. The CLI and its builders pin these exactly, so only overrides reach them. `npm audit` in that directory reports none. Two overrides cross a major:
+- **Resolved by `overrides` in `.github/vercel-cli/package.json`, the Vercel CLI (65.8.0) that `bench-deploy.yml` runs:** tar (one critical), undici, path-to-regexp, minimatch, js-yaml, smol-toml, zod and ajv. The CLI and its builders pin these exactly, so only overrides reach them. `npm audit` in that directory reports none. Two overrides cross a major:
   - `undici@5` goes to 6. The CLI and `@vercel/node` pin 5.x, and the move also drops `@fastify/busboy`, which only undici 5 used.
   - `zod` goes to 4 for the builders that pin 3.22.4 (`@vercel/backends`, `@vercel/express`, `@vercel/hono` and `@vercel/python-analysis`). The CLI bundles its own zod.
 
-  Bench uses none of those builders. A local `vercel build` of bench gave the same output with and without the overrides, apart from Next.js's random build ID. Drop each override when the CLI's own range reaches the fix. When Renovate bumps the CLI, run `npm audit` in `.github/vercel-cli` and check the preview deploy on its PR.
+  Bench uses none of those builders. A local `vercel build` of bench gave the same output with and without the overrides, apart from Next.js's random build ID. Drop each override when the CLI's own range reaches the fix. When Renovate bumps the CLI, run `npm audit` in `.github/vercel-cli` and check the preview deploy on its PR. CLI 65.8.0 was adopted on 2026-10-30, a week inside the cooldown, with maintainer approval, because Vercel requires it for Node 26 prebuilt deploys. Only packages from that Vercel release are younger than 7 days; two third-party ones are held to older releases by exact overrides (`@napi-rs/wasm-runtime` 1.2.5, `@types/estree` 1.0.9), which can go after 2026-11-06.
