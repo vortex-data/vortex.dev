@@ -24,7 +24,7 @@ export type Logo = {
   height: number;
   /** The owner's page about its Vortex use, else its homepage. */
   href: string;
-  /** Tagged "Coming soon": its Vortex support has not shipped yet. */
+  /** Tagged "In proposal": its Vortex support is proposed, not shipped. */
   soon?: true;
 };
 
@@ -37,7 +37,7 @@ export type Logo = {
 // links to the owner's own page that mentions Vortex where there is one
 // (docs, a post or a list of users), else to the owner's homepage. Dash0
 // links to the Vortex post by Polar Signals, which it acquired. Apache
-// Iceberg is tagged "Coming soon" until its Vortex support ships.
+// Iceberg is tagged "In proposal" until its Vortex support ships.
 export const LOGOS: readonly Logo[] = [
   {
     name: "Microsoft",
@@ -75,13 +75,6 @@ export const LOGOS: readonly Logo[] = [
     href: "https://spice.ai/blog/vortex-at-spice-ai-the-columnar-format-for-data-intensive-workloads"
   },
   {
-    name: "LangChain",
-    image: langchain,
-    width: 136,
-    height: 25,
-    href: "https://www.langchain.com/blog/introducing-smithdb"
-  },
-  {
     name: "DatologyAI",
     image: datologyai,
     width: 129,
@@ -94,6 +87,13 @@ export const LOGOS: readonly Logo[] = [
     width: 123,
     height: 23,
     href: "https://www.polarsignals.com/blog/posts/2025/11/25/interface-parquet-vortex"
+  },
+  {
+    name: "LangChain",
+    image: langchain,
+    width: 136,
+    height: 25,
+    href: "https://www.langchain.com/blog/introducing-smithdb"
   },
   {
     name: "Milvus",

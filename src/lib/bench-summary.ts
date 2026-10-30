@@ -135,19 +135,19 @@ const SOURCES: (Source | Panel)[] = [
   },
   GPU_PANEL,
   {
-    title: "Random access, NVMe, cold",
+    title: "Random access, NVMe, hot",
     unit: "ms",
     kind: "speed",
     better: "lower",
     group: "Random Access (NVMe)",
-    rankings: (s) => s.coldRankings,
+    rankings: (s) => s.hotRankings,
     name: (f) => f,
     score: "score",
     systems: WITH_ARROW,
     // Bench sums a dataset's charts ("taxi", "taxi/correlated",
     // "taxi/uniform") into one time per dataset.
     times: {
-      series: (f) => `${f}:cold`,
+      series: (f) => `${f}:hot`,
       bucket: (chart) => chart.split("/")[0] ?? chart
     }
   },
