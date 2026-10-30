@@ -85,7 +85,13 @@ module.exports = {
       startServerCommand: "bun run start",
       startServerReadyPattern: "Ready",
       url: baseUrls,
-      numberOfRuns: 1,
+      // "Lighthouse audit" is a required check, so one slow shared runner
+      // must not fail it. With several runs, LHCI asserts on the best one
+      // (its default `aggregationMethod: "optimistic"`): a real regression
+      // shows in every run and still fails, an outlier run does not. One
+      // blog-post run fell to 0.74 performance on 2026-10-30 against a usual
+      // 1.00.
+      numberOfRuns: 3,
       settings: {
         preset: "desktop",
         throttlingMethod: "simulate",
