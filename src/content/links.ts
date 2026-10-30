@@ -20,6 +20,15 @@ export const externalPosts: readonly ExternalPost[] = [
       "With the release of DuckDB 2.0, we look at how the Vortex core extension speeds up queries by computing over compressed data, and how to read and write Vortex files from DuckDB."
   },
   {
+    title: "What Vortex Has to Prove Before Iceberg Adds a Fourth File Format",
+    url: "https://datalakehousehub.com/blog/iceberg-new-file-format-criteria-vortex/",
+    date: "2026-10-21T09:00:00.000Z",
+    source: "datalakehousehub.com",
+    authors: ["Alex Merced"],
+    summary:
+      "The Vortex proposal split into criteria and candidate. What field IDs, statistics, governance, and ecosystem support a new Iceberg file format must prove."
+  },
+  {
     title: "Statistics are aggregates",
     url: "https://spiraldb.com/blog/statistics-are-aggregates",
     date: "2026-10-14T12:00:00.000Z",
@@ -92,6 +101,15 @@ export const externalPosts: readonly ExternalPost[] = [
       "Evaluating SQL LIKE directly on FSST-compressed strings: a symbol-aware automaton and a SIMD prefilter let Vortex match without decompressing the column first."
   },
   {
+    title: "My Journey Optimizing a CUDA Kernel with Polar Signals",
+    url: "https://www.polarsignals.com/blog/posts/2026/06/24/optimizing-fsst-cuda",
+    date: "2026-06-24T00:00:00.000Z",
+    source: "polarsignals.com",
+    authors: ["Alfonso Subiotto Marqués"],
+    summary:
+      "A storage engineer's descent into warp stalls, memory throttles, and aligned stores"
+  },
+  {
     title: "AI Datasets Are Never Done. So We Built Loon.",
     url: "https://zilliz.com/blog/why-we-built-loon-a-storage-engine-for-ai-data-that-never-stops-changing",
     date: "2026-06-05T04:00:00.000Z",
@@ -105,7 +123,7 @@ export const externalPosts: readonly ExternalPost[] = [
     url: "https://www.langchain.com/blog/introducing-smithdb",
     date: "2026-05-13T17:39:00.000Z",
     source: "langchain.com",
-    authors: [],
+    authors: ["Ankush Gola"],
     summary:
       "Introducing SmithDB: LangSmith's purpose-built distributed database for agent observability, delivering up to 12x faster performance with full portability."
   },
@@ -117,6 +135,15 @@ export const externalPosts: readonly ExternalPost[] = [
     authors: [],
     summary:
       "Learn how Spice AI uses the Vortex columnar format in Cayenne to speed data-intensive workloads, reduce memory use, and scale concurrent ingestion and queries."
+  },
+  {
+    title: "Introducing the Apache Iceberg File Format API",
+    url: "https://iceberg.apache.org/blog/apache-iceberg-file-format-api/",
+    date: "2026-02-20T00:00:00.000Z",
+    source: "iceberg.apache.org",
+    authors: ["Apache Iceberg PMC"],
+    summary:
+      "The Apache Iceberg community is excited to announce the finalization of the File Format API, a major architectural milestone that makes file formats pluggable, consistent, and engine‑agnostic across the Iceberg Java codebase."
   },
   {
     title: "Announcing Vortex Support in DuckDB",
@@ -137,6 +164,14 @@ export const externalPosts: readonly ExternalPost[] = [
       "Spice Cayenne is the next-generation Spice.ai data accelerator built on the Vortex columnar format for high-scale, low-latency data lake acceleration workloads."
   },
   {
+    title: "Great Lakes: A Delta Lake Fork",
+    url: "https://www.polarsignals.com/blog/posts/2025/12/04/great-lakes",
+    date: "2025-12-04T00:00:00.000Z",
+    source: "polarsignals.com",
+    authors: ["Thor Hansen"],
+    summary: "Our updates to Delta Lake Table Format"
+  },
+  {
     title: "Questioning an Interface: From Parquet to Vortex",
     url: "https://www.polarsignals.com/blog/posts/2025/11/25/interface-parquet-vortex",
     date: "2025-11-25T00:00:00.000Z",
@@ -144,6 +179,26 @@ export const externalPosts: readonly ExternalPost[] = [
     authors: ["Alfonso Subiotto Marqués"],
     summary:
       "Breaking free from the shackles of interface-imposed performance limitations"
+  },
+  {
+    title:
+      "Exploring the Evolving File Format Landscape in AI Era: Parquet, Lance, Nimble and Vortex And What It Means for Apache Iceberg",
+    url: "https://www.dremio.com/blog/exploring-the-evolving-file-format-landscape-in-ai-era-parquet-lance-nimble-and-vortex-and-what-it-means-for-apache-iceberg/",
+    date: "2025-10-20T00:00:00.000Z",
+    source: "dremio.com",
+    authors: ["Alex Merced"],
+    summary:
+      "Formats like Lance, Nimble, and Vortex show that innovation is accelerating. Each one introduces new ideas about how to structure, index, and access data. But none of them exist in isolation. They need to integrate with engines, catalogs, and governance layers to be truly useful."
+  },
+  {
+    title:
+      "Is Parquet becoming the bottleneck? Why new storage formats are emerging in 2025 (Lance, Vortex, and more)",
+    url: "https://www.databend.com/blog/category-engineering/2025-09-15-storage-format/",
+    date: "2025-09-15T00:00:00.000Z",
+    source: "databend.com",
+    authors: ["ZhiHanZ"],
+    summary:
+      "Parquet gave data lakes a common language: columnar layout, good compression, and fast scans."
   },
   {
     title: "Vortex: a Linux Foundation Project",
