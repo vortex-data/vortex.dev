@@ -139,6 +139,21 @@ describe('GroupPermalink click behavior', () => {
     expect(details.open).toBe(false);
   });
 
+  // A modified or middle click follows the link, so once mounted its href is
+  // the same permalink a copy writes: global filters and series included.
+  it('keeps global filters in the href once mounted, and the series as the pointer goes down', () => {
+    window.history.replaceState(null, '', '/?engine=duckdb');
+    const { link } = mount();
+    expect(link.getAttribute('href')).toBe('/?engine=duckdb#random-access');
+    toggleGroupSeries('random_access', 'duckdb:vortex');
+    act(() => {
+      link.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    });
+    expect(link.getAttribute('href')).toBe(
+      '/?engine=duckdb&group=random-access&hide=duckdb%3Avortex#random-access',
+    );
+  });
+
   it('takes the copy wording once mounted', () => {
     const { link } = mount();
     expect(link.getAttribute('aria-label')).toBe('Copy link to Random Access');
