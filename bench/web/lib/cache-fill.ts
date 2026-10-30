@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
-import { AsyncLocalStorage } from 'node:async_hooks';
-
 import { getPool, resolvePoolMax } from '@/lib/db';
 
 // First int of every group cache fill's two-int PostgreSQL advisory-lock key: "benc". The second
@@ -11,8 +9,6 @@ import { getPool, resolvePoolMax } from '@/lib/db';
 // entries take turns.
 const GROUP_CACHE_FILL_LOCK_SPACE = 0x62656e63;
 
-// How long a read waits between retries of the Data Cache, and a background refresh between
-// tries of the lock, while another process fills the entry: 15 seconds in all.
 const CACHE_FILL_RETRY_DELAYS_MS = [250, 750, 2_000, 4_000, 8_000] as const;
 
 // At most this many fills run at once in one process, however large the pool.
@@ -89,48 +85,16 @@ async function withFillSlots<T>(exclusive: boolean, run: () => Promise<T>): Prom
 // running fill instead of queueing for a slot and then losing the entry's lock.
 const runningFills = new Map<string, Promise<unknown>>();
 
-/** One Data Cache read through [`retryGroupCacheFill`]: `answered` once the read has returned. */
-interface CacheRead {
-  answered: boolean;
-}
-
-// The read a fill runs under. Next's `unstable_cache` calls the fill function inside the read in
-// both of its paths, so the fill inherits the read's context either way:
-//
-// - On a miss the read awaits the fill, so the read is still unanswered when the fill finds the
-//   lock taken.
-// - On a stale entry (after `/api/revalidate` marks the tag stale) the read starts the fill as a
-//   background refresh and returns the stale value at once. The lock attempt needs a round trip
-//   to the database, so by the time the fill finds the lock taken, the read has been answered.
-//
-// Next's API offers no other way to tell the two apart.
-const cacheReads = new AsyncLocalStorage<CacheRead>();
-
-/** Whether the read that started this fill has already returned, so nobody waits on the fill. */
-function readAnswered(): boolean {
-  return cacheReads.getStore()?.answered === true;
-}
-
 /**
  * Run one group cache fill for the entry `key`, under a cross-instance PostgreSQL advisory lock
  * for that entry.
  *
  * In one process, a fill for an entry that is already filling shares that fill, and fills take
  * turns for [`cacheFillSlots`]; `exclusive` takes every slot. Lock contention with another
- * process (another instance, or a preview deployment on the same database) releases the pool
- * connection and the slot at once. Then:
- *
- * - A fill that a read is waiting for (a Data Cache miss) fails with
- *   [`GroupCacheFillInProgressError`]. The read ([`retryGroupCacheFill`]) then retries the Data
- *   Cache without keeping a database connection queued behind the active fill.
- * - A background refresh (a stale entry, whose read has already returned the stale value) has no
- *   read to retry. It backs off for [`CACHE_FILL_RETRY_DELAYS_MS`], holding no connection and no
- *   slot, and tries the lock again, as often as those delays allow (about 15 seconds in all). Only
- *   with the lock does it fill. Without this it would fail, Next would log the failure, and the
- *   entry would stay stale until a later read started another refresh.
- *
- * A fill outside [`retryGroupCacheFill`] fails at once, as a waited-for fill does. Session
- * advisory locks disappear automatically if the function or its database connection terminates.
+ * process (another instance, or a preview deployment on the same database) fails immediately and
+ * releases the pool connection. The caller can then retry the Data Cache read without keeping a
+ * database connection queued behind the active fill. Session advisory locks disappear
+ * automatically if the function or its database connection terminates.
  */
 export function withGroupCacheFillLock<T>(
   key: string,
@@ -141,32 +105,13 @@ export function withGroupCacheFillLock<T>(
   if (running !== undefined) {
     return running as Promise<T>;
   }
-  const started = fillWhenLocked(cacheFillLockId(key), fill, exclusive).finally(() => {
-    runningFills.delete(key);
-  });
+  const started = withFillSlots(exclusive, () => fillUnderLock(cacheFillLockId(key), fill)).finally(
+    () => {
+      runningFills.delete(key);
+    },
+  );
   runningFills.set(key, started);
   return started;
-}
-
-async function fillWhenLocked<T>(
-  lockId: number,
-  fill: () => Promise<T>,
-  exclusive: boolean,
-): Promise<T> {
-  for (let attempt = 0; ; attempt += 1) {
-    try {
-      return await withFillSlots(exclusive, () => fillUnderLock(lockId, fill));
-    } catch (error) {
-      if (
-        !(error instanceof GroupCacheFillInProgressError) ||
-        !readAnswered() ||
-        attempt >= CACHE_FILL_RETRY_DELAYS_MS.length
-      ) {
-        throw error;
-      }
-    }
-    await new Promise((resolve) => setTimeout(resolve, CACHE_FILL_RETRY_DELAYS_MS[attempt]));
-  }
 }
 
 async function fillUnderLock<T>(lockId: number, fill: () => Promise<T>): Promise<T> {
@@ -210,34 +155,19 @@ async function fillUnderLock<T>(lockId: number, fill: () => Promise<T>): Promise
   }
 }
 
-/**
- * Retry a Data Cache read while another process owns the entry's fill lock. A fill that `read`
- * starts runs as part of this read: once the read has returned, a fill still running is a
- * background refresh, which waits for the lock instead of failing (see
- * [`withGroupCacheFillLock`]).
- */
+/** Retry a Data Cache read while another process owns the entry's fill lock. */
 export async function retryGroupCacheFill<T>(
   read: () => Promise<T>,
   retryDelaysMs: readonly number[] = CACHE_FILL_RETRY_DELAYS_MS,
 ): Promise<T> {
-  const current: CacheRead = { answered: false };
-  try {
-    return await cacheReads.run(current, async () => {
-      for (let attempt = 0; ; attempt += 1) {
-        try {
-          return await read();
-        } catch (error) {
-          if (
-            !(error instanceof GroupCacheFillInProgressError) ||
-            attempt >= retryDelaysMs.length
-          ) {
-            throw error;
-          }
-          await new Promise((resolve) => setTimeout(resolve, retryDelaysMs[attempt]));
-        }
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return await read();
+    } catch (error) {
+      if (!(error instanceof GroupCacheFillInProgressError) || attempt >= retryDelaysMs.length) {
+        throw error;
       }
-    });
-  } finally {
-    current.answered = true;
+      await new Promise((resolve) => setTimeout(resolve, retryDelaysMs[attempt]));
+    }
   }
 }
