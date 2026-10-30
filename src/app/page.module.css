@@ -31,9 +31,21 @@
   gap: var(--space-24);
 }
 
+/* The headline and the standfirst under it, which says what Vortex is. They
+   sit closer to each other than to the eyebrow and the install box. */
+.head {
+  display: grid;
+  gap: var(--space-12);
+}
+
 .text h1 {
   margin: 0;
   color: var(--ink);
+}
+
+.head p {
+  margin: 0;
+  color: var(--ink-body);
 }
 
 /* The mark's cell spans the hero's full height, over its padding, as in the

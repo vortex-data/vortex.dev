@@ -29,7 +29,8 @@ export const metadata: Metadata = {
 };
 
 /**
- * The design system's Home card: the hero (Eyebrow, headline, InstallTabs
+ * The design system's Home card: the hero (Eyebrow, headline, standfirst,
+ * InstallTabs
  * and the AsciiMark), then the BenchmarkCard and the LogoBanner. The Spark
  * version and the benchmark figures are read at build time and again at most
  * once a day, so the page stays static. Without the figures the page leaves
@@ -47,7 +48,13 @@ export default async function Home() {
           <span className="vx-label vx-eyebrow">
             Apache-2.0 · A Linux Foundation project
           </span>
-          <h1 className="vx-display">Fast, small, open: pick three.</h1>
+          <div className={styles.head}>
+            <h1 className="vx-display">Fast, small, open: pick three.</h1>
+            <p className="vx-lede">
+              Vortex is an open-source columnar file format for fast scans,
+              random access, and compression.
+            </p>
+          </div>
           <InstallTabs sparkVersion={sparkVersion} />
         </div>
         <div className={styles.mark}>

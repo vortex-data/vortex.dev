@@ -42,6 +42,19 @@ test.describe("home", () => {
     ).toBeVisible();
   });
 
+  // Note 81: the hero says what Vortex is, above the fold, in one line.
+  test("the standfirst says what Vortex is", async ({ page }) => {
+    await page.setViewportSize({ width: 1512, height: 860 });
+    await page.goto("/");
+    const standfirst = page.getByText(
+      "Vortex is an open-source columnar file format for fast scans, random access, and compression."
+    );
+    await expect(standfirst).toBeVisible();
+    const box = await standfirst.boundingBox();
+    expect(box?.height ?? 99).toBeLessThan(36);
+    expect((box?.y ?? 999) + (box?.height ?? 0)).toBeLessThan(430);
+  });
+
   test("title is correct", async ({ page }) => {
     await page.goto("/");
     await expect(page).toHaveTitle(/The fastest columnar file format/);
@@ -776,6 +789,24 @@ test.describe("home fits one screen", () => {
       expect(m.scroll).toBeLessThanOrEqual(0);
       expect(m.footTop).toBeLessThan(height);
       expect(m.footBottom).toBeLessThanOrEqual(height);
+    });
+  }
+
+  // Note 81: the standfirst fits in the text's free height, so the mark's
+  // host keeps the size it had before (472px wide, as tall as the hero).
+  for (const [width, height, side] of [
+    [1512, 860, 383],
+    [1440, 900, 423],
+    [1512, 982, 472]
+  ] as const) {
+    test(`the mark keeps its size at ${width} × ${height}`, async ({
+      page
+    }) => {
+      await page.setViewportSize({ width, height });
+      await page.goto("/");
+      const box = await page.locator('[class*="markHost"]').boundingBox();
+      expect(Math.round(box?.width ?? 0)).toBe(472);
+      expect(Math.round(box?.height ?? 0)).toBeGreaterThanOrEqual(side);
     });
   }
 });
