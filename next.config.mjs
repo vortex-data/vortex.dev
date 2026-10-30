@@ -34,6 +34,16 @@ const csp = [
   "object-src 'none'"
 ].join("; ");
 
+// Cross-Origin-Opener-Policy keeps windows from other origins from holding a
+// reference to this page. Production gets `same-origin`. Previews and local
+// dev get `same-origin-allow-popups`, so the Vercel toolbar's sign-in popup can
+// still report back to the page. Framing is already denied above
+// (`frame-ancestors 'none'`, `X-Frame-Options: DENY`).
+const crossOriginOpenerPolicy =
+  process.env.VERCEL_ENV === "production"
+    ? "same-origin"
+    : "same-origin-allow-popups";
+
 // next-plausible v4 requires a `src` URL for the v2 Plausible script. When
 // the env var is unset (e.g. local dev), skip the proxy wrapper entirely —
 // `<PlausibleProvider>` in the app tree is also gated on the same env var.
@@ -69,7 +79,12 @@ const nextConfig = wrapWithPlausible({
             value:
               "camera=(), microphone=(), geolocation=(), gyroscope=(), payment=(), usb=(), magnetometer=(), accelerometer=()"
           },
-          { key: "Content-Security-Policy", value: csp }
+          { key: "Content-Security-Policy", value: csp },
+          { key: "Cross-Origin-Opener-Policy", value: crossOriginOpenerPolicy },
+          // Only vortex.dev and its subdomains may embed this site's
+          // resources. Link unfurlers fetch from a server, which this does not
+          // affect, and the RSS feed carries text only.
+          { key: "Cross-Origin-Resource-Policy", value: "same-site" }
         ]
       }
     ];
