@@ -30,7 +30,8 @@ const PAYLOAD = fixture("bench-groups.json") as {
 };
 // bench.vortex.dev/api/group/{slug}?n=20 for the two time panels' groups, read
 // at the same time, cut down to the series the card reads (and one it does
-// not) and their last five commits.
+// not) and their last five commits. Random access's hot series were read on
+// 30 Oct 2026, from the same two commits as the rest.
 const CHARTS = {
   Clickbench: fixture("bench-group-clickbench.json"),
   "Random Access (NVMe)": fixture("bench-group-random-access-nvme.json")
@@ -60,18 +61,19 @@ const charts = () =>
   >;
 
 // Each system's geomean time in ms, computed from the fixture apart from the
-// site's code (Python, 29 Oct 2026): the latest time per ClickBench query,
-// and per random-access dataset the sum of its charts' latest times.
+// site's code (Python, 29 Oct 2026; random access, 30 Oct): the latest time
+// per ClickBench query, and per random-access dataset the sum of its charts'
+// latest hot times.
 const CLICKBENCH_MS = {
   Vortex: 42.24600623816063,
   Parquet: 65.621614465414,
   Lance: 578.6306006236966
 };
 const RANDOM_ACCESS_MS = {
-  Vortex: 2.222937250565255,
-  Parquet: 70.3627371272798,
-  Lance: 3.5349948744551765,
-  Arrow: 3.716574078241951
+  Vortex: 0.7290522397517741,
+  Parquet: 70.61301694616571,
+  Lance: 2.1526584338038828,
+  Arrow: 3.7780608403173668
 };
 
 // The six panels from the fixtures. The ratio panels carry bench's published
@@ -127,7 +129,7 @@ const PANELS: Panel[] = [
   },
   GPU_PANEL,
   {
-    title: "Random access, NVMe, cold",
+    title: "Random access, NVMe, hot",
     unit: "ms",
     kind: "speed",
     better: "lower",
@@ -181,7 +183,7 @@ describe("panelsFrom", () => {
     };
     for (const [i, g, key, name] of [
       [2, "Clickbench", "rankings", (f: string) => `datafusion:${f}`],
-      [4, "Random Access (NVMe)", "coldRankings", (f: string) => f]
+      [4, "Random Access (NVMe)", "hotRankings", (f: string) => f]
     ] as const) {
       const rows = panels?.[i]?.rows ?? [];
       const ms = (s: string) => rows.find((r) => r.system === s)?.score ?? NaN;
@@ -210,10 +212,8 @@ describe("panelsFrom", () => {
 
   it("drops a time that bench does not score", () => {
     const gs = groups();
-    const cold = group(gs, "Random Access (NVMe)").summary;
-    cold.coldRankings = (cold.coldRankings ?? []).filter(
-      (r) => r.name !== "lance"
-    );
+    const hot = group(gs, "Random Access (NVMe)").summary;
+    hot.hotRankings = (hot.hotRankings ?? []).filter((r) => r.name !== "lance");
     assert.deepEqual(panelsFrom(gs, charts())?.[4]?.rows[2], {
       system: "Lance",
       score: null,
@@ -341,7 +341,7 @@ describe("panelsFrom", () => {
 
   it("gives null when a group reports none of the systems it shows", () => {
     const gs = groups();
-    group(gs, "Random Access (NVMe)").summary.coldRankings = [];
+    group(gs, "Random Access (NVMe)").summary.hotRankings = [];
     assert.equal(panelsFrom(gs, charts()), null);
     // Arrow alone is shown only where bench runs it, so a scan ranking that
     // listed only Arrow still counts as none.

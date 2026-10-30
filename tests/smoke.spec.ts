@@ -260,7 +260,7 @@ test.describe("home bands", () => {
     expect(names.slice(0, 3)).toEqual(["Microsoft", "Palantir", "Spiral"]);
     expect(new Set(names).size).toBe(names.length);
     await expect(
-      banner.getByRole("link", { name: "Apache Iceberg Coming soon" })
+      banner.getByRole("link", { name: "Apache Iceberg In proposal" })
     ).toHaveClass("is-soon");
     // Every mark loads.
     for (const img of await banner.getByRole("img").all())
@@ -1026,7 +1026,7 @@ test.describe("logo banner under reduced motion", () => {
         .locator('section[aria-label="Ecosystem"] .vx-logos-set')
         .first();
       expect(await set.locator("img").count()).toBeGreaterThanOrEqual(16);
-      // A "Coming soon" tag hangs past its logo, so the tags are checked too.
+      // An "In proposal" tag hangs past its logo, so the tags are checked too.
       const marks = set.locator(":is(img, .vx-logos-soon)");
       for (const box of await marks.evaluateAll((els) =>
         els.map((e) => e.getBoundingClientRect().toJSON())
