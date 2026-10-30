@@ -25,12 +25,13 @@ function whenIdle(run: () => void): () => void {
 }
 
 // The static symbol's place and size in the host: the design system's own
-// fallback for the mark (ascii-mark.js), so the two look the same.
+// fallback for the mark (ascii-mark.js), so the two look the same. A page can
+// set `--mark-still-width` on the host to size it otherwise.
 const STILL_STYLE = {
   position: "absolute",
   inset: 0,
   margin: "auto",
-  width: "40%",
+  width: "var(--mark-still-width, 40%)",
   height: "auto",
   opacity: 0.85
 } as const;

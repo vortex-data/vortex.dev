@@ -818,6 +818,41 @@ test.describe("home fits one screen", () => {
   }
 });
 
+// Note 81, fix 6: without scripts the static symbol stands in for the mark,
+// so the hero takes its content's height plus the scripts-on page's
+// breathing room, instead of stretching to fill a tall window.
+test.describe("home without scripts", () => {
+  test.use({ javaScriptEnabled: false });
+
+  for (const height of [860, 1400]) {
+    test(`the hero hugs its content at 1512 × ${height}`, async ({ page }) => {
+      await page.setViewportSize({ width: 1512, height });
+      await page.goto("/");
+      const m = await page.evaluate(() => {
+        const box = (s: string) =>
+          document.querySelector(s)?.getBoundingClientRect() ?? null;
+        return {
+          header: box("header")?.bottom ?? 0,
+          eyebrow: box(".vx-eyebrow")?.top ?? 0,
+          tabs: box(".vx-tabs")?.bottom ?? 0,
+          bench: box(".vx-bench")?.top ?? 0,
+          still: box(".ascii-mark-still")
+        };
+      });
+      expect(m.eyebrow - m.header).toBeGreaterThanOrEqual(64);
+      expect(m.eyebrow - m.header).toBeLessThanOrEqual(80);
+      expect(m.bench - m.tabs).toBeGreaterThanOrEqual(56);
+      expect(m.bench - m.tabs).toBeLessThanOrEqual(72);
+      // The symbol is a little larger than the mark's own 40% fallback, and
+      // sits beside the stacked install block.
+      expect(m.still?.width ?? 0).toBeGreaterThanOrEqual(240);
+      const mid = ((m.still?.top ?? 0) + (m.still?.bottom ?? 0)) / 2;
+      expect(mid).toBeGreaterThan(m.eyebrow);
+      expect(mid).toBeLessThan(m.tabs);
+    });
+  }
+});
+
 test.describe("narrowest phones", () => {
   test.use({ viewport: { width: 320, height: 640 } });
 

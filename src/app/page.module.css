@@ -68,6 +68,32 @@
   margin: auto 0;
 }
 
+/* Without scripts the static symbol stands in for the mark, so the hero does
+   not stretch to fill a tall window: it takes its content's height. Its
+   padding gives the scripts-on page's breathing room at 1512 × 860 (about
+   72px from the header to the eyebrow, and 64px from the install block to
+   the benchmark card), and the mark's cell keeps spanning that padding. The
+   symbol is larger than the mark's own 40% fallback (AsciiMark's
+   --mark-still-width),
+   so it balances the stacked install commands. A stacked hero, below
+   1100px, keeps its own rules. */
+@media (min-width: 1100px) {
+  :global(.no-js) .hero {
+    flex: 0 0 auto;
+    padding-top: calc(var(--space-64) + var(--space-8));
+    padding-bottom: var(--space-64);
+  }
+
+  :global(.no-js) .mark {
+    inset: calc(-1 * (var(--space-64) + var(--space-8))) 0
+      calc(-1 * var(--space-64));
+  }
+
+  :global(.no-js) .markHost {
+    --mark-still-width: 56%;
+  }
+}
+
 /* The BenchmarkCard's and the LogoBanner's bands, padded as in the Home card
    so the cards share the headline's left edge. */
 .band {

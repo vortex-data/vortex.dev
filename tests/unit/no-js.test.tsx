@@ -35,7 +35,7 @@ describe("the homepage without JavaScript", () => {
     // the browser checks pin the src.
     assert.match(
       html,
-      /^<div class="host" aria-hidden="true"><img class="ascii-mark-still"( src="[^"]*vortex_symbol[^"]*")? alt="" style="position:absolute;inset:0;margin:auto;width:40%;height:auto;opacity:0.85"\/><\/div>$/
+      /^<div class="host" aria-hidden="true"><img class="ascii-mark-still"( src="[^"]*vortex_symbol[^"]*")? alt="" style="position:absolute;inset:0;margin:auto;width:var\(--mark-still-width, 40%\);height:auto;opacity:0.85"\/><\/div>$/
     );
   });
 
