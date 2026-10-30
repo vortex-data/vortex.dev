@@ -24,7 +24,7 @@ jobs:
   # repository-wide checks (dependency review, secret scan, REUSE) always run.
   changes:
     name: Detect changed paths
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 5
     outputs:
       site: ${{ steps.paths.outputs.site }}
@@ -43,7 +43,7 @@ jobs:
     # bench/ changed. If the path check itself fails, run anyway rather than
     # skip a required check.
     if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.site == 'true') }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
@@ -186,7 +186,7 @@ jobs:
     name: Dependency audit (non-blocking)
     needs: changes
     if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.site == 'true') }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
@@ -243,7 +243,7 @@ jobs:
   # block merge and stays with `bun audit` and CLAUDE.md "Audit advisories".
   dependency-review:
     if: github.event_name == 'pull_request'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
       # Implies read, which the guard uses to list a fork's changed files.
@@ -332,7 +332,7 @@ jobs:
   # after the secret was committed, or push-protection bypass via the
   # "I'll fix it later" allow path).
   secret-scan:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
     steps:
@@ -360,7 +360,7 @@ jobs:
   # persist the read-only token into the workspace the container mounts.
   reuse:
     name: REUSE compliance
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 5
     permissions:
       contents: read
