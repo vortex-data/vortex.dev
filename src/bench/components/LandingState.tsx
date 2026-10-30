@@ -5,6 +5,7 @@
 
 import { useEffect, useRef } from 'react';
 
+import { useBenchPath } from '@/bench/components/BenchBase';
 import { groupBodiesReady } from '@/bench/lib/group-bodies';
 import {
   cancelOpenFragmentSync,
@@ -25,8 +26,10 @@ import {
   type SavedScroll,
   saveScroll,
 } from '@/bench/lib/scroll-restore';
-// A chart card's title link: a full navigation to the chart page.
-const CHART_LINK = 'a[href^="/chart/"]';
+/** A chart card's title link, a full navigation to the chart page, under the page's base. */
+function chartLinkSelector(chartPath: string): string {
+  return `a[href^="${chartPath}"]`;
+}
 /**
  * The landing page's client coordinator for state that lives in the URL and
  * for its scroll. It renders nothing.
@@ -87,6 +90,8 @@ export function LandingState(): null {
   // groups. A later client navigation mounts a new instance and finds no
   // marker.
   const firstRun = useRef<FirstRun | undefined>(undefined);
+  const path = useBenchPath();
+  const chartLink = chartLinkSelector(path('/chart/'));
   useEffect(() => {
     let active = true;
     const { history } = window;
@@ -130,7 +135,7 @@ export function LandingState(): null {
     // link navigates only after the click's dispatch ends.
     const onClick = (event: MouseEvent): void => {
       const target = event.target as Element | null;
-      if (target?.closest?.(CHART_LINK)) {
+      if (target?.closest?.(chartLink)) {
         flushOpenFragmentSync(window);
         saveScroll(window);
       }
@@ -196,7 +201,7 @@ export function LandingState(): null {
       window.removeEventListener('hashchange', onHashChange);
       history.scrollRestoration = previousRestoration;
     };
-  }, []);
+  }, [chartLink]);
   return null;
 }
 /** What [`LandingState`]'s first run found: the saved position, the listed

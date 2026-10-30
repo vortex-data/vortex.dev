@@ -2,6 +2,7 @@
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
 import { spawn, type ChildProcess } from 'node:child_process';
+import { request } from 'node:http';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -23,13 +24,15 @@ import {
 // markup tests.
 //
 // Skips when Docker is unavailable OR when no `.next` production build exists
-// (`bun run --cwd bench/web build` first); both are environment, not code, conditions.
+// (`bun run build` first); both are environment, not code, conditions.
 
 const WEB_ROOT = fileURLToPath(new URL('../../..', import.meta.url));
 const databaseAvailable = integrationDatabaseAvailable();
 const BUILD_PRESENT = existsSync(`${WEB_ROOT}/.next/BUILD_ID`);
 const PORT = 4319;
-const BASE = `http://127.0.0.1:${PORT}`;
+const ORIGIN = `http://127.0.0.1:${PORT}`;
+// bench is at /bench on every host but its own (see lib/base-path.ts).
+const BASE = `${ORIGIN}/bench`;
 
 const QUERY_Q1: ChartKey = {
   k: 'QueryMeasurement',
@@ -100,9 +103,9 @@ describe.skipIf(!databaseAvailable || !BUILD_PRESENT)(
       // The first request may miss the Data Cache, read slowly and stream the
       // loading view first (app/page.tsx); either way it fills the cache, so
       // the second takes the plain-HTML path asserted below.
-      const first = await (await fetch(`${BASE}/`)).text();
+      const first = await (await fetch(BASE)).text();
       expect(first).toContain('class="group-details"');
-      const html = await (await fetch(`${BASE}/`)).text();
+      const html = await (await fetch(BASE)).text();
       // Header chrome (PR-4.4.b islands, server-rendered).
       expect(html).toContain('data-role="nav-mobile-toggle"');
       expect(html).toContain('data-role="theme-toggle"');
@@ -213,5 +216,51 @@ describe.skipIf(!databaseAvailable || !BUILD_PRESENT)(
       expect(Array.isArray(payload.commits)).toBe(true);
       expect(payload.commits.length).toBeGreaterThan(0);
     });
+
+    it("links under /bench away from bench's own host", async () => {
+      const html = await (await fetch(BASE)).text();
+      expect(html).toMatch(/<a [^>]*class="logo-link"[^>]*href="\/bench"/);
+      expect(html).toContain('src="/bench/Vortex_Black_NoBG.svg"');
+      expect(html).toContain('href="/bench/icon-dark.png"');
+    });
+
+    it('serves bench from the root of bench.vortex.dev, with root-relative links', async () => {
+      const slug = chartKeyToSlug(QUERY_Q1);
+      const landing = await getOnBenchHost('/');
+      expect(landing.status).toBe(200);
+      expect(landing.body).toContain('class="group-details"');
+      expect(landing.body).toMatch(/<a [^>]*class="logo-link"[^>]*href="\/"/);
+      expect(landing.body).toContain('src="/Vortex_Black_NoBG.svg"');
+      expect(landing.body).toContain('href="/icon-dark.png"');
+      expect(landing.body).not.toMatch(/(href|src)="\/bench/);
+      const chart = await getOnBenchHost(`/chart/${slug}`);
+      expect(chart.status).toBe(200);
+      expect(chart.body).toContain(`data-chart-slug="${slug}"`);
+      const api = await getOnBenchHost(`/api/chart/${slug}?n=all`);
+      expect(api.status).toBe(200);
+      expect((JSON.parse(api.body) as { display_name: string }).display_name).toBe(
+        'tpch sf=1 Q1 [nvme]',
+      );
+      expect((await getOnBenchHost('/Vortex_Black_NoBG.svg')).status).toBe(200);
+      expect((await getOnBenchHost('/chart/ra.unknown-slug')).status).toBe(404);
+      expect((await getOnBenchHost('/blog')).status).toBe(404);
+    });
   },
 );
+
+/** GET `path` from the server as a request to bench.vortex.dev (`fetch` cannot set `Host`). */
+function getOnBenchHost(path: string): Promise<{ status: number; body: string }> {
+  return new Promise((resolve, reject) => {
+    const req = request(`${ORIGIN}${path}`, { headers: { host: 'bench.vortex.dev' } }, (res) => {
+      let body = '';
+      res.setEncoding('utf8');
+      res.on('data', (chunk: string) => {
+        body += chunk;
+      });
+      res.on('end', () => resolve({ status: res.statusCode ?? 0, body }));
+      res.on('error', reject);
+    });
+    req.on('error', reject);
+    req.end();
+  });
+}

@@ -27,6 +27,7 @@ import {
   throttle,
   visibleRange,
 } from '@/bench/lib/chart-format';
+import { type BenchBase, benchPath } from '@/bench/lib/base-path';
 import { loadChartJs } from '@/bench/lib/chart-js';
 import {
   chartIsHiddenAsEmpty,
@@ -80,6 +81,8 @@ export class ChartController {
   constructor(
     private readonly slug: string,
     private readonly groupSlug: string | undefined,
+    /** The base of bench's paths on this page (lib/base-path.ts). */
+    private readonly base: BenchBase,
     private readonly els: () => CardElements,
     private readonly cb: CardCallbacks,
   ) {
@@ -198,7 +201,7 @@ export class ChartController {
       }
       const groupSlug = this.groupSlug;
       this.bundleFailed = false;
-      return ensureGroupBundle(groupSlug, priority).then((result) => {
+      return ensureGroupBundle(groupSlug, priority, this.base).then((result) => {
         // The group can close while this card awaits the in-flight bundle. The
         // close unmounts the island (its `destroy()` aborts this controller's
         // fetches) and GroupBody aborts the bundle, so a per-chart fallback
@@ -280,7 +283,10 @@ export class ChartController {
       this.cb.setLoading(true);
       this.cb.setRetryable(false);
     }
-    const url = `/api/chart/${encodeURIComponent(this.slug)}?n=${encodeURIComponent(CHART_FETCH_N)}`;
+    const url = benchPath(
+      this.base,
+      `/api/chart/${encodeURIComponent(this.slug)}?n=${encodeURIComponent(CHART_FETCH_N)}`,
+    );
     const fc = new AbortController();
     state.initialFetchController = fc;
     // Bridge the controller-lifetime aborter to this per-fetch controller so
@@ -446,7 +452,10 @@ export class ChartController {
       }
       return state.fullFetchPending ?? Promise.resolve();
     }
-    const url = `/api/chart/${encodeURIComponent(this.slug)}?n=${encodeURIComponent(FETCH_N)}`;
+    const url = benchPath(
+      this.base,
+      `/api/chart/${encodeURIComponent(this.slug)}?n=${encodeURIComponent(FETCH_N)}`,
+    );
     const fc = new AbortController();
     state.fullFetchController = fc;
     const onParentAbort = (): void => fc.abort(this.aborter.signal.reason);

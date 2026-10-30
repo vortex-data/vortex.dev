@@ -345,7 +345,7 @@ describe('ensureGroupBundle empty-window classification', () => {
       } as unknown as Response),
     );
     const groupSlug = 'bundle-empty-classify';
-    await ensureGroupBundle(groupSlug, 0);
+    await ensureGroupBundle(groupSlug, 0, '');
     const snap = getGroupSnapshot(groupSlug);
     expect(snap.emptyCharts).toEqual(['chart-stale']);
     expect(chartIsHiddenAsEmpty(snap, 'chart-stale')).toBe(true);
@@ -370,10 +370,10 @@ describe('ensureGroupBundle empty-window classification', () => {
           }),
       );
     vi.stubGlobal('fetch', fetcher);
-    const old = ensureGroupBundle('reopened', 0);
+    const old = ensureGroupBundle('reopened', 0, '');
     await Promise.resolve();
     abortGroupBundle('reopened');
-    const current = ensureGroupBundle('reopened', 0);
+    const current = ensureGroupBundle('reopened', 0, '');
     await Promise.resolve();
 
     const response = (value: number) =>
@@ -385,12 +385,12 @@ describe('ensureGroupBundle empty-window classification', () => {
     resolveOld(response(1));
     expect(await old).toEqual({ status: 'aborted' });
     expect(getCachedPayload('cached')).toBeUndefined();
-    expect(ensureGroupBundle('reopened', 0)).toBe(current);
+    expect(ensureGroupBundle('reopened', 0, '')).toBe(current);
     resolveNew(response(2));
     expect(await current).toEqual({ status: 'success' });
     expect(getCachedPayload('cached')?.series).toEqual({ vortex: [2] });
     abortGroupBundle('reopened');
-    expect(await ensureGroupBundle('reopened', 0)).toEqual({ status: 'success' });
+    expect(await ensureGroupBundle('reopened', 0, '')).toEqual({ status: 'success' });
     expect(fetcher).toHaveBeenCalledTimes(2);
   });
 });

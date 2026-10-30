@@ -48,7 +48,7 @@ SPDX-License-Identifier = "CC-BY-4.0"
 # section 5.a).
 [[annotations]]
 path = [
-  "src/app/favicon.ico",
+  "public/favicon.ico",
   "src/assets/vortex_symbol_dark_theme.svg",
   "src/assets/vortex_wordmark.svg",
   "src/assets/vortex_wordmark_dark_theme.svg",

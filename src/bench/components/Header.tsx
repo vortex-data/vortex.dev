@@ -5,6 +5,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
+import { useBenchPath } from '@/bench/components/BenchBase';
 import { FilterBar } from '@/bench/components/FilterBar';
 import type { FilterUniverse } from '@/bench/lib/chart-format';
 import {
@@ -60,6 +61,7 @@ export function Header({
   initialEngines?: string[] | null;
   initialFormats?: string[] | null;
 }) {
+  const path = useBenchPath();
   const [navOpen, setNavOpen] = useState(false);
   const [nextTheme, setNextTheme] = useState<'light' | 'dark'>('light');
   const navRef = useRef<HTMLDivElement>(null);
@@ -142,14 +144,14 @@ export function Header({
           <a className="logo-link" href="https://vortex.dev" aria-label="vortex.dev home">
             <img
               className="site-logo logo-light"
-              src="/Vortex_Black_NoBG.svg"
+              src={path('/Vortex_Black_NoBG.svg')}
               alt="Vortex"
               width={654}
               height={190}
             />
             <img
               className="site-logo logo-dark"
-              src="/Vortex_White_NoBG.svg"
+              src={path('/Vortex_White_NoBG.svg')}
               alt="Vortex"
               width={654}
               height={190}

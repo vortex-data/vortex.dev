@@ -5,6 +5,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import { useBenchPath } from '@/bench/components/BenchBase';
 import { getGroupSnapshot } from '@/bench/lib/chart-store';
 import {
   GROUP_FILTER_PARAM,
@@ -94,10 +95,12 @@ export function GroupPermalink({
   // False on the server and in the first client render, so both name a plain
   // link; true once mounted, when a click copies.
   const [copies, setCopies] = useState(false);
-  // The server and first render link to `/#<anchor>`. Once mounted, the href
+  // The server and first render link to `/#<anchor>` (`/bench#<anchor>` away from
+  // bench's own host). Once mounted, the href
   // is the permalink a copy writes (global filters and this group's series),
   // so a modified or middle click opens what a plain click would copy.
-  const [href, setHref] = useState(`/#${encodeURIComponent(anchor)}`);
+  const path = useBenchPath();
+  const [href, setHref] = useState(path(`/#${encodeURIComponent(anchor)}`));
   const permalink = useCallback((): string => {
     const snapshot = getGroupSnapshot(groupSlug);
     return groupPermalinkUrl(anchor, snapshot.hiddenSeries, snapshot.shownSeries, window.location);

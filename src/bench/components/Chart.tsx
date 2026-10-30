@@ -5,7 +5,9 @@
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 
+import { useBenchBase } from '@/bench/components/BenchBase';
 import { ChartController } from '@/bench/components/chart/controller';
+import { benchPath } from '@/bench/lib/base-path';
 import {
   chartAriaLabel,
   chartPriority,
@@ -80,6 +82,7 @@ export interface ChartIslandProps {
  * `chart_card` markup) and drives Chart.js through a [`ChartController`].
  */
 export function Chart({ slug, name, index, groupSlug, initialPayload }: ChartIslandProps) {
+  const base = useBenchBase();
   const cardRef = useRef<HTMLElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const tooltipHostRef = useRef<HTMLDivElement>(null);
@@ -169,6 +172,7 @@ export function Chart({ slug, name, index, groupSlug, initialPayload }: ChartIsl
     const controller = new ChartController(
       slug,
       groupSlug,
+      base,
       () => ({
         card: cardRef.current,
         canvas: canvasRef.current,
@@ -251,7 +255,7 @@ export function Chart({ slug, name, index, groupSlug, initialPayload }: ChartIsl
         // off-screen. Construction stays gated on intersection below. The
         // per-group in-flight dedupe means sibling islands issue only ONE fetch.
         if (bundleGroupSlug !== undefined) {
-          void ensureGroupBundle(bundleGroupSlug, priority);
+          void ensureGroupBundle(bundleGroupSlug, priority, base);
         }
         if (typeof IntersectionObserver === 'undefined') {
           // Graceful degradation for SSR and legacy browsers that lack
@@ -392,7 +396,7 @@ export function Chart({ slug, name, index, groupSlug, initialPayload }: ChartIsl
       ref={cardRef}
     >
       <h3 className="chart-card-title">
-        <a href={`/chart/${slug}`}>{name}</a>
+        <a href={benchPath(base, `/chart/${slug}`)}>{name}</a>
         <span
           className="chart-badge chart-badge--downsampled"
           data-role="downsample-badge"
