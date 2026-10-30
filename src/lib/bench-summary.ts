@@ -214,19 +214,30 @@ function latest(values: unknown): number | undefined {
  */
 export function groupTimes(
   payload: unknown,
-  bucket: (chart: string) => string
+  bucket: (chart: string) => string,
+  expected?: readonly string[]
 ): Map<string, { ms: number | null; measured: number; total: number }> | null {
   const charts = isObject(payload) ? payload.charts : undefined;
   if (!Array.isArray(charts)) return null;
   const buckets = new Map<string, Ranking[]>();
+  const seen = new Set<string>();
   for (const c of charts) {
     if (!isObject(c) || typeof c.name !== "string" || !isObject(c.series))
       return null;
     if (c.unit_kind !== "time_ns") return null;
     const series = c.series;
     if (!Object.values(series).some((v) => latest(v) !== undefined)) continue;
+    seen.add(c.name);
     const key = bucket(c.name);
     buckets.set(key, [...(buckets.get(key) ?? []), series]);
+  }
+  // `expected` is the group's chart list from `/api/groups`. A chart it names
+  // that has no times in the window joins its bucket empty, so no series can
+  // sum that bucket from part of its charts.
+  for (const name of expected ?? []) {
+    if (seen.has(name)) continue;
+    const key = bucket(name);
+    buckets.set(key, [...(buckets.get(key) ?? []), {}]);
   }
   const names = new Set(
     [...buckets.values()].flat().flatMap((series) => Object.keys(series))
@@ -309,7 +320,17 @@ export function panelsFrom(
       // benchmark that has not run lately has no times in it although its
       // scores stand. Then the panel shows the scores, against the fastest,
       // and the card stays on the page.
-      const times = groupTimes(charts[source.group], source.times.bucket);
+      const listed = isObject(group) ? group.charts : undefined;
+      const expected = Array.isArray(listed)
+        ? listed.flatMap((c) =>
+            isObject(c) && typeof c.name === "string" ? [c.name] : []
+          )
+        : undefined;
+      const times = groupTimes(
+        charts[source.group],
+        source.times.bucket,
+        expected
+      );
       const timed = times
         ? timeRows({ ...source, times: source.times }, rankings, times)
         : null;
@@ -319,7 +340,9 @@ export function panelsFrom(
       const has = (name: string) => {
         const t = timed?.find((r) => r.system === name);
         const s = rows.find((r) => r.system === name);
-        return !!t && measured(t) && t.total === s?.total;
+        return (
+          !!t && measured(t) && t.measured === t.total && t.total === s?.total
+        );
       };
       if (timed && has("Vortex") && has("Parquet")) rows = timed;
       else unit = "× fastest";

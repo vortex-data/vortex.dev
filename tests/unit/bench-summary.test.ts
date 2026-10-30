@@ -253,6 +253,26 @@ describe("panelsFrom", () => {
   });
 
   // A window that holds only some of a benchmark's queries would give a
+  // Random access sums several charts into one dataset's bucket, so a
+  // window missing one of them would sum part of the dataset. bench's group
+  // list names every chart, so each bucket is checked against it.
+  it("falls back to bench's scores when a bucket misses one of the group's charts", () => {
+    const gs = groups();
+    const cs = charts();
+    const ra = group(gs, "Random Access (NVMe)") as Record<string, unknown>;
+    ra.charts = cs["Random Access (NVMe)"].charts.map((c) => ({
+      name: c.name
+    }));
+    assert.equal(
+      panelsFrom(gs, cs)?.[4]?.unit,
+      "ms",
+      "a full window keeps its times"
+    );
+    const dropped = charts();
+    dropped["Random Access (NVMe)"].charts =
+      dropped["Random Access (NVMe)"].charts.slice(1);
+    assert.equal(panelsFrom(gs, dropped)?.[4]?.unit, "× fastest");
+  });
   // geomean over a partial set, so the panel shows bench's scores instead.
   it("falls back to bench's scores when the window holds only some of the queries", () => {
     const cs = charts();
