@@ -13,7 +13,7 @@ outputs:
     description: '"true" if anything outside bench/ changed.'
     value: ${{ steps.classify.outputs.site }}
   bench:
-    description: '"true" if bench/, a bench workflow, a shared action, .nvmrc or a root workspace file changed.'
+    description: '"true" if bench/, a bench workflow, bench''s Vercel CLI, a shared action, .nvmrc or a root workspace file changed.'
     value: ${{ steps.classify.outputs.bench }}
 
 runs:
@@ -51,7 +51,7 @@ runs:
           while IFS= read -r file; do
             case "${file}" in
               "") ;;
-              bench/* | .github/workflows/bench-*) bench=true ;;
+              bench/* | .github/workflows/bench-* | .github/vercel-cli/*) bench=true ;;
               # Shared by both apps: these actions, and the Node pin that
               # every workflow reads.
               .github/actions/* | .nvmrc) site=true; bench=true ;;
