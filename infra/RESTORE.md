@@ -156,7 +156,7 @@ UNION ALL SELECT 'random_access_times', count(*), max(measurement_id)::text FROM
 UNION ALL SELECT 'vector_search_runs', count(*), max(measurement_id)::text FROM vector_search_runs;
 ```
 
-- The ledger must list every file in [`../migrations/`](../migrations/).
+- The ledger must list every file in [`../migrations/`](../db/migrations/).
 - The newest `commits.timestamp` must be close to the restore point.
 - The row counts must not be lower than in the last known good state.
 
@@ -241,7 +241,7 @@ A dump made with `pg_dump -Fd` and `pg_dumpall --globals-only
 - **Restore:** to the latest restorable time at 17:33:50 UTC, on
   `db.r7g.large`. Available 10 minutes later. The newest commit in the copy
   was from 17:21:20 UTC.
-- **Ledger:** `001`–`010`, the same as `bench/migrations/`.
+- **Ledger:** `001`–`010`, the same as `db/migrations/`.
 - **Rows:** every table was between a `pg_dump` taken at 17:18 UTC and prod at
   17:47 UTC, as expected while ingest runs:
 

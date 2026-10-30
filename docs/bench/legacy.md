@@ -17,7 +17,7 @@ to tear down. The full history and the design rationale behind each rebuild live
 |---|---|---|---|
 | **v2** | Node `server.js` + Vite/React SPA on Cloudflare | Static `data.json.gz` dump in public S3 | Retired from serving; its S3 dump still receives CI uploads |
 | **v3** | Rust `axum` + `maud` server on an EC2 host | DuckDB file on local disk | **Fully decommissioned 2026-07-08** — host, backups, ingest steps, and code all deleted |
-| **v4** | `web/` (Next.js App Router) on Vercel | AWS RDS Postgres | **Live production** at `bench.vortex.dev` |
+| **v4** | `src/app/(bench)/bench` (Next.js App Router) on Vercel | AWS RDS Postgres | **Live production** at `bench.vortex.dev` |
 
 The v2 source was deployed from elsewhere and never lived in this repo, though its S3 dump was
 the migrator's historical source.
@@ -47,7 +47,7 @@ The one contract that outlived the deletion is the `measurement_id` hash: the Ru
 implementation in `server/src/db.rs` generated the golden vectors that now live in the monorepo
 (`scripts/measurement_id_golden.json`, asserted by `scripts/tests/test_measurement_id.py`
 against the Python writer). Those vectors are frozen forever — see
-[`CONTRACT.md`](../CONTRACT.md).
+[`CONTRACT.md`](CONTRACT.md).
 
 ## v3 teardown record (completed 2026-07-08)
 

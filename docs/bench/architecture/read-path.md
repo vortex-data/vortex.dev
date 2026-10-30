@@ -17,7 +17,7 @@ over the Vortex commit history (the x-axis). A *group* bundles related charts
 (e.g. all the TPC-H SF=1 NVMe queries). Both are addressed by an **opaque slug**
 (below). The default view is the **last 100 commits**; the user can widen it.
 
-## v4 — Next.js read service (`web/`)
+## v4 — Next.js read service (`src/app/(bench)/bench`)
 
 A Next.js App Router app of **server components** that query RDS directly and
 stream HTML. `main` is the production branch (see
@@ -52,14 +52,14 @@ by two independent layers, so the common case is cheap and ingest can flush both
  └──────────────────────────┘
 ```
 
-- **Layer 1 — Next.js Data Cache** (`web/lib/data-cache.ts`). The four default
+- **Layer 1 — Next.js Data Cache** (`src/bench/lib/data-cache.ts`). The four default
   reads (`groups`, `filter universe`, per-group default charts, per-chart default
   payload) are wrapped in `unstable_cache` with the tag `bench-data` and a 24-hour
   backstop (`DATA_CACHE_BACKSTOP_SECONDS = 86400`). Keyed by slug only — *not* by
   query string. The backstop is long because the site is low-traffic: it keeps the
   default window warm across overnight idle gaps so a CDN miss reads this cache
   instead of paying a cold RDS round-trip.
-- **Layer 2 — Vercel CDN** (`web/lib/cache.ts`, `web/vercel.json`). JSON read-API
+- **Layer 2 — Vercel CDN** (`src/bench/lib/cache.ts`, `vercel.json`). JSON read-API
   responses carry `Cache-Control: public, s-maxage=300, stale-while-revalidate=86400`
   (5-minute freshness, matching v2's S3 refresh cadence, then up to a day stale
   while revalidating). HTML routes get an equivalent `Vercel-CDN-Cache-Control`
@@ -68,7 +68,7 @@ by two independent layers, so the common case is cheap and ingest can flush both
   are never cached.
 
 **Freshness propagation.** The primary mechanism is
-`POST /api/revalidate` (token-gated; `web/app/api/revalidate/route.ts`): on a
+`POST /api/revalidate` (token-gated; `src/app/(bench)/bench/api/revalidate/route.ts`): on a
 successful ingest, `scripts/post-ingest.py` calls it and it runs
 `revalidateTag('bench-data', 'max')`, the stale-while-revalidate profile: the
 next read of each Layer 1 entry serves the previous data once and refreshes the
@@ -103,7 +103,7 @@ server window.
 ### Slugs
 
 Charts and groups are addressed by an opaque `<prefix>.<base64url-of-json>` slug
-(`web/lib/slug.ts`). The prefix names the family (`qm`/`ct`/`cs`/`rat`/`vsr` for
+(`src/bench/lib/slug.ts`). The prefix names the family (`qm`/`ct`/`cs`/`rat`/`vsr` for
 charts, `…g` for groups); the JSON payload is the typed key with its discriminant
 first, mirroring the Rust serde encoding byte-for-byte so the same slug is valid
 against the v3 server and the v4 app. Decoding validates the full payload shape
@@ -113,8 +113,8 @@ surface.
 
 ### Data model mirror
 
-`web/lib/families.ts` is the TypeScript port of the five-family registry;
-`web/lib/queries.ts` builds chart/group payloads with a wire shape identical to
+`src/bench/lib/families.ts` is the TypeScript port of the five-family registry;
+`src/bench/lib/queries.ts` builds chart/group payloads with a wire shape identical to
 the v3 Axum server (so the frontend is generation-agnostic). The landing-page
 order is the curated `GROUP_ORDER` in `queries.ts`:
 
@@ -130,7 +130,7 @@ Groups not in the list sort last, alphabetically.
 
 ### Database connection
 
-`web/lib/db.ts` resolves a `pg` pool from `BENCH_DB_*` env vars (host, port, name,
+`src/bench/lib/db.ts` resolves a `pg` pool from `BENCH_DB_*` env vars (host, port, name,
 user, password, SSL mode, CA bundle). Production connects as the read-only
 `bench_read` role over `verify-full` TLS against the RDS CA bundle in
 `BENCH_DB_CA` (Node's trust store does not include the Amazon RDS roots, so this
@@ -141,7 +141,7 @@ gap so idle requests don't pay a fresh TLS+auth connect. Each statement has a
 running in PostgreSQL.
 
 Each group Data Cache entry (the group list, and each group's default bundle)
-fills under its own PostgreSQL advisory lock (`web/lib/cache-fill.ts`), shared
+fills under its own PostgreSQL advisory lock (`src/bench/lib/cache-fill.ts`), shared
 across production and preview functions. Different entries fill at once; for one
 entry, one invocation runs the fill, and contenders release their connections
 and retry the Data Cache read with bounded backoff instead of issuing duplicate

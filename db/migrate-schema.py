@@ -8,7 +8,7 @@
 # SPDX-FileCopyrightText: Copyright the Vortex contributors
 
 # `psycopg[binary]` appears in two places: the PEP 723 inline metadata block
-# above (so `uv run scripts/migrate-schema.py` resolves the dep standalone)
+# above (so `uv run db/migrate-schema.py` resolves the dep standalone)
 # and the workspace `dev` group in `pyproject.toml` (so pytest + the rest of
 # the workspace tooling pick it up under `uv run --all-packages`). Keep both
 # in lockstep when bumping the pin.

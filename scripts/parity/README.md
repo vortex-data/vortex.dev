@@ -11,8 +11,13 @@ what they send: the API responses, the status, headers and title of the pages, a
 the pages in the light and the dark theme. Use it before you merge a change that must not alter
 what visitors or API clients see, such as a toolchain or framework upgrade.
 
+It compares the head's bench in both of the forms the app serves it: as bench.vortex.dev serves
+it, from the root of that host, and under `/bench`, as previews and local dev serve it. The base is
+compared as its visitors saw it: from the root of its own app for a ref from before bench joined
+the vortex.dev app (`bench/web`), or through bench.vortex.dev's host for a later one.
+
 ```bash
-bash bench/scripts/parity/run.sh origin/main ~/Backups/vortex-bench/vortex_bench-20261028T171815Z
+bash scripts/parity/run.sh origin/main ~/Backups/vortex-bench/vortex_bench-20261028T171815Z
 ```
 
 The script exits 0 and prints `parity: 0 mismatches` when nothing differs. Otherwise it exits 1.
@@ -39,8 +44,7 @@ code. The check needs no token and changes no Vercel setting.
   Postgres 16 one, Homebrew's `libpq` and the one in `PATH` that can read the archive.
 - A directory-format `pg_dump`, given as the directory itself or as a directory that holds it in
   `vortex_bench.dir`. The script only reads it.
-- `git`, `node`, `bun`, `curl` and `tar`, `pnpm` while a side still has `bench/web/pnpm-lock.yaml`,
-  and Playwright's Chromium (`bun install` at the repository root, then
+- `git`, `node`, `bun`, `curl` and `tar`, and Playwright's Chromium (`bun install` at the repository root, then
   `bunx playwright install chromium` if the browser is missing).
 - About 12 GB of disk for the database, in `$TMPDIR/bench-parity`.
 
@@ -56,19 +60,25 @@ code. The check needs no token and changes no Vercel setting.
    90 seconds. A `pg_restore` from Postgres 17 or later also sets `transaction_timeout`, which
    Postgres 16 rejects. The script ignores that one error and stops on any other.
 3. Exports the base ref with `git archive` into `$TMPDIR/bench-parity/base`. There is no worktree.
-4. Builds each side with its own toolchain: `pnpm install --frozen-lockfile && pnpm build` in
-   `bench/web` when `bench/web/pnpm-lock.yaml` exists, otherwise `bun install --frozen-lockfile` at
-   the root and `bun run --cwd bench/web build`.
+4. Builds each side the way its tree says: `bun install --frozen-lockfile` at the root, then
+   `bun run build` in `bench/web` when the side still has its own bench app there, otherwise at
+   the root.
 5. Serves the base on port 3101 and the head on port 3102, both on `127.0.0.1`, with the same
-   `BENCH_DB_*` variables. It refuses to start when either port is taken, because a stale server
+   `BENCH_DB_*` variables. It refuses to start when a port is taken, because a stale server
    would answer in place of the build. It first deletes the whole `.next/cache` of each side, after
    the builds. The Data Cache keeps its payloads there, and the head's `.next` belongs to your
    working tree, so without this a payload that an earlier run made from older code could answer in
    place of the current code. The next `next build` in your working tree starts without its build
    cache and takes longer.
-6. Compares the responses (`compare-api.ts`), then takes baseline screenshots from the base and
-   compares the head with them (`screenshots.spec.ts`). Both comparisons always run, so one run
-   shows all the differences.
+6. Puts a proxy (`host-proxy.mjs`) on port 3103 in front of the head, which sends every request
+   on with `Host: bench.vortex.dev`, so the head serves bench from the root as it does in
+   production (and one on 3104 in front of a base that is the app too). Neither `fetch` nor a
+   browser can set `Host` itself, and a browser cannot reach bench.vortex.dev over plain HTTP: the
+   whole `.dev` domain is on the HSTS preload list.
+7. Compares the responses (`compare-api.ts`) of the base with the head through the proxy, and with
+   the head under `/bench`. Then it takes baseline screenshots from the base and compares the head
+   with them (`screenshots.spec.ts`), through the proxy and under `/bench`. Every comparison always
+   runs, so one run shows all the differences.
 
 ## What it compares
 
@@ -101,7 +111,7 @@ Requests that fill the group cache (`/api/groups`, `/api/group/{slug}?n=100` and
 which reads the same cache as `/api/groups`) run one at a time, base then head. Each fill takes one advisory lock in the shared database, and a fill that finds it
 taken fails with a 500 after a few retries. Two fills at once, even on different servers, would
 fail for that reason and not because the code differs. All other requests run four at a time. Run
-`bun test bench/scripts/parity/compare-api.test.ts` to test the comparison itself. Use that path:
+`bun test scripts/parity/compare-api.test.ts` to test the comparison itself. Use that path:
 a bare `bun test` also finds bench's Vitest files.
 
 A mismatch is one line with the route and what differs. For a body it names the first differing
@@ -114,7 +124,7 @@ JSON path with both values:
 ```
 
 When two bodies parse to the same JSON but differ in bytes, the line gives the byte offset and the
-text around it. The full output is also in `$TMPDIR/bench-parity/out/api.log`.
+text around it. The full output is also in `$TMPDIR/bench-parity/out/api-host.log` (through the proxy) and `api-prefix.log` (under `/bench`).
 
 **Pages.** `screenshots.spec.ts` captures, in Chromium at 1440×900 (`desktop`) and 390×844
 (`phone`), each in the light theme and again in the dark one (`desktop-dark`, `phone-dark`):
@@ -131,6 +141,12 @@ classes as anti-aliasing: a change in how an edge is smoothed does not fail, but
 differing pixel does, and so does a real layout shift of 1 px or more. That matches a bar of no
 human-perceptible difference. Playwright also retakes a screenshot until two in a row agree, which
 covers a late redraw.
+
+Every test also fails on a same-origin request that answers 400 or more, or that fails other than
+by the page aborting it, and one more test (desktop only) opens the first group, collects every
+same-origin link, icon and image on the landing page and a chart page, and requests each: every
+one must answer below 300. It runs against each server, so it checks the head's links and fetches
+in both forms.
 
 Where a screenshot differs, Playwright keeps three images in
 `$TMPDIR/bench-parity/out/results/`: the expected one (from the base), the actual one (from the
@@ -154,7 +170,11 @@ head) and the diff. The script prints that path. The baselines are in
 
 - A line with `instead of 200` (or of the status an error probe expects) or `request failed` means
   a server did not give the expected answer, not that the data differs. Read `$TMPDIR/bench-parity/base.log` and `head.log`, the logs of the
-  two servers.
+  two servers, and `head-proxy.log`.
+- The restored database must have the schema the base and head read. A dump older than a
+  migration they need (for example `012_commit_branch.sql`, whose `commits.branch` every read
+  filters on) fails every read with a 500. Apply the missing migration to the restored database
+  with `psql`; reruns keep it.
 - Run `run.sh` twice when a result looks odd. The same two builds must give the same answer, and
   a difference that comes and goes is a problem in the check.
 - To start the restore from nothing, stop the script and delete `$TMPDIR/bench-parity/pgdata`.

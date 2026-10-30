@@ -3,11 +3,11 @@ SPDX-License-Identifier: CC-BY-4.0
 SPDX-FileCopyrightText: Copyright the Vortex contributors
 -->
 
-# bench/infra
+# infra
 
 AWS infrastructure for bench (RDS Postgres, its backups and alarms, and GitHub Actions OIDC). One-shot bootstrap, idempotent re-run, fully scripted.
 
-This directory provisions the live v4 stack (the v3 ops tree it once sat beside is decommissioned and deleted). The Vercel reader's deploy hooks live with the Next.js app at `bench/web/` and not here. To restore the database, see [RESTORE.md](RESTORE.md).
+This directory provisions the live v4 stack (the v3 ops tree it once sat beside is decommissioned and deleted). The Vercel reader is the Next.js app's `/bench` routes (`src/app/(bench)/bench/`), which deploy with the vortex.dev site, not here. To restore the database, see [RESTORE.md](RESTORE.md).
 
 ## What `provision.sh` builds
 
@@ -47,7 +47,7 @@ The `bench` profile name follows the convention established in the operator's SS
 ## One-command run
 
 ```sh
-cd bench/infra
+cd infra
 ALARM_HTTPS_ENDPOINT='<incident.io CloudWatch alert source URL>' ./provision.sh
 ```
 
@@ -88,21 +88,21 @@ The script prints the exact `gh variable set` commands; copy them from its outpu
 | `GH_BENCH_READ_ROLE_ARN` | the read-only OIDC role ARN | `vortex-data/vortex` CI jobs that diff against the published numbers, as Postgres user `bench_ci_read` |
 
 The Vercel reader also connects to the public instance endpoint. It is
-configured through `BENCH_DB_*` Vercel env vars (see `bench/web/README.md`),
+configured through `BENCH_DB_*` Vercel env vars (see `docs/bench/web.md`),
 because Vercel does not read GitHub repo variables.
 
 No secrets are needed — IAM auth is the credential. The master password is RDS-managed; it is used only for the one-time bootstrap apply (see "Schema deploys + one-time bootstrap" below), never for steady-state CI.
 
 ## Schema deploys + one-time bootstrap
 
-Schema migrations under `migrations/` are applied by
+Schema migrations under `db/migrations/` are applied by
 `.github/workflows/bench-schema-deploy.yml` (wired in PR-1.4). The workflow is
 `workflow_dispatch` only: an operator triggers it manually from the GitHub
 Actions UI, optionally with `dry_run: true` to report drift via
 `migrate-schema.py status` without applying. That manual trigger is the deploy
 gate. Per the 2026-05-29 deploy-model decision, the intended deferred change is
-to ALSO trigger `apply` on push under `paths: migrations/** +
-scripts/migrate-schema.py` (PR merge becomes the deploy gate) -- NOT a GitHub
+to ALSO trigger `apply` on push under `paths: db/migrations/** +
+db/migrate-schema.py` (PR merge becomes the deploy gate) -- NOT a GitHub
 Environment / manual-approval gate; execution safety comes from the per-PR
 testcontainer migration test, not a human click. The runner path is included in
 `paths` so a runner-only change still triggers a deploy.
@@ -136,8 +136,7 @@ master user, out-of-band. Two endpoint details matter:
 `PGSSLMODE=verify-full` is mandatory here: the bootstrap transmits the master
 password, so the RDS server certificate MUST be verified (a bare `require` only
 encrypts, it does not authenticate the server -- a MITM could capture the
-master password). Run these commands from the repository root (the `scripts/`
-path below is relative to `bench/`, not to `bench/infra/`).
+master password). Run these commands from `db/`, where the runner is.
 Download the CA bundle first:
 
 ```sh
@@ -161,7 +160,7 @@ PGPASSWORD=$(printf '%s' "$master_secret" | jq -er '.password') || exit 1
 export PGPASSWORD
 export PGSSLMODE=verify-full
 export PGSSLROOTCERT=/tmp/rds-global-bundle.pem
-uv run --no-project scripts/migrate-schema.py apply
+uv run --no-project migrate-schema.py apply
 ```
 
 This applies `001` (schema) and every migration carrying the
@@ -170,7 +169,7 @@ This applies `001` (schema) and every migration carrying the
 `query_measurements` table). The marker in each file is authoritative; the
 runner refuses to apply a marked file under a non-master role. The single source
 of truth for the bootstrap-ordering contract is
-[`migrations/README.md`](../../migrations/README.md) § "Bootstrap ordering —
+[`migrations/README.md`](../db/migrations/README.md) § "Bootstrap ordering —
 `requires-superuser` migrations"; apply every marked migration as the master
 here. `003` (a ledger grant) carries no marker. After the bootstrap, *unmarked*
 migrations are applied by the `schema-deploy` workflow as `migrator` against the

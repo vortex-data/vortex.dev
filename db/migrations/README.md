@@ -3,10 +3,10 @@ SPDX-License-Identifier: CC-BY-4.0
 SPDX-FileCopyrightText: Copyright the Vortex contributors
 -->
 
-# `migrations/` — benchmarks-website Postgres DDL
+# `db/migrations/` — bench Postgres DDL
 
 Each `*.sql` file in this directory is a forward-only migration applied in
-filename order by [`scripts/migrate-schema.py`](../scripts/migrate-schema.py).
+filename order by [`db/migrate-schema.py`](../migrate-schema.py).
 The runner tracks applied migrations in the `_applied_migrations` table on the
 target database and is idempotent: re-running a migration set whose filenames
 all appear in `_applied_migrations` is a no-op.
@@ -114,7 +114,7 @@ Migrations whose header carries a `-- migrate-schema: requires-superuser`
 marker comment (currently `002`, `004`, `005`, `006`, `007`, `008`, and `011`; the marker in
 the file is authoritative, not this list) must be applied by a master-capable
 role. Before applying a marked file, the runner
-([`scripts/migrate-schema.py`](../scripts/migrate-schema.py)) asserts the
+([`db/migrate-schema.py`](../migrate-schema.py)) asserts the
 connected role is **master-capable** — the capability proxy is `rolsuper OR
 rolcreaterole` (a true superuser locally, or the RDS master, which has
 `CREATEROLE`). If the connected role has neither, the runner raises
@@ -141,10 +141,10 @@ for connection, permission, filesystem, or usage failures. `apply` returns 0 on 
 on failure. The schema workflow resolves Python dependencies before interpreting these codes,
 so a dependency download failure cannot appear as an informational dry-run drift result.
 
-Run the CLI integration suite with Docker available:
+Run the CLI integration suite from `db/`, with Docker available:
 
 ```bash
-uv run --no-project --with 'psycopg[binary]>=3.2' python -m unittest discover -s scripts/tests -v
+uv run --no-project --with 'psycopg[binary]>=3.2' python -m unittest discover -s tests -v
 ```
 
 The suite applies the real migrations to disposable PostgreSQL 16, checks a second apply,

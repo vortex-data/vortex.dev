@@ -3,21 +3,24 @@
 Next.js 16 (App Router) read service serving the benchmark charts at
 [bench.vortex.dev](https://bench.vortex.dev) from the benchmarks Postgres database. This is the
 v4 frontend that replaced both the v2 Vite/React SPA and the v3 Axum server — see
-[`../docs/legacy.md`](../docs/legacy.md).
+[`legacy.md`](legacy.md).
+
+It is part of the vortex.dev app: its routes are `src/app/(bench)/bench/`, with their own root
+layout, and its code is `src/bench/`. bench.vortex.dev serves them from its root; everywhere else
+(previews, local dev, a deployment's own URL) they are under `/bench`. See "Repository layout" in
+the root `CLAUDE.md`.
 
 ## Local development
 
-This app is a member of the repository's Bun workspace. Install and run it from the repository
-root:
+Install and run the app from the repository root:
 
 ```bash
-bun install                           # installs the whole workspace from the root bun.lock
-bun run --cwd bench/web dev           # needs BENCH_DB_* pointing at a database (see below)
+bun install            # installs the app from the root bun.lock
+bun run dev            # bench is at http://localhost:3000/bench; needs BENCH_DB_* (see below)
 
-bun run --cwd bench/web format:check  # biome format
-bun run --cwd bench/web lint          # biome lint
-bun run --cwd bench/web build         # next build; deliberately works WITHOUT a database
-bun run --cwd bench/web test          # vitest; the Postgres integration suite needs Docker, or BENCH_TEST_DATABASE_URL, and uv
+bun run check:ci       # biome format and lint
+bun run build          # next build, both sites; deliberately works WITHOUT a database
+bun run test:bench     # vitest; the Postgres integration suite needs Docker, or BENCH_TEST_DATABASE_URL, and uv
 ```
 
 Without Docker, run the integration suite against a local Postgres. This starts a throwaway
@@ -39,11 +42,11 @@ the variable fails the suite instead of skipping it.
 
 `next build` never touches the database: every page and route is request-rendered
 (`force-dynamic` or request-URL-dependent), so builds are reproducible with no `BENCH_DB_*`
-configured. Keep it that way; the CI `test` job builds with no database on purpose.
+configured. Keep it that way; the CI job builds with no database on purpose.
 
 ## Database environment
 
-Connection config is read by `lib/db.ts`:
+Connection config is read by `src/bench/lib/db.ts`:
 
 | Variable                        | Required           | Meaning                                                                                                                                       |
 | ------------------------------- | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -67,20 +70,24 @@ warmth:
 
 - The data routes (`/api/groups`, `/api/group/*`, `/api/chart/*`) set
   `Cache-Control: public, s-maxage=300, stale-while-revalidate=3600` on success responses
-  (`lib/cache.ts`); error responses omit the header so they are never CDN-cached. `/api/health`
+  (`src/bench/lib/cache.ts`); error responses omit the header so they are never CDN-cached. `/api/health`
   is deliberately uncached so the liveness probe always reflects the live database.
 - The HTML pages (`/` and `/chart/:slug`) cannot set response headers from a server component,
   and Next.js emits `Cache-Control: no-store` for `force-dynamic` pages, which takes precedence
   over config-file `Cache-Control` rules. Instead, `vercel.json` sets `Vercel-CDN-Cache-Control`
   on those routes: that header is consumed (and stripped) by Vercel's CDN alone at the highest
   precedence, so the CDN caches the rendered pages while browsers still revalidate every load.
+  Header rules match the path as requested, before the app's rewrites, so the rule names both
+  forms of each page: `/` and `/chart/:slug` on bench.vortex.dev's host, and `/bench` and
+  `/bench/chart/:slug`.
 
-The deploy workflow verifies the expected build SHA through `/api/health`, a representative group
-and chart JSON response, the landing and chart pages, and a CDN `HIT` on repeated landing/chart-API
-requests. The probe has a three-minute deadline. Production uses the public `BENCH_SITE_BASE_URL`
-and fails verification on authentication errors or redirects. A protected preview reports
-verification as blocked, with no claim that its health, build identity, or caching passed. To check
-a protected preview by hand, use `vercel curl`.
+After each production deployment, `.github/workflows/bench-verify-deploy.yml` verifies the
+expected build SHA through `/api/health`, a representative group and chart JSON response, the
+landing and chart pages, and a CDN `HIT` on repeated landing/chart-API requests, under `/bench` on
+the deployment's own URL. The probe has a three-minute deadline, and fails on authentication
+errors or redirects. A protected deployment URL needs Vercel's Protection Bypass for Automation,
+whose secret the workflow sends from the `VERCEL_AUTOMATION_BYPASS_SECRET` repository secret. To
+check a protected deployment by hand, use `vercel curl`.
 
 One deliberate
 divergence from the API routes: the `vercel.json` header rules apply to every response status,
@@ -92,33 +99,22 @@ were, the same HTML page rule would bound it).
 
 ## Deploys
 
-`.github/workflows/bench-ci.yml` runs the check suite on every PR touching `bench/`, including
-`migrations/**` (the integration suite applies that DDL to its testcontainer). It is a required
-check on `main`. `.github/workflows/bench-deploy.yml` deploys via the Vercel CLI (`vercel pull` /
-`vercel build` / `vercel deploy --prebuilt`): a preview deployment per same-repo PR that touches
-`bench/`, and a production deployment on each push to `main` that does. Before it builds, the
-deploy workflow runs the same checks (the `bench-checks` composite action) on the exact commit it
-deploys. Fork PRs run CI but do not receive deployment credentials.
+The `Bench: format, lint, build, test` job in `.github/workflows/ci.yml` runs the check suite (the
+`bench-checks` composite action) on every PR that can affect bench, including `db/migrations/**`
+(the integration suite applies that DDL to its testcontainer). It is a required check on `main`.
 
-The `bench-production` environment limits manual production runs to `main`. Push and manual
-production runs share one production queue and let an active deploy finish verification. New
-preview runs can cancel older previews of the same event and ref. The Vercel CLI builds on the
-runner and uploads the prebuilt output. `BENCH_BUILD_SHA` is embedded in that output so the
-uncached health endpoint identifies the checked-out build.
+bench deploys with the vortex.dev site: the `vortex` Vercel project builds the app through its
+git integration, a preview deployment for every pull request and a production deployment for every
+push to `main`. A pull request's preview serves both sites, bench under `/bench`. Vercel sets
+`VERCEL_GIT_COMMIT_SHA` during the build, and `next.config.mjs` embeds it, so the uncached health
+endpoint and the footer name the deployed commit. The keep-warm workflow pings
+`BENCH_SITE_BASE_URL` (a repository variable, the public production URL as `https://<domain>`).
 
-One-time operator setup:
+Operator setup on the `vortex` project:
 
-1. Create the Vercel project: Framework Next.js, **Root Directory `bench/web`**,
-   and the GitHub integration **disabled** (deploys are CLI-driven from CI; the integration
-   would double-deploy).
-2. Set the repo variables `VERCEL_ORG_ID` + `BENCH_VERCEL_PROJECT_ID` (from the Vercel project
-   settings), and the secret `VERCEL_TOKEN` (a deploy token scoped to this Vercel project) in
-   both the `bench-preview` and `bench-production` GitHub environments. Limit
-   `bench-production` to `main`. Set the repo variable `BENCH_SITE_BASE_URL` to the public
-   production URL as `https://<domain>`. The keep-warm workflow uses the same variable.
-   Production deployment requires it before uploading and verifies the public domain after
-   deployment.
-3. Configure `BENCH_DB_*` on the Vercel project (Production and Preview environments). Two
+1. bench.vortex.dev is one of the project's domains, with the production deployment.
+2. Configure `BENCH_REVALIDATE_TOKEN` (Production, for the ingest hook) and `BENCH_DB_*`
+   (Production and Preview environments) on the project. Two
    wiring points are set in this step, per environment:
    - **Endpoint**: the public RDS instance endpoint (the same endpoint CI writers use). There is
      no RDS Proxy: the one provisioned earlier was VPC-internal, so Vercel functions could not

@@ -27,10 +27,6 @@ path = [
   "*.mjs",
   "*.toml",
   "*.ts",
-  # bench/ source files carry their own SPDX headers; these are the files that can't.
-  "bench/**.gitignore",
-  "bench/**.json",
-  "bench/**.yaml",
 ]
 SPDX-FileCopyrightText = "Copyright the Vortex contributors"
 SPDX-License-Identifier = "Apache-2.0"
@@ -50,12 +46,10 @@ path = [
   "src/assets/vortex_symbol_dark_theme.svg",
   "src/assets/vortex_wordmark.svg",
   "src/assets/vortex_wordmark_dark_theme.svg",
-  "bench/public/Vortex_Black_NoBG.svg",
-  "bench/public/Vortex_White_NoBG.svg",
-  "bench/web/public/Vortex_Black_NoBG.svg",
-  "bench/web/public/Vortex_White_NoBG.svg",
-  "bench/web/public/icon-dark.png",
-  "bench/web/public/icon-light.png",
+  "public/bench/Vortex_Black_NoBG.svg",
+  "public/bench/Vortex_White_NoBG.svg",
+  "public/bench/icon-dark.png",
+  "public/bench/icon-light.png",
 ]
 SPDX-FileCopyrightText = "Copyright the Vortex contributors"
 SPDX-License-Identifier = "CC-BY-4.0"

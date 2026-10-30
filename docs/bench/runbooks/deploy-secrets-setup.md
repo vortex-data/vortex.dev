@@ -10,6 +10,11 @@ SPDX-FileCopyrightText: Copyright the Vortex contributors
 > the move into `vortex-data/vortex.dev`, the variables, secrets and environments live there, the
 > workflows are `.github/workflows/bench-*.yml`, and the schema role trusts `vortex.dev`'s `main`.
 > The cutover steps in vortex-data/vortex.dev#113 replace the GitHub, Vercel and AWS steps here.
+> bench has since joined the vortex.dev Next.js app: the `vortex` Vercel project builds and deploys
+> it with the site through its git integration, so its own Vercel project, the CLI deploy and its
+> `VERCEL_*` variables and secret (Sections A, C and E.1, E.3) no longer apply. The `BENCH_DB_*` and
+> `BENCH_REVALIDATE_TOKEN` variables (Section B) live on the `vortex` project. The code paths below
+> are the current ones; the workflow and directory names are the original repository's.
 
 ## Overview
 
@@ -25,9 +30,9 @@ Vercel project env, GitHub Actions secrets, or AWS — this document lists names
 values from, never values themselves.
 
 **Related documentation (cross-reference — do not duplicate):**
-- [`infra/README.md`](../../infra/README.md) — RDS Postgres, backups, alarms and OIDC provisioning
+- [`infra/README.md`](../../../infra/README.md) — RDS Postgres, backups, alarms and OIDC provisioning
   history and bootstrap procedure for account `245040174862`.
-- [`migrations/README.md`](../../migrations/README.md) — schema migration bootstrap ordering,
+- [`migrations/README.md`](../../../db/migrations/README.md) — schema migration bootstrap ordering,
   `requires-superuser` marker contract, and `migrator` role history.
 
 ## Prerequisites
@@ -62,7 +67,7 @@ will point production at the winning project at that time.
 
    - **Dashboard path:** Vercel Dashboard → New Project → Import Git Repository →
      `vortex-data/benchmarks-website`. When prompted for configuration:
-     - Set **Root Directory** = `web/` (the Next.js app lives there; `web/vercel.json` is the
+     - Set **Root Directory** = `web/` (the Next.js app lives there; `vercel.json` is the
        project config file Vercel reads for cron, headers, and other project settings).
      - Framework preset: Next.js (auto-detected from `web/package.json`).
    - **CLI path (from `web/`):**
@@ -119,7 +124,7 @@ will point production at the winning project at that time.
 ## B. Set the Vercel project environment variables
 
 In the new project's **Production AND Preview** environments, set the following variables. These are
-consumed by `web/lib/db.ts` (database connection pool) and `web/app/api/revalidate/route.ts`
+consumed by `src/bench/lib/db.ts` (database connection pool) and `src/app/(bench)/bench/api/revalidate/route.ts`
 (cache revalidation bearer).
 
 Copy values from the existing monorepo-owned Vercel project's environment settings, or from your
@@ -150,8 +155,8 @@ team's secret store. **Never paste a value into this document.**
 > `post-ingest.py`.
 
 > **`BENCH_DATA_TAG` is not env-configurable:** the Next.js Data Cache tag is a compile-time constant
-> (`export const BENCH_DATA_TAG = 'bench-data'` in `web/lib/data-cache.ts`), imported directly by
-> `web/app/api/revalidate/route.ts` — nothing reads `process.env.BENCH_DATA_TAG`. Do **not** set it as
+> (`export const BENCH_DATA_TAG = 'bench-data'` in `src/bench/lib/data-cache.ts`), imported directly by
+> `src/app/(bench)/bench/api/revalidate/route.ts` — nothing reads `process.env.BENCH_DATA_TAG`. Do **not** set it as
 > a Vercel env var (it would be a no-op). To change the tag, edit the source constant and redeploy.
 
 To set variables via CLI (repeat for each name; example for `BENCH_DB_HOST`):
@@ -168,7 +173,7 @@ Or use the Vercel Dashboard: Project → Settings → Environment Variables → 
 After setting all variables, verify via **Section E** in order: `E.1` builds the project and `E.3`
 runs the first real deploy (`web-deploy.yml`). Only after `E.3` are there deployed functions to
 inspect — then check the Vercel function logs for any `Missing required environment variable` errors
-from `web/lib/db.ts`; a successful `/api/health` response confirms the pool is connected.
+from `src/bench/lib/db.ts`; a successful `/api/health` response confirms the pool is connected.
 
 ---
 

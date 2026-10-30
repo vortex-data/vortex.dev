@@ -5,10 +5,12 @@ SPDX-FileCopyrightText: Copyright the Vortex contributors
 
 # benchmarks-website
 
-> This lives in [`vortex-data/vortex.dev`](https://github.com/vortex-data/vortex.dev) under
-> `bench/`. It used to be the standalone `vortex-data/benchmarks-website` repository, which is
-> archived and keeps the history before the move. Its workflows are the `bench-*.yml` files in
-> the repository's `.github/workflows/`, and `main` is the production branch.
+> This lives in [`vortex-data/vortex.dev`](https://github.com/vortex-data/vortex.dev), in the
+> same Next.js app as the vortex.dev site: its routes under `/bench`, which bench.vortex.dev serves
+> from its root. It used to be the standalone `vortex-data/benchmarks-website` repository, which
+> is archived and keeps the history before the move. CI checks it in `ci.yml`, its other
+> workflows are the `bench-*.yml` files in the repository's `.github/workflows/`, and `main` is
+> the production branch.
 
 The public home for **Vortex benchmark results** — and the data pipeline behind it. Benchmark jobs
 in the [`vortex-data/vortex`](https://github.com/vortex-data/vortex) monorepo emit one measurement
@@ -39,7 +41,7 @@ the site reads straight from it.
         │ (direct SQL)     │ (flush the read cache)
         ▼                  ▼
 ┌────────────────┐  SQL  ┌─────────────────────────────┐      ┌────────────────────┐
-│ AWS RDS        │◀──────│ web/ — Next.js read service │─────▶│ charts, one per    │
+│ AWS RDS        │◀──────│ Next.js read service        │─────▶│ charts, one per    │
 │ Postgres       │       │ on Vercel (server-rendered, │      │ dimension tuple    │
 │ (vortex_bench) │       │ Data Cache + CDN in front)  │      │ @ bench.vortex.dev │
 └────────────────┘       └─────────────────────────────┘      └────────────────────┘
@@ -54,11 +56,12 @@ The versioned wire format is this repo's [`CONTRACT.md`](CONTRACT.md).
 **Store.** One AWS RDS Postgres database holds one fact table per measurement kind plus a
 `commits` dimension table. Each fact row is keyed by `measurement_id`, a deterministic hash of
 the commit and dimension tuple, so re-running a benchmark for the same commit updates the row
-instead of duplicating it. The schema lives in [`migrations/`](migrations/) and deploys through a
+instead of duplicating it. The schema lives in [`db/migrations/`](../../db/migrations/) and deploys through a
 GitHub-OIDC workflow, and a single `SCHEMA_VERSION` integer keeps emitters and readers in
 lockstep across the two repos.
 
-**Read.** [`web/`](web/README.md) is a Next.js App Router app on Vercel. Every page is rendered
+**Read.** The read service ([`web.md`](web.md)) is the `/bench` routes of the vortex.dev Next.js
+App Router app on Vercel. Every page is rendered
 on the server from live Postgres queries — there is no build-time data step — and two cache
 layers make that cheap: the Next.js Data Cache keeps the default views warm (flushed by the
 ingest hook `POST /api/revalidate` after each run lands), and the Vercel CDN serves repeat
@@ -67,50 +70,54 @@ encode their dimension tuple.
 
 The full story — the data pipeline in detail, the read path and its caches, how a low-traffic
 serverless site stays fast, deploy and infra, and the design decisions behind the stack — is in
-[**`docs/architecture/`**](docs/architecture/README.md). **Start there.**
+[**`docs/bench/architecture/`**](architecture/README.md). **Start there.**
 
 This site is the third generation of the benchmarks site; the previous two (v2 and v3) are
 retired or being decommissioned, and everything about them lives in
-[`docs/legacy.md`](docs/legacy.md).
+[`docs/bench/legacy.md`](legacy.md).
 
 ## Find your way around
 
 | If you want to… | Go to |
 |---|---|
-| understand the whole system | [`docs/architecture/`](docs/architecture/README.md) |
-| know the emitter ↔ ingest wire format | [`CONTRACT.md`](CONTRACT.md) |
-| work in this tree (env vars, conventions, footguns) | [`AGENTS.md`](AGENTS.md) |
-| deploy, set up secrets, or run a data refresh | [`docs/runbooks/`](docs/runbooks/) |
-| read about the previous generations (v2, v3) | [`docs/legacy.md`](docs/legacy.md) |
+| understand the whole system | [`docs/bench/architecture/`](architecture/README.md) |
+| know the emitter ↔ ingest wire format | [`docs/bench/CONTRACT.md`](CONTRACT.md) |
+| work in this tree (env vars, conventions, footguns) | [`CLAUDE.md`](../../CLAUDE.md), section "bench" |
+| deploy, set up secrets, or run a data refresh | [`docs/bench/runbooks/`](runbooks/) |
+| read about the previous generations (v2, v3) | [`docs/bench/legacy.md`](legacy.md) |
 | dig into one component | the per-directory READMEs in the layout below |
 
 ## Layout
 
+All paths are from the repository root.
+
 | Path | What it is |
 |------|------------|
-| `web/` | The Next.js read service on Vercel ([README](web/README.md)). |
-| `migrations/` | The Postgres schema — SQL migrations + the `_applied_migrations` ledger. |
-| `infra/` | AWS provisioning for the hosted Postgres + IAM ([README](infra/README.md)). |
-| `scripts/` | The schema-deploy runner and golden fixtures. |
-| `docs/` | Architecture docs, operational runbooks, and the legacy-generations doc. |
+| `src/app/(bench)/bench/` | The read service's routes, pages and root layout ([web.md](web.md)). |
+| `src/bench/` | Its components, library and stylesheets. |
+| `public/bench/` | Its public files: the logo and the icons. |
+| `db/` | The Postgres schema (`db/migrations/`, SQL migrations + the `_applied_migrations` ledger) and its runner, `db/migrate-schema.py`. |
+| `infra/` | AWS provisioning for the hosted Postgres + IAM ([README](../../infra/README.md)). |
+| `scripts/parity/`, `scripts/verify-web-deploy.mjs` | The parity check and the post-deploy check. |
+| `docs/bench/` | Architecture docs, operational runbooks, the contract and the legacy-generations doc. |
 
 ## Quick start
 
 ```bash
-# From the repository root. The web app needs BENCH_DB_* env vars for a real database — see
-# web/README.md.
-bun install && bun run --cwd bench/web dev
+# From the repository root. bench needs BENCH_DB_* env vars for a real database — see
+# docs/bench/web.md. It is at http://localhost:3000/bench.
+bun install && bun run dev
 ```
 
-`bun run --cwd bench/web build` deliberately works without a database, so CI can build with no
-secrets. See [`AGENTS.md`](AGENTS.md) for the full local-dev and env-var contract.
+`bun run build` deliberately works without a database, so CI can build with no secrets. See
+[`CLAUDE.md`](../../CLAUDE.md) for the full local-dev and env-var contract.
 
 ## Status
 
 The site is **live production**: `bench.vortex.dev` is served by the Vercel deployment, and the
 monorepo emitters write each run directly to Postgres as a required CI step. The v3 generation is
 fully decommissioned (infrastructure and code); what remains is the v2 teardown, whose inventory
-is in [`docs/legacy.md`](docs/legacy.md).
+is in [`docs/bench/legacy.md`](legacy.md).
 
 ## License
 

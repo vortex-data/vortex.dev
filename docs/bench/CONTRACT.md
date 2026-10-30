@@ -14,7 +14,7 @@ read service.
 > **Scope.** There is one ingest path: the monorepo's `scripts/post-ingest.py --postgres` writes
 > emitter records directly into the hosted RDS Postgres and then pings this repo's read service
 > to flush its cache. The retired v3 HTTP ingest path (`POST /api/ingest` into a Rust server) is
-> described in [`docs/legacy.md`](docs/legacy.md); the record shapes on the wire are unchanged
+> described in [`docs/legacy.md`](legacy.md); the record shapes on the wire are unchanged
 > from that era, which is why the producer flag is still spelled `--gh-json-v3`.
 
 ## Versioning: `SCHEMA_VERSION`
@@ -26,9 +26,9 @@ lockstep. Bumping it is a coordinated, multi-site change.
 
 | Anchor | File | Form |
 |---|---|---|
-| Source of truth | `web/lib/schema-version.ts` | `export const SCHEMA_VERSION = 3;` |
+| Source of truth | `src/bench/lib/schema-version.ts` | `export const SCHEMA_VERSION = 3;` |
 
-The consistency check in `web/lib/schema-version.test.ts` asserts this file and the anchor
+The consistency check in `src/bench/lib/schema-version.test.ts` asserts this file and the anchor
 quoted in this document agree automatically.
 
 ### Cross-repo sites (documented, NOT testable from this repo)
@@ -57,7 +57,7 @@ one JSON object per line, no envelope. `records` are discriminated by a `kind` f
 
 Each record's fields are defined by the producer structs in the monorepo's
 `vortex-bench/src/v3.rs` and match the column names of its fact table (see
-[`migrations/`](migrations/) for the DDL). `scripts/post-ingest.py` validates and maps them
+[`db/migrations/`](../../db/migrations/) for the DDL). `scripts/post-ingest.py` validates and maps them
 column-by-column; an unknown `kind` or a missing dimension field fails the ingest run.
 
 `compression_size` records include `uncompressed_bytes`, the Arrow memory size after the
@@ -80,11 +80,11 @@ best-effort — a failure fails the bench job and alerts):
    (`ON CONFLICT (commit_sha) DO UPDATE`) before applying any record.
    The row's `branch` column (migration 012) defaults to `develop`, the only branch the
    ingest role may write from today, so the writer does not send it. The read service charts
-   only `develop` commits (`web/lib/branch.ts`); a writer that ingests another branch must set
+   only `develop` commits (`src/bench/lib/branch.ts`); a writer that ingests another branch must set
    `branch` on the commit row.
 2. **Direct write:** `INSERT … ON CONFLICT (measurement_id) DO UPDATE` into RDS as the
    least-privilege `bench_ingest` IAM role (IAM auth, `sslmode=verify-full`), against the
-   schema in this repo's `migrations/`. Each JSONL file applies in one transaction.
+   schema in this repo's `db/migrations/`. Each JSONL file applies in one transaction.
 3. **Revalidate ping:** `POST {BENCH_SITE_BASE_URL}/api/revalidate` with
    `Authorization: Bearer $BENCH_REVALIDATE_TOKEN`, to mark the Next.js Data Cache stale so
    it refreshes against freshly written data: the next read serves the previous data once
@@ -106,7 +106,7 @@ retired v3 server, which wrote the production rows) and **never regenerated**; t
 `scripts/tests/test_measurement_id.py` asserts every vector byte-for-byte in CI. The golden
 vectors ARE the contract.
 
-### `POST /api/revalidate` (`web/app/api/revalidate/route.ts`)
+### `POST /api/revalidate` (`src/app/(bench)/bench/api/revalidate/route.ts`)
 
 - **Auth:** bearer token compared in constant time against `BENCH_REVALIDATE_TOKEN`.
 - **Responses:**
@@ -125,7 +125,7 @@ vectors ARE the contract.
 A version bump or wire-shape change is a coordinated change across BOTH repos in one
 logical change:
 
-1. **This repo:** `web/lib/schema-version.ts` (and the schema in `migrations/` if columns
+1. **This repo:** `src/bench/lib/schema-version.ts` (and the schema in `db/migrations/` if columns
    change).
 2. **Monorepo:** `vortex-bench/src/v3.rs` (the producer wire shape) and
    `scripts/post-ingest.py` (the hardcoded literal plus its column mapping).

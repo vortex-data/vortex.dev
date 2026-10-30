@@ -59,7 +59,7 @@ A wire-shape mismatch between producer and reader is a hard, loud failure (409/4
 on every ingest) rather than silent data corruption. The in-repo anchors are
 asserted by a test; the cross-repo anchors are documented and must be bumped in
 the same logical change.
-→ `CONTRACT.md`, `web/lib/schema-version.test.ts`.
+→ `CONTRACT.md`, `src/bench/lib/schema-version.test.ts`.
 
 ## Ingest
 
@@ -107,7 +107,7 @@ compares every non-key column per row — the real correctness gate for a prod l
 LTTB downsampling and pan/zoom are fast enough in plain JavaScript; most of the
 cost is layout, not an inner loop. Avoiding WASM/SPA keeps the bundle small, the
 first paint fast, and iteration simple.
-→ `server/static/chart-init.js`, `AGENTS.md`.
+→ `server/static/chart-init.js`, `CLAUDE.md`.
 
 **Precompute the hot path (v3); cache the hot path (v4).**
 The landing page is heavy. v3 materialized the latest-100 view into precomputed,
@@ -115,13 +115,13 @@ pre-compressed byte artifacts at ingest time (zero SQL per load). v4 keeps the
 same "default window is special" instinct but expresses it as a cache layer (the
 `bench-data`-tagged Data Cache) over live Postgres, so there's no in-memory read
 model to operate.
-→ `server/ARCHITECTURE.md`, `web/lib/data-cache.ts`.
+→ `server/ARCHITECTURE.md`, `src/bench/lib/data-cache.ts`.
 
 **`force-dynamic` pages over prerendering (v4).**
 Rendering at request time keeps `next build` independent of a live database (CI
 needs no DB secrets) and removes any prerender-staleness budget. Freshness is the
 cache layers' job, not the build's.
-→ `web/app/page.tsx`, `web/app/chart/[slug]/page.tsx`.
+→ `src/app/(bench)/bench/page.tsx`, `src/app/(bench)/bench/chart/[slug]/page.tsx`.
 
 **Two cache layers, flushed by an ingest hook with a 24h backstop.**
 The CDN (5-min `s-maxage`) absorbs repeat traffic; the Data Cache (24h backstop)
@@ -129,7 +129,7 @@ keeps the default window warm on a low-traffic site. `POST /api/revalidate` flus
 the Data Cache tag on ingest so fresh data shows immediately; the backstop is only
 the cap if that hook fails. The endpoint **fails closed** (503 when unconfigured)
 so an unconfigured deployment never accepts an unauthenticated flush.
-→ `web/lib/cache.ts`, `web/lib/data-cache.ts`, `web/app/api/revalidate/route.ts`.
+→ `src/bench/lib/cache.ts`, `src/bench/lib/data-cache.ts`, `src/app/(bench)/bench/api/revalidate/route.ts`.
 
 **Only the default window is cached; `?n=` is clamped to 1000.**
 Caching every window would explode the key space, so only the default last-100 is
@@ -137,14 +137,14 @@ memoized and other windows ride the per-URL CDN cache. The numeric clamp is a Do
 floor against `?n=99999999`; `?n=all` is the explicit, uncapped escape hatch.
 Visual thinning happens client-side via LTTB, so the server never needs a huge
 window for a readable chart.
-→ `web/lib/window.ts`, `web/lib/data-cache.ts`, `AGENTS.md`.
+→ `src/bench/lib/window.ts`, `src/bench/lib/data-cache.ts`, `CLAUDE.md`.
 
 **Opaque, Rust-compatible slugs.**
 Slugs are `<prefix>.<base64url-json>`, encoded identically in Rust and TypeScript
 so the same slug works against v3 and v4. The client only echoes server-issued
 slugs, and decoding validates the full shape, so they are not an injection
 surface.
-→ `web/lib/slug.ts`.
+→ `src/bench/lib/slug.ts`.
 
 ## Performance & client hydration
 
@@ -159,7 +159,7 @@ v3 auto-queued a background `?n=all` fetch for every chart on group open; on a
 the windowed fetches a user actually waits on. v4 removed the auto-warmup: full
 history loads only on a deliberate per-chart signal — a window-chip click, a
 ~1000ms hover dwell, or a pan/zoom into the unloaded region.
-→ `web/components/chart/controller.ts`, `web/lib/chart-format.ts`.
+→ `src/bench/components/chart/controller.ts`, `src/bench/lib/chart-format.ts`.
 
 **Bounded windows render on the full-length virtual x-axis.**
 Loading a small window and then "more" normally re-bases the Chart.js x-axis
@@ -167,21 +167,21 @@ Loading a small window and then "more" normally re-bases the Chart.js x-axis
 the start, with `null` placeholders for the unloaded prefix; the `?n=all` upgrade
 fills those nulls in place, so nothing re-bases and the visible window is
 preserved. This is what lets opt-in full history feel seamless.
-→ `web/lib/chart-format.ts` (`normalizeChartPayload`).
+→ `src/bench/lib/chart-format.ts` (`normalizeChartPayload`).
 
 **Lazy, top-first hydration on the landing page.**
 Opening a large group hydrated every card at once, and bottom-first (in island-
 registration order). Hydration is now gated by an `IntersectionObserver`
 (`rootMargin '300px 0px'`) and ordered `priority = -index`, so only the ~6
 visible charts hydrate on open and the top renders first.
-→ `web/components/Chart.tsx`.
+→ `src/bench/components/Chart.tsx`.
 
 **Chart fetches are abortable, time-bounded, and retryable.**
 Each fetch carries an `AbortController` and a 30s timeout; closing/reopening a
 group cancels its in-flight fetches rather than piling load on the server, and a
 stall aborts instead of spinning forever. 30s is headroom over the ~7.8s cold
 first-hit, so a slow-but-live request is not falsely killed.
-→ `web/components/chart/controller.ts`, `web/lib/chart-store/bundles.ts`.
+→ `src/bench/components/chart/controller.ts`, `src/bench/lib/chart-store/bundles.ts`.
 
 **Expand All loads one bundle per group, not N per-chart requests.**
 The viewport-gated per-chart path loads only what is on screen — the opposite of
@@ -190,7 +190,7 @@ bundle into a session-lifetime payload cache, priming every chart with a single
 request; the `IntersectionObserver` still gates the CPU-bound Chart.js
 construction. The cache is per-session by design (a close/reopen costs zero
 fetches).
-→ `web/lib/chart-store/bundles.ts` (`ensureGroupBundle`).
+→ `src/bench/lib/chart-store/bundles.ts` (`ensureGroupBundle`).
 
 **A warmer cron keeps the function and its DB connections hot.**
 Caches handle repeat reads but not the first read after idle. A Vercel-native
@@ -200,7 +200,7 @@ a pooled connection survives between pings. A Vercel-native cron is used (not
 only the GitHub `bench-keep-warm` workflow) because GitHub scheduled workflows fire
 only from the default branch, whereas the Vercel cron also runs against the
 feature-branch production deploy.
-→ `web/vercel.json`, `web/lib/db.ts`.
+→ `vercel.json`, `src/bench/lib/db.ts`.
 
 **`query_measurements` reads filter on the denormalized `commit_timestamp`.**
 The per-chart query used to read a chart's full ~18k-row history to return the
@@ -209,7 +209,7 @@ scan. Filtering directly on the denormalized, indexed `commit_timestamp` makes i
 a bounded index scan returning identical rows (≈5× per chart, ≈9× cold per
 group). Performance Insights showed the load was in-process — not I/O- or
 core-bound — so reading fewer rows, not more hardware, was the fix.
-→ `web/lib/queries.ts` (`queryMeasurementWindowFilter`), migrations `006`/`007`.
+→ `src/bench/lib/queries.ts` (`queryMeasurementWindowFilter`), migrations `006`/`007`.
 
 **`?n=all` cold reads were fixed with RAM, not downsampling.**
 Loading a large group's full history cold is physical-I/O-bound: the ~6GB working
@@ -236,21 +236,21 @@ to what that role can do.
 The role-management and ownership DDL (the `requires-superuser` migrations) is
 applied once by the RDS master; afterwards CI runs as the unprivileged `migrator`
 against an already-applied ledger. CI never holds master-capable privileges.
-→ `scripts/migrate-schema.py`, `infra/README.md`.
+→ `db/migrate-schema.py`, `infra/README.md`.
 
-**An independently-owned Vercel project, built on the runner.**
-This repo's Vercel project is keyed by its own org/project IDs with git
-integration off, and the build runs on the GitHub runner via `vercel build` +
-`vercel deploy --prebuilt`. Both choices stop this repo's deploys from racing the
-monorepo's deploys to its project, and give this repo full control of the build
-environment.
-→ `.github/workflows/bench-deploy.yml`.
+**One app with the vortex.dev site, one Vercel project.**
+bench was first its own Vercel project, built on the GitHub runner with the
+Vercel CLI and deployed prebuilt. It is now the `/bench` routes of the vortex.dev
+Next.js app, which the `vortex` project builds and deploys through its git
+integration, so a pull request gets one preview with both sites. bench.vortex.dev
+keeps every public URL: the app rewrites that host's paths onto `/bench`.
+→ `next.config.mjs`, `src/bench/lib/base-path.ts`.
 
 **`main` is production; per-PR CI is the gate.**
 No staging environment. A merge to `main` ships straight to the v4 production
 domain; the testcontainer migration test and the rest of CI are what gate the
-merge.
-→ `.github/workflows/bench-deploy.yml`.
+merge. Each production deployment's bench is checked after it is live.
+→ `.github/workflows/bench-verify-deploy.yml`.
 
 **Open security group, IAM/password as the gate.**
 RDS is publicly reachable on 5432; the access control is the IAM token signature
@@ -265,7 +265,7 @@ runners). It had no client connections in five months and was deleted on
 2026-10-28. Reads go to the public instance endpoint as `bench_read`,
 and the CDN + Data Cache absorb nearly all read load; a managed pooler is
 revisited only if connection exhaustion actually surfaces.
-→ `web/lib/db.ts`, `infra/provision.sh`.
+→ `src/bench/lib/db.ts`, `infra/provision.sh`.
 
 **Polling deploy for the v3 host.**
 The EC2 host pulls (timer → fetch → build → atomic symlink swap → health-check →

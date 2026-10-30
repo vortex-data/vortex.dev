@@ -8,18 +8,18 @@ SPDX-FileCopyrightText: Copyright the Vortex contributors
 How the v4 stack is provisioned, how code and schema reach production, and the
 (decommissioned) legacy v3 host deploy. Operational detail lives in the runbooks
 ([`../runbooks/`](../runbooks/)) and
-[`../../infra/README.md`](../../infra/README.md); this doc is the *why* and the
+[`infra/README.md`](../../../infra/README.md); this doc is the *why* and the
 map.
 
 ## AWS infrastructure (`infra/`)
 
-Provisioned by [`infra/provision.sh`](../../infra/provision.sh) in **us-east-1**.
+Provisioned by [`infra/provision.sh`](../../../infra/provision.sh) in **us-east-1**.
 
 | Resource | What | Notes |
 |---|---|---|
 | RDS Postgres `vortex-bench-prod` | The v4 database (`vortex_bench`) | Postgres 16, `db.r7g.large` (16 GiB — upsized from the bootstrap default so the working set fits in cache; see [performance.md](performance.md#nall-is-io-bound-the-answer-was-ram-not-downsampling)), IAM auth enabled, managed master password in Secrets Manager (auto-rotated), publicly accessible, 35-day backups (PITR), deletion protection, storage autoscaling to 100 GiB, automatic minor upgrades. |
-| Backup replica in `us-west-2` | Off-region copy of the automated backups | Snapshots and WAL, 14 days of point-in-time recovery. Restore procedure: [`infra/RESTORE.md`](../../infra/RESTORE.md). |
-| SNS topic `vortex-bench-alarms` | Alarms and RDS events | Three CloudWatch alarms (free storage, CPU, connections) and the `failure` / `low storage` RDS events, sent to incident.io. See [`infra/README.md`](../../infra/README.md#alarms). |
+| Backup replica in `us-west-2` | Off-region copy of the automated backups | Snapshots and WAL, 14 days of point-in-time recovery. Restore procedure: [`infra/RESTORE.md`](../../../infra/RESTORE.md). |
+| SNS topic `vortex-bench-alarms` | Alarms and RDS events | Three CloudWatch alarms (free storage, CPU, connections) and the `failure` / `low storage` RDS events, sent to incident.io. See [`infra/README.md`](../../../infra/README.md#alarms). |
 | Security group `vortex-bench-sg` | Inbound 5432 from `0.0.0.0/0` | The network is open on purpose — the **IAM token signature (or the `bench_read` password) is the gate**, not a network ACL. |
 | GitHub OIDC provider | `token.actions.githubusercontent.com` | Account-scoped; lets GitHub Actions assume roles with no long-lived keys. |
 | `GitHubBenchmarkSchemaRole` | Role the schema-deploy workflow assumes | Trust scoped to specific repo + branches; permission is `rds-db:connect` as the `migrator` DB user on the **instance**. |
@@ -39,7 +39,7 @@ Provisioned by [`infra/provision.sh`](../../infra/provision.sh) in **us-east-1**
   do that (no AWS creds in the runtime, and `rds_iam` disables password auth), so
   `bench_read` is the one role that uses a static password.
 
-## Postgres roles and migrations (`migrations/`)
+## Postgres roles and migrations (`db/migrations/`)
 
 The schema is a Postgres translation of the v3 DuckDB schema: the `commits`
 dimension table plus the six fact tables, all keyed by `measurement_id`, with
@@ -71,7 +71,7 @@ operator clicks "Run workflow"
 GitHub OIDC ──assume──▶ GitHubBenchmarkSchemaRole
    │
    ▼
-scripts/migrate-schema.py  ──IAM token, verify-full TLS──▶  RDS as `migrator`
+db/migrate-schema.py       ──IAM token, verify-full TLS──▶  RDS as `migrator`
    │
    ├─ apply: run pending migrations in order, record each in the ledger
    └─ status: report applied / pending / orphaned (drift); exit 1 if any drift
@@ -86,56 +86,47 @@ scripts/migrate-schema.py  ──IAM token, verify-full TLS──▶  RDS as `mi
 - Serialized concurrency (`cancel-in-progress: false`) prevents two operators
   racing an apply against the same database.
 - `migrate-schema.py` is a self-contained PEP 723 script run via `uv run
-  --no-project` (bench has no `pyproject.toml`, so the workflow only installs
+  --no-project` (the repository has no `pyproject.toml`, so the workflow only installs
   uv).
 
-## Web deploy (`.github/workflows/bench-deploy.yml`)
+## Web deploy (the `vortex` Vercel project)
 
 ```
-push to main     ──▶  production deploy
-workflow_dispatch ──▶  preview or production (production from main only)
-same-repo PR      ──▶  preview (event merge commit)
+same-repo or fork PR ──▶  Vercel preview of the whole app (bench under /bench)
+push to main         ──▶  Vercel production deploy (vortex.dev + bench.vortex.dev)
    │
    ▼
-shared checks on exact SHA: format + lint + build + test
+Vercel builds on its own builders: `bun install --frozen-lockfile`, `bun run build`
    │
    ▼
-runner: `vercel build [--prod]` on the same SHA
+production ready ──▶ deployment_status ──▶ .github/workflows/bench-verify-deploy.yml
    │
    ▼
-`vercel deploy --prebuilt [--prod]`
-   │
-   ▼
-verify build SHA + read paths + CDN HIT (bounded retries)
+verify build SHA + read paths + CDN HIT under /bench on the deployment URL (bounded retries)
 ```
 
-- The Vercel project `benchmarks-website` is keyed by `VERCEL_ORG_ID` +
-  `BENCH_VERCEL_PROJECT_ID` (GitHub *variables*) and `VERCEL_TOKEN` (a token
-  scoped to that project, in the `bench-preview` and `bench-production`
-  environments), with **git integration turned off**. Bench deploys never touch
-  the `vortex` project that serves the marketing site.
-- The build runs **on the GitHub runner** (not Vercel's builders), so the workflow
-  sets up Bun and Node and runs `bun install --frozen-lockfile` at the repository
-  root (`bench/web` is a member of the root Bun workspace) before `vercel build`,
-  which runs the same install command from `web/vercel.json`; the prebuilt output
-  is then uploaded, eliminating a build race.
-- `main` **is** production — there is no staging gate. The per-PR CI
-  (including a testcontainer migration test) is the gate; a merge to `main`
-  ships to the v4 production domain after the deploy workflow checks the same commit.
-- Push and manual production runs share one concurrency group without cancelling an active run.
-  This serializes promotion and verification across both triggers. Previews can cancel stale runs.
-- Production verification uses `BENCH_SITE_BASE_URL`. A protected preview reports verification
-  as blocked. A production authentication error or failed probe fails the workflow.
+- bench is part of the vortex.dev app, so the `vortex` project's git integration
+  builds and deploys it with the marketing site: one preview per pull request with
+  both sites, and one production deployment per push to `main`. bench.vortex.dev is
+  one of that project's domains; `next.config.mjs` serves bench from its root.
+- `main` **is** production — there is no staging gate. The per-PR CI (including a
+  testcontainer migration test) is the gate. Vercel deploys a merge to `main` as
+  soon as it builds; `ci.yml` checks the same commit beside it, not before it.
+- After each production deployment, `bench-verify-deploy.yml` runs
+  `scripts/verify-web-deploy.mjs` against bench under `/bench` on the deployment's
+  own URL. An authentication error or a failed probe fails the workflow. A protected
+  deployment URL needs Vercel's Protection Bypass for Automation; the workflow sends
+  its secret from the `VERCEL_AUTOMATION_BYPASS_SECRET` repository secret.
 - A `bench-keep-warm` scheduled workflow pings the production deployment so the RDS
-  connection pool and Data Cache stay warm between visits.
+  connection pool and Data Cache stay warm between visits, and the Vercel cron in
+  `vercel.json` calls `/bench/api/health` every two minutes.
 
 ### Required merge check
 
 The `main` ruleset of `vortex-data/vortex.dev` requires `Bench: format, lint, build, test` from
-**GitHub Actions** (app ID `15368`), beside the marketing site's checks. It does not require
-branches to be up to date before merging, so a merged commit is never checked before it lands.
-That is why `bench-deploy.yml` runs the same checks (the `bench-checks` composite action) on the
-exact commit it deploys, and deploys only if they pass.
+**GitHub Actions** (app ID `15368`), beside the marketing site's checks. The job is in `ci.yml`
+and runs the `bench-checks` composite action. The ruleset does not require branches to be up to
+date before merging, so a merged commit is never checked before it lands.
 
 To see the check for a commit:
 
@@ -170,11 +161,11 @@ The host, its backups, and the `ops/` scripts are all gone (see
 
 | Thing | Where |
 |---|---|
-| Vercel project IDs | `VERCEL_ORG_ID` / `BENCH_VERCEL_PROJECT_ID` GitHub variables in `vortex-data/vortex.dev` |
-| Vercel deploy token | `VERCEL_TOKEN` secret in the `bench-preview` and `bench-production` GitHub environments |
+| Vercel project | `vortex`, with the git integration; bench.vortex.dev is one of its domains |
+| Deploy-check bypass | `VERCEL_AUTOMATION_BYPASS_SECRET` repository secret (Vercel's Protection Bypass for Automation), when the deployment URL is protected |
 | Schema-deploy role ARN, RDS region/db/endpoint | `GH_BENCH_SCHEMA_ROLE_ARN`, `RDS_BENCH_REGION`, `RDS_BENCH_DB_NAME`, `RDS_BENCH_INSTANCE_ENDPOINT` GitHub variables |
-| v4 DB connection (reader) | `BENCH_DB_*` Vercel environment variables (Production/Preview) |
-| Revalidate token | `BENCH_REVALIDATE_TOKEN` Vercel env (deferred until emitter cutover) |
+| v4 DB connection (reader) | `BENCH_DB_*` environment variables on the `vortex` project (Production/Preview) |
+| Revalidate token | `BENCH_REVALIDATE_TOKEN` environment variable on the `vortex` project |
 | RDS master password | AWS Secrets Manager (`rds!db-…`, auto-rotated) |
 
 The full secret/variable inventory and the step-by-step setup are in
