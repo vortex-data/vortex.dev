@@ -330,13 +330,18 @@ test.describe("blog post", () => {
     await expect(page.locator(".vx-article-kind")).toHaveText("Bulletin");
     const dek = page.locator(".vx-article-dek");
     await expect(dek).toContainText("Polar Signals");
-    // Two lines at most.
+    // Two lines at most, except on a phone, where the dek runs to its end.
     const lines = await dek.evaluate(
       (e) =>
         e.getBoundingClientRect().height /
         Number.parseFloat(getComputedStyle(e).lineHeight)
     );
-    expect(lines).toBeLessThanOrEqual(2.05);
+    if ((page.viewportSize()?.width ?? 0) > 640)
+      expect(lines).toBeLessThanOrEqual(2.05);
+    else
+      expect(await dek.evaluate((e) => e.scrollHeight <= e.clientHeight)).toBe(
+        true
+      );
   });
 
   test("code blocks take the CodeBlock card and the syntax tokens", async ({
@@ -956,4 +961,66 @@ test.describe("design system rules on the blog", () => {
       expect(fits).toBe(true);
     });
   }
+});
+
+// Each post's Cover, drawn from its slug at build time: the band at the top
+// of the post and its Open Graph image.
+test.describe("covers", () => {
+  const SLUGS = [
+    "btrblocks-compressor",
+    "december-2025",
+    "november-2025",
+    "october-2025",
+    "september-2025",
+    "september",
+    "welcome"
+  ];
+
+  test("each post opens on its own cover, with the slab and its characters", async ({
+    page
+  }) => {
+    const seen = new Set<string>();
+    for (const slug of SLUGS) {
+      await page.goto(`/blog/${slug}`);
+      const band = page.locator("article .vx-cover.vx-article-cover");
+      await expect(band.locator("svg.vx-cover-art")).toHaveAttribute(
+        "aria-hidden",
+        "true"
+      );
+      await expect(band.locator("rect.vx-cover-slab")).toHaveCount(1);
+      expect(await band.locator("text.vx-cover-ch").count()).toBeGreaterThan(3);
+      seen.add(await band.innerHTML());
+    }
+    expect(seen.size).toBe(SLUGS.length);
+  });
+
+  test("the slab takes the theme's accent", async ({ page }) => {
+    await page.goto("/blog/welcome");
+    const fill = () =>
+      page
+        .locator("rect.vx-cover-slab")
+        .evaluate((e) => getComputedStyle(e).fill);
+    const dark = await fill();
+    await page
+      .getByRole("group", { name: "Theme" })
+      .getByRole("button", { name: "Light" })
+      .click();
+    await expect.poll(fill).not.toBe(dark);
+  });
+
+  test("each post's Open Graph image is its own 1200 × 630 PNG", async ({
+    request
+  }) => {
+    const sizes = new Set<number>();
+    for (const slug of ["btrblocks-compressor", "welcome"]) {
+      const res = await request.get(`/blog/${slug}/opengraph-image`);
+      expect(res.status()).toBe(200);
+      expect(res.headers()["content-type"]).toBe("image/png");
+      const png = await res.body();
+      expect(png.readUInt32BE(16)).toBe(1200);
+      expect(png.readUInt32BE(20)).toBe(630);
+      sizes.add(png.length);
+    }
+    expect(sizes.size).toBe(2);
+  });
 });

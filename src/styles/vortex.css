@@ -714,7 +714,8 @@
 /* The head reads the post's kind (an Eyebrow), the title, the dek and the byline. */
 .vx-article-kind { margin: 0 0 var(--space-16); }
 .vx-article-title { margin: 0 0 var(--space-16); color: var(--ink); text-wrap: balance; }
-/* The dek says what the post is in one sentence. Two lines at most: a longer one is cut. */
+/* The dek says what the post is in one sentence. Two lines at most: a longer one is cut, except
+   on a phone, where it runs to its end. */
 .vx-article-dek {
   display: -webkit-box;
   margin: 0 0 var(--space-16);
@@ -838,6 +839,7 @@
 @media (max-width: 640px) {
   .vx-article { padding: var(--space-8) 0 var(--space-24); font-size: 16px; border: 0; background: none; }
   .vx-article-title { font-size: 36px; }
+  .vx-article-dek { display: block; font-size: 16px; -webkit-line-clamp: none; line-clamp: none; }
   .vx-article-cover { margin: 0 0 var(--space-24); aspect-ratio: 8 / 3; border: 1px solid var(--line); border-radius: var(--radius-card); }
   .vx-post-nav { grid-template-columns: minmax(0, 1fr); }
   .vx-post-nav-link.is-next { grid-column: auto; text-align: left; }

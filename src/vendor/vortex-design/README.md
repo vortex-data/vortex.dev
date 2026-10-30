@@ -2,7 +2,7 @@
 
 Copied unchanged from the Vortex design system's `components/lib/`: `ascii-mark.js`,
 `ascii-core.js`, `benchmark-card.js`, `benchmark-card.d.ts`, `theme.js`, `callout.js`,
-`code-block.js` and their `.d.ts` files on 2026-10-29, the rest on 2026-10-28. Do not edit them here: change the
+`code-block.js` and their `.d.ts` files on 2026-10-29, `cover.js` and `cover.d.ts` on 2026-10-30, the rest on 2026-10-28. Do not edit them here: change the
 system, then copy them again. Biome skips this folder.
 
 | File | What it is |
@@ -15,7 +15,8 @@ system, then copy them again. Biome skips this folder.
 | `theme.js` | The ThemeSwitch's rules: the first-paint script for the blog's paths (`themeBootstrap`), `isThemeable`, `themeFor`, `readChoice` and `saveChoice` |
 | `callout.js` | The Callout card's Markdown rule: `calloutOf` turns a GitHub alert or an emoji-led blockquote into an aside |
 | `code-block.js` | The CodeBlock card's Shiki theme (`shikiTheme`) and labels (`codeLabel`) |
-| `theme.d.ts`, `callout.d.ts`, `code-block.d.ts` | Their types, which the system ships beside them |
+| `cover.js` | The Cover card's generator: `coverFor(seed, opts)`, the SVG a post's slug draws, and `coverLayout`, the same parts as data for the Open Graph image |
+| `theme.d.ts`, `callout.d.ts`, `code-block.d.ts`, `cover.d.ts` | Their types, which the system ships beside them |
 
 `ascii-mark.d.ts`, `ascii-core.d.ts` and `three.d.ts` are the site's own: types for TypeScript,
 not part of the system. The site bundles three.js from npm (`three`,

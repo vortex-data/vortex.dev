@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import NextLink from "next/link";
 import { notFound } from "next/navigation";
+import { PostCover } from "@/components/blog/post-cover";
 import { PostRows } from "@/components/blog/post-rows";
 import { ArrowBackIcon } from "@/components/icons";
 import { MDXRenderer } from "@/components/MDXRenderer";
@@ -96,6 +97,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
         Back to blog
       </NextLink>
       <article className="vx-card vx-article vx-reading">
+        <PostCover slug={slug} className="vx-article-cover" />
         <header className="vx-article-head">
           <p className="vx-label vx-eyebrow vx-article-kind">
             {kindLabel(post.kind)}
