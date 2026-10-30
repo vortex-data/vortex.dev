@@ -1,7 +1,7 @@
 /* Vortex design system components (sections: base, brand, site, docs, blog, focus), copied by tools/site-styles.mjs.
    Edit the system, then run tools/site-styles.mjs; do not edit here.
    Made by: node tools/site-styles.mjs <site> --sections base,brand,site,docs,blog,focus --faces --vx-face --base
-   sha256 09de882771dcf70527e946f7eed2a68df34451b844277f066bf7c1b31c2a3f22 */
+   sha256 1aafa77dcc0315a1cf236f4e33cacc21e4a19c979d13ddb9fa32eb82ec187646 */
 
 /* ------------------------------------------------------------------ base */
 /* Every component sizes with border-box, so it draws the same under a site's reset or none. */
@@ -524,7 +524,7 @@
 .vx-bar-track { height: 6px; background: var(--chart-track); }
 .vx-bar-fill { display: block; height: 100%; background: var(--chart-muted); }
 .vx-bar.is-ours { color: var(--accent-ink); }
-.vx-bar.is-ours .vx-bar-fill { background: var(--chart-1); }
+.vx-bar.is-ours .vx-bar-fill { background: var(--chart-vortex); }
 /* Parquet, Lance and Arrow take muted tints of their colours, so the bars are not grey on grey,
    drawn at 42% so that Vortex's Blue is the one solid bar and leads even where the others are
    longer. Every bar prints its value, so the bar is never the only way to read it. */

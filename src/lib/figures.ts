@@ -2,7 +2,7 @@
 export interface Bar {
   name: string;
   value: number;
-  /** Vortex's own bar, in `chart-1`. People and other systems are grey. */
+  /** Vortex's own bar, in `chart-vortex`. People and other systems are grey. */
   ours?: boolean;
   /** A ratio after the value, such as "0.62×". */
   extra?: string;

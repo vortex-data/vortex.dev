@@ -1,7 +1,7 @@
 /* Vortex design system tokens, copied by tools/site-styles.mjs.
    Edit the system, then run tools/site-styles.mjs; do not edit here.
    Made by: node tools/site-styles.mjs <site> --sections base,brand,site,docs,blog,focus --faces --vx-face --base
-   sha256 90c0178a9cf80e45b38fb55610b2230a274c797fadfd64c1ae21fa444f151301 */
+   sha256 28ff622d2c049d9c7b73ebab1f1c29fd4c61761c6b2de1cac042256d0f2dfd05 */
 :root, [data-theme="dark"] {
   --white: #ffffff;
   --grey-50: #fcfcf9;
@@ -46,7 +46,7 @@
   --syntax-function: var(--orange);
   --syntax-string: var(--white);
   --syntax-comment: var(--grey-450);
-  --chart-1: var(--accent);
+  --chart-vortex: var(--accent);
   --chart-muted: var(--grey-600);
   --chart-parquet: #0d8a97;
   --chart-lance: #976fa1;
@@ -86,7 +86,7 @@
   --syntax-function: #a8460f;
   --syntax-string: var(--black);
   --syntax-comment: var(--grey-500);
-  --chart-1: var(--accent);
+  --chart-vortex: var(--accent);
   --chart-muted: var(--grey-300);
   --chart-track: var(--grey-100);
   --chart-2: #a8460f;
