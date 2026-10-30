@@ -122,22 +122,33 @@ describe('seriesStyle', () => {
     expect(style('datafusion', 'parquet').width).toBeGreaterThan(style('duckdb', 'lance').width);
   });
 
-  it('gives the duckdb run of a format its own shade, at the same width', () => {
+  it("draws the duckdb run of a format dashed, in the format's color and width", () => {
     for (const format of ['vortex-file-compressed', 'vortex-compact', 'parquet', 'lance']) {
       for (const theme of ['dark', 'light'] as const) {
         const datafusion = style('datafusion', format, theme);
         const duckdb = style('duckdb', format, theme);
-        expect(duckdb.color, format).not.toBe(datafusion.color);
+        expect(duckdb.color, format).toBe(datafusion.color);
         expect(duckdb.width, format).toBe(datafusion.width);
+        expect(datafusion.dash, format).toEqual([]);
+        expect(duckdb.dash, format).toEqual([6, 4]);
       }
     }
   });
 
-  it('changes color, never width, with the theme', () => {
+  it('draws a cold random-access run dashed and a hot one solid', () => {
+    const cold = seriesStyle('parquet:cold', { format: 'parquet' }, 'dark');
+    const hot = seriesStyle('parquet:hot', { format: 'parquet' }, 'dark');
+    expect(cold.color).toBe(hot.color);
+    expect(cold.dash).toEqual([6, 4]);
+    expect(hot.dash).toEqual([]);
+  });
+
+  it('changes color, never width or dash, with the theme', () => {
     const dark = style('duckdb', 'parquet', 'dark');
     const light = style('duckdb', 'parquet', 'light');
     expect(light.color).not.toBe(dark.color);
     expect(light.width).toBe(dark.width);
+    expect(light.dash).toEqual(dark.dash);
   });
 
   it('derives engine/format from the label when meta is absent', () => {
@@ -349,9 +360,6 @@ describe('series palette legibility', () => {
   ) => seriesStyle(q.key, tag(q.engine, q.format), theme).color;
   const formatColor = (format: string, theme: 'dark' | 'light') =>
     seriesStyle(format, { format }, theme).color;
-  /** A format's signature series: its engine-less color, also its datafusion one. */
-  const isSignature = (q: { engine: string; format: string }) =>
-    q.engine === 'datafusion' || q.format === 'duckdb';
 
   for (const theme of THEMES) {
     describe(`on the ${theme} card`, () => {
@@ -379,26 +387,9 @@ describe('series palette legibility', () => {
         }
       });
 
-      it('gives each format signature series its format color', () => {
-        for (const q of QUERY.filter(isSignature)) {
+      it('gives every series of a query chart its format color, on every engine', () => {
+        for (const q of QUERY) {
           expect(queryColor(q, theme), q.key).toBe(formatColor(q.format, theme));
-        }
-      });
-
-      it('keeps the duckdb shades apart from their own format and from every other line', () => {
-        // The duckdb runs of a format are a shade of the format's color. They
-        // must still read apart from the datafusion line of the same format and
-        // from every other line on the chart: at least ΔE2000 15 (the closest
-        // pair in the earlier palette) and 5 for color-blind readers (it was 3).
-        for (const [i, a] of QUERY.entries()) {
-          for (const b of QUERY.slice(i + 1)) {
-            if (isSignature(a) && isSignature(b)) {
-              continue; // covered by the format rule above
-            }
-            const [ca, cb] = [queryColor(a, theme), queryColor(b, theme)];
-            expect(deltaE(ca, cb), `${a.key} ${ca} / ${b.key} ${cb}`).toBeGreaterThanOrEqual(15);
-            expect(colorBlind(ca, cb), `${a.key} ${ca} / ${b.key} ${cb}`).toBeGreaterThanOrEqual(5);
-          }
         }
       });
 

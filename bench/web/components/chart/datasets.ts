@@ -47,10 +47,9 @@ export function buildDatasets(payload: NormalizedChartPayload, theme: ChartTheme
     .map((name) => {
       const seriesMeta = meta[name] ?? {};
       const rawValues = Array.isArray(raw[name]) ? raw[name] : [];
-      // The format's color for this card theme and its tier width (see
-      // `seriesStyle`).
+      // The format's color for this card theme, its tier width, and the
+      // engine's dash (see `seriesStyle`).
       const style = seriesStyle(name, seriesMeta, theme);
-      const coldRandomAccess = name.endsWith(':cold');
       // `data` starts null-padded; `rebuildVisibleAndUpdate` fills the current
       // visible window with raw or LTTB-kept values. With `spanGaps: true` the
       // line connects across nulls, so a series with partial coverage still
@@ -63,9 +62,8 @@ export function buildDatasets(payload: NormalizedChartPayload, theme: ChartTheme
         borderColor: style.color,
         backgroundColor: `${style.color}20`,
         borderWidth: style.width,
-        // `undefined` draws a solid line. Chart.js's types forbid an explicit
-        // `undefined` under `exactOptionalPropertyTypes`; the cast changes no value.
-        borderDash: (coldRandomAccess ? [6, 4] : undefined) as number[],
+        // An empty pattern draws a solid line.
+        borderDash: style.dash,
         // Layer the hero series on top: Vortex in front ... arrow at the back,
         // datafusion ahead of duckdb. Lower `order` renders on top in Chart.js.
         order: seriesOrder(name, seriesMeta),

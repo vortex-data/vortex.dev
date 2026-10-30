@@ -82,9 +82,10 @@ export const MAX_VISIBLE_POINTS = 500;
 // ---------------------------------------------------------------------------
 // Series styling by importance. Each format has a color tied to its identity:
 // Vortex is the design system's cobalt, vortex-compact red, Parquet teal, Lance
-// purple, DuckDB yellow, and Arrow orange. The duckdb runs of a format are a
-// shade of the format's color: lighter on the Dark card, and on the Light card
-// whichever shade keeps the lines apart. Widths carry the importance tiers.
+// purple, DuckDB green, and Arrow orange. The color means the format and
+// nothing else, so a format looks the same on every engine: the line style
+// shows the engine instead. A duckdb run is dashed, as is a cold random-access
+// run (the two never share a chart). Widths carry the importance tiers.
 //
 // The palette has one set of colors per card theme, because one set cannot
 // stay legible on both cards: a color with 3:1 contrast against both the
@@ -94,9 +95,7 @@ export const MAX_VISIBLE_POINTS = 500;
 //
 // - every color has at least 3:1 contrast against the card;
 // - every two formats differ by at least ΔE2000 25, and by at least 12 under
-//   simulated protanopia and deuteranopia;
-// - every other two lines in a query chart (a duckdb shade against any other
-//   line) differ by at least ΔE2000 15, and 5 under the simulations.
+//   simulated protanopia and deuteranopia.
 //
 // The chart controller recolors a drawn chart when the theme changes.
 // ---------------------------------------------------------------------------
@@ -104,11 +103,16 @@ export const MAX_VISIBLE_POINTS = 500;
 /** The card theme a chart draws on. */
 export type ChartTheme = 'dark' | 'light';
 
-/** The resolved line style for one series: a color and a width (px). */
+/** The resolved line style for one series: a color, a width (px), and a dash
+ * pattern (empty for a solid line). */
 export interface SeriesStyle {
   color: string;
   width: number;
+  dash: number[];
 }
+
+/** The dash of a duckdb run and of a cold random-access run. */
+const DASH: readonly number[] = [6, 4];
 
 /** Line widths per importance tier, reinforcing the color hierarchy. */
 const HERO_WIDTH = 2.6;
@@ -120,11 +124,9 @@ const MUTED_WIDTH = 1.4;
 /** A color per card theme. */
 type Themed = Record<ChartTheme, string>;
 
-/** One format's style: its signature color, the shade its duckdb runs take
- * (when the format runs on more than one engine), and its width. */
+/** One format's style: its color on each card, and its width. */
 interface FormatStyle {
   color: Themed;
-  duckdb?: Themed;
   width: number;
 }
 
@@ -134,29 +136,24 @@ const VORTEX: Themed = { dark: '#2f63ff', light: '#2f63ff' };
 /** Arrow's orange (rust on the Light card), shared by arrow and arrow-ipc. */
 const ARROW: FormatStyle = { color: { dark: '#e08a3c', light: '#914500' }, width: MUTED_WIDTH };
 
-/** Per-format styles. The signature color is used for the engine-less series
- * (compression time, size, random access), for datafusion, and for any engine
- * other than duckdb. */
+/** Per-format styles, the same for every engine and for the engine-less series
+ * (compression time, size, random access). */
 const FORMAT: Record<string, FormatStyle> = {
   'vortex-file-compressed': {
     color: VORTEX,
-    duckdb: { dark: '#8fa9ff', light: '#264494' }, // light and deep cobalt
     width: HERO_WIDTH,
   },
   'vortex-compact': {
     color: { dark: '#d61f2c', light: '#cb5862' }, // red
-    duckdb: { dark: '#f07a86', light: '#5f1826' }, // pink and maroon
     width: COMPACT_WIDTH,
   },
   parquet: {
-    color: { dark: '#0fb0aa', light: '#009391' }, // teal
-    duckdb: { dark: '#5ff5ee', light: '#0e90c1' }, // aqua and cerulean
+    color: { dark: '#09aeae', light: '#009391' }, // teal
     width: SECONDARY_WIDTH,
   },
-  duckdb: { color: { dark: '#f2d65a', light: '#9c880b' }, width: NATIVE_WIDTH }, // yellow and gold
+  duckdb: { color: { dark: '#81da8b', light: '#2b5038' }, width: NATIVE_WIDTH }, // soft green and forest
   lance: {
     color: { dark: '#b03c9e', light: '#532866' }, // purple
-    duckdb: { dark: '#d08ad0', light: '#f628bf' }, // orchid and magenta
     width: MUTED_WIDTH,
   },
   arrow: ARROW,
@@ -180,11 +177,12 @@ function seriesDims(
 }
 
 /**
- * The line color and width for a series on a card of the given theme. The
- * format sets both: the Vortex hero gets the thickest line, Parquet and
- * vortex-compact a notch less, and lance and arrow the thinnest. A duckdb run
- * takes the format's duckdb shade, so the two engines stay apart in a query
- * chart. An unknown format gets a thin neutral gray.
+ * The line style for a series on a card of the given theme. The format sets
+ * the color and width: the Vortex hero gets the thickest line, Parquet and
+ * vortex-compact a notch less, and lance and arrow the thinnest. The engine
+ * sets the dash: a duckdb run is dashed, so the two engines stay apart in a
+ * query chart while a format keeps one color. A cold random-access run is
+ * dashed too. An unknown format gets a thin neutral gray.
  */
 export function seriesStyle(
   name: string,
@@ -192,12 +190,12 @@ export function seriesStyle(
   theme: ChartTheme,
 ): SeriesStyle {
   const { engine, format } = seriesDims(name, meta);
+  const dash = engine === 'duckdb' || name.endsWith(':cold') ? [...DASH] : [];
   const style = format ? FORMAT[format] : undefined;
   if (!style) {
-    return { color: FALLBACK_COLOR, width: MUTED_WIDTH };
+    return { color: FALLBACK_COLOR, width: MUTED_WIDTH, dash };
   }
-  const shade = engine === 'duckdb' ? style.duckdb : undefined;
-  return { color: (shade ?? style.color)[theme], width: style.width };
+  return { color: style.color[theme], width: style.width, dash };
 }
 
 /** Format draw priority, front (low) to back (high) -- Chart.js renders a lower
