@@ -10,8 +10,9 @@
 #
 # Triggers: a production deploy on every push to main that touches bench/ or
 # the root files bench/web builds from (package.json, bun.lock, bunfig.toml,
-# tsconfig.base.json); a preview deploy on every same-repo pull request that
-# does, with the preview URL posted back to the PR as a sticky comment; and
+# tsconfig.base.json), or the Vercel CLI in .github/vercel-cli; a preview deploy
+# on every same-repo pull request that does, with the preview URL posted back to
+# the PR as a sticky comment; and
 # `workflow_dispatch` for manual preview or production runs. Fork PRs are
 # skipped, since they can't read VERCEL_TOKEN.
 #
@@ -32,6 +33,7 @@ on:
       - 'bun.lock'
       - 'bunfig.toml'
       - 'tsconfig.base.json'
+      - '.github/vercel-cli/**'
       - '.github/workflows/bench-deploy.yml'
   pull_request:
     branches: [main]
@@ -41,6 +43,7 @@ on:
       - 'bun.lock'
       - 'bunfig.toml'
       - 'tsconfig.base.json'
+      - '.github/vercel-cli/**'
       - '.github/workflows/bench-deploy.yml'
   workflow_dispatch:
     inputs:
@@ -65,8 +68,6 @@ permissions:
 env:
   VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
   VERCEL_PROJECT_ID: ${{ vars.BENCH_VERCEL_PROJECT_ID }}
-  # renovate: datasource=npm depName=vercel
-  VERCEL_CLI_VERSION: "64.0.2"
 
 jobs:
   # Run bench's checks on the exact commit this run deploys. main takes squash
@@ -133,17 +134,15 @@ jobs:
         with:
           node-version-file: .nvmrc
 
-      # An exact version, and `--before` gives the CLI's whole dependency tree
-      # the repository's 7-day cooldown, so this job, which holds VERCEL_TOKEN,
-      # never installs a freshly published package. There's no lockfile: the
-      # CLI pins vulnerable versions of its own dependencies that nothing here
-      # can patch (see CLAUDE.md "bench advisories"), and a lockfile would put
-      # them in front of dependency review on every PR.
+      # .github/vercel-cli pins the CLI and locks its whole dependency tree. Its
+      # overrides patch advisories in dependencies the CLI pins (see CLAUDE.md
+      # "bench advisories"). This job holds VERCEL_TOKEN, so lifecycle scripts
+      # stay off.
       - name: Install Vercel CLI
+        working-directory: .github/vercel-cli
         run: |
-          npm install -g --ignore-scripts --no-audit --no-fund \
-            --before="$(date -u -d '7 days ago' +%Y-%m-%dT%H:%M:%SZ)" \
-            "vercel@${VERCEL_CLI_VERSION}"
+          npm ci --ignore-scripts --no-audit --no-fund
+          echo "$PWD/node_modules/.bin" >> "$GITHUB_PATH"
 
       # Production verification probes the public domain, so it has to be set.
       - name: Require a public production verification URL
@@ -182,11 +181,12 @@ jobs:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
           set -Eeuo pipefail
+          # Outside a terminal the CLI prints its result as JSON.
+          args=(deploy --prebuilt --format json)
           if [ "${TARGET}" = "production" ]; then
-            url="$(vercel deploy --prebuilt --prod | tail -n1)"
-          else
-            url="$(vercel deploy --prebuilt | tail -n1)"
+            args+=(--prod)
           fi
+          url="$(vercel "${args[@]}" | jq -er '.deployment.url')"
           echo "url=${url}" >> "$GITHUB_OUTPUT"
           printf 'Deployed: %s\n' "$url"
 
