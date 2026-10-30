@@ -1,8 +1,8 @@
 name: Changed paths
 description: >-
-  Report which of the repository's two apps a push or pull request touches, so
-  each app's CI can skip work a change can't affect. Run it after a checkout
-  with fetch-depth 2.
+  Report which of the app's two sites a push or pull request touches, the
+  marketing site or bench, so each site's checks can skip work a change can't
+  affect. Run it after a checkout with fetch-depth 2.
 
 # The workflows gate jobs on these outputs with `if:` instead of filtering with
 # `on.<event>.paths`. A required check whose workflow never starts stays
@@ -10,10 +10,10 @@ description: >-
 
 outputs:
   site:
-    description: '"true" if anything outside bench/ changed.'
+    description: '"true" if anything but bench''s own files changed.'
     value: ${{ steps.classify.outputs.site }}
   bench:
-    description: '"true" if bench/, a bench workflow, bench''s Vercel CLI, a shared action, .nvmrc or a root workspace file changed.'
+    description: '"true" if bench''s own files, a bench workflow, a shared action, .nvmrc, or a file both sites build from changed.'
     value: ${{ steps.classify.outputs.bench }}
 
 runs:
@@ -51,13 +51,17 @@ runs:
           while IFS= read -r file; do
             case "${file}" in
               "") ;;
-              bench/* | .github/workflows/bench-* | .github/vercel-cli/*) bench=true ;;
-              # Shared by both apps: these actions, and the Node pin that
-              # every workflow reads.
-              .github/actions/* | .nvmrc) site=true; bench=true ;;
-              # The root files of the Bun workspace that both apps install
-              # and build from.
-              package.json | bun.lock | bunfig.toml | biome.json | tsconfig*.json) site=true; bench=true ;;
+              # bench's own files: its routes, code, public files, schema,
+              # infrastructure, docs, scripts and workflows.
+              "src/app/(bench)/"* | src/bench/* | public/bench/* | db/* | infra/* | docs/bench/* \
+                | scripts/parity/* | scripts/verify-web-deploy* | vitest.config.ts \
+                | .github/workflows/bench-*) bench=true ;;
+              # Shared by both sites: these actions, the workflow that checks
+              # both, and the Node pin that every workflow reads.
+              .github/actions/* | .github/workflows/ci.yml | .nvmrc) site=true; bench=true ;;
+              # The root files that both sites install and build from.
+              package.json | bun.lock | bunfig.toml | biome.json | tsconfig.json \
+                | next.config.mjs | vercel.json | src/css.d.ts) site=true; bench=true ;;
               *) site=true ;;
             esac
           done <<< "${files}"

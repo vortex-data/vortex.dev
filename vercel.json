@@ -3,7 +3,6 @@
   "framework": "nextjs",
   "installCommand": "bun install --frozen-lockfile",
   "buildCommand": "bun run build",
-  "ignoreCommand": "bash scripts/vercel-ignore-build.sh",
   "crons": [{ "path": "/bench/api/health", "schedule": "*/2 * * * *" }],
   "headers": [
     {

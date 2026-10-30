@@ -3,7 +3,7 @@
 #
 # External keep-warm / uptime ping for the deployed bench site. This is an EXTERNAL
 # edge ping (from a GitHub-hosted runner) against the public production URL —
-# DISTINCT from the in-app Vercel cron in `bench/web/vercel.json` (`/api/health`
+# DISTINCT from the in-app Vercel cron in `vercel.json` (`/bench/api/health`
 # every 2 min, run inside Vercel's own scheduler). The external ping additionally
 # exercises the public DNS + CDN-edge path the internal cron does not, and is
 # independent of the Vercel cron quota. The target URL is `vars.BENCH_SITE_BASE_URL`;
