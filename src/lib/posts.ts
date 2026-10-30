@@ -44,3 +44,15 @@ export function morePosts<T extends { slugAsParams: string; date: string }>(
     .sort((a, b) => Date.parse(b.date) - Date.parse(a.date))
     .slice(0, limit);
 }
+
+/**
+ * The BlogIndex card's lead: the newest deep dive, and the other posts in
+ * the order given (newest first), which follow it as compact rows. With no
+ * deep dive there is no lead.
+ */
+export function splitLead<T extends { kind: PostKind }>(
+  posts: readonly T[]
+): { lead: T | null; rest: T[] } {
+  const lead = posts.find((p) => p.kind === "deep-dive") ?? null;
+  return { lead, rest: posts.filter((p) => p !== lead) };
+}

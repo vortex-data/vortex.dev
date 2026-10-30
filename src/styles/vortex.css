@@ -692,7 +692,10 @@
 .vx-post-lead-title { margin: 0; color: var(--ink); text-wrap: balance; transition: color 150ms ease-out; }
 .vx-post-lead:hover .vx-post-lead-title { color: var(--accent-ink); }
 .vx-post-lead-dek { margin: 0; color: var(--ink-body); text-wrap: pretty; }
-.vx-post-lead-meta { display: flex; flex-wrap: wrap; gap: var(--space-4) var(--space-12); }
+.vx-post-lead-meta { margin: 0; }
+@media (max-width: 640px) {
+  .vx-post-lead .vx-cover { aspect-ratio: 8 / 3; }
+}
 
 /* Cover: a post's art, from coverFor(seed) in components/lib/cover.js. The blocks and the slab's
    characters take their colours from the tokens, so a cover follows the theme. */

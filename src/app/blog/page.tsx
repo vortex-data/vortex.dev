@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import { PostLead } from "@/components/blog/post-lead";
 import { PostRows } from "@/components/blog/post-rows";
 import { NewsletterForm } from "@/components/newsletter-form";
 import { getAllPosts } from "@/lib/blog";
+import { splitLead } from "@/lib/posts";
 
 export const metadata: Metadata = {
   title: "Blog | Vortex",
@@ -28,11 +30,16 @@ const FEEDS = [
 ] as const;
 
 /**
- * The design system's BlogIndex card: the heading with the feeds, then one
- * row per post, newest first. The newsletter sign-up closes the list.
+ * The design system's BlogIndex card: the heading with the feeds, the
+ * newest deep dive as the lead, then the other posts as compact rows, newest
+ * first. The newsletter sign-up closes the list.
  */
 export default function BlogPage() {
   const posts = getAllPosts();
+  const { lead, rest } = splitLead(posts);
+  const restLabel = rest.every((p) => p.kind === "bulletin")
+    ? "Bulletins"
+    : "More posts";
 
   return (
     <div className="blog-page">
@@ -46,10 +53,21 @@ export default function BlogPage() {
           ))}
         </nav>
       </div>
-      {posts.length === 0 ? (
+      {posts.length === 0 && (
         <p className="vx-small blog-empty">No posts yet.</p>
+      )}
+      {lead ? (
+        <>
+          <PostLead post={lead} />
+          {rest.length > 0 && (
+            <>
+              <h2 className="vx-label vx-posts-head">{restLabel}</h2>
+              <PostRows posts={rest} heading="h3" compact />
+            </>
+          )}
+        </>
       ) : (
-        <PostRows posts={posts} heading="h2" />
+        posts.length > 0 && <PostRows posts={posts} heading="h2" />
       )}
       <NewsletterForm />
     </div>

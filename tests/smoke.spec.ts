@@ -282,6 +282,47 @@ test.describe("blog index", () => {
   });
 });
 
+test.describe("blog index lead", () => {
+  test("the newest deep dive leads with its cover, kind, title, dek and meta", async ({
+    page
+  }) => {
+    await page.goto("/blog");
+    const lead = page.locator("a.vx-post-lead");
+    await expect(lead).toHaveCount(1);
+    await expect(lead).toHaveAttribute("href", "/blog/btrblocks-compressor");
+    await expect(lead.locator(".vx-cover svg.vx-cover-art")).toBeVisible();
+    await expect(lead.locator(".vx-article-kind")).toHaveText("Deep dive");
+    await expect(lead.getByRole("heading", { level: 2 })).toHaveText(
+      "Have your cake and decompress it too"
+    );
+    await expect(lead.locator(".vx-post-lead-dek")).not.toBeEmpty();
+    await expect(lead.locator(".vx-post-lead-meta time")).toHaveText(
+      /^\d{1,2} \w{3} \d{4}$/
+    );
+  });
+
+  test("the bulletins follow as compact rows: date, title and summary", async ({
+    page
+  }) => {
+    await page.goto("/blog");
+    await expect(
+      page.getByRole("heading", { level: 2, name: "Bulletins" })
+    ).toBeVisible();
+    const rows = page.locator("ul.vx-posts.is-compact a.vx-post-row");
+    await expect(rows).toHaveCount(6);
+    const first = rows.first();
+    await expect(first.locator(".vx-post-row-meta > *")).toHaveCount(1);
+    await expect(first.locator(".vx-post-row-excerpt")).not.toHaveText(
+      "Overview of all work happening in Vortex"
+    );
+    // No row repeats another's summary.
+    const summaries = await rows
+      .locator(".vx-post-row-excerpt")
+      .allTextContents();
+    expect(new Set(summaries).size).toBe(summaries.length);
+  });
+});
+
 test.describe("blog post", () => {
   test("post heading renders", async ({ page }) => {
     test.skip(!seedPostSlug, "no published posts");
@@ -872,12 +913,17 @@ test.describe("design system rules on the blog", () => {
   const x = async (page: Page, selector: string) =>
     (await page.locator(selector).first().boundingBox())?.x ?? Number.NaN;
 
-  test("post rows are list items titled by h2s, in line with the heading", async ({
+  test("the lead is an h2 and the compact rows' titles are h3s, in line with the heading", async ({
     page
   }) => {
     await page.goto("/blog");
-    const row = page.locator("ul.vx-posts > li > a.vx-post-row").first();
-    await expect(row.locator("h2.vx-post-row-title")).toBeVisible();
+    await expect(
+      page.locator("a.vx-post-lead h2.vx-post-lead-title")
+    ).toBeVisible();
+    const row = page
+      .locator("ul.vx-posts.is-compact > li > a.vx-post-row")
+      .first();
+    await expect(row.locator("h3.vx-post-row-title")).toBeVisible();
     const gap =
       (await x(page, ".vx-post-row-meta")) - (await x(page, ".vx-blog-title"));
     expect(Math.abs(gap)).toBeLessThan(1);

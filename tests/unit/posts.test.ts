@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { bylineParts, formatPostDate, kindLabel, morePosts } from "@/lib/posts";
+import {
+  bylineParts,
+  formatPostDate,
+  kindLabel,
+  morePosts,
+  splitLead
+} from "@/lib/posts";
 
 const post = (slugAsParams: string, date: string) => ({ slugAsParams, date });
 
@@ -71,5 +77,37 @@ describe("morePosts", () => {
       "d",
       "c"
     ]);
+  });
+});
+
+describe("splitLead", () => {
+  const p = (
+    slugAsParams: string,
+    date: string,
+    kind: "deep-dive" | "bulletin"
+  ) => ({
+    slugAsParams,
+    date,
+    kind
+  });
+
+  it("leads with the newest deep dive and keeps the rest newest first", () => {
+    const posts = [
+      p("bull-3", "2026-03-01T00:00:00.000Z", "bulletin"),
+      p("deep-2", "2026-02-26T00:00:00.000Z", "deep-dive"),
+      p("bull-2", "2026-01-30T00:00:00.000Z", "bulletin"),
+      p("deep-1", "2025-12-01T00:00:00.000Z", "deep-dive")
+    ];
+    const { lead, rest } = splitLead(posts);
+    assert.equal(lead?.slugAsParams, "deep-2");
+    assert.deepEqual(
+      rest.map((x) => x.slugAsParams),
+      ["bull-3", "bull-2", "deep-1"]
+    );
+  });
+
+  it("has no lead when there is no deep dive", () => {
+    const posts = [p("b", "2026-01-30T00:00:00.000Z", "bulletin")];
+    assert.deepEqual(splitLead(posts), { lead: null, rest: posts });
   });
 });
