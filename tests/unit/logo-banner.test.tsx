@@ -8,16 +8,16 @@ import { LOGOS } from "@/components/logo-banner/logos";
 // The logos Will cleared for public use, in the Home card's order: the
 // adopters and the projects that integrate Vortex. Spiral sits third, so it
 // is in view on load. Dash0 replaced Polar Signals, which it acquired.
-// Apache Iceberg is tagged "Coming soon" until its Vortex support ships.
+// Apache Iceberg is tagged "In proposal" until its Vortex support ships.
 const CLEARED = [
   "Microsoft",
   "Palantir",
   "Spiral",
   "Firebolt",
   "Spice AI",
-  "LangChain",
   "DatologyAI",
   "Dash0",
+  "LangChain",
   "Milvus",
   "DuckDB",
   "Apache DataFusion",
@@ -53,12 +53,12 @@ describe("LogoBanner", () => {
     );
   });
 
-  it("tags Apache Iceberg, and only Iceberg, as coming soon", () => {
+  it("tags Apache Iceberg, and only Iceberg, as in proposal", () => {
     const html = renderToStaticMarkup(<LogoBanner />);
     const first = html.split('<div class="vx-logos-set"')[1] ?? "";
     const soon = [
       ...first.matchAll(
-        /<a class="is-soon"[^>]*><img[^>]*alt="([^"]*)"[^>]*\/><span class="vx-label-sm vx-logos-soon">Coming soon<\/span><\/a>/g
+        /<a class="is-soon"[^>]*><img[^>]*alt="([^"]*)"[^>]*\/><span class="vx-label-sm vx-logos-soon">In proposal<\/span><\/a>/g
       )
     ].map((m) => m[1]);
     assert.deepEqual(soon, ["Apache Iceberg"]);

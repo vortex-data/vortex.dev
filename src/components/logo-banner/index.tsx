@@ -89,7 +89,7 @@ export function LogoBanner({ className }: { className?: string | undefined }) {
                   />
                   {soon && (
                     <span className="vx-label-sm vx-logos-soon">
-                      Coming soon
+                      In proposal
                     </span>
                   )}
                 </a>
