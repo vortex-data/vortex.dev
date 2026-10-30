@@ -9,7 +9,6 @@ import {
   panelNote,
   panelRows,
   pickSystems,
-  sourceNotes,
   valueWidth,
   versusParquet
 } from "@/vendor/vortex-design/benchmark-card.js";
@@ -27,14 +26,15 @@ const SOURCE_URL = "https://bench.vortex.dev";
  * system that cannot run the benchmark is N/A, with its reason.
  */
 export function BenchPanel({ panel }: { panel: Panel }) {
-  const { title, unit, kind, better, rows, systems } = panel;
+  const { title, unit, kind, better, rows, systems, source } = panel;
   const vs = versusParquet(rows, better);
   const shown = panelRows(pickSystems(rows, systems), better, unit);
   const column = { "--bar-value": valueWidth(shown) } as CSSProperties;
   return (
     <div className="vx-bench-panel">
-      <div className="vx-label-sm vx-bench-title">
+      <div className="vx-label-sm vx-bench-title" title={source?.note}>
         <span className="vx-bench-metric">{title}</span>
+        {source && <span className="vx-sr-only">, {source.note}</span>}
       </div>
       <div className="vx-bench-big">
         <span className="vx-stat">{panelFactor(kind, vs)}</span>{" "}
@@ -89,7 +89,6 @@ export function BenchmarkCard({
   panels: readonly Panel[];
   readAt: Date;
 }) {
-  const notes = sourceNotes(panels);
   const method = benchMethod(panels);
   return (
     <section className="vx-card vx-bench" aria-label="Benchmark summary">
@@ -115,9 +114,6 @@ export function BenchmarkCard({
           <BenchPanel key={panel.title} panel={panel} />
         ))}
       </div>
-      {notes.length > 0 && (
-        <p className="vx-caption vx-bench-foot">{notes.join(" ")}</p>
-      )}
     </section>
   );
 }

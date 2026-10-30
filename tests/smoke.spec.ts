@@ -235,9 +235,10 @@ test.describe("home bands", () => {
         '.vx-bar.is-na[title="Lance: not available, no cuDF integration"]'
       )
     ).toHaveCount(1);
-    await expect(card.locator(".vx-bench-foot")).toHaveText(
-      /^GPU analytics with cuDF: .*UW–Madison talk$/
-    );
+    await expect(card.locator(".vx-bench-foot")).toHaveCount(0);
+    await expect(
+      card.locator(".vx-bench-title", { hasText: "GPU analytics with cuDF" })
+    ).toHaveAttribute("title", /^end to end, hot, .*UW–Madison talk$/);
   });
 
   test("the logo banner shows the thirteen cleared logos", async ({ page }) => {

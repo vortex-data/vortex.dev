@@ -137,10 +137,12 @@ describe("BenchmarkCard", () => {
         ["1×", "1.07×", "1.99×", "5.59×"]
       ].flat()
     );
-    // The bars' screen-reader text; the caption's method is the first one.
-    const exact = [...html.matchAll(/class="vx-sr-only">([^<]*)</g)]
-      .map((m) => m[1])
-      .slice(1);
+    // The bars' screen-reader text, which follows each bar's visible value.
+    const exact = [
+      ...html.matchAll(
+        /aria-hidden="true">[^<]*<\/span><span class="vx-sr-only">([^<]*)</g
+      )
+    ].map((m) => m[1]);
     assert.deepEqual(
       exact,
       [
@@ -192,24 +194,22 @@ describe("BenchmarkCard", () => {
     ]);
   });
 
-  // The GPU panel is not bench's, so the card names it and its source in a
-  // line under the panels, without a link. Lance cannot run in cuDF, so its
-  // row is N/A, not Not measured.
-  it("names the hand-kept GPU panel's source under the panels, and shows Lance as N/A", () => {
+  // The GPU panel is not bench's, so its title names its source, as the hover
+  // title and screen-reader text, without a link or a line under the panels.
+  // Lance cannot run in cuDF, so its row is N/A, not Not measured.
+  it("names the hand-kept GPU panel's source on its title, and shows Lance as N/A", () => {
     assert.ok(PANELS);
     const html = renderToStaticMarkup(
       <BenchmarkCard panels={PANELS} readAt={new Date("2026-10-29")} />
     );
+    const note =
+      "end to end, hot, on GH200, NDS-H SF10, Parquet the fastest of four configurations per query, from the Vortex UW–Madison talk";
     assert.ok(
       html.includes(
-        '<span class="vx-bench-metric">GPU analytics with cuDF</span>'
+        `<div class="vx-label-sm vx-bench-title" title="${note}"><span class="vx-bench-metric">GPU analytics with cuDF</span><span class="vx-sr-only">, ${note}</span></div>`
       )
     );
-    assert.doesNotMatch(html, /vx-bench-mark|<sup/);
-    assert.match(
-      html,
-      /<p class="vx-caption vx-bench-foot">GPU analytics with cuDF: end to end, hot, on GH200, NDS-H SF10, Parquet the fastest of four configurations per query, from the Vortex UW–Madison talk<\/p><\/section>$/
-    );
+    assert.doesNotMatch(html, /vx-bench-mark|<sup|vx-bench-foot/);
     assert.equal(html.match(/<a /g)?.length, 1, "one link, to bench");
     assert.ok(
       html.includes(
@@ -218,7 +218,7 @@ describe("BenchmarkCard", () => {
     );
   });
 
-  it("prints no source line when every panel is bench's", () => {
+  it("gives a bench panel's title no source", () => {
     assert.ok(PANELS);
     const html = renderToStaticMarkup(
       <BenchmarkCard
@@ -226,6 +226,6 @@ describe("BenchmarkCard", () => {
         readAt={new Date("2026-10-29")}
       />
     );
-    assert.doesNotMatch(html, /vx-bench-foot/);
+    assert.doesNotMatch(html, /vx-bench-title" title=|vx-bench-foot/);
   });
 });

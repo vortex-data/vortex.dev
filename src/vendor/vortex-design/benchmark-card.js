@@ -6,7 +6,7 @@
 // that row is "N/A", where "Not measured" means it could run but has no result. The bars and the
 // big figure both read the scores, so they always agree, and the card never
 // claims a ratio bench does not publish. A panel whose figures come from elsewhere names its source
-// (`source`), and the card lists it (`sourceNotes`).
+// (`source`), as its title's hover title and screen-reader text.
 // Types: benchmark-card.d.ts.
 
 const isOurs = (system) => String(system).toLowerCase() === "vortex";
@@ -165,15 +165,6 @@ export function panelNote(kind, vs) {
 
 const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
 
-/**
- * The card's lines for panels whose figures do not come from bench, in panel order, each naming
- * its panel: "GPU analytics with cuDF: end to end, hot, on GH200, NDS-H SF10". The card prints
- * them under the panels.
- */
-export function sourceNotes(panels) {
-  return panels.filter((p) => p.source).map((p) => `${p.title}: ${p.source.note}`);
-}
-
 // The kinds of value a panel can show, by its unit, in the order the caption names them.
 const VALUE_KINDS = [
   { units: ["ms"], caption: "times in ms", method: "A time is the geomean over the queries or datasets that bench's score covers." },
@@ -211,13 +202,13 @@ export function benchMethod(panels) {
  * One panel's markup. A panel is {title, unit, kind, better, rows, systems?, source?}: the metric's
  * name, its unit ("ms" for a time, "× Parquet" for a throughput ratio, "×" for the file-size ratio),
  * "speed" or "size", "higher" or "lower", the rows, the systems to show (`pickSystems`) and, for
- * figures that are not bench's, {note}, which `sourceNotes` prints under the panels. The title
+ * figures that are not bench's, {note}: the panel title's hover title and screen-reader text. The title
  * prints no unit and no direction: the card's caption says what the units are, and the bars run
  * best first. Each bar ends in its value with its unit ("42.25 ms", "5.12×") in a column as wide as
  * the panel's longest value (`valueWidth`). The value with its full unit is the bar's hover title
  * and its screen-reader text.
  */
-export function renderPanel({ title, unit, kind, better, rows, systems }) {
+export function renderPanel({ title, unit, kind, better, rows, systems, source }) {
   const vs = versusParquet(rows, better);
   const shown = panelRows(pickSystems(rows, systems), better, unit);
   const bars = shown
@@ -229,6 +220,8 @@ export function renderPanel({ title, unit, kind, better, rows, systems }) {
       return `<div class="${cls}" ${tip}><span>${esc(r.system)}</span><span class="vx-bar-track">${fill}</span><span class="vx-bar-value" aria-hidden="true">${esc(r.label)}</span><span class="vx-sr-only">${esc(r.exact)}</span></div>`;
     })
     .join("");
-  const head = `<div class="vx-label-sm vx-bench-title"><span class="vx-bench-metric">${esc(title)}</span></div>`;
+  const sourceTip = source ? ` title="${esc(source.note)}"` : "";
+  const sourceText = source ? `<span class="vx-sr-only">, ${esc(source.note)}</span>` : "";
+  const head = `<div class="vx-label-sm vx-bench-title"${sourceTip}><span class="vx-bench-metric">${esc(title)}</span>${sourceText}</div>`;
   return `<div class="vx-bench-panel">${head}<div class="vx-bench-big"><span class="vx-stat">${panelFactor(kind, vs)}</span> <span class="vx-caption vx-bench-note">${esc(panelNote(kind, vs))}</span></div><div class="vx-bars" style="--bar-value:${valueWidth(shown)}">${bars}</div></div>`;
 }

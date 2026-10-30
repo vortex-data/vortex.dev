@@ -152,7 +152,7 @@ const SOURCES: (Source | Panel)[] = [
     }
   },
   {
-    title: "File size against Parquet + zstd",
+    title: "Size vs Parquet+Zstd",
     unit: "×",
     kind: "size",
     better: "lower",

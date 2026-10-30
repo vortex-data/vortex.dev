@@ -97,7 +97,6 @@ export function panelNote(
   vs: Pick<Versus, "vortexWins"> & Partial<Pick<Versus, "factor" | "tie" | "missing">>
 ): string;
 
-export function sourceNotes(panels: readonly BenchPanel[]): string[];
 
 export function renderPanel(panel: BenchPanel): string;
 

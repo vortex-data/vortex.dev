@@ -462,7 +462,6 @@
 .vx-bench-big { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-4); color: var(--ink); }
 .vx-bench-note { color: var(--ink-muted); }
 /* The sources of panels whose figures are not bench's, under the panels. */
-.vx-bench-foot { margin: 0; padding: var(--space-4) var(--space-20); border-top: 1px solid var(--line); color: var(--ink-muted); }
 
 /* A bar chart's rows: name, a bar on its track, the value. Vortex is the one Blue row. */
 .vx-bars { display: grid; gap: var(--space-8); }
@@ -481,7 +480,7 @@
 .vx-bar-fill { display: block; height: 100%; background: var(--chart-muted); }
 .vx-bar.is-ours { color: var(--accent-ink); }
 .vx-bar.is-ours .vx-bar-fill { background: var(--chart-1); }
-/* Parquet, Lance and Arrow take muted tints of their bench hues, so the bars are not grey on grey.
+/* Parquet, Lance and Arrow take muted tints of their colours, so the bars are not grey on grey.
    One value serves both themes, at 3.4:1 on either track, and Vortex's Blue still leads. */
 .vx-bar.is-parquet .vx-bar-fill { background: var(--chart-parquet); }
 .vx-bar.is-lance .vx-bar-fill { background: var(--chart-lance); }
