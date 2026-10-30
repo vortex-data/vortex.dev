@@ -210,6 +210,18 @@ export function benchMethod(panels) {
  */
 export function renderPanel({ title, unit, kind, better, rows, systems, source }) {
   const vs = versusParquet(rows, better);
+  const sourceTip = source ? ` title="${esc(source.note)}"` : "";
+  const sourceText = source ? `<span class="vx-sr-only">, ${esc(source.note)}</span>` : "";
+  const head = `<div class="vx-label-sm vx-bench-title"${sourceTip}><span class="vx-bench-metric">${esc(title)}</span>${sourceText}</div>`;
+  return `<div class="vx-bench-panel">${head}<div class="vx-bench-big"><span class="vx-stat">${panelFactor(kind, vs)}</span> <span class="vx-caption vx-bench-note">${esc(panelNote(kind, vs))}</span></div>${renderBars({ unit, better, rows, systems })}</div>`;
+}
+
+/**
+ * One comparison's bars on their own, for a chart outside the BenchmarkCard (a Figure, a page's
+ * section): {unit, better, rows, systems?}, as for a panel. It draws the same bars renderPanel
+ * draws, best first, each ending in its value, with Vortex in Blue and the other formats tinted.
+ */
+export function renderBars({ unit, better, rows, systems }) {
   const shown = panelRows(pickSystems(rows, systems), better, unit);
   const bars = shown
     .map((r) => {
@@ -220,8 +232,5 @@ export function renderPanel({ title, unit, kind, better, rows, systems, source }
       return `<div class="${cls}" ${tip}><span>${esc(r.system)}</span><span class="vx-bar-track">${fill}</span><span class="vx-bar-value" aria-hidden="true">${esc(r.label)}</span><span class="vx-sr-only">${esc(r.exact)}</span></div>`;
     })
     .join("");
-  const sourceTip = source ? ` title="${esc(source.note)}"` : "";
-  const sourceText = source ? `<span class="vx-sr-only">, ${esc(source.note)}</span>` : "";
-  const head = `<div class="vx-label-sm vx-bench-title"${sourceTip}><span class="vx-bench-metric">${esc(title)}</span>${sourceText}</div>`;
-  return `<div class="vx-bench-panel">${head}<div class="vx-bench-big"><span class="vx-stat">${panelFactor(kind, vs)}</span> <span class="vx-caption vx-bench-note">${esc(panelNote(kind, vs))}</span></div><div class="vx-bars" style="--bar-value:${valueWidth(shown)}">${bars}</div></div>`;
+  return `<div class="vx-bars" style="--bar-value:${valueWidth(shown)}">${bars}</div>`;
 }

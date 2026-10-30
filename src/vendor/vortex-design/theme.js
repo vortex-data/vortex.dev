@@ -1,4 +1,5 @@
-// The theme choice shared by docs, the blog, bench and the Explorer: light, dark or system.
+// The theme choice shared by docs, the blog and the Explorer (and bench once it adopts the
+// ThemeSwitch): light, dark or system.
 // It lives in localStorage["vx-theme"] and lands on <html data-theme>. The default is Dark.
 // The choice itself also lands on <html data-theme-choice>, so the switch can show it pressed
 // before its script runs.

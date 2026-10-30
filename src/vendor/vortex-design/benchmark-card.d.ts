@@ -100,6 +100,9 @@ export function panelNote(
 
 export function renderPanel(panel: BenchPanel): string;
 
+/** One comparison's bars on their own, for a chart outside the card: the bars renderPanel draws. */
+export function renderBars(chart: Pick<BenchPanel, "unit" | "better" | "rows" | "systems">): string;
+
 /** A bar row's class: `vx-bar` with `is-ours`, `is-parquet`, `is-lance`, `is-arrow`,
  * `is-missing` or `is-na` as they apply. */
 export function barClass(row: Pick<PanelRow, "system" | "state" | "ours">): string;

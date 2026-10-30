@@ -1,5 +1,7 @@
 /* Vortex design system tokens, copied by tools/site-styles.mjs.
-   Edit the system, then run tools/site-styles.mjs; do not edit here. */
+   Edit the system, then run tools/site-styles.mjs; do not edit here.
+   Made by: node tools/site-styles.mjs <site> --sections base,brand,site,docs,blog,focus --faces --vx-face --base
+   sha256 90c0178a9cf80e45b38fb55610b2230a274c797fadfd64c1ae21fa444f151301 */
 :root, [data-theme="dark"] {
   --white: #ffffff;
   --grey-50: #fcfcf9;
@@ -31,7 +33,6 @@
   --ink: var(--white);
   --ink-body: var(--grey-300);
   --ink-muted: var(--grey-450);
-  --ink-faint: var(--grey-500);
   --accent: var(--blue-bright);
   --accent-ink: var(--blue-soft);
   --accent-soft: rgba(47, 99, 255, 0.16);
@@ -60,7 +61,6 @@
   --status-warn: var(--orange);
   --status-error: var(--red);
   --status-idle: var(--grey-500);
-  --shadow-float: 0 8px 24px rgba(0, 0, 0, 0.5);
   color-scheme: dark;
 }
 [data-theme="light"] {
@@ -73,7 +73,6 @@
   --ink: var(--black);
   --ink-body: var(--grey-600);
   --ink-muted: var(--grey-500);
-  --ink-faint: var(--grey-400);
   --accent: var(--blue);
   --accent-ink: var(--blue);
   --accent-soft: rgba(29, 15, 237, 0.1);
@@ -99,7 +98,6 @@
   --status-warn: var(--orange);
   --status-error: var(--red);
   --status-idle: var(--grey-400);
-  --shadow-float: 0 8px 16px rgba(0, 0, 0, 0.08);
   color-scheme: light;
 }
 :root {

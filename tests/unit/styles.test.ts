@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 
@@ -47,5 +48,39 @@ describe("the site's copy of the design system styles", () => {
       globals,
       /@layer|list-style: none|margin: 0;\s*padding: 0/
     );
+  });
+});
+
+// The system's copies are made by its tools, and CI cannot reach the system.
+// Each copy carries a hash of itself, so a hand edit fails here.
+describe("the design system's copies are unedited", () => {
+  const sha256 = (text: string) =>
+    createHash("sha256").update(text).digest("hex");
+
+  for (const name of ["vortex-tokens.css", "vortex.css", "vortex-base.css"]) {
+    it(`src/styles/${name} matches the hash in its header`, () => {
+      const css = read(`src/styles/${name}`);
+      const end = css.indexOf("*/\n") + 3;
+      const hash = css.slice(0, end).match(/sha256 ([0-9a-f]{64})/)?.[1];
+      assert.ok(hash, "the header records a sha256");
+      assert.equal(
+        sha256(css.slice(end)),
+        hash,
+        `${name} was edited by hand: change the system and run its tools/site-styles.mjs`
+      );
+    });
+  }
+
+  it("each vendored module matches vendor/vortex-design/SHA256SUMS", () => {
+    const sums = read("src/vendor/vortex-design/SHA256SUMS").trim().split("\n");
+    assert.ok(sums.length >= 10);
+    for (const line of sums) {
+      const [hash, file] = line.split(/\s+/);
+      assert.equal(
+        sha256(read(`src/vendor/vortex-design/${file}`)),
+        hash,
+        `${file} was edited by hand: change the system and copy it again`
+      );
+    }
   });
 });
