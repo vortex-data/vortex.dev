@@ -4,27 +4,34 @@
 import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
 
+import { BenchBaseProvider } from '@/bench/components/BenchBase';
+import { benchPath } from '@/bench/lib/base-path';
 import { FONTS_CSS } from '@/bench/lib/fonts';
+import { requestBenchBase } from '@/bench/lib/request-base';
 
 import '@/bench/styles/globals.css';
 // The Vortex design system's skin: colours, corners and Geist over globals.css.
 import '@/bench/styles/vortex-skin.css';
 
-export const metadata: Metadata = {
-  title: 'Vortex Benchmarks',
-  description: 'Continuous benchmark results for Vortex.',
-  // Theme-aware favicons, ported from `render.rs::favicon_links`: the black
-  // sigil on light-mode tabs, the white sigil on dark-mode tabs, with the dark
-  // sigil as the unmediated fallback (and the apple-touch icon).
-  icons: {
-    icon: [
-      { url: '/icon-light.png', media: '(prefers-color-scheme: light)' },
-      { url: '/icon-dark.png', media: '(prefers-color-scheme: dark)' },
-      { url: '/icon-dark.png' },
-    ],
-    apple: '/icon-dark.png',
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const base = await requestBenchBase();
+  return {
+    title: 'Vortex Benchmarks',
+    description: 'Continuous benchmark results for Vortex.',
+    // Theme-aware favicons, ported from `render.rs::favicon_links`: the black
+    // sigil on light-mode tabs, the white sigil on dark-mode tabs, with the dark
+    // sigil as the unmediated fallback (and the apple-touch icon). The files are
+    // in public/bench: the root of bench.vortex.dev.
+    icons: {
+      icon: [
+        { url: benchPath(base, '/icon-light.png'), media: '(prefers-color-scheme: light)' },
+        { url: benchPath(base, '/icon-dark.png'), media: '(prefers-color-scheme: dark)' },
+        { url: benchPath(base, '/icon-dark.png') },
+      ],
+      apple: benchPath(base, '/icon-dark.png'),
+    },
+  };
+}
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -61,9 +68,12 @@ const FONT_BOOTSTRAP =
 
 /**
  * Root layout: the `<html>`/`<body>` shell plus the global stylesheet, the
- * pre-paint theme bootstrap, and the web fonts.
+ * pre-paint theme bootstrap, and the web fonts. It also hands the client
+ * components the base of bench's paths for the request's host
+ * ([`BenchBaseProvider`], `lib/base-path.ts`).
  */
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  const base = await requestBenchBase();
   return (
     <html lang="en" className="no-js" suppressHydrationWarning>
       <head>
@@ -75,7 +85,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <link rel="stylesheet" href={FONTS_CSS} />
         </noscript>
       </head>
-      <body>{children}</body>
+      <body>
+        <BenchBaseProvider base={base}>{children}</BenchBaseProvider>
+      </body>
     </html>
   );
 }

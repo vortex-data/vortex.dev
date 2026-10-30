@@ -5,6 +5,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
+import { useBenchBase } from '@/bench/components/BenchBase';
 import { Chart } from '@/bench/components/Chart';
 import { GroupToolbar } from '@/bench/components/GroupToolbar';
 import { chartPriority, type FilterUniverse } from '@/bench/lib/chart-format';
@@ -60,6 +61,7 @@ export function GroupBody({
   initialHiddenSeries,
   initialShownSeries,
 }: GroupBodyProps) {
+  const base = useBenchBase();
   const ref = useRef<HTMLDivElement>(null);
   // Starts closed, so hydration matches the server's empty body; the layout
   // effect below opens it before paint when the disclosure is already open.
@@ -111,10 +113,10 @@ export function GroupBody({
     }
     noteGroupBodyOpen(
       groupSlug,
-      hasCharts ? ensureGroupBundle(groupSlug, chartPriority(startIndex)) : Promise.resolve(),
+      hasCharts ? ensureGroupBundle(groupSlug, chartPriority(startIndex), base) : Promise.resolve(),
     );
     return () => noteGroupBodyClosed(groupSlug);
-  }, [open, groupSlug, startIndex, hasCharts]);
+  }, [open, groupSlug, startIndex, hasCharts, base]);
 
   return (
     <div className="group-body" ref={ref}>

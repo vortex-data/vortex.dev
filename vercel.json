@@ -1,6 +1,48 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
   "installCommand": "bun install --frozen-lockfile",
   "buildCommand": "bun run build",
-  "ignoreCommand": "bash scripts/vercel-ignore-build.sh"
+  "ignoreCommand": "bash scripts/vercel-ignore-build.sh",
+  "crons": [{ "path": "/bench/api/health", "schedule": "*/2 * * * *" }],
+  "headers": [
+    {
+      "source": "/",
+      "has": [{ "type": "host", "value": "bench.vortex.dev" }],
+      "headers": [
+        {
+          "key": "Vercel-CDN-Cache-Control",
+          "value": "max-age=300, stale-while-revalidate=86400"
+        }
+      ]
+    },
+    {
+      "source": "/chart/:slug",
+      "has": [{ "type": "host", "value": "bench.vortex.dev" }],
+      "headers": [
+        {
+          "key": "Vercel-CDN-Cache-Control",
+          "value": "max-age=300, stale-while-revalidate=86400"
+        }
+      ]
+    },
+    {
+      "source": "/bench",
+      "headers": [
+        {
+          "key": "Vercel-CDN-Cache-Control",
+          "value": "max-age=300, stale-while-revalidate=86400"
+        }
+      ]
+    },
+    {
+      "source": "/bench/chart/:slug",
+      "headers": [
+        {
+          "key": "Vercel-CDN-Cache-Control",
+          "value": "max-age=300, stale-while-revalidate=86400"
+        }
+      ]
+    }
+  ]
 }

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
+import { type BenchBase, benchPath } from '@/bench/lib/base-path';
 import { chartHasRecentData, FETCH_TIMEOUT_MS } from '@/bench/lib/chart-format';
 import { unlessPageLeft } from '@/bench/lib/page-leave';
 import type { ChartResponse, GroupChartsResponse } from '@/bench/lib/queries';
@@ -94,9 +95,14 @@ const inFlightBundles = new Map<string, BundleInFlight>();
  * prime [`payloadCache`] for every chart in it. Concurrent callers for the same
  * group share one in-flight fetch (priority is bumped to the highest caller's).
  * A 404 permits per-chart fallback. Other failures remain shared until an
- * explicit retry or group reopen. Close cancellation stays silent.
+ * explicit retry or group reopen. Close cancellation stays silent. `base` is
+ * the base of bench's paths on this page (`lib/base-path.ts`).
  */
-export function ensureGroupBundle(groupSlug: string, priority: number): Promise<BundleResult> {
+export function ensureGroupBundle(
+  groupSlug: string,
+  priority: number,
+  base: BenchBase,
+): Promise<BundleResult> {
   const settled = settledBundles.get(groupSlug);
   if (settled) {
     return Promise.resolve(settled);
@@ -109,7 +115,7 @@ export function ensureGroupBundle(groupSlug: string, priority: number): Promise<
     }
     return existing.promise;
   }
-  const url = `/api/group/${encodeURIComponent(groupSlug)}?n=100`;
+  const url = benchPath(base, `/api/group/${encodeURIComponent(groupSlug)}?n=100`);
   const controller = new AbortController();
   const entry = bundleQueue.schedule(async () => {
     controller.signal.throwIfAborted();

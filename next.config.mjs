@@ -9,6 +9,17 @@ if (!process.env.VELITE_STARTED && (isDev || isBuild)) {
   await build({ watch: isDev, clean: !isDev });
 }
 
+// bench, the benchmark results site, is this app's routes under /bench
+// (src/app/(bench)/bench). On its own host, bench.vortex.dev, it is served
+// from the root: the rewrites below map that host's paths onto /bench, so
+// every public bench URL stays as it was. Everywhere else (previews, local
+// dev and the deployment's own URL) bench is at /bench. A `has` value is a
+// regular expression matched against the host without its port. Next.js
+// anchors it; the explicit anchors keep it exact wherever it is matched.
+const BENCH_HOST = [{ type: "host", value: "^bench\\.vortex\\.dev$" }];
+// The marketing site's own hosts, where /bench is not served (see rewrites).
+const SITE_HOSTS = [{ type: "host", value: "^(www\\.)?vortex\\.dev$" }];
+
 // MDXRenderer compiles velite-emitted JSX via `new Function(code)`, but it's
 // a server component — the eval happens at build/SSR time on the server, so
 // the browser never sees the dynamic code and CSP doesn't need 'unsafe-eval'.
@@ -18,21 +29,32 @@ if (!process.env.VELITE_STARTED && (isDev || isBuild)) {
 // not loaded in production, so widening these directives doesn't broaden the
 // prod attack surface — and a single static CSP is simpler than swapping
 // headers per environment.
-const csp = [
-  "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' plausible.io va.vercel-scripts.com vercel.live",
-  "style-src 'self' 'unsafe-inline' vercel.live",
-  "img-src 'self' data: blob: vercel.live vercel.com",
-  "font-src 'self' data: vercel.live assets.vercel.com",
-  "connect-src 'self' plausible.io vitals.vercel-insights.com vercel.live wss://ws-us3.pusher.com",
-  "worker-src 'self' blob:",
-  "child-src 'self' blob:",
-  "frame-src 'self' vercel.live",
-  "frame-ancestors 'none'",
-  "base-uri 'self'",
-  "form-action 'self'",
-  "object-src 'none'"
-].join("; ");
+//
+// bench's pages load the design system's web fonts from Google Fonts (see
+// src/bench/lib/fonts.ts), so bench's policy adds that stylesheet and its font
+// files. The marketing site self-hosts its fonts and keeps the narrower one.
+function contentSecurityPolicy({ styleSrc = "", fontSrc = "" } = {}) {
+  return [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline' plausible.io va.vercel-scripts.com vercel.live",
+    `style-src 'self' 'unsafe-inline' vercel.live${styleSrc}`,
+    "img-src 'self' data: blob: vercel.live vercel.com",
+    `font-src 'self' data: vercel.live assets.vercel.com${fontSrc}`,
+    "connect-src 'self' plausible.io vitals.vercel-insights.com vercel.live wss://ws-us3.pusher.com",
+    "worker-src 'self' blob:",
+    "child-src 'self' blob:",
+    "frame-src 'self' vercel.live",
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "object-src 'none'"
+  ].join("; ");
+}
+const csp = contentSecurityPolicy();
+const benchCsp = contentSecurityPolicy({
+  styleSrc: " https://fonts.googleapis.com",
+  fontSrc: " https://fonts.gstatic.com"
+});
 
 // Cross-Origin-Opener-Policy keeps windows from other origins from holding a
 // reference to this page. Production gets `same-origin`. Previews and local
@@ -58,6 +80,12 @@ const nextConfig = wrapWithPlausible({
   },
   images: {
     formats: ["image/avif", "image/webp"]
+  },
+  // Embed the built commit, so bench's /api/health and footer name the
+  // deployed build however the runtime is configured. Vercel sets the
+  // variable during its builds.
+  env: {
+    VERCEL_GIT_COMMIT_SHA: process.env.VERCEL_GIT_COMMIT_SHA ?? "unknown"
   },
   async headers() {
     return [
@@ -87,11 +115,25 @@ const nextConfig = wrapWithPlausible({
           { key: "Cross-Origin-Resource-Policy", value: "same-site" }
         ]
       },
+      // bench's policy, in both of its URL forms. Headers match the path as
+      // requested, before the rewrites, and a later rule overrides the
+      // header above.
+      {
+        source: "/bench/:path*",
+        missing: SITE_HOSTS,
+        headers: [{ key: "Content-Security-Policy", value: benchCsp }]
+      },
+      {
+        source: "/(.*)",
+        has: BENCH_HOST,
+        headers: [{ key: "Content-Security-Policy", value: benchCsp }]
+      },
       {
         // The RSS feed advertises the favicon, and feed readers that run in
         // a browser or an extension load it from another site. This later
         // rule overrides the header above for this path.
         source: "/favicon.ico",
+        missing: BENCH_HOST,
         headers: [
           { key: "Cross-Origin-Resource-Policy", value: "cross-origin" }
         ]
@@ -99,20 +141,75 @@ const nextConfig = wrapWithPlausible({
     ];
   },
   async redirects() {
+    // The marketing site's short links. bench's host has none.
     return [
       {
         source: "/code",
+        missing: BENCH_HOST,
         destination: "https://github.com/vortex-data/vortex",
         permanent: true
       },
       {
         source: "/slack",
+        missing: BENCH_HOST,
         destination:
           "https://join.slack.com/t/vortex-data/shared_invite/zt-3i4ian4du-mmm~~g9jdz2U_B0dA8CIEg",
         permanent: false
       }
     ];
+  },
+  async rewrites() {
+    return {
+      // Before the filesystem, so a bench path never reaches a site page or
+      // file of the same name. Each rule sees the path the rules before it
+      // rewrote, so the order matters: no rule may match a path that an
+      // earlier one produced.
+      beforeFiles: [
+        // bench is not served under the marketing site's own hosts: those
+        // paths 404 there, as before, and bench.vortex.dev stays its only
+        // public address.
+        {
+          source: "/bench/:path*",
+          has: SITE_HOSTS,
+          destination: "/not-found"
+        },
+        {
+          // Every path on bench's host but `/`, except Next.js's own assets
+          // and the cron's /bench/api/health (vercel.json), which Vercel may
+          // call on any of the deployment's hosts.
+          source: "/:path((?!_next/|bench/api/health$).+)",
+          has: BENCH_HOST,
+          destination: "/bench/:path"
+        },
+        { source: "/", has: BENCH_HOST, destination: "/bench" },
+        // The site's Open Graph images at their own URLs. Next.js names a
+        // metadata image route in a route group with a suffix, a hash of its
+        // parent path (getMetadataRouteSuffix in next/dist/lib/metadata), so
+        // `opengraph-image.tsx` in src/app/(site) is served at
+        // `/opengraph-image-<hash>`, and the pages' og:image tags name that.
+        // These keep the plain URLs, which the posts' JSON-LD and links
+        // already shared name, serving the same images.
+        ...[
+          ["/opengraph-image", "/(site)"],
+          ["/blog/opengraph-image", "/(site)/blog"],
+          ["/blog/:slug/opengraph-image", "/(site)/blog/[slug]"]
+        ].map(([source, parent]) => ({
+          source,
+          missing: BENCH_HOST,
+          destination: `${source}-${metadataRouteSuffix(parent)}`
+        }))
+      ]
+    };
   }
 });
+
+/** Next.js's suffix for a metadata route under `parent`: the first six base-36 digits of its djb2 hash. */
+function metadataRouteSuffix(parent) {
+  let hash = 5381;
+  for (let i = 0; i < parent.length; i++) {
+    hash = ((hash << 5) + hash + parent.charCodeAt(i)) & 0xffffffff;
+  }
+  return (hash >>> 0).toString(36).slice(0, 6);
+}
 
 export default nextConfig;

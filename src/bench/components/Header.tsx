@@ -12,6 +12,7 @@ import {
   useState,
 } from 'react';
 
+import { useBenchPath } from '@/bench/components/BenchBase';
 import { FilterBar } from '@/bench/components/FilterBar';
 import type { FilterUniverse } from '@/bench/lib/chart-format';
 import {
@@ -70,6 +71,8 @@ export function Header({
   initialEngines?: string[] | null;
   initialFormats?: string[] | null;
 }) {
+  const path = useBenchPath();
+  const home = path('/');
   const [navOpen, setNavOpen] = useState(false);
   const [nextTheme, setNextTheme] = useState<'light' | 'dark'>('light');
   const navRef = useRef<HTMLDivElement>(null);
@@ -151,20 +154,20 @@ export function Header({
           </button>
           <Link
             className="logo-link"
-            href="/"
+            href={home}
             aria-label="bench.vortex.dev home"
-            onClick={scrollHomeInPlace}
+            onClick={(event) => scrollHomeInPlace(event, home)}
           >
             <img
               className="site-logo logo-light"
-              src="/Vortex_Black_NoBG.svg"
+              src={path('/Vortex_Black_NoBG.svg')}
               alt="Vortex"
               width={654}
               height={190}
             />
             <img
               className="site-logo logo-dark"
-              src="/Vortex_White_NoBG.svg"
+              src={path('/Vortex_White_NoBG.svg')}
               alt="Vortex"
               width={654}
               height={190}
@@ -258,9 +261,10 @@ export function Header({
  * the focused logo fires the same click. A click with a modifier key or another
  * button (open in a new tab or window) is left to the browser, and on any other
  * page the logo navigates home as a link. The scroll is smooth unless the
- * visitor prefers reduced motion.
+ * visitor prefers reduced motion. `home` is the landing page's path: `/` on
+ * bench's own host, `/bench` elsewhere.
  */
-function scrollHomeInPlace(event: ReactMouseEvent<HTMLAnchorElement>): void {
+function scrollHomeInPlace(event: ReactMouseEvent<HTMLAnchorElement>, home: string): void {
   if (
     event.defaultPrevented ||
     event.button !== 0 ||
@@ -268,7 +272,7 @@ function scrollHomeInPlace(event: ReactMouseEvent<HTMLAnchorElement>): void {
     event.ctrlKey ||
     event.shiftKey ||
     event.altKey ||
-    window.location.pathname !== '/'
+    window.location.pathname !== home
   ) {
     return;
   }

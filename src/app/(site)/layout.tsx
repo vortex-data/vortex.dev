@@ -11,6 +11,11 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL(baseUrl),
+  // public/favicon.ico, not the app/ file convention: that would put the icon
+  // on every root layout's pages, bench's too, which have their own icons.
+  icons: {
+    icon: { url: "/favicon.ico", sizes: "256x256", type: "image/x-icon" }
+  },
   alternates: {
     types: {
       "application/rss+xml": [
