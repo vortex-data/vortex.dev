@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
 import { afterEach, expect, test } from 'bun:test';
-import { chartKeyFromSlug, groupKeyFromSlug } from '../../web/lib/slug';
+import { chartKeyFromSlug, groupKeyFromSlug } from '../../src/bench/lib/slug';
 import {
   compareApi,
   compareApiDetailed,

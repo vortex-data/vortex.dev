@@ -3,9 +3,9 @@
 
 import modernBrowsers from 'next/dist/shared/lib/modern-browserslist-target.js';
 
-// Next.js looks for a PostCSS config here and then in every parent directory,
-// so without this file the build would load the marketing site's Tailwind
-// config from the repository root (Turbopack reads this file too). These are
+// bench's stylesheets only: with no PostCSS config at the repository root,
+// Turbopack uses the config in a CSS file's own directory, and the marketing
+// site's CSS keeps Turbopack's defaults. These are
 // the plugins Next.js's webpack build applies when it finds no config at all
 // (see getDefaultPlugins in next/dist/build/webpack/config/blocks/css/plugins.js),
 // so the CSS keeps the transforms bench's builds had before Next.js 16 made
