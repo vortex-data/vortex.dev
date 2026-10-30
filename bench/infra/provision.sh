@@ -235,11 +235,15 @@ ensure_security_group() {
                    "Key=${TAG_KEY_OWNER},Value=${TAG_VAL_OWNER}"
     fi
 
-    # Authorize inbound 5432 from anywhere if not already.
-    local existing_rule
-    existing_rule=$(aws ec2 describe-security-groups --group-ids "$DB_SG_ID" \
-        --query 'SecurityGroups[0].IpPermissions[?FromPort==`5432`]' --output json)
-    if [ "$(echo "$existing_rule" | jq 'length')" -eq 0 ]; then
+    # Authorize inbound 5432 from anywhere if not already. Only the exact rule
+    # counts: TCP, both ports 5432, and 0.0.0.0/0 among its ranges. A UDP rule,
+    # a range that starts at 5432 or a rule for another CIDR does not.
+    local permissions
+    permissions=$(aws ec2 describe-security-groups --group-ids "$DB_SG_ID" \
+        --query 'SecurityGroups[0].IpPermissions' --output json)
+    if ! jq -e 'any(.[]?; .IpProtocol == "tcp" and .FromPort == 5432
+            and .ToPort == 5432 and any(.IpRanges[]?; .CidrIp == "0.0.0.0/0"))' \
+            <<<"$permissions" >/dev/null; then
         aws ec2 authorize-security-group-ingress \
             --group-id "$DB_SG_ID" \
             --protocol tcp --port 5432 --cidr 0.0.0.0/0 \
@@ -758,4 +762,7 @@ main() {
     print_summary
 }
 
-main "$@"
+# Run only when executed, so the tests can source the script and call one step.
+if [ "${BASH_SOURCE[0]}" = "$0" ]; then
+    main "$@"
+fi
