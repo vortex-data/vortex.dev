@@ -84,7 +84,10 @@ export const NewsletterForm = () => {
           <button
             type="submit"
             className="vx-btn vx-btn-primary"
-            disabled={state === "loading" || !email.trim()}
+            // Enabled unless a request is running: the field's `required`
+            // and `type="email"` catch an empty or malformed address, so the
+            // button never looks disabled while it works.
+            disabled={state === "loading"}
           >
             {state === "loading" ? "Subscribing" : "Subscribe"}
           </button>

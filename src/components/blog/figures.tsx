@@ -128,3 +128,8 @@ export function Names({ names }: { names: string[] }) {
     </ul>
   );
 }
+
+/** A note at the end of a post, such as where it first appeared. */
+export function Note({ children }: { children: ReactNode }) {
+  return <p className="vx-small vx-article-note">{children}</p>;
+}

@@ -7,15 +7,14 @@ excerpt: "How Vortex uses BtrBlocks-style codec selection to beat Parquet+ZSTD o
 published: true
 ---
 
-> This blogpost was originally posted on the [SpiralDB blog](https://spiraldb.com/post/cascading-compression-with-btrblocks).
-
 We've written about individual compression codecs in Vortex before: [FastLanes](https://blog.spiraldb.com/life-in-the-fastlanes/) for bit-packing integers, [FSST](https://blog.spiraldb.com/compressing-strings-with-fsst/) for strings, and [ALP](https://blog.spiraldb.com/alp-rust-is-faster-than-c/) for floating point. But we've never explained how Vortex decides _which_ codec to use for a given column, or how it layers multiple codecs on top of each other.
 
 On TPC-H at scale factor 10, Vortex files are **38% smaller** and decompress **10–25x faster** than Parquet with ZSTD, without using any general-purpose compression. The difference comes down to how the codecs are selected and composed, a framework inspired by the BtrBlocks paper from TU Munich.
 
 > 🎓
 > Maximilian Kuschewski, David Sauerwein, Adnan Alhomssi, and Viktor Leis. 2023. BtrBlocks: Efficient Columnar Compression for Data Lakes.
-> _Proc. ACM Manag. Data 1, 2, Article 118 (June 2023)._ > _[https://doi.org/10.1145/3589263](https://doi.org/10.1145/3589263)_
+> _Proc. ACM Manag. Data 1, 2, Article 118 (June 2023)._
+> _[https://doi.org/10.1145/3589263](https://doi.org/10.1145/3589263)_
 
 The core idea: don't pick one codec. Try them all, and let the data decide.
 
@@ -263,3 +262,5 @@ Upcoming posts:
 Further out: **cross-column compression**. Everything here treats each column independently, but real data has inter-column correlations. Dates that differ by a few days, zip codes determined by city, totals that are sums of other columns. [Corra](https://arxiv.org/abs/2403.17229) shows that encoding a column as a residual relative to a correlated reference column can compress 50–85% smaller than per-column encoding alone. This is orthogonal to cascading; Corra-style transforms would run _before_ the per-column compressor, shrinking value domains so the cascade can be even more effective.
 
 All of this code is open source under Apache license.
+
+<Note>This blogpost was originally posted on the [SpiralDB blog](https://spiraldb.com/post/cascading-compression-with-btrblocks).</Note>

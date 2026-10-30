@@ -1,14 +1,13 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  adjacentPosts,
   bylineParts,
+  editUrl,
   formatPostDate,
   kindLabel,
-  morePosts,
   splitLead
 } from "@/lib/posts";
-
-const post = (slugAsParams: string, date: string) => ({ slugAsParams, date });
 
 describe("formatPostDate", () => {
   it("writes the BlogIndex card's date, in UTC", () => {
@@ -49,34 +48,70 @@ describe("bylineParts", () => {
   });
 });
 
-describe("morePosts", () => {
-  // getAllPosts returns the posts newest first.
+describe("adjacentPosts", () => {
+  const p = (
+    slugAsParams: string,
+    date: string,
+    kind: "deep-dive" | "bulletin"
+  ) => ({ slugAsParams, date, kind });
+  // Newest first, as getAllPosts returns them.
   const posts = [
-    post("e", "2026-02-26T00:00:00.000Z"),
-    post("d", "2026-01-30T00:00:00.000Z"),
-    post("c", "2025-12-08T00:00:00.000Z"),
-    post("b", "2025-11-06T00:00:00.000Z"),
-    post("a", "2025-10-13T00:00:00.000Z")
+    p("bull-4", "2026-04-01T00:00:00.000Z", "bulletin"),
+    p("deep-2", "2026-03-01T00:00:00.000Z", "deep-dive"),
+    p("bull-3", "2026-02-01T00:00:00.000Z", "bulletin"),
+    p("bull-2", "2026-01-01T00:00:00.000Z", "bulletin"),
+    p("deep-1", "2025-12-01T00:00:00.000Z", "deep-dive"),
+    p("bull-1", "2025-11-01T00:00:00.000Z", "bulletin")
   ];
-  const slugs = (ps: { slugAsParams: string }[]) =>
-    ps.map((p) => p.slugAsParams);
+  const slugs = (a: {
+    older: { slugAsParams: string } | null;
+    newer: { slugAsParams: string } | null;
+  }) => [a.older?.slugAsParams ?? null, a.newer?.slugAsParams ?? null];
 
-  it("lists the other posts, newest first, at most three", () => {
-    assert.deepEqual(slugs(morePosts(posts, "e")), ["d", "c", "b"]);
-    assert.deepEqual(slugs(morePosts(posts, "c")), ["e", "d", "b"]);
-  });
-
-  it("returns fewer when there are fewer other posts", () => {
-    assert.deepEqual(slugs(morePosts(posts.slice(0, 2), "e")), ["d"]);
-    assert.deepEqual(slugs(morePosts(posts.slice(0, 1), "e")), []);
-  });
-
-  it("sorts by date itself, so the order of its input does not matter", () => {
-    assert.deepEqual(slugs(morePosts([...posts].reverse(), "a")), [
-      "e",
-      "d",
-      "c"
+  it("takes the nearest older and newer posts of the same kind", () => {
+    assert.deepEqual(slugs(adjacentPosts(posts, "deep-2")), [
+      "deep-1",
+      "bull-4"
     ]);
+    assert.deepEqual(slugs(adjacentPosts(posts, "bull-3")), [
+      "bull-2",
+      "bull-4"
+    ]);
+    assert.deepEqual(slugs(adjacentPosts(posts, "deep-1")), [
+      "bull-1",
+      "deep-2"
+    ]);
+  });
+
+  it("falls back to the nearest post of any kind, and to none at the ends", () => {
+    assert.deepEqual(slugs(adjacentPosts(posts, "bull-4")), ["bull-3", null]);
+    assert.deepEqual(slugs(adjacentPosts(posts, "bull-1")), [null, "bull-2"]);
+  });
+
+  it("treats two posts of one day as neighbours, in the order given", () => {
+    const sameDay = [
+      p("b", "2025-09-08T00:00:00.000Z", "bulletin"),
+      p("a", "2025-09-08T00:00:00.000Z", "bulletin")
+    ];
+    assert.deepEqual(slugs(adjacentPosts(sameDay, "b")), ["a", null]);
+    assert.deepEqual(slugs(adjacentPosts(sameDay, "a")), [null, "b"]);
+  });
+
+  it("orders by date even when the list is not sorted", () => {
+    const shuffled = [3, 0, 5, 2, 1, 4].flatMap((i) => posts[i] ?? []);
+    assert.deepEqual(slugs(adjacentPosts(shuffled, "bull-3")), [
+      "bull-2",
+      "bull-4"
+    ]);
+  });
+});
+
+describe("editUrl", () => {
+  it("links to the post's MDX file on main", () => {
+    assert.equal(
+      editUrl("blog/october-2025"),
+      "https://github.com/vortex-data/vortex.dev/blob/main/src/content/blog/october-2025.mdx"
+    );
   });
 });
 

@@ -69,6 +69,10 @@
   color: var(--ink-body);
 }
 
+.vx-article-end .blog-newsletter {
+  margin-top: var(--space-8);
+}
+
 .blog-newsletter-done {
   margin: 0;
   color: var(--ink);

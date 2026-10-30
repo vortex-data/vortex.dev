@@ -2,12 +2,12 @@ import type { Metadata } from "next";
 import NextLink from "next/link";
 import { notFound } from "next/navigation";
 import { PostCover } from "@/components/blog/post-cover";
-import { PostRows } from "@/components/blog/post-rows";
+import { PostEnd } from "@/components/blog/post-end";
 import { ArrowBackIcon } from "@/components/icons";
 import { MDXRenderer } from "@/components/MDXRenderer";
 import { getAllPosts, getAllSlugs, getPostBySlug } from "@/lib/blog";
 import { baseUrl, siteName } from "@/lib/constants";
-import { bylineParts, kindLabel, morePosts } from "@/lib/posts";
+import { adjacentPosts, bylineParts, kindLabel } from "@/lib/posts";
 
 interface BlogPostPageProps {
   params: Promise<{ slug: string }>;
@@ -80,12 +80,12 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
     image: `${url}/opengraph-image`
   };
 
-  const more = morePosts(getAllPosts(), slug);
+  const { older, newer } = adjacentPosts(getAllPosts(), slug);
   const [date, authors, readingTime] = bylineParts(post);
 
-  // The design system's Article card: the kind, the title, the dek and a mono
-  // byline, then the post in a 68ch reading column on `surface`, and "More
-  // posts" at the end.
+  // The design system's Article card: the cover, the kind, the title, the dek
+  // and a mono byline, then the post in a 68ch reading column on `surface`,
+  // and its ending: the older and newer posts, links and the sign-up.
   return (
     <div className="blog-page">
       <script
@@ -115,12 +115,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
         <div className="vx-prose">
           <MDXRenderer code={post.body} />
         </div>
-        {more.length > 0 && (
-          <footer className="vx-article-more">
-            <h2 className="vx-label">More posts</h2>
-            <PostRows posts={more} heading="h3" />
-          </footer>
-        )}
+        <PostEnd slug={post.slug} older={older} newer={newer} />
       </article>
     </div>
   );

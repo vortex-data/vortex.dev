@@ -330,7 +330,9 @@ test.describe("blog post", () => {
     await expect(page.locator("h1").first()).toBeVisible();
   });
 
-  test("shows one h1, the byline and the More posts list", async ({ page }) => {
+  test("shows one h1 and the byline, and ends on older and newer posts", async ({
+    page
+  }) => {
     test.skip(!seedPostSlug, "no published posts");
     await page.goto(`/blog/${seedPostSlug}`);
     const article = page.locator("article.vx-article");
@@ -340,17 +342,11 @@ test.describe("blog post", () => {
     await expect(article.locator(".vx-article-byline")).toHaveText(
       /^\d{1,2} \w{3} \d{4} · .+ · \d+ min read$/
     );
-    const more = article.locator(".vx-article-more");
-    await expect(
-      more.getByRole("heading", { name: "More posts" })
-    ).toBeVisible();
-    const rows = more.locator("a.vx-post-row");
-    const count = await rows.count();
-    expect(count).toBeGreaterThan(0);
-    expect(count).toBeLessThanOrEqual(3);
-    await expect(more.locator(`a[href="/blog/${seedPostSlug}"]`)).toHaveCount(
-      0
-    );
+    const nav = article.getByRole("navigation", {
+      name: "Older and newer posts"
+    });
+    expect(await nav.locator("a.vx-post-nav-link").count()).toBeGreaterThan(0);
+    await expect(nav.locator(`a[href="/blog/${seedPostSlug}"]`)).toHaveCount(0);
     await expect(
       page.getByRole("link", { name: "Back to blog" })
     ).toHaveAttribute("href", "/blog");
@@ -929,20 +925,6 @@ test.describe("design system rules on the blog", () => {
     expect(Math.abs(gap)).toBeLessThan(1);
   });
 
-  test("More posts titles are h3s, in line with their label", async ({
-    page
-  }) => {
-    await page.goto(POST);
-    const more = ".vx-article-more";
-    await expect(
-      page.locator(`${more} li h3.vx-post-row-title`).first()
-    ).toBeVisible();
-    const gap =
-      (await x(page, `${more} .vx-post-row-meta`)) -
-      (await x(page, `${more} > .vx-label`));
-    expect(Math.abs(gap)).toBeLessThan(1);
-  });
-
   test("prose lists keep their markers under the site's reset", async ({
     page
   }) => {
@@ -1152,5 +1134,96 @@ test.describe("figures, chains, quotes and references", () => {
     });
     expect(style[0]).toBe("none");
     expect(style[1]).toMatch(/Geist Mono|mono/i);
+  });
+});
+
+// Note 72: a post ends on its neighbours, one row of links and the sign-up.
+test.describe("post ending", () => {
+  test("btrblocks ends on the newest bulletin, as no deep dive is older", async ({
+    page
+  }) => {
+    await page.goto("/blog/btrblocks-compressor");
+    const nav = page.getByRole("navigation", { name: "Older and newer posts" });
+    const prev = nav.locator('a[rel="prev"]');
+    await expect(prev).toHaveAttribute("href", "/blog/december-2025");
+    await expect(prev.locator(".vx-label")).toHaveText(
+      /^Previous · bulletin$/i
+    );
+    await expect(nav.locator('a[rel="next"]')).toHaveCount(0);
+  });
+
+  test("a bulletin's neighbours are bulletins", async ({ page }) => {
+    await page.goto("/blog/october-2025");
+    const nav = page.getByRole("navigation", { name: "Older and newer posts" });
+    await expect(nav.locator('a[rel="prev"]')).toHaveAttribute(
+      "href",
+      "/blog/september-2025"
+    );
+    await expect(nav.locator('a[rel="next"]')).toHaveAttribute(
+      "href",
+      "/blog/november-2025"
+    );
+  });
+
+  test("one row of links: Slack, the post's file on GitHub, and the feed", async ({
+    page
+  }) => {
+    await page.goto("/blog/october-2025");
+    const links = page.getByRole("navigation", { name: "About this post" });
+    await expect(
+      links.getByRole("link", { name: "Discuss in Slack" })
+    ).toHaveAttribute("href", "/slack");
+    await expect(
+      links.getByRole("link", { name: "Edit on GitHub" })
+    ).toHaveAttribute(
+      "href",
+      "https://github.com/vortex-data/vortex.dev/blob/main/src/content/blog/october-2025.mdx"
+    );
+    await expect(links.getByRole("link", { name: "RSS" })).toHaveAttribute(
+      "href",
+      "/rss/feed.xml"
+    );
+    await expect(page.getByLabel("Email address")).toHaveCount(1);
+  });
+
+  test("Subscribe looks enabled before an address is typed", async ({
+    page
+  }) => {
+    await page.goto("/blog");
+    const button = page.getByRole("button", { name: "Subscribe" });
+    await expect(button).toBeEnabled();
+    expect(await button.evaluate((e) => getComputedStyle(e).opacity)).toBe("1");
+  });
+
+  test("btrblocks: the first-published note closes the post, and the citation has no stray >", async ({
+    page
+  }) => {
+    await page.goto("/blog/btrblocks-compressor");
+    const prose = page.locator(".vx-prose");
+    const note = prose.locator("> p.vx-article-note");
+    await expect(note).toHaveText(/originally posted on the/);
+    await expect(note.locator("a")).toHaveAttribute(
+      "href",
+      /cascading-compression-with-btrblocks/
+    );
+    // It is the prose's last child, not its first.
+    expect(
+      await prose.evaluate((e) =>
+        e.lastElementChild?.classList.contains("vx-article-note")
+      )
+    ).toBe(true);
+    await expect(prose.locator(".vx-callout").first()).not.toContainText("> ");
+  });
+
+  test("on a phone the post drops its card's edge, so the text gets the width", async ({
+    page
+  }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.goto("/blog/october-2025");
+    const style = await page.locator("article.vx-article").evaluate((e) => {
+      const s = getComputedStyle(e);
+      return [s.borderTopWidth, s.paddingLeft];
+    });
+    expect(style).toEqual(["0px", "0px"]);
   });
 });

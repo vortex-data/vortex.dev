@@ -2,7 +2,7 @@ import { type ComponentProps, isValidElement } from "react";
 import { InfoIcon, WarningIcon } from "@/components/icons";
 import { codeLabel } from "@/vendor/vortex-design/code-block.js";
 import { CopyCode } from "./copy-code";
-import { Bars, Chain, Names, Quote } from "./figures";
+import { Bars, Chain, Names, Note, Quote } from "./figures";
 
 /**
  * The elements of a post that take the design system's cards. Markdown
@@ -72,5 +72,6 @@ export const mdxComponents = {
   Bars,
   Chain,
   Names,
+  Note,
   Quote
 };

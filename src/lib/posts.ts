@@ -31,18 +31,35 @@ export function bylineParts(post: {
   ];
 }
 
-const MORE_POSTS = 3;
+/**
+ * The Article card's ending: the nearest older and newer posts by date. Each
+ * is the nearest of the same kind when there is one, else the nearest of any
+ * kind, else null.
+ */
+export function adjacentPosts<
+  T extends { slugAsParams: string; date: string; kind: PostKind }
+>(posts: readonly T[], slug: string): { older: T | null; newer: T | null } {
+  // Newest first. The sort is stable, so two posts of one day keep the
+  // order they came in, and each is the other's neighbour.
+  const byDate = [...posts].sort(
+    (a, b) => Date.parse(b.date) - Date.parse(a.date)
+  );
+  const at = byDate.findIndex((p) => p.slugAsParams === slug);
+  if (at < 0) return { older: null, newer: null };
+  const { kind } = byDate[at] as T;
+  const pick = (list: T[]) =>
+    list.find((p) => p.kind === kind) ?? list[0] ?? null;
+  return {
+    older: pick(byDate.slice(at + 1)),
+    newer: pick(byDate.slice(0, at).reverse())
+  };
+}
 
-/** The "More posts" list under an article: the other posts, newest first. */
-export function morePosts<T extends { slugAsParams: string; date: string }>(
-  posts: readonly T[],
-  slug: string,
-  limit = MORE_POSTS
-): T[] {
-  return posts
-    .filter((p) => p.slugAsParams !== slug)
-    .sort((a, b) => Date.parse(b.date) - Date.parse(a.date))
-    .slice(0, limit);
+const REPOSITORY = "https://github.com/vortex-data/vortex.dev";
+
+/** "Edit on GitHub": the post's MDX file on `main`. `slug` is velite's path, "blog/<name>". */
+export function editUrl(slug: string): string {
+  return `${REPOSITORY}/blob/main/src/content/${slug}.mdx`;
 }
 
 /**
