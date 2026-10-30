@@ -8,8 +8,8 @@ SPDX-FileCopyrightText: Copyright the Vortex contributors
 How a benchmark measurement travels from a CI run to a row in the database, and
 how the full history was carried across the three storage generations.
 
-See also: the wire contract [`../../CONTRACT.md`](../../CONTRACT.md) and the SQL
-schema under [`../../migrations/`](../../migrations/). (The migrator's own
+See also: the wire contract [`../../CONTRACT.md`](../CONTRACT.md) and the SQL
+schema under [`../../migrations/`](../../../db/migrations/). (The migrator's own
 `migrate/README.md` was deleted with the v3 tree; see git history.)
 
 ## Producers: the emitters
@@ -58,7 +58,7 @@ Each fact row's primary key is `measurement_id`, a **deterministic hash over
   The CI ingest writer computes the hash itself, with no server in the loop
   (the monorepo's `scripts/_measurement_id.py`, originally a byte-for-byte port of
   the retired v3 server's Rust implementation). Its output is frozen by a
-  golden-vector contract — see [`CONTRACT.md`](../../CONTRACT.md) and
+  golden-vector contract — see [`CONTRACT.md`](../CONTRACT.md) and
   [design-decisions.md](design-decisions.md).
 - It is **never a wire field.** Emitters do not (and must not) send it — the
   ingest writer computes it just before INSERT. Note that with every production
@@ -74,15 +74,15 @@ anchored in several places that **must** agree, in one logical change:
 
 | Site | File | Repo |
 |---|---|---|
-| Source of truth | `web/lib/schema-version.ts` | this repo |
+| Source of truth | `src/bench/lib/schema-version.ts` | this repo |
 | Producer wire shape | `vortex-bench/src/v3.rs` | monorepo |
 | CI ingest writer | `scripts/post-ingest.py` (hardcoded literal) | monorepo |
 
-The in-repo anchor is checked automatically by `web/lib/schema-version.test.ts`,
+The in-repo anchor is checked automatically by `src/bench/lib/schema-version.test.ts`,
 which reads `CONTRACT.md` and compares its quoted anchor against the TS constant.
 The cross-repo sites cannot be verified from here — a bump must be coordinated or
 every CI ingest run fails. Full procedure in
-[`../../CONTRACT.md`](../../CONTRACT.md).
+[`../../CONTRACT.md`](../CONTRACT.md).
 
 ## The ingest path
 

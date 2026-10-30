@@ -19,8 +19,8 @@ It descends from v3's "precompute the hot path" instinct (see
 materialize a read model in memory, v4 has no box — so the same instinct is
 expressed as **layers of cache, a warmer, and a client that asks for exactly
 what it needs.** The shipped constants live in
-[`web/lib/chart-format.ts`](../../web/lib/chart-format.ts) and
-[`web/lib/data-cache.ts`](../../web/lib/data-cache.ts).
+[`src/bench/lib/chart-format.ts`](../../../src/bench/lib/chart-format.ts) and
+[`src/bench/lib/data-cache.ts`](../../../src/bench/lib/data-cache.ts).
 
 ## The cost being hidden
 
@@ -42,7 +42,7 @@ about those layers are worth calling out here.
 
 **The Data Cache backstop is 24 hours, not the obvious hour.**
 `DATA_CACHE_BACKSTOP_SECONDS = 86400`
-([`web/lib/data-cache.ts`](../../web/lib/data-cache.ts)) caps how long a cached
+([`src/bench/lib/data-cache.ts`](../../../src/bench/lib/data-cache.ts)) caps how long a cached
 default-window read can live before it must recompute. On a busy site you would
 keep this short. Here it is deliberately *long*: benchmark data lands only a few
 times a day, and a low-traffic site idles overnight, so a short backstop just
@@ -60,7 +60,7 @@ app, all sharing the `bench-data` tag.
 ### Refresh on ingest
 
 The backstop bounds staleness; `POST /api/revalidate`
-([`web/app/api/revalidate/route.ts`](../../web/app/api/revalidate/route.ts))
+([`src/app/(bench)/bench/api/revalidate/route.ts`](../../../src/app/(bench)/bench/api/revalidate/route.ts))
 *removes* it. On a successful ingest the emitter calls it and it runs
 `revalidateTag('bench-data', 'max')`, which marks the entries stale rather than
 dropping them: the next read of each serves the previous data once and refreshes
@@ -85,12 +85,12 @@ and the token are set).
 Caches handle *repeat* reads; they do nothing for the first read after an idle
 gap, which is the dominant cost on this site. Two crons keep the hot path warm:
 
-- **The warmer — a Vercel-native cron, `*/2 * * * *` on `/api/health`**
-  ([`web/vercel.json`](../../web/vercel.json)). `/api/health` runs one
+- **The warmer — a Vercel-native cron, `*/2 * * * *` on `/bench/api/health`**
+  ([`vercel.json`](../../../vercel.json)), bench's `/api/health`. It runs one
   `SELECT 1`, so each ping checks connectivity and warms one pooled Postgres connection
   without scanning benchmark tables. The pool uses a **5-second** idle timeout
   (`BENCH_DB_IDLE_TIMEOUT_MS`, default `5000`, in
-  [`web/lib/db.ts`](../../web/lib/db.ts)). Its
+  [`src/bench/lib/db.ts`](../../../src/bench/lib/db.ts)). Its
   [`attachDatabasePool`](https://vercel.com/docs/functions/functions-api-reference/vercel-functions-package#attachdatabasepool)
   hook keeps the invocation alive while pg closes idle clients before suspension.
   Connections can serve concurrent requests, but expire between cron pings.
@@ -104,11 +104,10 @@ gap, which is the dominant cost on this site. Two crons keep the hot path warm:
 **Why two crons.** GitHub *scheduled* workflows only fire from the default
 branch, so the `bench-keep-warm` workflow is dormant on any feature branch and
 only becomes active once merged to `main`. The Vercel cron, by contrast, runs
-against production deployments — and because this repo deploys with
-`vercel deploy --prebuilt --prod` (git integration off), it fires even from a
-feature-branch deploy. The Vercel-native warmer is therefore the one that works
-*before* a merge, which is exactly when you are testing whether the site feels
-fast.
+against the production deployment as soon as it is live. (When bench deployed
+itself with `vercel deploy --prebuilt --prod`, it fired even from a feature-branch
+deploy; now production deployments come only from `main`, through the `vortex`
+project's git integration.)
 
 **Honest limit:** one cron ping warms one function instance. Under multi-instance
 scaling that is not full coverage — but a low-traffic site effectively runs one
@@ -117,7 +116,7 @@ instance, so the ping warms the path the typical first visitor actually takes.
 ### One query per group
 
 A group page inlines every chart's payload (99 for TPC-DS, 43 for Clickbench).
-`groupChartPayloads` ([`web/lib/queries.ts`](../../web/lib/queries.ts)) builds
+`groupChartPayloads` ([`src/bench/lib/queries.ts`](../../../src/bench/lib/queries.ts)) builds
 them from two statements instead of two per chart: the last `n` commits, and
 every chart's rows in that window, one `LATERAL` join per chart (in slices of
 25 charts, so a TPC-DS group runs five). They run one after another on one
@@ -140,7 +139,7 @@ The biggest read-path win came from a query fix, not a cache. Each per-chart
 just to return the latest ~665-row window, because recency was applied by joining
 `commits` on `commit_sha` *after* a full scan. The fix
 (`queryMeasurementWindowFilter` in
-[`web/lib/queries.ts`](../../web/lib/queries.ts)) filters directly on the
+[`src/bench/lib/queries.ts`](../../../src/bench/lib/queries.ts)) filters directly on the
 **denormalized `commit_timestamp`** column — populated on every write path and
 backed by the read-path index (migration `006`/`007`, see
 [deploy-and-infra.md](deploy-and-infra.md)) — so
@@ -176,10 +175,10 @@ becomes the bottleneck.
 
 The server makes a single payload cheap; the client decides *when and how many*
 to ask for. The pure helpers below live in
-[`web/lib/chart-format.ts`](../../web/lib/chart-format.ts); the fetch queues are
-in [`web/lib/chart-store/queues.ts`](../../web/lib/chart-store/queues.ts), the
-chart island in [`web/components/Chart.tsx`](../../web/components/Chart.tsx) and
-the Chart.js wiring in [`web/components/chart/`](../../web/components/chart/).
+[`src/bench/lib/chart-format.ts`](../../../src/bench/lib/chart-format.ts); the fetch queues are
+in [`src/bench/lib/chart-store/queues.ts`](../../../src/bench/lib/chart-store/queues.ts), the
+chart island in [`src/bench/components/Chart.tsx`](../../../src/bench/components/Chart.tsx) and
+the Chart.js wiring in [`src/bench/components/chart/`](../../../src/bench/components/chart/).
 
 ### Lazy hydration, top first
 
@@ -240,7 +239,7 @@ chip's retry re-issues the *fetch* (an earlier version only retried chart
 "Expand All" should load everything quickly, but the per-chart, viewport-gated
 path does the opposite — it loads only what is on screen. So a toggle-open kicks a
 single `GET /api/group/{slug}?n=100` **bundle** fetch
-(`ensureGroupBundle`, [`web/lib/chart-store/bundles.ts`](../../web/lib/chart-store/bundles.ts))
+(`ensureGroupBundle`, [`src/bench/lib/chart-store/bundles.ts`](../../../src/bench/lib/chart-store/bundles.ts))
 into a session-lifetime `payloadCache`, priming every chart in the group with one
 request (~150–300 KB gzipped) instead of dozens. The `IntersectionObserver` still
 gates the *Chart.js construction* (the actual CPU cost), and bundles run at
@@ -253,11 +252,11 @@ revalidation is accepted (a refresh gets fresh data).
 
 Every group starts collapsed: its header row, with the Vortex-vs-Parquet
 headline, and its summary table, both server-rendered. Its toolbar and cards
-([`GroupBody`](../../web/components/GroupBody.tsx)) mount only while it is open,
+([`GroupBody`](../../../src/bench/components/GroupBody.tsx)) mount only while it is open,
 so a collapsed group hydrates no island. The open groups live in
 the URL fragment (`/#compression,clickbench`), which the CDN never sees. An
 inline script before the first group
-([`OpenGroupsScript`](../../web/components/OpenGroupsScript.tsx)) opens each
+([`OpenGroupsScript`](../../../src/bench/components/OpenGroupsScript.tsx)) opens each
 listed group as soon as the parser inserts it: its `MutationObserver` callback
 runs before the browser can paint the new nodes. So a reload or Back never
 shows them collapsed first, even on a connection slow enough that the first
@@ -267,7 +266,7 @@ closes before hydration stays that way, and a reader who scrolls, touches,
 clicks or presses a key before hydration is not moved, neither by the restore
 nor by the scroll to a link's first group. Scroll is
 restored by element, not by pixel
-([`lib/scroll-restore.ts`](../../web/lib/scroll-restore.ts)): the open bodies
+([`lib/scroll-restore.ts`](../../../src/bench/lib/scroll-restore.ts)): the open bodies
 mount only after hydration, so a saved `scrollY` would land against a shorter
 page. While no group is open the page leaves restoration to the browser
 (`history.scrollRestoration` stays `auto`), because the collapsed list is as
@@ -294,7 +293,7 @@ with one-off scripts that are not in this repository.
   574 ms of blocking time against 500 ms.
 
 Each request to `/` decides how to send the groups
-([`app/page.tsx`](../../web/app/page.tsx)). It starts reading them and waits up
+([`app/page.tsx`](../../../src/app/(bench)/bench/page.tsx)). It starts reading them and waits up
 to 300 ms (`LOADING_VIEW_AFTER_MS`). A Data Cache hit answers well inside that,
 so the page renders the groups directly, with no Suspense boundary: plain,
 visible HTML that a reader with JavaScript off can read in full. A miss gets a

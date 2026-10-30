@@ -21,7 +21,7 @@ const CHART_PAGES = 5;
 
 /**
  * A chart slug that the app parses (a compression-time chart, in the slug format of
- * `bench/web/lib/slug.ts`) but that names no chart, so the API and the page answer 404.
+ * `src/bench/lib/slug.ts`) but that names no chart, so the API and the page answer 404.
  */
 export const UNKNOWN_CHART_SLUG = `ct.${Buffer.from(
   JSON.stringify({

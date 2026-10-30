@@ -22,9 +22,9 @@ Start here, then follow the links below by topic.
 
 For the operational view (how to deploy, what secrets exist) see the runbooks
 under [`../runbooks/`](../runbooks/) and
-[`../../infra/README.md`](../../infra/README.md). The wire contract between the
+[`../../infra/README.md`](../../../infra/README.md). The wire contract between the
 monorepo emitters and this repo's ingest is
-[`../../CONTRACT.md`](../../CONTRACT.md). The legacy component docs
+[`../../CONTRACT.md`](../CONTRACT.md). The legacy component docs
 (`server/ARCHITECTURE.md`, `migrate/README.md`, `ops/README.md`) were deleted
 with the v3 tree and live in git history — see [`../legacy.md`](../legacy.md).
 
@@ -64,7 +64,7 @@ previous generations survive only until their teardown finishes (see
 |---|---|---|---|
 | **v2** | Node `server.js` + Vite/React SPA, on Cloudflare | A static `data.json.gz` dump in public S3, aggregated in memory at read time | Retired from serving; its S3 dump still receives CI uploads. To be torn down. |
 | **v3** | `vortex-bench-server` (Rust, `axum` + `maud`), on an EC2 host | DuckDB file on local disk | **Fully decommissioned 2026-07-08** — infrastructure and code deleted. |
-| **v4** | `web/` (Next.js App Router) on Vercel | AWS RDS Postgres | **Live production** at `bench.vortex.dev`; `main` = production. |
+| **v4** | `src/app/(bench)/bench` (Next.js App Router) on Vercel | AWS RDS Postgres | **Live production** at `bench.vortex.dev`; `main` = production. |
 
 Why three? Each generation traded the previous one's main weakness:
 
