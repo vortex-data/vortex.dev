@@ -1,13 +1,11 @@
 name: Lighthouse
 
 on:
+  # Every pull request starts this workflow, and the `changes` job skips the
+  # audit when only bench changed. A skipped job reports success, so "Lighthouse
+  # audit" can be a required check; a workflow filtered out by `paths` would
+  # never report and would block the merge.
   pull_request:
-    # Lighthouse audits the marketing site only. It isn't a required check, so
-    # a workflow-level filter is enough here; ci.yml gates its required job with
-    # the changed-paths action instead.
-    paths-ignore:
-      - 'bench/**'
-      - '.github/workflows/bench-*.yml'
   workflow_dispatch:
 
 permissions:
@@ -21,10 +19,29 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Detect changed paths
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      site: ${{ steps.paths.outputs.site }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - id: paths
+        uses: ./.github/actions/changed-paths
+
   lighthouse:
     name: Lighthouse audit
+    needs: changes
+    # Lighthouse audits the marketing site only. Skipped, which counts as
+    # passing, when nothing outside bench/ changed. If the path check itself
+    # fails, run anyway rather than skip.
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.site == 'true') }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
@@ -81,9 +98,16 @@ jobs:
           temporaryPublicStorage: true
 
       # Build a markdown table from the .lighthouseci/lhr-*.json reports.
-      # `unique_by(.url)` collapses duplicate rows if `numberOfRuns > 1`
-      # (the action writes the median LHR per URL, but be defensive);
-      # `sort_by(.url)` keeps row order deterministic across runs.
+      # lighthouserc.cjs collects three runs per URL and asserts on the best
+      # one, so the table shows each URL's best run by performance, the run
+      # the check is judged by. `group_by(.url)` also keeps row order
+      # deterministic. The linked report is the one the action uploads for
+      # that URL and may be a different run.
+      #
+      # Fork PRs, and Dependabot's PRs from this repository, get a read-only
+      # GITHUB_TOKEN that can't post comments. A failed comment must not fail
+      # this required check, so only same-repository, non-Dependabot PRs get
+      # one, and both comment steps are non-fatal for any other token limit.
       # `if: always()` so the PR comment still posts when assertions fail —
       # reviewers can see *which* category regressed without digging through
       # the workflow log.
@@ -93,8 +117,9 @@ jobs:
       # the 🟢 cutoff, so a cell can pass assertions and still show 🟡 — the
       # visual signals "we locked this in but it's improvable."
       - name: Format PR comment
-        if: always() && github.event_name == 'pull_request' && steps.lighthouse.outputs.links != ''
+        if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' && steps.lighthouse.outputs.links != ''
         id: lh-comment
+        continue-on-error: true
         env:
           LINKS_JSON: ${{ steps.lighthouse.outputs.links }}
         run: |
@@ -114,8 +139,8 @@ jobs:
                 bp: (.categories["best-practices"].score * 100 | floor),
                 seo: (.categories.seo.score * 100 | floor)
               })
-              | unique_by(.url)
-              | sort_by(.url)
+              | group_by(.url)
+              | map(max_by(.perf))
               | map(
                   "| `" + (.url | sub("^https?://[^/]+"; "")) + "`"
                   + " | " + cell(.perf)
@@ -133,6 +158,7 @@ jobs:
 
       - name: Post or update PR comment
         if: github.event_name == 'pull_request' && steps.lh-comment.outputs.body != ''
+        continue-on-error: true
         uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88  # v3.0.5
         with:
           header: lighthouse
