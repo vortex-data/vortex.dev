@@ -297,6 +297,143 @@ describe('cache fill slots', () => {
   });
 });
 
+describe('a background refresh that loses the lock', () => {
+  // The delays between tries of the lock, as in `cache-fill.ts`.
+  const delays = [250, 750, 2_000, 4_000, 8_000];
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    connect.mockReset();
+    query.mockReset();
+    release.mockReset();
+    connect.mockImplementation(async () => Object.assign(new EventEmitter(), { query, release }));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  /** The lock is taken by another process for the first `taken` tries. */
+  function lockTakenFor(taken: number): void {
+    let tries = 0;
+    query.mockImplementation(async (text: string) => {
+      if (text.includes('pg_try_advisory_lock')) {
+        tries += 1;
+        return { rows: [{ acquired: tries > taken }] };
+      }
+      return { rows: [] };
+    });
+  }
+
+  /** Start a fill the way `unstable_cache` refreshes a stale entry: the read starts it and
+   * returns the stale value without waiting for it. The refresh comes back in an object: an
+   * async function that returned it bare would wait for it. */
+  async function staleRead<T>(
+    key: string,
+    fill: () => Promise<T>,
+  ): Promise<{ refresh: Promise<T> }> {
+    let refresh!: Promise<T>;
+    await expect(
+      retryGroupCacheFill(async () => {
+        refresh = withGroupCacheFillLock(key, fill);
+        return 'stale';
+      }, []),
+    ).resolves.toBe('stale');
+    // Let the refresh settle as a rejection here, not as an unhandled one.
+    refresh.catch(() => {});
+    return { refresh };
+  }
+
+  /** How many pool clients are checked out now. */
+  function clientsHeld(): number {
+    return connect.mock.calls.length - release.mock.calls.length;
+  }
+
+  it('waits for the lock without a connection, then fills', async () => {
+    lockTakenFor(2);
+    const fill = vi.fn(async () => 'fresh');
+
+    const { refresh } = await staleRead('group-charts:stale', fill);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(connect).toHaveBeenCalledOnce();
+    expect(clientsHeld()).toBe(0);
+    expect(fill).not.toHaveBeenCalled();
+
+    await vi.advanceTimersByTimeAsync(delays[0]!);
+    expect(connect).toHaveBeenCalledTimes(2);
+    expect(clientsHeld()).toBe(0);
+    expect(fill).not.toHaveBeenCalled();
+
+    await vi.advanceTimersByTimeAsync(delays[1]!);
+    await expect(refresh).resolves.toBe('fresh');
+    expect(fill).toHaveBeenCalledOnce();
+    expect(connect).toHaveBeenCalledTimes(3);
+    expect(clientsHeld()).toBe(0);
+    // The fill ran under the lock, and released it.
+    expect(query.mock.calls.at(-1)![0]).toContain('pg_advisory_unlock');
+  });
+
+  it('frees its fill slot while it waits', async () => {
+    lockTakenFor(1);
+    const { refresh } = await staleRead('groups', async () => 'groups');
+    await vi.advanceTimersByTimeAsync(0);
+
+    // The group list waits for the lock. Another entry's fill takes the slots meanwhile.
+    query.mockImplementation(async (text: string) =>
+      text.includes('pg_try_advisory_lock') ? { rows: [{ acquired: true }] } : { rows: [] },
+    );
+    await expect(withGroupCacheFillLock('group-charts:other', async () => 'other')).resolves.toBe(
+      'other',
+    );
+
+    await vi.advanceTimersByTimeAsync(delays[0]!);
+    await expect(refresh).resolves.toBe('groups');
+  });
+
+  it('gives up after the bounded wait', async () => {
+    lockTakenFor(Number.POSITIVE_INFINITY);
+    const fill = vi.fn(async () => 'never');
+
+    const { refresh } = await staleRead('group-charts:busy', fill);
+    const total = delays.reduce((sum, delay) => sum + delay, 0);
+    await vi.advanceTimersByTimeAsync(total - 1);
+    expect(connect).toHaveBeenCalledTimes(delays.length);
+    await vi.advanceTimersByTimeAsync(1);
+
+    await expect(refresh).rejects.toBeInstanceOf(GroupCacheFillInProgressError);
+    expect(connect).toHaveBeenCalledTimes(delays.length + 1);
+    expect(clientsHeld()).toBe(0);
+    expect(fill).not.toHaveBeenCalled();
+  });
+
+  it('leaves a read that waits for its fill to fail fast and retry the cache', async () => {
+    lockTakenFor(Number.POSITIVE_INFINITY);
+    const fill = vi.fn(async () => 'never');
+
+    const read = retryGroupCacheFill(() => withGroupCacheFillLock('group-charts:miss', fill), []);
+    read.catch(() => {});
+    await vi.advanceTimersByTimeAsync(0);
+
+    await expect(read).rejects.toBeInstanceOf(GroupCacheFillInProgressError);
+    expect(connect).toHaveBeenCalledOnce();
+    expect(clientsHeld()).toBe(0);
+    expect(fill).not.toHaveBeenCalled();
+  });
+
+  it('does not retry a fill that fails for another reason', async () => {
+    lockTakenFor(0);
+    const failure = new Error('query failed');
+
+    const { refresh } = await staleRead('group-charts:broken', async () => {
+      throw failure;
+    });
+    await vi.advanceTimersByTimeAsync(0);
+
+    await expect(refresh).rejects.toBe(failure);
+    expect(connect).toHaveBeenCalledOnce();
+  });
+});
+
 describe('cache fill lock id', () => {
   it('is the 32-bit FNV-1a hash as a signed int4', () => {
     // The FNV-1a reference vectors: 0x811c9dc5, 0xe40c292c and 0xbf9cf968.

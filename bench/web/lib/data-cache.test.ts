@@ -96,6 +96,29 @@ describe('data-cache wrappers', () => {
     expect(withGroupCacheFillLock.mock.calls[1]![2]).toBeUndefined();
   });
 
+  // A fill learns from the read it runs in whether anyone still waits for it (a background
+  // refresh of a stale entry does not), so every locked fill must start inside its read.
+  it('starts every locked fill inside a cache read that retries on contention', async () => {
+    let reading = false;
+    const startedInRead: boolean[] = [];
+    retryGroupCacheFill.mockImplementation(async (read: () => Promise<unknown>) => {
+      reading = true;
+      try {
+        return await read();
+      } finally {
+        reading = false;
+      }
+    });
+    withGroupCacheFillLock.mockImplementation((_key, fill) => {
+      startedInRead.push(reading);
+      return fill();
+    });
+
+    await cachedGroups();
+    await cachedDefaultGroupCharts('gs');
+    expect(startedInRead).toEqual([true, true]);
+  });
+
   it('reads and fills an aliased slug under its canonical slug', async () => {
     const { collectGroupCharts, chartPayload } = await import('@/lib/queries');
     await cachedDefaultGroupCharts('gs-alias');

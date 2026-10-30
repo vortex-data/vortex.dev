@@ -145,7 +145,10 @@ fills under its own PostgreSQL advisory lock (`web/lib/cache-fill.ts`), shared
 across production and preview functions. Different entries fill at once; for one
 entry, one invocation runs the fill, and contenders release their connections
 and retry the Data Cache read with bounded backoff instead of issuing duplicate
-queries. A bundle's fill resolves only its own group: one family's discovery,
+queries. A background refresh of a stale entry has no read to retry (the read
+already returned the stale value), so when it finds the lock taken it releases
+its connection, backs off on the same schedule (about 15 seconds in all) and
+tries the lock again, and fills only once it holds the lock. A bundle's fill resolves only its own group: one family's discovery,
 then that group's summary, not every group's. Entries and locks use the slug's
 canonical form, so the many spellings that decode to one group share them. In
 one process, a second request for an entry shares the running fill, and fills
