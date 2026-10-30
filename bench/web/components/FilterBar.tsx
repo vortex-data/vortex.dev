@@ -18,6 +18,7 @@ import {
   toggleGlobalFilterValue,
 } from '@/lib/chart-store';
 import { FilterIcon } from '@/components/icons';
+import { flushUrlWrites, scheduleUrlWrite } from '@/lib/url-writes';
 
 /**
  * The global engine/format filter dropdown in the sticky header, the client
@@ -32,7 +33,12 @@ import { FilterIcon } from '@/components/icons';
  * indicator. Every change re-paints the chips (via the store subscription, here
  * and in every chart island) and syncs the URL `?engine=`/`?format=` allowlists
  * with `history.replaceState`, so a refresh or share preserves the view; the
- * params are omitted only when the active set matches the defaults.
+ * params are omitted only when the active set matches the defaults. The URL
+ * writes go through the coalesced schedule the landing page's open groups use
+ * (`lib/url-writes.ts`): at once after a quiet spell, otherwise once a burst of
+ * clicks stops, because Safari refuses more than 100 `replaceState` calls in 10
+ * seconds and Next.js adds one to each of ours. A write still pending when the
+ * page is hidden is made then.
  *
  * Without JavaScript the dropdown cannot open, so it carries
  * `data-requires-js` and is hidden (globals.css).
@@ -80,6 +86,16 @@ export function FilterBar({
   const activeFormats = seeded
     ? snapshot.active.formats
     : seedActiveFormats(initialFormats, universe.formats);
+
+  // Make a pending URL write when the page is left, so Back and a restored tab
+  // return to the current chips. On the landing page `LandingState` flushes too.
+  useEffect(() => {
+    const onPageHide = (): void => {
+      flushUrlWrites(window);
+    };
+    window.addEventListener('pagehide', onPageHide);
+    return () => window.removeEventListener('pagehide', onPageHide);
+  }, []);
 
   // Close on outside click and on Escape, mirroring v3's document listeners.
   useEffect(() => {
@@ -207,20 +223,25 @@ function FilterRow({
   );
 }
 
+// The filter's part in the coalesced URL writes.
+const FILTER_PART = 'filters';
+
 /**
  * Mirror the active filter onto the URL as `?engine=`/`?format=` allowlists via
- * `history.replaceState`. Only default selections omit their parameter. An
- * empty selection writes an empty value, and all formats includes Lance.
+ * `history.replaceState`, on the coalesced schedule ([`scheduleUrlWrite`]).
+ * Only default selections omit their parameter. An empty selection writes an
+ * empty value, and all formats includes Lance. The write reads the store when
+ * it is made, so a burst of clicks writes the state it ends in.
  */
 function syncFilterUrl(): void {
   if (!window.history?.replaceState) {
     return;
   }
-  const { universe, active } = getGlobalFilterSnapshot();
-  const url = new URL(window.location.href);
-  syncDimensionUrl(url, 'engine', active.engines, universe.engines);
-  syncDimensionUrl(url, 'format', active.formats, seedActiveFormats(null, universe.formats));
-  window.history.replaceState(null, '', url.toString());
+  scheduleUrlWrite(window, FILTER_PART, (url) => {
+    const { universe, active } = getGlobalFilterSnapshot();
+    syncDimensionUrl(url, 'engine', active.engines, universe.engines);
+    syncDimensionUrl(url, 'format', active.formats, seedActiveFormats(null, universe.formats));
+  });
 }
 
 function syncDimensionUrl(url: URL, paramName: string, active: string[], defaults: string[]): void {

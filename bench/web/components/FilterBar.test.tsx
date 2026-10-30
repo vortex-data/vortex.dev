@@ -5,11 +5,17 @@
 
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { FilterBar } from '@/components/FilterBar';
 import { parseFilterCsv, seriesPassesFilter } from '@/lib/chart-format';
 import { getGlobalFilterSnapshot } from '@/lib/chart-store';
+import { resetUrlWrites, URL_WRITE_DELAY_MS } from '@/lib/url-writes';
+
+/** Fake the write scheduler's timers and its clock, `performance.now()`. */
+function useFakeClock(): void {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date', 'performance'] });
+}
 
 const universe = { engines: ['duckdb', 'datafusion'], formats: ['vortex', 'parquet', 'lance'] };
 
@@ -19,6 +25,7 @@ describe('global filter URL round trips', () => {
 
   beforeEach(() => {
     (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+    resetUrlWrites(window);
     container = document.createElement('div');
     document.body.appendChild(container);
   });
@@ -26,6 +33,8 @@ describe('global filter URL round trips', () => {
   afterEach(async () => {
     await act(async () => root.unmount());
     container.remove();
+    vi.useRealTimers();
+    resetUrlWrites(window);
   });
 
   async function mount(): Promise<void> {
@@ -50,7 +59,16 @@ describe('global filter URL round trips', () => {
     });
   }
 
+  /** The URL once a pending write has landed: chip clicks inside the write delay wait for it. */
+  async function settledUrl(): Promise<URL> {
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, URL_WRITE_DELAY_MS));
+    });
+    return new URL(window.location.href);
+  }
+
   async function reload(): Promise<void> {
+    await settledUrl();
     await act(async () => root.unmount());
     await mount();
   }
@@ -68,7 +86,7 @@ describe('global filter URL round trips', () => {
 
       for (const engine of universe.engines) await click('engine', engine);
       for (const format of ['vortex', 'parquet']) await click('format', format);
-      let url = new URL(window.location.href);
+      let url = await settledUrl();
       expect(url.searchParams.get('engine')).toBe('');
       expect(url.searchParams.get('format')).toBe('');
       await reload();
@@ -76,7 +94,7 @@ describe('global filter URL round trips', () => {
 
       await click('engine', '*');
       await click('format', '*');
-      url = new URL(window.location.href);
+      url = await settledUrl();
       expect(url.searchParams.has('engine')).toBe(false);
       expect(url.searchParams.get('format')).toBe('vortex,parquet,lance');
       expect(url.searchParams.get('n')).toBe('all');
@@ -100,8 +118,62 @@ describe('global filter URL round trips', () => {
     expect(seriesPassesFilter({ engine: 'duckdb', format: 'lance' }, active, universe)).toBe(false);
     expect(container.querySelector('[data-role="filter-badge"]')?.textContent).toBe('3');
     await click('engine', '*');
-    expect(new URL(window.location.href).searchParams.get('format')).toBe('vortex,old,older');
+    expect((await settledUrl()).searchParams.get('format')).toBe('vortex,old,older');
     await reload();
     expect(getGlobalFilterSnapshot().active.formats).toEqual(['vortex', 'old', 'older']);
+  });
+
+  // Safari refuses more than 100 `history.replaceState` calls in 10 seconds, and Next.js adds one
+  // of its own to each of ours, so the chips share the open groups' coalesced writes.
+  it('writes the URL a few times for a burst of chip clicks, and ends current', async () => {
+    window.history.replaceState(null, '', '/?n=all#tpc-h-nvme-sf-1');
+    await mount();
+    useFakeClock();
+    const replaceState = vi.spyOn(window.history, 'replaceState');
+    const writes: number[] = [];
+    replaceState.mockImplementation(function (this: History, ...args) {
+      writes.push(Date.now());
+      return History.prototype.replaceState.apply(this, args);
+    });
+
+    // 200 clicks 25 ms apart: 5 seconds, twice Safari's budget of calls if each one wrote.
+    for (let i = 0; i < 200; i += 1) {
+      await click('engine', 'duckdb');
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(25);
+      });
+    }
+    expect(writes.length).toBeLessThanOrEqual(3);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(URL_WRITE_DELAY_MS);
+    });
+    expect(writes.length).toBeLessThanOrEqual(4);
+
+    // 200 toggles leave duckdb as it started: on.
+    const url = new URL(window.location.href);
+    expect(url.searchParams.has('engine')).toBe(false);
+    expect(url.searchParams.get('n')).toBe('all');
+    expect(url.hash).toBe('#tpc-h-nvme-sf-1');
+
+    // One more click after a quiet spell writes at once.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(URL_WRITE_DELAY_MS);
+    });
+    await click('engine', 'duckdb');
+    expect(new URL(window.location.href).searchParams.get('engine')).toBe('datafusion');
+  });
+
+  it('writes a pending chip change when the page is hidden', async () => {
+    window.history.replaceState(null, '', '/chart/qm.example');
+    await mount();
+    useFakeClock();
+    await click('format', 'vortex');
+    await click('format', 'parquet');
+    expect(new URL(window.location.href).searchParams.get('format')).toBe('parquet');
+
+    await act(async () => {
+      window.dispatchEvent(new Event('pagehide'));
+    });
+    expect(new URL(window.location.href).searchParams.get('format')).toBe('');
   });
 });
