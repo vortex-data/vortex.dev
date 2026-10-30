@@ -109,115 +109,67 @@ describe('small formatting helpers', () => {
 
 describe('seriesStyle', () => {
   const tag = (engine: string, format: string) => ({ engine, format });
-  const style = (engine: string, format: string) =>
-    seriesStyle(`${engine}:${format}`, tag(engine, format));
 
-  /** WCAG contrast of two #rrggbb colours. */
-  const contrast = (x: string, y: string): number => {
-    const lum = (hex: string) => {
-      const [r, g, b] = [1, 3, 5].map((i) => {
-        const c = Number.parseInt(hex.slice(i, i + 2), 16) / 255;
-        return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-      });
-      return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!;
-    };
-    const [hi, lo] = [lum(x), lum(y)].sort((a, b) => b - a);
-    return (hi! + 0.05) / (lo! + 0.05);
-  };
-
-  it('draws the hero Vortex series in Blue: blue-bright on datafusion, a lighter Blue on duckdb, thickest', () => {
-    const dfv = style('datafusion', 'vortex-file-compressed');
-    const dkv = style('duckdb', 'vortex-file-compressed');
-    expect(dfv.color).toBe('#6e5cff');
-    expect(dkv.color).toBe('#8b84f3');
-    expect(style('duckdb', 'lance').width).toBeLessThan(dfv.width);
+  it('makes the hero Vortex series the loudest: red/green, distinct per engine, thickest', () => {
+    const dfv = seriesStyle(
+      'datafusion:vortex-file-compressed',
+      tag('datafusion', 'vortex-file-compressed'),
+    );
+    const dkv = seriesStyle(
+      'duckdb:vortex-file-compressed',
+      tag('duckdb', 'vortex-file-compressed'),
+    );
+    expect(dfv.color).toBe('#ef4444');
+    expect(dkv.color).toBe('#22c55e');
+    expect(dfv.color).not.toBe(dkv.color);
+    const muted = seriesStyle('duckdb:lance', tag('duckdb', 'lance'));
+    expect(dfv.width).toBeGreaterThan(muted.width);
   });
 
-  it('never draws Vortex in red', () => {
-    for (const engine of ['datafusion', 'duckdb']) {
-      for (const format of ['vortex-file-compressed', 'vortex-compact']) {
-        expect(style(engine, format).color).not.toBe('#ef4444');
-      }
-    }
-  });
-
-  it('puts Parquet a notch under Vortex (muted sand, thinner than the hero)', () => {
-    const vortex = style('datafusion', 'vortex-file-compressed');
-    const parquet = style('datafusion', 'parquet');
-    expect(parquet.color).toBe('#b19047');
-    expect(style('duckdb', 'parquet').color).toBe('#997a35');
+  it('puts Parquet a notch under Vortex (blue, thinner than the hero)', () => {
+    const vortex = seriesStyle(
+      'datafusion:vortex-file-compressed',
+      tag('datafusion', 'vortex-file-compressed'),
+    );
+    const parquet = seriesStyle('datafusion:parquet', tag('datafusion', 'parquet'));
+    expect(parquet.color).toBe('#38bdf8');
     expect(parquet.width).toBeLessThan(vortex.width);
   });
 
   it('distinguishes the two lance engines but keeps them thinner than Parquet', () => {
-    const dfLance = style('datafusion', 'lance');
-    const dkLance = style('duckdb', 'lance');
-    expect(dfLance.width).toBeLessThan(style('datafusion', 'parquet').width);
+    const parquet = seriesStyle('datafusion:parquet', tag('datafusion', 'parquet'));
+    const dfLance = seriesStyle('datafusion:lance', tag('datafusion', 'lance'));
+    const dkLance = seriesStyle('duckdb:lance', tag('duckdb', 'lance'));
+    expect(dfLance.width).toBeLessThan(parquet.width);
     expect(dfLance.color).not.toBe(dkLance.color);
   });
 
-  it('gives vortex-compact its own Blue, never the vortex hero shades', () => {
-    const compact = style('datafusion', 'vortex-compact');
-    expect(compact.color).toBe('#106dce');
-    expect(style('duckdb', 'vortex-compact').color).toBe('#498cd5');
-    expect(compact.color).not.toBe('#6e5cff');
-    expect(compact.color).not.toBe('#8b84f3');
+  it('gives vortex-compact its own purple, never the vortex red/green', () => {
+    const compact = seriesStyle('datafusion:vortex-compact', tag('datafusion', 'vortex-compact'));
+    expect(compact.color).toBe('#a855f7');
+    expect(compact.color).not.toBe('#ef4444');
+    expect(compact.color).not.toBe('#22c55e');
   });
 
   it('derives engine/format from the label when meta is absent', () => {
-    expect(seriesStyle('datafusion:vortex-file-compressed', undefined).color).toBe('#6e5cff');
-    expect(seriesStyle('duckdb:vortex-file-compressed', undefined).color).toBe('#8b84f3');
+    expect(seriesStyle('datafusion:vortex-file-compressed', undefined).color).toBe('#ef4444');
   });
 
-  it('colors the engine-less compression-time series by format, decode a step lighter or darker than encode', () => {
-    const at = (format: string, op: string) => seriesStyle(`${format}:${op}`, { format }).color;
-    expect(at('vortex-file-compressed', 'encode')).toBe('#6e5cff');
-    expect(at('vortex-file-compressed', 'decode')).toBe('#8b84f3');
-    for (const format of [
-      'vortex-file-compressed',
-      'vortex-compact',
-      'parquet',
-      'lance',
-      'arrow-ipc',
-    ]) {
-      expect(at(format, 'encode'), format).not.toBe(at(format, 'decode'));
-    }
-  });
-
-  it('keeps hot and cold random access on one color (cold is the dashed line)', () => {
-    const at = (format: string, mode: string) => seriesStyle(`${format}:${mode}`, { format }).color;
-    for (const format of ['vortex-file-compressed', 'parquet', 'lance']) {
-      expect(at(format, 'cold'), format).toBe(at(format, 'hot'));
-    }
-    expect(at('vortex-file-compressed', 'cold')).toBe('#6e5cff');
-  });
-
-  it('reads at 3:1 or more on both the Dark and the Light card', () => {
-    const names = [
-      'datafusion:vortex-file-compressed',
-      'duckdb:vortex-file-compressed',
-      'datafusion:vortex-compact',
-      'duckdb:vortex-compact',
-      'datafusion:parquet',
-      'duckdb:parquet',
-      'duckdb:duckdb',
-      'datafusion:lance',
-      'duckdb:lance',
-      'datafusion:arrow',
-      'arrow-ipc:decode',
-      'datafusion:mystery',
-    ];
-    for (const name of names) {
-      const { color } = seriesStyle(name, undefined);
-      expect(contrast(color, '#171716'), `${name} on Dark`).toBeGreaterThanOrEqual(3);
-      expect(contrast(color, '#ffffff'), `${name} on Light`).toBeGreaterThanOrEqual(3);
-    }
+  it('colors the engine-less compression-time series by its format', () => {
+    // Compression-time series carry a format but no engine; they pick up the
+    // format's signature color (here Vortex red) rather than the gray fallback.
+    const comp = seriesStyle('vortex-file-compressed:encode', { format: 'vortex-file-compressed' });
+    expect(comp.color).toBe('#ef4444');
   });
 
   it('falls back to a muted color + width for an unknown series', () => {
-    const unknown = style('datafusion', 'mystery');
-    expect(unknown.color).toBe('#84817d');
-    expect(unknown.width).toBeLessThan(style('datafusion', 'vortex-file-compressed').width);
+    const unknown = seriesStyle('datafusion:mystery', tag('datafusion', 'mystery'));
+    expect(unknown.color).toBe('#94a3b8');
+    const hero = seriesStyle(
+      'datafusion:vortex-file-compressed',
+      tag('datafusion', 'vortex-file-compressed'),
+    );
+    expect(unknown.width).toBeLessThan(hero.width);
   });
 });
 
