@@ -252,6 +252,15 @@ describe("panelsFrom", () => {
     assert.equal(lance?.total, 43);
   });
 
+  // A window that holds only some of a benchmark's queries would give a
+  // geomean over a partial set, so the panel shows bench's scores instead.
+  it("falls back to bench's scores when the window holds only some of the queries", () => {
+    const cs = charts();
+    cs.Clickbench.charts = cs.Clickbench.charts.slice(1);
+    const panel = panelsFrom(groups(), cs)?.[2];
+    assert.equal(panel?.unit, "× fastest");
+  });
+
   // bench's chart window counts commits across the whole repository, so a
   // benchmark that has not run lately has no times in it while bench still
   // publishes its scores. The panel then shows those scores, relative to the

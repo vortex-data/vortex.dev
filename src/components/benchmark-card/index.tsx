@@ -84,6 +84,20 @@ export function BenchPanel({ panel }: { panel: Panel }) {
  * whose figures are not bench's. The panels come from `getBenchSummary`; the
  * page leaves the card out when that read fails.
  */
+// The caption names each kind of value the panels show, so a panel that
+// fell back to bench's scores (against the fastest) is described too.
+function caption(panels: readonly Panel[]): string {
+  const units = new Set(panels.map((p) => p.unit));
+  return [
+    units.has("ms") && "times in ms, the geomean over queries or datasets",
+    units.has("× fastest") && "scores against the fastest = 1",
+    "the rest against Parquet = 1",
+    "best first"
+  ]
+    .filter(Boolean)
+    .join(", ");
+}
+
 export function BenchmarkCard({
   panels,
   readAt
@@ -97,10 +111,7 @@ export function BenchmarkCard({
       <div className="vx-bench-head">
         <h2 className="vx-bench-headline">
           Vortex against Parquet, Lance, and Arrow{" "}
-          <span className="vx-bench-sub">
-            · times in ms, the geomean over queries or datasets, the rest
-            against Parquet = 1, best first
-          </span>
+          <span className="vx-bench-sub">· {caption(panels)}</span>
         </h2>
         <a className="vx-label-sm vx-source vx-nav-link" href={SOURCE_URL}>
           <span className="vx-keep-case">bench.vortex.dev</span>
