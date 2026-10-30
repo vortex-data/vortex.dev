@@ -152,10 +152,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
         with:
-          # The prebuilt build runs on the Node major its functions run on:
-          # 24 until the benchmarks-website project moves to 26.x (see
-          # CLAUDE.md, bench/). Then return to `node-version-file: .nvmrc`.
-          node-version: "24"
+          node-version-file: .nvmrc
 
       # .github/vercel-cli pins the CLI and locks its whole dependency tree. Its
       # overrides patch advisories in dependencies the CLI pins (see CLAUDE.md

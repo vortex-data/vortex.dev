@@ -42,12 +42,6 @@
       "allowedVersions": "<27"
     },
     {
-      "description": "bench's functions still run on Node 24 (see CLAUDE.md, bench), so hold its @types/node to 24. Drop this when the benchmarks-website project moves to 26.x.",
-      "matchFileNames": ["bench/web/package.json"],
-      "matchPackageNames": ["@types/node"],
-      "allowedVersions": "<25"
-    },
-    {
       "groupName": "Next.js",
       "matchPackageNames": ["next", "@next/**"]
     },

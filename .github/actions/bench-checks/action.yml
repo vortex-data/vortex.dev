@@ -27,10 +27,9 @@ runs:
     - name: Setup Node
       uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
       with:
-        # bench's functions still run on Node 24 (see CLAUDE.md, bench/), so
-        # its checks do too. Return to `node-version-file: .nvmrc` when the
-        # benchmarks-website project moves to 26.x.
-        node-version: "24"
+        # The repository-wide Node pin (see CLAUDE.md "Node version"). Keep
+        # @types/node in bench/web/package.json on the same major.
+        node-version-file: .nvmrc
 
     # Bun's package store, keyed on the lockfile, as in ci.yml. The restore
     # key falls back to any earlier cache from this OS.
