@@ -297,18 +297,28 @@ export function panelsFrom(
     const list = isObject(summary) ? source.rankings(summary) : undefined;
     if (!Array.isArray(list)) return null;
     const rankings = list.filter(isObject);
-    let rows: Row[];
-    if (source.times) {
-      const times = groupTimes(charts[source.group], source.times.bucket);
-      if (!times) return null;
-      rows = timeRows({ ...source, times: source.times }, rankings, times);
-    } else {
-      rows = SYSTEMS.map(([system, format]) => ({
+    const scoreRows = (): Row[] =>
+      SYSTEMS.map(([system, format]) => ({
         system,
         ...rowFor(source, rankings, format)
       }));
+    let rows = scoreRows();
+    let { unit } = source;
+    if (source.times) {
+      // bench's chart window counts commits across the repository, so a
+      // benchmark that has not run lately has no times in it although its
+      // scores stand. Then the panel shows the scores, against the fastest,
+      // and the card stays on the page.
+      const times = groupTimes(charts[source.group], source.times.bucket);
+      const timed = times
+        ? timeRows({ ...source, times: source.times }, rankings, times)
+        : null;
+      const has = (name: string) =>
+        timed?.some((r) => r.system === name && measured(r));
+      if (timed && has("Vortex") && has("Parquet")) rows = timed;
+      else unit = "× fastest";
     }
-    const { title, unit, kind, better, systems } = source;
+    const { title, kind, better, systems } = source;
     const shown = rows.filter((r) => systems.includes(r.system));
     if (shown.every((r) => !measured(r))) return null;
     panels.push({ title, unit, kind, better, rows, systems });
@@ -323,7 +333,8 @@ export function panelsFrom(
  * (`/api/group/{slug}`, the last `WINDOW` commits). `readAt` is the time
  * bench answered the first read (its Date header), so a cached answer keeps
  * its own date. Any failure (a timeout, an error status, a payload without
- * all six panels) gives `null`, and the page then leaves the card out.
+ * all six panels) gives `null`, and the page then leaves the card out. A
+ * time panel whose charts are missing from the window shows bench's scores.
  * `fetchImpl` is for tests.
  */
 export async function getBenchSummary(
@@ -351,8 +362,13 @@ export async function getBenchSummary(
     const charts = Object.fromEntries(
       await Promise.all(
         slugs.map(async ([name, slug]) => {
-          const r = await read(`${GROUP_URL}${slug}?n=${WINDOW}`);
-          return [name, r.ok ? ((await r.json()) as unknown) : null] as const;
+          try {
+            const r = await read(`${GROUP_URL}${slug}?n=${WINDOW}`);
+            return [name, r.ok ? ((await r.json()) as unknown) : null] as const;
+          } catch {
+            // The panel shows bench's scores instead (panelsFrom).
+            return [name, null] as const;
+          }
         })
       )
     );

@@ -252,17 +252,30 @@ describe("panelsFrom", () => {
     assert.equal(lance?.total, 43);
   });
 
-  it("gives null when a time panel's charts are missing or not times", () => {
-    assert.equal(panelsFrom(groups()), null);
+  // bench's chart window counts commits across the whole repository, so a
+  // benchmark that has not run lately has no times in it while bench still
+  // publishes its scores. The panel then shows those scores, relative to the
+  // fastest, and the card stays on the page.
+  it("falls back to bench's scores when a time panel's charts are missing or not times", () => {
+    const check = (panels: ReturnType<typeof panelsFrom>, i: number) => {
+      const panel = panels?.[i];
+      assert.ok(panel, "the card keeps all six panels");
+      assert.equal(panel.unit, "× fastest");
+      const vortex = panel.rows.find((r) => r.system === "Vortex");
+      assert.ok(vortex?.score && vortex.score >= 1, "Vortex shows its score");
+    };
+    check(panelsFrom(groups()), 2);
+    check(panelsFrom(groups()), 4);
     const cs = charts();
     for (const c of cs["Random Access (NVMe)"].charts) c.unit_kind = "bytes";
-    assert.equal(panelsFrom(groups(), cs), null);
+    check(panelsFrom(groups(), cs), 4);
+    assert.equal(
+      panelsFrom(groups(), cs)?.[2]?.unit,
+      "ms",
+      "ClickBench keeps its times"
+    );
     for (const bad of [null, {}, { charts: "Q0" }, { charts: [null] }])
-      assert.equal(
-        panelsFrom(groups(), { ...charts(), Clickbench: bad }),
-        null,
-        JSON.stringify(bad)
-      );
+      check(panelsFrom(groups(), { ...charts(), Clickbench: bad }), 2);
   });
 
   it("gives null when no system in a group has a score", () => {
@@ -457,17 +470,23 @@ describe("getBenchSummary", () => {
     assert.equal(await getBenchSummary(fake), null);
   });
 
-  it("gives null when a group's charts answer with an error or fail", async () => {
+  it("shows bench's scores when a group's charts answer with an error or fail", async () => {
     const ok = bench();
+    const units = async (fake: typeof fetch) =>
+      (await getBenchSummary(fake))?.panels.map((p) => p.unit);
     const failing = stub((url) =>
       url.includes("/api/group/") ? json({}, 503) : ok(url)
     );
-    assert.equal(await getBenchSummary(failing.fake), null);
     const throwing = stub((url) => {
       if (url.includes("/api/group/")) throw new TypeError("fetch failed");
       return ok(url);
     });
-    assert.equal(await getBenchSummary(throwing.fake), null);
+    for (const fake of [failing.fake, throwing.fake]) {
+      const u = await units(fake);
+      assert.equal(u?.length, 6, "the card keeps all six panels");
+      assert.equal(u?.[2], "× fastest");
+      assert.equal(u?.[4], "× fastest");
+    }
   });
 
   it("gives null when a time panel's group has no usable slug", async () => {
