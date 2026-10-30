@@ -98,9 +98,15 @@ jobs:
           temporaryPublicStorage: true
 
       # Build a markdown table from the .lighthouseci/lhr-*.json reports.
-      # `unique_by(.url)` collapses duplicate rows if `numberOfRuns > 1`
-      # (the action writes the median LHR per URL, but be defensive);
-      # `sort_by(.url)` keeps row order deterministic across runs.
+      # lighthouserc.cjs collects three runs per URL and asserts on the best
+      # one, so the table shows each URL's best run by performance, the run
+      # the check is judged by. `group_by(.url)` also keeps row order
+      # deterministic. The linked report is the one the action uploads for
+      # that URL and may be a different run.
+      #
+      # Fork PRs get a read-only GITHUB_TOKEN that can't post comments, and a
+      # failed comment would fail this required check, so only same-repository
+      # PRs get one.
       # `if: always()` so the PR comment still posts when assertions fail —
       # reviewers can see *which* category regressed without digging through
       # the workflow log.
@@ -110,7 +116,7 @@ jobs:
       # the 🟢 cutoff, so a cell can pass assertions and still show 🟡 — the
       # visual signals "we locked this in but it's improvable."
       - name: Format PR comment
-        if: always() && github.event_name == 'pull_request' && steps.lighthouse.outputs.links != ''
+        if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && steps.lighthouse.outputs.links != ''
         id: lh-comment
         env:
           LINKS_JSON: ${{ steps.lighthouse.outputs.links }}
@@ -131,8 +137,8 @@ jobs:
                 bp: (.categories["best-practices"].score * 100 | floor),
                 seo: (.categories.seo.score * 100 | floor)
               })
-              | unique_by(.url)
-              | sort_by(.url)
+              | group_by(.url)
+              | map(max_by(.perf))
               | map(
                   "| `" + (.url | sub("^https?://[^/]+"; "")) + "`"
                   + " | " + cell(.perf)
