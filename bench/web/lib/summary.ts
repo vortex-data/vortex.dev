@@ -36,6 +36,7 @@
  *    any sub-second commit timestamp), so the port keeps the timestamp in SQL.
  */
 
+import { BRANCH_COMMITS, factOnReadBranch, onReadBranch } from './branch';
 import { getPool } from './db';
 import { randomAccessStorage, type RandomAccessStorage } from './random-access';
 import { compareCodeUnits } from './families';
@@ -430,7 +431,7 @@ async function collectRandomAccessSummary(storage: RandomAccessStorage): Promise
            r.open_mode AS open_mode,
            r.value_ns::float8 AS value
       FROM random_access_times r
-      JOIN commits c USING (commit_sha)
+      JOIN ${BRANCH_COMMITS} c USING (commit_sha)
      WHERE r.value_ns > 0
      ORDER BY r.dataset, r.format, r.open_mode,
               c.timestamp DESC,
@@ -488,7 +489,7 @@ async function collectVectorSearchSummary(
            v.flavor AS series,
            v.value_ns::float8 AS value
       FROM vector_search_runs v
-      JOIN commits c USING (commit_sha)
+      JOIN ${BRANCH_COMMITS} c USING (commit_sha)
      WHERE v.dataset = $1
        AND v.layout = $2
        AND v.value_ns > 0
@@ -618,7 +619,7 @@ async function compressionSamples(): Promise<
          AND p.dataset = t.dataset
          AND p.dataset_variant IS NOT DISTINCT FROM t.dataset_variant
          AND p.op = t.op
-        JOIN commits c ON c.commit_sha = t.commit_sha
+        JOIN ${BRANCH_COMMITS} c ON c.commit_sha = t.commit_sha
        WHERE t.op IN ('encode', 'decode')
          AND t.format = ANY($1::text[])
          AND p.format = $4
@@ -653,7 +654,7 @@ async function compressionSamples(): Promise<
              s.dataset, s.dataset_variant,
              s.uncompressed_bytes::float8 AS uncompressed_bytes
         FROM compression_sizes s
-        JOIN commits c ON c.commit_sha = s.commit_sha
+        JOIN ${BRANCH_COMMITS} c ON c.commit_sha = s.commit_sha
        WHERE s.format = $4
          AND s.uncompressed_bytes::float8 > 0
          AND lower(s.dataset) NOT LIKE '%wide table%'
@@ -781,7 +782,7 @@ async function compressionSizeSamples(): Promise<
           ON p.commit_sha = s.commit_sha
          AND p.dataset = s.dataset
          AND p.dataset_variant IS NOT DISTINCT FROM s.dataset_variant
-        JOIN commits c ON c.commit_sha = s.commit_sha
+        JOIN ${BRANCH_COMMITS} c ON c.commit_sha = s.commit_sha
        WHERE s.format = ANY($1::text[])
          AND p.format = $4
          AND s.value_bytes > 0
@@ -827,7 +828,7 @@ async function compressionSizeSamples(): Promise<
              s.dataset, s.dataset_variant,
              s.uncompressed_bytes::float8 AS uncompressed_bytes
         FROM compression_sizes s
-        JOIN commits c ON c.commit_sha = s.commit_sha
+        JOIN ${BRANCH_COMMITS} c ON c.commit_sha = s.commit_sha
        WHERE s.format = $4
          AND s.uncompressed_bytes::float8 > 0
          AND lower(s.dataset) NOT LIKE '%wide table%'
@@ -922,6 +923,7 @@ async function collectQuerySummary(
   //    `c.timestamp DESC NULLS LAST` so an all-unstamped series (one ingested
   //    entirely inside the transient window) still returns its NEWEST value,
   //    matching the replaced join-ordered query, rather than an arbitrary row.
+  //    Rows of another branch's commits are dropped, as in every other read.
   //    The join is LEFT so an orphan row whose commit_sha has no commits row
   //    -- impossible unless a writer violates the commits-upsert-first
   //    invariant -- still surfaces (last) instead of vanishing as it did under
@@ -1004,6 +1006,7 @@ async function collectQuerySummary(
             AND q.format = s.format
             AND q.value_ns > 0
             AND q.commit_timestamp IS NOT NULL
+            AND ${factOnReadBranch('q')}
           ORDER BY ${indexOrder}, q.commit_timestamp DESC
           LIMIT 1)
         UNION ALL
@@ -1011,6 +1014,7 @@ async function collectQuerySummary(
            FROM query_measurements q
            LEFT JOIN commits c ON c.commit_sha = q.commit_sha
           WHERE ${groupPred}
+            AND (c.commit_sha IS NULL OR ${onReadBranch('c')})
             AND q.query_idx = s.query_idx
             AND q.engine = s.engine
             AND q.format = s.format

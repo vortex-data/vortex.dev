@@ -33,6 +33,7 @@
  */
 
 import type { PoolClient } from 'pg';
+import { BRANCH_COMMITS, factOnReadBranch } from './branch';
 import { getPool } from './db';
 import { randomAccessStorage } from './random-access';
 import { groupDescription } from './descriptions';
@@ -266,7 +267,7 @@ async function seededCommitsInWindow(
                c.url,
                row_number() OVER (ORDER BY c.timestamp ASC, c.commit_sha ASC) AS rn,
                (count(*) OVER ())::int AS total_commits
-          FROM commits c
+          FROM ${BRANCH_COMMITS} c
          WHERE c.timestamp >= (${earliest})
     )
     SELECT commit_sha,
@@ -312,7 +313,7 @@ function factWindowFilter(params: QueryParams, window: CommitWindow): string {
   }
   return (
     ` AND c.commit_sha IN ` +
-    `(SELECT commit_sha FROM commits ORDER BY timestamp DESC, commit_sha DESC LIMIT ${params.bind(limit)})`
+    `(SELECT commit_sha FROM ${BRANCH_COMMITS} b ORDER BY timestamp DESC, commit_sha DESC LIMIT ${params.bind(limit)})`
   );
 }
 
@@ -337,9 +338,9 @@ function queryMeasurementWindowFilter(params: QueryParams, window: CommitWindow)
   return (
     ` AND q.commit_timestamp >= ` +
     `(SELECT min(timestamp) FROM ` +
-    `(SELECT timestamp FROM commits ORDER BY timestamp DESC, commit_sha DESC LIMIT ${n}) w)` +
+    `(SELECT timestamp FROM ${BRANCH_COMMITS} b ORDER BY timestamp DESC, commit_sha DESC LIMIT ${n}) w)` +
     ` AND q.commit_sha IN ` +
-    `(SELECT commit_sha FROM commits ORDER BY timestamp DESC, commit_sha DESC LIMIT ${n})`
+    `(SELECT commit_sha FROM ${BRANCH_COMMITS} b ORDER BY timestamp DESC, commit_sha DESC LIMIT ${n})`
   );
 }
 
@@ -451,7 +452,8 @@ async function collectQueryChart(
           AND ${sargableDimEq(p, 'q2.dataset_variant', dataset_variant)}
           AND ${sargableDimEq(p, 'q2.scale_factor', scale_factor)}
           AND q2.storage = ${p.bind(storage)}
-          AND q2.query_idx = ${p.bind(query_idx)}`,
+          AND q2.query_idx = ${p.bind(query_idx)}
+          AND ${factOnReadBranch('q2')}`,
     window,
   );
   if (seeded.commits.length === 0) {
@@ -488,7 +490,7 @@ async function collectCompressionTimeChart(
     (p) =>
       `SELECT MIN(c2.timestamp)
          FROM compression_times t2
-         JOIN commits c2 ON c2.commit_sha = t2.commit_sha
+         JOIN ${BRANCH_COMMITS} c2 ON c2.commit_sha = t2.commit_sha
         WHERE t2.dataset = ${p.bind(dataset)}
           AND ${sargableDimEq(p, 't2.dataset_variant', dataset_variant)}`,
     window,
@@ -504,7 +506,7 @@ async function collectCompressionTimeChart(
     SELECT t.commit_sha,
            t.format, t.op, t.value_ns::float8 AS value
       FROM compression_times t
-      JOIN commits c USING (commit_sha)
+      JOIN ${BRANCH_COMMITS} c USING (commit_sha)
      WHERE t.dataset = ${params.bind(dataset)}
        AND ${sargableDimEq(params, 't.dataset_variant', dataset_variant)}${factWindowFilter(params, window)}
      ORDER BY c.timestamp, t.format, t.op
@@ -525,7 +527,7 @@ async function collectCompressionSizeChart(
     (p) =>
       `SELECT MIN(c2.timestamp)
          FROM compression_sizes s2
-         JOIN commits c2 ON c2.commit_sha = s2.commit_sha
+         JOIN ${BRANCH_COMMITS} c2 ON c2.commit_sha = s2.commit_sha
         WHERE s2.dataset = ${p.bind(dataset)}
           AND ${sargableDimEq(p, 's2.dataset_variant', dataset_variant)}`,
     window,
@@ -541,7 +543,7 @@ async function collectCompressionSizeChart(
     SELECT s.commit_sha,
            s.format, s.value_bytes::float8 AS value
       FROM compression_sizes s
-      JOIN commits c USING (commit_sha)
+      JOIN ${BRANCH_COMMITS} c USING (commit_sha)
      WHERE s.dataset = ${params.bind(dataset)}
        AND ${sargableDimEq(params, 's.dataset_variant', dataset_variant)}${factWindowFilter(params, window)}
      ORDER BY c.timestamp, s.format
@@ -562,7 +564,7 @@ async function collectRandomAccessChart(
     (p) =>
       `SELECT MIN(c2.timestamp)
          FROM random_access_times r2
-         JOIN commits c2 ON c2.commit_sha = r2.commit_sha
+         JOIN ${BRANCH_COMMITS} c2 ON c2.commit_sha = r2.commit_sha
         WHERE r2.dataset = ${p.bind(dataset)}`,
     window,
   );
@@ -579,7 +581,7 @@ async function collectRandomAccessChart(
            r.open_mode AS open_mode,
            r.value_ns::float8 AS value
       FROM random_access_times r
-      JOIN commits c USING (commit_sha)
+      JOIN ${BRANCH_COMMITS} c USING (commit_sha)
      WHERE r.dataset = ${params.bind(dataset)}${factWindowFilter(params, window)}
      ORDER BY c.timestamp, r.format, open_mode
   `;
@@ -599,7 +601,7 @@ async function collectVectorSearchChart(
     (p) =>
       `SELECT MIN(c2.timestamp)
          FROM vector_search_runs v2
-         JOIN commits c2 ON c2.commit_sha = v2.commit_sha
+         JOIN ${BRANCH_COMMITS} c2 ON c2.commit_sha = v2.commit_sha
         WHERE v2.dataset = ${p.bind(dataset)}
           AND v2.layout = ${p.bind(layout)}
           AND v2.threshold = ${p.bind(threshold)}`,
@@ -616,7 +618,7 @@ async function collectVectorSearchChart(
     SELECT v.commit_sha,
            v.flavor, v.value_ns::float8 AS value
       FROM vector_search_runs v
-      JOIN commits c USING (commit_sha)
+      JOIN ${BRANCH_COMMITS} c USING (commit_sha)
      WHERE v.dataset = ${params.bind(dataset)}
        AND v.layout = ${params.bind(layout)}
        AND v.threshold = ${params.bind(threshold)}${factWindowFilter(params, window)}
@@ -684,7 +686,7 @@ async function windowCommits(client: PoolClient, window: CommitWindow): Promise<
            to_char(timestamp AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI:SS"+00"') AS ts_text,
            COALESCE(message, '') AS message,
            url
-      FROM (SELECT * FROM commits ORDER BY timestamp DESC, commit_sha DESC LIMIT $1) w
+      FROM (SELECT * FROM ${BRANCH_COMMITS} b ORDER BY timestamp DESC, commit_sha DESC LIMIT $1) w
      ORDER BY timestamp ASC, commit_sha ASC
   `;
   const rows = (await client.query<CommitRow>(text, [commitWindowLimit(window)])).rows;
@@ -792,6 +794,7 @@ function queryChartEarliest(pins: (alias: string) => string): string {
                  AND q.engine = s.engine
                  AND q.format = s.format
                  AND q.commit_timestamp IS NOT NULL
+                 AND ${factOnReadBranch('q')}
                ORDER BY ${oldestFirst}
                LIMIT 1
             ) oldest`;
@@ -915,12 +918,12 @@ function groupRowsQuery(
           columns,
           `SELECT MIN(c2.timestamp)
              FROM ${table} f2
-             JOIN commits c2 ON c2.commit_sha = f2.commit_sha
+             JOIN ${BRANCH_COMMITS} c2 ON c2.commit_sha = f2.commit_sha
             WHERE ${pins('f2')}`,
           `SELECT f.commit_sha,
                   ${fields.map((field) => `f.${field}`).join(', ')}, f.${value}::float8 AS value
              FROM ${table} f
-             JOIN commits c USING (commit_sha)
+             JOIN ${BRANCH_COMMITS} c USING (commit_sha)
             WHERE ${pins('f')}${factWindowFilter(params, window)}`,
         );
       }
@@ -934,14 +937,14 @@ function groupRowsQuery(
         [['dataset', 'text', keys.map((k) => k.dataset)]],
         `SELECT MIN(c2.timestamp)
            FROM random_access_times r2
-           JOIN commits c2 ON c2.commit_sha = r2.commit_sha
+           JOIN ${BRANCH_COMMITS} c2 ON c2.commit_sha = r2.commit_sha
           WHERE r2.dataset = ch.dataset`,
         `SELECT r.commit_sha,
                 r.format,
                 r.open_mode AS open_mode,
                 r.value_ns::float8 AS value
            FROM random_access_times r
-           JOIN commits c USING (commit_sha)
+           JOIN ${BRANCH_COMMITS} c USING (commit_sha)
           WHERE r.dataset = ch.dataset${factWindowFilter(params, window)}`,
       );
       break;
@@ -956,14 +959,14 @@ function groupRowsQuery(
         [['threshold', 'float8', keys.map((k) => k.threshold)]],
         `SELECT MIN(c2.timestamp)
            FROM vector_search_runs v2
-           JOIN commits c2 ON c2.commit_sha = v2.commit_sha
+           JOIN ${BRANCH_COMMITS} c2 ON c2.commit_sha = v2.commit_sha
           WHERE v2.dataset = ${dataset}
             AND v2.layout = ${layout}
             AND v2.threshold = ch.threshold`,
         `SELECT v.commit_sha,
                 v.flavor, v.value_ns::float8 AS value
            FROM vector_search_runs v
-           JOIN commits c USING (commit_sha)
+           JOIN ${BRANCH_COMMITS} c USING (commit_sha)
           WHERE v.dataset = ${dataset}
             AND v.layout = ${layout}
             AND v.threshold = ch.threshold${factWindowFilter(params, window)}`,
@@ -973,7 +976,7 @@ function groupRowsQuery(
   }
   const text = `
     WITH commit_times AS (
-      SELECT array_agg(timestamp ORDER BY timestamp) AS sorted FROM commits
+      SELECT array_agg(timestamp ORDER BY timestamp) AS sorted FROM ${BRANCH_COMMITS} b
     )${blocks.join('\n      UNION ALL')}`;
   return { text, values: params.values };
 }

@@ -73,6 +73,13 @@ lexicographic order, which equals numeric order under this convention.
   used for compression-ratio and logical-throughput estimates. Historical rows remain unchanged.
 - `010_random_access_open_mode.sql` — distinguishes cached-accessor and per-take reopen timings.
   Historical rows receive the `cached` mode.
+- `011_ci_read_role.sql` — `CREATE ROLE` for the read-only `bench_ci_read` IAM-auth user that
+  `vortex-data/vortex` CI assumes through `GitHubBenchmarkReadRole` to diff its numbers against
+  the published ones. `SELECT` on the six data tables, read-only transactions, a 60 s statement
+  timeout and 16 connections at most. Apply it as the RDS master.
+- `012_commit_branch.sql` — adds `commits.branch` (`NOT NULL DEFAULT 'develop'`; every earlier
+  row came from `develop`) and the `(branch, timestamp DESC, commit_sha DESC)` index the read
+  service's branch-filtered commit window uses. `migrator` applies it.
 
 This README + the runner ship in PR-1.2; `001`/`002` land in PR-1.3, `003` in
 PR-1.4, `004` in PR-2.1, `005` in the Phase-4 operator-gate work (the v4
@@ -104,7 +111,7 @@ query_measurements` — the 006 prod backfill showed the planner needs it.)
 ## Bootstrap ordering — `requires-superuser` migrations
 
 Migrations whose header carries a `-- migrate-schema: requires-superuser`
-marker comment (currently `002`, `004`, `005`, `006`, `007`, and `008`; the marker in
+marker comment (currently `002`, `004`, `005`, `006`, `007`, `008`, and `011`; the marker in
 the file is authoritative, not this list) must be applied by a master-capable
 role. Before applying a marked file, the runner
 ([`scripts/migrate-schema.py`](../scripts/migrate-schema.py)) asserts the

@@ -3,8 +3,8 @@
 # SPDX-FileCopyrightText: Copyright the Vortex contributors
 #
 # One-time bootstrap of the bench AWS infrastructure: RDS Postgres, its
-# backups and alarms, and the GitHub Actions OIDC roles for schema deploys
-# and ingest. Idempotent: safe to re-run; each step checks for an existing
+# backups and alarms, and the GitHub Actions OIDC roles for schema deploys,
+# ingest and CI reads. Idempotent: safe to re-run; each step checks for an existing
 # resource and skips creation if found. See infra/README.md for the
 # full operator runbook and infra/RESTORE.md for restores.
 #
@@ -41,15 +41,18 @@
 #      (free storage, CPU, connections) and an RDS event subscription
 #      (failure, low storage). Subscribes `ALARM_HTTPS_ENDPOINT` (the
 #      incident.io CloudWatch alert source) when it is set.
-#   9. Creates two GitHub Actions OIDC IAM roles trusted to
-#      `token.actions.githubusercontent.com`, each scoped to one branch of its
-#      repository and one instance dbuser:
+#   9. Creates three GitHub Actions OIDC IAM roles trusted to
+#      `token.actions.githubusercontent.com`, each scoped to one instance dbuser:
 #        - `GitHubBenchmarkSchemaRole`: `rds-db:connect` on the `migrator`
-#          Postgres user (schema deploys; migration 002 in PR-1.3).
+#          Postgres user (schema deploys; migration 002 in PR-1.3). One branch.
 #        - `GitHubBenchmarkIngestRole`: `rds-db:connect` on the `bench_ingest`
 #          Postgres user (Phase-2 CI dual-write ingest; migration 004 in PR-2.1).
+#          One branch.
+#        - `GitHubBenchmarkReadRole`: `rds-db:connect` on the read-only
+#          `bench_ci_read` Postgres user (CI diffs against published numbers;
+#          migration 011). Any branch, and same-repository pull requests.
 #  10. Prints a summary: the GitHub Actions vars to set (instance endpoint,
-#      region, DB name, both role ARNs).
+#      region, DB name, the role ARNs).
 #
 # Re-run safety: every aws-cli mutation goes through `ensure_*`
 # functions that check for an existing resource first. A partially
@@ -93,10 +96,12 @@ readonly DB_LOG_RETENTION_DAYS="${DB_LOG_RETENTION_DAYS:-30}"
 readonly ALARM_HTTPS_ENDPOINT="${ALARM_HTTPS_ENDPOINT:-}"
 readonly SCHEMA_ROLE_NAME="${SCHEMA_ROLE_NAME:-GitHubBenchmarkSchemaRole}"
 readonly INGEST_ROLE_NAME="${INGEST_ROLE_NAME:-GitHubBenchmarkIngestRole}"
+readonly READ_ROLE_NAME="${READ_ROLE_NAME:-GitHubBenchmarkReadRole}"
 readonly SCHEMA_GITHUB_REPO="${SCHEMA_GITHUB_REPO:-vortex-data/vortex.dev}"
 readonly SCHEMA_GITHUB_BRANCH="${SCHEMA_GITHUB_BRANCH:-main}"
 readonly INGEST_GITHUB_REPO="${INGEST_GITHUB_REPO:-vortex-data/vortex}"
 readonly INGEST_GITHUB_BRANCH="${INGEST_GITHUB_BRANCH:-develop}"
+readonly READ_GITHUB_REPO="${READ_GITHUB_REPO:-vortex-data/vortex}"
 # Postgres role created by migrations/002 in PR-1.3; the OIDC role's
 # rds-db:connect permission is scoped to this user. NOT overridable (unlike the
 # other names above): the role name is hardcoded in migrations/002
@@ -111,6 +116,9 @@ readonly PG_MIGRATOR_ROLE="migrator"
 # authenticate as `bench_ingest`, so an env override would scope the IAM grant to
 # a user the migration never creates and silently break ingest auth.
 readonly PG_INGEST_ROLE="bench_ingest"
+# Postgres role created by migrations/011: read-only and IAM-only. NOT
+# overridable, same rationale as PG_MIGRATOR_ROLE.
+readonly PG_CI_READ_ROLE="bench_ci_read"
 
 readonly TAG_KEY_PROJECT="Project"
 readonly TAG_VAL_PROJECT="vortex-benchmarks"
@@ -532,7 +540,7 @@ ensure_alarms() {
 }
 
 # -----------------------------------------------------------------------------
-# Step 7: GitHub Actions OIDC IAM roles for schema deploys and ingest.
+# Step 7: GitHub Actions OIDC IAM roles for schema deploys, ingest and CI reads.
 # -----------------------------------------------------------------------------
 
 ensure_oidc_provider() {
@@ -567,6 +575,27 @@ github_trust_policy() {
           "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
           "token.actions.githubusercontent.com:sub": ("repo:" + $repo + ":ref:refs/heads/" + $branch)
         }}
+      }]
+    }'
+}
+
+# The read role can only SELECT, so it trusts every branch and the repository's
+# own pull requests. GitHub issues no OIDC token to a `pull_request` run from a
+# fork, so the `pull_request` subject admits only branches in the repository.
+github_read_trust_policy() {
+    jq -n --arg account "$TARGET_ACCOUNT" --arg repo "$1" '{
+      Version: "2012-10-17",
+      Statement: [{
+        Effect: "Allow",
+        Principal: {Federated: ("arn:aws:iam::" + $account + ":oidc-provider/token.actions.githubusercontent.com")},
+        Action: "sts:AssumeRoleWithWebIdentity",
+        Condition: {
+          StringEquals: {"token.actions.githubusercontent.com:aud": "sts.amazonaws.com"},
+          StringLike: {"token.actions.githubusercontent.com:sub": [
+            ("repo:" + $repo + ":ref:refs/heads/*"),
+            ("repo:" + $repo + ":pull_request")
+          ]}
+        }
       }]
     }'
 }
@@ -676,6 +705,57 @@ EOF
     log "  inline permissions policy applied (rds-db:connect for ${PG_INGEST_ROLE} on instance)."
 }
 
+ensure_read_role() {
+    log "Step 7c: GitHub Actions OIDC role ${READ_ROLE_NAME}."
+    ensure_oidc_provider
+
+    local trust_policy
+    trust_policy=$(github_read_trust_policy "$READ_GITHUB_REPO")
+
+    if READ_ROLE_ARN=$(aws iam get-role --role-name "$READ_ROLE_NAME" \
+            --query 'Role.Arn' --output text 2>/dev/null); then
+        log "  exists: ${READ_ROLE_ARN}; updating trust policy."
+        aws iam update-assume-role-policy \
+            --role-name "$READ_ROLE_NAME" \
+            --policy-document "$trust_policy"
+    else
+        READ_ROLE_ARN=$(aws iam create-role \
+            --role-name "$READ_ROLE_NAME" \
+            --assume-role-policy-document "$trust_policy" \
+            --description "GitHub Actions OIDC role for read-only benchmarks-website Postgres access" \
+            --tags "Key=${TAG_KEY_PROJECT},Value=${TAG_VAL_PROJECT}" \
+                   "Key=${TAG_KEY_OWNER},Value=${TAG_VAL_OWNER}" \
+            --query 'Role.Arn' --output text)
+        log "  created: ${READ_ROLE_ARN}"
+    fi
+
+    # rds-db:connect for the bench_ci_read Postgres user on the INSTANCE resource
+    # only. That user's grants (migrations/011) are what make it read-only.
+    local rds_arn_account="$TARGET_ACCOUNT"
+
+    local permissions_policy
+    permissions_policy=$(cat <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Action": ["rds-db:connect"],
+    "Resource": [
+      "arn:aws:rds-db:${TARGET_REGION}:${rds_arn_account}:dbuser:${DB_RESOURCE_ID}/${PG_CI_READ_ROLE}"
+    ]
+  }]
+}
+EOF
+)
+
+    aws iam put-role-policy \
+        --role-name "$READ_ROLE_NAME" \
+        --policy-name "rds-db-connect-ci-read" \
+        --policy-document "$permissions_policy" \
+        >/dev/null
+    log "  inline permissions policy applied (rds-db:connect for ${PG_CI_READ_ROLE} on instance)."
+}
+
 # -----------------------------------------------------------------------------
 # Step 8: Summary.
 # -----------------------------------------------------------------------------
@@ -694,6 +774,7 @@ Backup replica   : ${BACKUP_REPLICA_REGION}, ${BACKUP_REPLICA_RETENTION_DAYS} da
 Alarm topic      : ${ALARM_TOPIC_ARN}
 Schema role ARN  : ${SCHEMA_ROLE_ARN}
 Ingest role ARN  : ${INGEST_ROLE_ARN}
+Read role ARN    : ${READ_ROLE_ARN}
 
 NEXT STEPS:
 
@@ -706,6 +787,7 @@ NEXT STEPS:
      gh variable set RDS_BENCH_DB_NAME  --body "${DB_NAME}"
      gh variable set GH_BENCH_SCHEMA_ROLE_ARN --body "${SCHEMA_ROLE_ARN}"
      gh variable set GH_BENCH_INGEST_ROLE_ARN --body "${INGEST_ROLE_ARN}"
+     gh variable set GH_BENCH_READ_ROLE_ARN   --body "${READ_ROLE_ARN}"
 
 2. If ALARM_HTTPS_ENDPOINT was unset, subscribe the incident.io CloudWatch
    alert source to the alarm topic:
@@ -717,11 +799,11 @@ NEXT STEPS:
        --query 'DBInstances[0].[DBInstanceStatus,IAMDatabaseAuthenticationEnabled,DeletionProtection,MaxAllocatedStorage]'
      # expected: available  True  True  ${DB_MAX_ALLOCATED_STORAGE_GB}
 
-4. Migrations create the Postgres '${PG_MIGRATOR_ROLE}' (002) and
-   '${PG_INGEST_ROLE}' (004) users; both OIDC roles' permission policies are
+4. Migrations create the Postgres '${PG_MIGRATOR_ROLE}' (002),
+   '${PG_INGEST_ROLE}' (004) and '${PG_CI_READ_ROLE}' (011) users; the OIDC roles' permission policies are
    already scoped to those users. During the one-time bootstrap, apply EVERY
    migration carrying the '-- migrate-schema: requires-superuser' marker as the
-   RDS master (currently 002/004/005, which create roles + grants, and 006/007,
+   RDS master (currently 002/004/005/011, which create roles + grants, and 006/007,
    which run DDL on the master-owned query_measurements table). The marker in
    each file is authoritative; see bench/migrations/README.md
    'Bootstrap ordering' for the contract. After the bootstrap, unmarked schema
@@ -736,17 +818,18 @@ EOF
 # -----------------------------------------------------------------------------
 
 main() {
-    [ -z "${GITHUB_REPO+x}" ] || die "GITHUB_REPO was replaced by SCHEMA_GITHUB_REPO and INGEST_GITHUB_REPO."
+    [ -z "${GITHUB_REPO+x}" ] || die "GITHUB_REPO was replaced by SCHEMA_GITHUB_REPO, INGEST_GITHUB_REPO and READ_GITHUB_REPO."
     if [ "$#" -gt 0 ]; then
         if [ "$#" -eq 2 ] && [ "$1" = "--print-trust" ]; then
             case "$2" in
                 schema) github_trust_policy "$SCHEMA_GITHUB_REPO" "$SCHEMA_GITHUB_BRANCH" ;;
                 ingest) github_trust_policy "$INGEST_GITHUB_REPO" "$INGEST_GITHUB_BRANCH" ;;
-                *) die "Expected schema or ingest." ;;
+                read) github_read_trust_policy "$READ_GITHUB_REPO" ;;
+                *) die "Expected schema, ingest or read." ;;
             esac
             return
         fi
-        die "Usage: provision.sh [--print-trust schema|ingest]"
+        die "Usage: provision.sh [--print-trust schema|ingest|read]"
     fi
     verify_prereqs
     discover_default_vpc
@@ -759,6 +842,7 @@ main() {
     ensure_alarms
     ensure_schema_role
     ensure_ingest_role
+    ensure_read_role
     print_summary
 }
 

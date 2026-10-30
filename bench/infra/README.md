@@ -22,6 +22,7 @@ Single one-shot script. Provisions, in order:
 7. The GitHub OIDC provider `token.actions.githubusercontent.com` (account-scoped — created once if not present).
 8. An IAM role `GitHubBenchmarkSchemaRole` trusted to GitHub Actions OIDC for `vortex-data/vortex.dev` on `main` with `sts:AssumeRoleWithWebIdentity`. Permission policy: `rds-db:connect` scoped to the `migrator` Postgres user on the **instance** resource only (CI schema deploys connect to the public instance endpoint).
 9. An IAM role `GitHubBenchmarkIngestRole` (PR-2.1) trusted to the same OIDC provider for `vortex-data/vortex` on `develop`. Permission policy: `rds-db:connect` scoped to the `bench_ingest` Postgres user on the instance resource only. This is the dedicated least-privilege identity for the Phase-2 CI dual-write ingest path, deliberately separate from the schema-deploy `migrator` identity so the high-frequency ingest path can write data but never run DDL or migrations.
+10. An IAM role `GitHubBenchmarkReadRole` trusted to the same OIDC provider for `vortex-data/vortex` on any branch and on the repository's own pull requests. Permission policy: `rds-db:connect` scoped to the `bench_ci_read` Postgres user on the instance resource only. CI uses it to read the published numbers and diff them against a run's local numbers. `bench_ci_read` (migration `011`) can only `SELECT` the six data tables, and every one of its transactions is read-only.
 
 The `migrator` Postgres user is created by `migrations/002_iam_db_user.sql` (PR-1.3) and the `bench_ingest` user by `migrations/004_ingest_role.sql` (PR-2.1); each OIDC role's permission ARN is pre-scoped to its user. `002` is applied as the RDS master because it creates a role (it needs `CREATEROLE` and grants the `rds_iam` / schema privileges the master holds), while `003` and `004` are applied as the master because they additionally grant on master-owned objects (the ledger and the six data tables, respectively). All three run during the one-time bootstrap; the migrator-run `schema-deploy` path then records them as already-applied.
 
@@ -84,6 +85,7 @@ The script prints the exact `gh variable set` commands; copy them from its outpu
 | `RDS_BENCH_DB_NAME` | `vortex_bench` | All Postgres connections |
 | `GH_BENCH_SCHEMA_ROLE_ARN` | the schema-deploy OIDC role ARN | `.github/workflows/bench-schema-deploy.yml` |
 | `GH_BENCH_INGEST_ROLE_ARN` | the ingest OIDC role ARN | PR-2.4 dual-write ingest workflows (`bench.yml` / `sql-benchmarks.yml` / `v3-commit-metadata.yml`) |
+| `GH_BENCH_READ_ROLE_ARN` | the read-only OIDC role ARN | `vortex-data/vortex` CI jobs that diff against the published numbers, as Postgres user `bench_ci_read` |
 
 The Vercel reader also connects to the public instance endpoint. It is
 configured through `BENCH_DB_*` Vercel env vars (see `bench/web/README.md`),
@@ -319,6 +321,8 @@ aws iam delete-role-policy --role-name GitHubBenchmarkSchemaRole --policy-name r
 aws iam delete-role --role-name GitHubBenchmarkSchemaRole
 aws iam delete-role-policy --role-name GitHubBenchmarkIngestRole --policy-name rds-db-connect-ingest
 aws iam delete-role --role-name GitHubBenchmarkIngestRole
+aws iam delete-role-policy --role-name GitHubBenchmarkReadRole --policy-name rds-db-connect-ci-read
+aws iam delete-role --role-name GitHubBenchmarkReadRole
 aws ec2 delete-security-group --group-name vortex-bench-sg
 aws rds delete-db-subnet-group --db-subnet-group-name vortex-bench-subnet-group
 # OIDC provider (account-scoped): only delete if no other workflow uses it
@@ -368,14 +372,21 @@ it had no client connections from 2026-05-31 to 2026-10-28.
 `vortex-data/benchmarks-website` repository are excluded. Manual schema deploys must select `main`.
 The old shared `GITHUB_REPO` input is rejected to prevent an ambiguous role assignment.
 
+The read role is the exception. `READ_GITHUB_REPO` defaults to `vortex-data/vortex`, and the role
+trusts `repo:<repo>:ref:refs/heads/*` and `repo:<repo>:pull_request`, so a benchmark run on a PR
+or a feature branch can read the published numbers. That is safe because its database user cannot
+write. GitHub does not issue an OIDC token to a `pull_request` run from a fork, so fork PRs cannot
+assume it.
+
 Reprovisioning replaces each role's trust policy with these inputs. It does not preserve manual
 subjects. Review both generated policies offline before applying infrastructure changes:
 
 ```bash
 bash infra/provision.sh --print-trust schema
 bash infra/provision.sh --print-trust ingest
+bash infra/provision.sh --print-trust read
 python3 -m unittest discover -s infra/tests -v
 ```
 
 The print commands require only `jq` and make no AWS calls. They do not apply the policy.
-The schema and ingest permission policies remain scoped to their respective database users.
+The schema, ingest and read permission policies remain scoped to their respective database users.
