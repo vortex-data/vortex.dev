@@ -14,8 +14,14 @@ vi.mock('next/cache', () => ({
 }));
 
 import { READ_API_CACHE_CONTROL } from './cache';
-import { chartPayload, collectFilterUniverse, compareGroupSortKey } from './queries';
-import { chartKeyToSlug, type ChartKey } from './slug';
+import {
+  chartPayload,
+  collectFilterUniverse,
+  compareGroupSortKey,
+  groupChartPayloads,
+} from './queries';
+import { collectGroupSummary } from './summary';
+import { chartKeyToSlug, type ChartKey, type GroupKey } from './slug';
 import {
   type BenchDatabase,
   commitUrl,
@@ -626,5 +632,96 @@ describe.skipIf(!databaseAvailable)('chartPayload seeded-window semantics', () =
     // The full window orders oldest-first by (timestamp ASC, commit_sha ASC).
     const all = await chartPayload({ k: 'RandomAccess', dataset: 'tie' }, parseCommitWindow('all'));
     expect(all?.commits.map((c) => c.sha)).toEqual([D, E]);
+  });
+});
+
+// Migration 012 records each commit's branch, and the site reads only `develop`. A commit from
+// another branch, older or newer than every develop commit, must not reach any read.
+describe.skipIf(!databaseAvailable)('reads see only the develop branch', () => {
+  let container: BenchDatabase;
+  const OLD_FEATURE = '1'.repeat(40);
+  const A = 'a'.repeat(40);
+  const B = 'b'.repeat(40);
+  const NEW_FEATURE = 'f'.repeat(40);
+  const chart: ChartKey = {
+    k: 'QueryMeasurement',
+    dataset: 'branchy',
+    dataset_variant: null,
+    scale_factor: '1',
+    storage: 'nvme',
+    query_idx: 1,
+  };
+  const group: GroupKey = {
+    k: 'QueryGroup',
+    dataset: 'branchy',
+    dataset_variant: null,
+    scale_factor: '1',
+    storage: 'nvme',
+  };
+
+  beforeAll(async () => {
+    container = await startBenchDatabase();
+    const pool = getPool();
+    const commits: ReadonlyArray<readonly [string, string, string | null]> = [
+      [OLD_FEATURE, '2026-05-01T12:00:00Z', 'ji/old-feature'],
+      [A, '2026-05-02T12:00:00Z', null],
+      [B, '2026-05-03T12:00:00Z', null],
+      [NEW_FEATURE, '2026-05-04T12:00:00Z', 'ji/new-feature'],
+    ];
+    for (const [sha, ts, branch] of commits) {
+      // A NULL branch leaves the column to its `develop` default, as the ingest writer does.
+      await pool.query(
+        `INSERT INTO commits (commit_sha, timestamp, message, tree_sha, url, branch)
+         VALUES ($1, $2::timestamptz, 'm', $3, $4, COALESCE($5, 'develop'))`,
+        [sha, ts, TREE_SHA, commitUrl(sha), branch],
+      );
+    }
+    // On develop, datafusion is faster. The feature commits flip that, so a read that let
+    // them through would rank duckdb first.
+    const rows: ReadonlyArray<readonly [string, string, number]> = [
+      [OLD_FEATURE, 'datafusion', 9000],
+      [A, 'datafusion', 100],
+      [A, 'duckdb', 200],
+      [B, 'datafusion', 110],
+      [B, 'duckdb', 210],
+      [NEW_FEATURE, 'datafusion', 9000],
+    ];
+    let id = 0;
+    for (const [sha, engine, value] of rows) {
+      id += 1;
+      await pool.query(
+        `INSERT INTO query_measurements
+           (measurement_id, commit_sha, dataset, dataset_variant, scale_factor,
+            query_idx, storage, engine, format, value_ns, all_runtimes_ns, commit_timestamp)
+         VALUES ($1, $2, 'branchy', NULL, '1', 1, 'nvme', $3, 'parquet', $4, '{1}'::bigint[],
+                 (SELECT timestamp FROM commits WHERE commit_sha = $2))`,
+        [id, sha, engine, value],
+      );
+    }
+  });
+
+  afterAll(async () => {
+    await resetPool();
+    await container.stop();
+  });
+
+  it.each(['1', '100', 'all'])('charts only develop commits for ?n=%s', async (n) => {
+    const window = parseCommitWindow(n);
+    const expected = n === '1' ? [B] : [A, B];
+    const single = await chartPayload(chart, window);
+    const [grouped] = await groupChartPayloads(group, [chart], window);
+    for (const payload of [single, grouped]) {
+      expect(payload?.commits.map((c) => c.sha)).toEqual(expected);
+      expect(payload?.history.total_commits).toBe(2);
+      expect(payload?.series['datafusion:parquet']).toEqual(n === '1' ? [110] : [100, 110]);
+    }
+  });
+
+  it('ranks the summary on develop numbers only', async () => {
+    const summary = await collectGroupSummary(group);
+    expect(summary?.type).toBe('queryBenchmark');
+    const rankings = summary?.type === 'queryBenchmark' ? summary.rankings : [];
+    expect(rankings.map((r) => r.name)).toEqual(['datafusion:parquet', 'duckdb:parquet']);
+    expect(rankings[0]?.totalRuntime).toBe(110);
   });
 });
