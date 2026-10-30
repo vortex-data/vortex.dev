@@ -83,8 +83,17 @@ const nextConfig = wrapWithPlausible({
           { key: "Cross-Origin-Opener-Policy", value: crossOriginOpenerPolicy },
           // Only vortex.dev and its subdomains may embed this site's
           // resources. Link unfurlers fetch from a server, which this does not
-          // affect, and the RSS feed carries text only.
+          // affect. The favicon is the exception below.
           { key: "Cross-Origin-Resource-Policy", value: "same-site" }
+        ]
+      },
+      {
+        // The RSS feed advertises the favicon, and feed readers that run in
+        // a browser or an extension load it from another site. This later
+        // rule overrides the header above for this path.
+        source: "/favicon.ico",
+        headers: [
+          { key: "Cross-Origin-Resource-Policy", value: "cross-origin" }
         ]
       }
     ];
