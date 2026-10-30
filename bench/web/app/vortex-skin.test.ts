@@ -16,6 +16,10 @@ const VISUAL = new Set([
   'accent-color',
   'font-family',
   'font-weight',
+  // The label voice: size, tracking, and case change how text looks.
+  'font-size',
+  'letter-spacing',
+  'text-transform',
 ]);
 
 const declsOf = (path: string) =>
@@ -128,6 +132,18 @@ describe('vortex-skin.css', () => {
     expect(valueOf('.group-details', 'border-radius')).toBe('6px');
     for (const control of ['.control-btn', '.toolbar-btn', '.filter-chip']) {
       expect(valueOf(control, 'border-radius'), control).toBe('4px');
+    }
+  });
+
+  it('sets the title and toolbar buttons as mono labels, mutes ranks, and squares the badges', () => {
+    for (const sel of ['.site-title', '.control-btn']) {
+      expect(valueOf(sel, 'font-family'), sel).toMatch(/Geist Mono/);
+      expect(valueOf(sel, 'text-transform'), sel).toBe('uppercase');
+    }
+    expect(valueOf('.score-rank', 'color')).toBe('var(--muted)');
+    expect(valueOf('.site-title', 'color')).toBe('var(--muted)');
+    for (const sel of ['.filter-badge', '.group-count']) {
+      expect(valueOf(sel, 'border-radius'), sel).toBe('2px');
     }
   });
 

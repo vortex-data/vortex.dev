@@ -502,11 +502,13 @@
 .vx-bar-fill { display: block; height: 100%; background: var(--chart-muted); }
 .vx-bar.is-ours { color: var(--accent-ink); }
 .vx-bar.is-ours .vx-bar-fill { background: var(--chart-1); }
-/* Parquet, Lance and Arrow take muted tints of their colours, so the bars are not grey on grey.
-   One value serves both themes, at 3.4:1 on either track, and Vortex's Blue still leads. */
+/* Parquet, Lance and Arrow take muted tints of their colours, so the bars are not grey on grey,
+   drawn at 42% so that Vortex's Blue is the one solid bar and leads even where the others are
+   longer. Every bar prints its value, so the bar is never the only way to read it. */
 .vx-bar.is-parquet .vx-bar-fill { background: var(--chart-parquet); }
 .vx-bar.is-lance .vx-bar-fill { background: var(--chart-lance); }
 .vx-bar.is-arrow .vx-bar-fill { background: var(--chart-arrow); }
+.vx-bar:is(.is-parquet, .is-lance, .is-arrow) .vx-bar-fill { opacity: 0.42; }
 .vx-bars.is-lg .vx-bar { gap: var(--space-12); font-size: 12.5px; }
 .vx-bars.is-lg .vx-bar-track { height: 10px; }
 /* The card's bars end in their values with a short unit ("42.25 ms", "5.12×"), small and muted,
@@ -672,6 +674,29 @@
 }
 .vx-blog-title { margin: 0; color: var(--ink); }
 .vx-blog-feeds { display: flex; gap: var(--space-16); }
+/* With has-mark, a still of the ASCII mark sits in the heading's top right corner, above the feeds:
+   plain mono text, dim in edge, fading in from the left. It is static, so it adds no motion.
+   Phones leave it out. */
+.vx-blog-head.has-mark { position: relative; min-height: 200px; align-items: flex-end; }
+.vx-blog-head.has-mark > :not(.vx-blog-mark) { position: relative; z-index: 1; }
+.vx-blog-mark {
+  position: absolute;
+  right: 0;
+  top: 0;
+  margin: 0;
+  font: 400 12px/14px var(--font-mono);
+  color: var(--edge);
+  white-space: pre;
+  pointer-events: none;
+  user-select: none;
+  transform: scale(0.6);
+  transform-origin: right top;
+  mask-image: linear-gradient(90deg, transparent, var(--ink) 40%);
+}
+@media (max-width: 760px) {
+  .vx-blog-head.has-mark { min-height: 0; }
+  .vx-blog-mark { display: none; }
+}
 
 /* Post rows sit in a .vx-posts list, which they measure to decide their layout. */
 /* The list is a ul of li > a.vx-post-row. Each row reaches 12px past the column on both sides, so

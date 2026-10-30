@@ -148,3 +148,27 @@ body {
   border-color: var(--border);
   color: var(--fg);
 }
+
+/* The chrome in the system's label voice: the page title and the toolbar buttons read as mono
+   capitals, ranks are muted so Blue marks only ratios, and the count badges are square. */
+.site-title,
+.control-btn {
+  font-family: 'Geist Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.site-title {
+  font-size: 12px;
+  color: var(--muted);
+}
+.control-btn {
+  font-size: 11px;
+}
+.score-rank {
+  color: var(--muted);
+}
+.filter-badge,
+.group-count {
+  border-radius: 2px;
+}
