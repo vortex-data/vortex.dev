@@ -133,6 +133,33 @@ describe('canonical slug encoding', () => {
       '{"k":"QueryGroup","dataset":"tpch","dataset_variant":null,"scale_factor":"1","storage":"nvme"}',
     );
   });
+
+  // `lib/data-cache.ts` keys cache entries and fill locks by the re-encoded slug, so every
+  // spelling of a key must re-encode to the one canonical slug.
+  it('re-encodes every alias of a key to its canonical slug', () => {
+    const encode = (obj: unknown): string =>
+      Buffer.from(JSON.stringify(obj), 'utf8').toString('base64url');
+    const group = {
+      k: 'QueryGroup',
+      dataset: 'tpch',
+      dataset_variant: null,
+      scale_factor: '1',
+      storage: 'nvme',
+    } as const;
+    const canonical = groupKeyToSlug(group);
+    const aliases = [
+      `x.${canonical.split('.')[1]}`,
+      `qmg.${encode({ storage: 'nvme', scale_factor: '1', dataset: 'tpch', k: 'QueryGroup' })}`,
+      `qmg.${encode({ ...group, extra: 'ignored' })}`,
+    ];
+    for (const alias of aliases) {
+      expect(alias).not.toBe(canonical);
+      expect(groupKeyToSlug(groupKeyFromSlug(alias))).toBe(canonical);
+    }
+    const chart = chartKeyToSlug({ k: 'RandomAccess', dataset: 'taxi' });
+    const chartAlias = `ra.${encode({ dataset: 'taxi', k: 'RandomAccess', extra: 1 })}`;
+    expect(chartKeyToSlug(chartKeyFromSlug(chartAlias))).toBe(chart);
+  });
 });
 
 describe('slug decode validates full payload shape', () => {

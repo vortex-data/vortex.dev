@@ -68,16 +68,14 @@
     },
     {
       "description": "Keep bench's updates apart from the marketing site's.",
-      "matchFileNames": ["bench/**", ".github/workflows/bench-*.yml"],
+      "matchFileNames": [
+        "bench/**",
+        ".github/workflows/bench-*.yml",
+        ".github/vercel-cli/**"
+      ],
       "additionalBranchPrefix": "bench-",
       "commitMessageSuffix": "(bench)",
       "addLabels": ["bench"]
-    },
-    {
-      "description": "No required check runs a deploy, so review Vercel CLI bumps for bench-deploy.yml by hand.",
-      "matchManagers": ["custom.regex"],
-      "matchDepNames": ["vercel"],
-      "automerge": false
     }
   ]
 }

@@ -62,9 +62,17 @@ app, all sharing the `bench-data` tag.
 The backstop bounds staleness; `POST /api/revalidate`
 ([`web/app/api/revalidate/route.ts`](../../web/app/api/revalidate/route.ts))
 *removes* it. On a successful ingest the emitter calls it and it runs
-`revalidateTag('bench-data', { expire: 0 })`, which expires the entries at once
-(the `'max'` profile would serve them stale one more time), so the next read
-recomputes against fresh data instead of waiting out the 24-hour cap. The
+`revalidateTag('bench-data', 'max')`, which marks the entries stale rather than
+dropping them: the next read of each serves the previous data once and refreshes
+it in the background, and the read after that gets the fresh data, instead of
+waiting out the 24-hour cap. No read waits on the database because of an ingest;
+new results can take about one more CDN cycle (five minutes) to show. Dropping
+the entries instead (`{ expire: 0 }`) failed in production: every fill then
+shared one advisory lock, the emitter revalidates after every benchmark job
+(about once a minute during a develop run), and the reads that waited on the
+lock ran out of retries. A failed render of `/` then stayed in the CDN for five
+minutes. Each entry now fills under its own lock (see
+[read-path.md](read-path.md#database-connection)). The
 endpoint **fails closed** — a missing `BENCH_REVALIDATE_TOKEN` is a `503`, never
 a silent accept — and the post-ingest hook is **best-effort**: every failure in
 it is caught, logged, and swallowed so a cache-refresh problem can never change

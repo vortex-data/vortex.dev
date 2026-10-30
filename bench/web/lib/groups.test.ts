@@ -14,6 +14,7 @@ vi.mock('next/cache', () => ({
 }));
 
 import {
+  collectGroup,
   collectGroupCharts,
   collectGroups,
   groupNameQuery,
@@ -34,7 +35,7 @@ import {
 } from './test-harness';
 import { parseCommitWindow } from './window';
 import { getPool, resetPool } from './db';
-import { withGroupCacheFillLock } from './cache-fill';
+import { cacheFillSlots, withGroupCacheFillLock } from './cache-fill';
 import { GET as getGroups } from '@/app/api/groups/route';
 import { GET as getGroup } from '@/app/api/group/[slug]/route';
 
@@ -75,6 +76,17 @@ describe.skipIf(!databaseAvailable)(
         'TPC-H (NVMe) (SF=1)',
         'cohere-large-10m / partitioned',
       ]);
+    });
+
+    // A group bundle's fill resolves its group alone; it must build the entry the full
+    // discovery builds, summary and description included, for every family.
+    it('collectGroup builds the same group as collectGroups', async () => {
+      const groups = await collectGroups();
+      expect(groups.length).toBeGreaterThan(0);
+      for (const group of groups) {
+        expect(await collectGroup(groupKeyFromSlug(group.slug))).toEqual(group);
+      }
+      expect(await collectGroup({ k: 'RandomAccessGroup', storage: 's3' })).toBeNull();
     });
 
     it('computes the random-access summary (geomean ratio to fastest)', async () => {
@@ -810,14 +822,16 @@ describe.skipIf(!databaseAvailable)('summary math fidelity (testcontainers Postg
     expect(summary.rankings[1]!.score).toBeCloseTo(1.732022, 5);
   });
 
-  // A cached group fill holds one connection for its advisory lock while it runs the group
+  // A cached fill holds one connection for its advisory lock. The group-list fill then runs the
   // discovery (one statement per family, five at once) and the summaries (QUERY_CONCURRENCY, 7, at
-  // once) through `pool.query`, then builds the group's charts on one `connect()`ed client. pg fails
-  // a request that waits BENCH_DB_CONNECTION_TIMEOUT_MS for a free pool slot, so the fill must never
-  // ask for more connections at once than the default pool size, 8: the lock plus 7 summaries. The
-  // test counts requests, not checked-out clients, because a pool of 8 never checks out more than
-  // 8: a wider fan-out would only queue.
-  it('keeps a cached group fill within the pool size', async () => {
+  // once) through `pool.query`; a group-bundle fill runs its group's discovery, then its summary,
+  // then builds the group's charts on one `connect()`ed client. pg fails a request that waits
+  // BENCH_DB_CONNECTION_TIMEOUT_MS for a free pool slot, so the fills in one process must never ask
+  // for more connections at once than the default pool size, 8: the group list's lock plus 7
+  // summaries, or two bundles' locks plus one query each (`cacheFillSlots`). The test
+  // starts the group list and every bundle at once and counts requests, not checked-out clients,
+  // because a pool of 8 never checks out more than 8: a wider fan-out would only queue.
+  it('keeps concurrent cached fills within the pool size', async () => {
     const sha = 'b'.repeat(40);
     await insertCommit(sha, '2026-04-23T12:00:00Z');
     for (let queryIdx = 1; queryIdx <= 12; queryIdx += 1) {
@@ -836,6 +850,8 @@ describe.skipIf(!databaseAvailable)('summary math fidelity (testcontainers Postg
       );
     }
 
+    const slugs = (await collectGroups()).map((group) => group.slug);
+    expect(slugs.length).toBeGreaterThan(cacheFillSlots());
     const pool = getPool();
     const connect = pool.connect.bind(pool);
     let requested = 0;
@@ -851,19 +867,22 @@ describe.skipIf(!databaseAvailable)('summary math fidelity (testcontainers Postg
     };
     pool.on('release', onRelease);
     try {
-      const bundle = await withGroupCacheFillLock(() =>
-        collectGroupCharts(
-          {
-            k: 'QueryGroup',
-            dataset: 'tpch',
-            dataset_variant: null,
-            scale_factor: '1',
-            storage: 'nvme',
-          },
-          parseCommitWindow(null),
+      const groupsFill = withGroupCacheFillLock('groups', collectGroups, { exclusive: true });
+      const bundleFills = slugs.map((slug) =>
+        withGroupCacheFillLock(`group-charts:${slug}`, () =>
+          collectGroupCharts(groupKeyFromSlug(slug), parseCommitWindow(null)),
         ),
       );
-      expect(bundle?.charts).toHaveLength(12);
+      const [groups, bundles] = await Promise.all([groupsFill, Promise.all(bundleFills)]);
+      expect(groups.map((group) => group.slug)).toEqual(slugs);
+      const tpchSf1 = groupKeyToSlug({
+        k: 'QueryGroup',
+        dataset: 'tpch',
+        dataset_variant: null,
+        scale_factor: '1',
+        storage: 'nvme',
+      });
+      expect(bundles[slugs.indexOf(tpchSf1)]?.charts).toHaveLength(12);
     } finally {
       pool.off('release', onRelease);
       connectSpy.mockRestore();

@@ -12,7 +12,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 const { cacheCalls, retryGroupCacheFill, withGroupCacheFillLock } = vi.hoisted(() => ({
   cacheCalls: [] as { keyParts: string[]; options: { tags?: string[]; revalidate?: number } }[],
   retryGroupCacheFill: vi.fn((read: () => Promise<unknown>) => read()),
-  withGroupCacheFillLock: vi.fn((fill: () => Promise<unknown>) => fill()),
+  withGroupCacheFillLock: vi.fn((_key: string, fill: () => Promise<unknown>, _options?: object) =>
+    fill(),
+  ),
 }));
 vi.mock('next/cache', () => ({
   unstable_cache: (
@@ -37,10 +39,13 @@ vi.mock('@/lib/queries', () => ({
   chartPayload: vi.fn(async () => ({ display_name: 'c' })),
 }));
 
+// Decoding drops an `-alias` suffix, standing in for the lenient decode that lets
+// many slugs name one key; encoding gives the canonical slug back.
 vi.mock('@/lib/slug', () => ({
-  groupKeyFromSlug: (s: string) => ({ slug: s }),
-  chartKeyFromSlug: (s: string) => ({ slug: s }),
+  groupKeyFromSlug: (s: string) => ({ slug: s.replace(/-alias$/, '') }),
+  chartKeyFromSlug: (s: string) => ({ slug: s.replace(/-alias$/, '') }),
   groupKeyToSlug: (k: { slug: string }) => k.slug,
+  chartKeyToSlug: (k: { slug: string }) => k.slug,
 }));
 
 import {
@@ -80,5 +85,26 @@ describe('data-cache wrappers', () => {
     await expect(cachedDefaultChartPayload('cs')).resolves.toEqual({ display_name: 'c' });
     expect(withGroupCacheFillLock).toHaveBeenCalledTimes(2);
     expect(retryGroupCacheFill).toHaveBeenCalledTimes(2);
+  });
+
+  it('locks each group bundle on its own key, and the group list on every fill slot', async () => {
+    await cachedGroups();
+    await cachedDefaultGroupCharts('gs');
+    expect(withGroupCacheFillLock.mock.calls[0]![0]).toBe('groups');
+    expect(withGroupCacheFillLock.mock.calls[0]![2]).toEqual({ exclusive: true });
+    expect(withGroupCacheFillLock.mock.calls[1]![0]).toBe('group-charts:gs');
+    expect(withGroupCacheFillLock.mock.calls[1]![2]).toBeUndefined();
+  });
+
+  it('reads and fills an aliased slug under its canonical slug', async () => {
+    const { collectGroupCharts, chartPayload } = await import('@/lib/queries');
+    await cachedDefaultGroupCharts('gs-alias');
+    await cachedDefaultChartPayload('cs-alias');
+    expect(withGroupCacheFillLock.mock.calls[0]![0]).toBe('group-charts:gs');
+    expect(vi.mocked(collectGroupCharts)).toHaveBeenLastCalledWith(
+      { slug: 'gs' },
+      expect.anything(),
+    );
+    expect(vi.mocked(chartPayload)).toHaveBeenLastCalledWith({ slug: 'cs' }, expect.anything());
   });
 });

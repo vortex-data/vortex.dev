@@ -120,6 +120,14 @@ export function resolveStatementTimeoutMillis(): number {
   return value;
 }
 
+/**
+ * The pool's connection limit, from `BENCH_DB_POOL_MAX` (default 8). The cache
+ * fills size their concurrency from it (`lib/cache-fill.ts`).
+ */
+export function resolvePoolMax(): number {
+  return Number(process.env.BENCH_DB_POOL_MAX ?? '8');
+}
+
 function readConfig(): DbConfig {
   return {
     host: requireEnv('BENCH_DB_HOST'),
@@ -128,7 +136,7 @@ function readConfig(): DbConfig {
     user: requireEnv('BENCH_DB_USER'),
     password: requireEnv('BENCH_DB_PASSWORD'),
     ssl: resolveSsl(),
-    poolMax: Number(process.env.BENCH_DB_POOL_MAX ?? '8'),
+    poolMax: resolvePoolMax(),
     idleTimeoutMillis: resolveIdleTimeoutMillis(),
     connectionTimeoutMillis: resolveConnectionTimeoutMillis(),
     statementTimeoutMillis: resolveStatementTimeoutMillis(),
