@@ -45,7 +45,7 @@ permissions: read-all
 jobs:
   analysis:
     name: Scorecard analysis
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       # Needed by github/codeql-action/upload-sarif to write Security tab
       # entries.
