@@ -4,7 +4,13 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import {
+  type MouseEvent as ReactMouseEvent,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 
 import { FilterBar } from '@/components/FilterBar';
 import type { FilterUniverse } from '@/lib/chart-format';
@@ -44,6 +50,10 @@ import { effectiveTheme } from '@/lib/theme';
  * script in the root layout). The server renders the v3 default label "Light";
  * the mount effect immediately corrects the label to name the NEXT theme, the
  * exact v3 `updateThemeButtons` sequencing.
+ *
+ * The logo links home. On `/` itself a click scrolls to the top in place
+ * ([`scrollHomeInPlace`]): a soft navigation to `/` would drop the fragment that
+ * lists the open groups while the groups stayed open.
  *
  * Without JavaScript none of the buttons can work, so each carries
  * `data-requires-js`, which hides it under the root's `no-js` class
@@ -139,7 +149,12 @@ export function Header({
           >
             <MenuIcon size={18} />
           </button>
-          <Link className="logo-link" href="/" aria-label="bench.vortex.dev home">
+          <Link
+            className="logo-link"
+            href="/"
+            aria-label="bench.vortex.dev home"
+            onClick={scrollHomeInPlace}
+          >
             <img
               className="site-logo logo-light"
               src="/Vortex_Black_NoBG.svg"
@@ -234,4 +249,30 @@ export function Header({
       </div>
     </header>
   );
+}
+
+/**
+ * The logo's click on `/`: scroll to the top without navigating, so the open
+ * groups, the fragment that lists them and the query stay as they are. Next's
+ * `Link` skips its navigation for a click whose default is prevented. Enter on
+ * the focused logo fires the same click. A click with a modifier key or another
+ * button (open in a new tab or window) is left to the browser, and on any other
+ * page the logo navigates home as a link. The scroll is smooth unless the
+ * visitor prefers reduced motion.
+ */
+function scrollHomeInPlace(event: ReactMouseEvent<HTMLAnchorElement>): void {
+  if (
+    event.defaultPrevented ||
+    event.button !== 0 ||
+    event.metaKey ||
+    event.ctrlKey ||
+    event.shiftKey ||
+    event.altKey ||
+    window.location.pathname !== '/'
+  ) {
+    return;
+  }
+  event.preventDefault();
+  const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
+  window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
 }
