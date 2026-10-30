@@ -304,11 +304,25 @@ test.describe("blog index", () => {
 });
 
 test.describe("blog index list", () => {
-  test("one list, newest first, mixes own posts with posts elsewhere", async ({
+  test("one list per year, newest first, mixes own posts with posts elsewhere", async ({
     page
   }) => {
     await page.goto("/blog");
-    await expect(page.locator("ul.vx-posts")).toHaveCount(1);
+    // Note 81: a quiet mono h2 per year over that year's own list.
+    const years = page.locator("h2.vx-label.vx-posts-year");
+    const yearTexts = await years.allTextContents();
+    expect(yearTexts.length).toBeGreaterThanOrEqual(2);
+    expect([...yearTexts].sort().reverse()).toEqual(yearTexts);
+    await expect(page.locator("ul.vx-posts")).toHaveCount(yearTexts.length);
+    for (const year of yearTexts) {
+      const list = page.locator(`h2#posts-${year} + ul.vx-posts`);
+      const inList = await list
+        .locator(".vx-post-row-meta time")
+        .evaluateAll((ts) => ts.map((t) => t.getAttribute("datetime") ?? ""));
+      expect(inList.length).toBeGreaterThan(0);
+      for (const d of inList)
+        expect(String(new Date(d).getUTCFullYear())).toBe(year);
+    }
     for (const gone of [".vx-post-lead", ".vx-posts-head", ".vx-cover"])
       await expect(page.locator(gone)).toHaveCount(0);
     const rows = page.locator("ul.vx-posts > li > a.vx-post-row");
@@ -1031,12 +1045,15 @@ test.describe("design system rules on the blog", () => {
   const x = async (page: Page, selector: string) =>
     (await page.locator(selector).first().boundingBox())?.x ?? Number.NaN;
 
-  test("each row's title is an h2, and its text is in line with the heading", async ({
+  test("each row's title is an h3 under its year, and its text is in line with the heading", async ({
     page
   }) => {
     await page.goto("/blog");
     const row = page.locator("ul.vx-posts > li > a.vx-post-row").first();
-    await expect(row.locator("h2.vx-post-row-title")).toBeVisible();
+    await expect(row.locator("h3.vx-post-row-title")).toBeVisible();
+    const gapYear =
+      (await x(page, ".vx-posts-year")) - (await x(page, ".vx-blog-title"));
+    expect(Math.abs(gapYear)).toBeLessThan(1);
     const gap =
       (await x(page, ".vx-post-row-meta")) - (await x(page, ".vx-blog-title"));
     expect(Math.abs(gap)).toBeLessThan(1);

@@ -1,6 +1,7 @@
 import NextLink from "next/link";
+import { Fragment } from "react";
 import { ArrowOutwardIcon } from "@/components/icons";
-import { formatPostDate, type IndexEntry } from "@/lib/posts";
+import { byYear, formatPostDate, type IndexEntry } from "@/lib/posts";
 
 function RowBody({ entry }: { entry: IndexEntry }) {
   return (
@@ -16,7 +17,7 @@ function RowBody({ entry }: { entry: IndexEntry }) {
           </span>
         )}
       </span>
-      <h2 className="vx-h4 vx-post-row-title">{entry.title}</h2>
+      <h3 className="vx-h4 vx-post-row-title">{entry.title}</h3>
       {entry.summary && (
         <p className="vx-small vx-post-row-excerpt">{entry.summary}</p>
       )}
@@ -25,29 +26,35 @@ function RowBody({ entry }: { entry: IndexEntry }) {
 }
 
 /**
- * The BlogIndex card's one list, newest first: each row the date over the
- * authors, then the title (an h2 under the index's h1) over the one-line
- * summary. A post on another site is an `is-external` row: a plain link to
- * the other page, with its source's host (cut with an ellipsis if it is too
- * long for the meta column, and whole in the title) and `arrow_outward` closing the
- * meta, and screen-reader text that says the link leaves the site.
+ * The BlogIndex card's rows, newest first, grouped by year: a quiet mono h2
+ * per year over that year's own list. Each row is the date over the authors,
+ * then the title (an h3 under its year) over the one-line summary. A post on
+ * another site is an `is-external` row: a plain link to the other page, with
+ * its source's host (cut with an ellipsis if it is too long for the meta
+ * column, and whole in the title) and `arrow_outward` closing the meta, and
+ * screen-reader text that says the link leaves the site.
  */
 export function PostRows({ entries }: { entries: readonly IndexEntry[] }) {
-  return (
-    <ul className="vx-posts">
-      {entries.map((entry) => (
-        <li key={entry.key}>
-          {entry.source ? (
-            <a className="vx-post-row is-external" href={entry.href}>
-              <RowBody entry={entry} />
-            </a>
-          ) : (
-            <NextLink className="vx-post-row" href={entry.href}>
-              <RowBody entry={entry} />
-            </NextLink>
-          )}
-        </li>
-      ))}
-    </ul>
-  );
+  return byYear(entries).map(({ year, entries: rows }) => (
+    <Fragment key={year}>
+      <h2 className="vx-label vx-posts-year" id={`posts-${year}`}>
+        {year}
+      </h2>
+      <ul className="vx-posts">
+        {rows.map((entry) => (
+          <li key={entry.key}>
+            {entry.source ? (
+              <a className="vx-post-row is-external" href={entry.href}>
+                <RowBody entry={entry} />
+              </a>
+            ) : (
+              <NextLink className="vx-post-row" href={entry.href}>
+                <RowBody entry={entry} />
+              </NextLink>
+            )}
+          </li>
+        ))}
+      </ul>
+    </Fragment>
+  ));
 }

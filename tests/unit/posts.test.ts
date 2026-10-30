@@ -4,6 +4,7 @@ import { externalPosts } from "@/content/links";
 import {
   adjacentPosts,
   bylineParts,
+  byYear,
   editUrl,
   formatPostDate,
   indexEntries
@@ -155,5 +156,47 @@ describe("externalPosts", () => {
       !externalPosts.some((l) => l.url.includes("btrblocks")),
       "the btrblocks post is on vortex.dev"
     );
+  });
+});
+
+// Note 81: the index groups its rows by year, newest year first, and keeps
+// their order inside each year.
+describe("byYear", () => {
+  const entry = (key: string, date: string) => ({
+    key,
+    href: `/blog/${key}`,
+    title: key,
+    date,
+    authors: [],
+    summary: null,
+    source: null
+  });
+
+  it("splits the newest-first rows into years, in order, by the UTC year of each date", () => {
+    const groups = byYear([
+      entry("a", "2026-10-21T09:00:00.000Z"),
+      entry("b", "2026-01-01"),
+      entry("c", "2025-12-31T23:30:00.000Z"),
+      entry("d", "2024-06-01")
+    ]);
+    assert.deepEqual(
+      groups.map((g) => [g.year, g.entries.map((e) => e.key)]),
+      [
+        ["2026", ["a", "b"]],
+        ["2025", ["c"]],
+        ["2024", ["d"]]
+      ]
+    );
+  });
+
+  it("covers every entry of the real index once", () => {
+    const entries = indexEntries([], externalPosts);
+    const groups = byYear(entries);
+    assert.equal(
+      groups.reduce((n, g) => n + g.entries.length, 0),
+      entries.length
+    );
+    const years = groups.map((g) => g.year);
+    assert.deepEqual([...years].sort().reverse(), years);
   });
 });

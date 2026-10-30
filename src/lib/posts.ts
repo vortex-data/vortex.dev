@@ -108,3 +108,21 @@ export function indexEntries(
     (a, b) => Date.parse(b.date) - Date.parse(a.date)
   );
 }
+
+/**
+ * The BlogIndex card's rows by year, newest year first: one heading and one
+ * list per year. The rows keep their order, so the index stays one run in
+ * date order. A row's year is its date's UTC year, as its date line reads.
+ */
+export function byYear(
+  entries: readonly IndexEntry[]
+): { year: string; entries: IndexEntry[] }[] {
+  const groups: { year: string; entries: IndexEntry[] }[] = [];
+  for (const entry of entries) {
+    const year = String(new Date(entry.date).getUTCFullYear());
+    const last = groups.at(-1);
+    if (last?.year === year) last.entries.push(entry);
+    else groups.push({ year, entries: [entry] });
+  }
+  return groups;
+}
