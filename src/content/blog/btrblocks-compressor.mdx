@@ -78,6 +78,8 @@ No single codec handles this well. A cascade of three does:
 
 3. The REE values are fed back in. **BitPacking** wins since the values are all 0 or 1, packing into a single bit each.
 
+<Chain steps={["Dictionary", "REE", "BitPacking"]} />
+
 Result: 32-bit integers compressed to roughly 1 bit per element (plus small dictionary overhead), all lightweight encodings, full random access.
 
 # Sampling
@@ -158,6 +160,17 @@ let compact = WriteStrategyBuilder::default()
 
 On TPC-H at scale factor 10:
 
+<Bars
+  title="TPC-H SF10 · total file size"
+  unit="MB"
+  better="↓"
+  bars={[
+    { name: "Parquet + zstd", value: 4465 },
+    { name: "Vortex default", value: 2776, ours: true, extra: "0.62×" },
+    { name: "Vortex compact", value: 2016, ours: true, extra: "0.45×" }
+  ]}
+/>
+
 | Table     | Parquet (ZSTD) | Vortex (default)     | Vortex (compact)     |
 | --------- | -------------- | -------------------- | -------------------- |
 | lineitem  | 3,103 MB       | 1,759 MB             | 1,306 MB             |
@@ -182,7 +195,11 @@ root: vortex.alp(f64, len=8388608) nbytes=4.19 MB
     buffer (align=8): 4.19 MB
 ```
 
-ALP won the float evaluation because values like `0.04` and `0.09` round-trip perfectly through ALP's decimal scaling. The resulting integers (4, 9, 1, ...) all fit in 0–10, so BitPacking won with a bit-width of 4. ALP → BitPacking. Two lightweight layers, 15x compression ratio, full random access.
+ALP won the float evaluation because values like `0.04` and `0.09` round-trip perfectly through ALP's decimal scaling. The resulting integers (4, 9, 1, ...) all fit in 0–10, so BitPacking won with a bit-width of 4.
+
+<Chain steps={["ALP", "BitPacking"]} />
+
+Two lightweight layers, 15x compression ratio, full random access.
 
 # Per-column configurability
 

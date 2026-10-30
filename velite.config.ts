@@ -3,6 +3,7 @@ import { defineCollection, defineConfig, s } from "velite";
 import {
   rehypeAsides,
   rehypeHeadingLevels,
+  rehypeRefs,
   rehypeTables
 } from "./src/lib/rehype-blog";
 import { shikiTheme } from "./src/vendor/vortex-design/code-block.js";
@@ -37,7 +38,8 @@ const blog = defineCollection({
           ],
           rehypeHeadingLevels,
           rehypeAsides,
-          rehypeTables
+          rehypeTables,
+          rehypeRefs
         ]
       })
     })

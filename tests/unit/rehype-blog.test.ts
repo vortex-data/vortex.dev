@@ -6,6 +6,7 @@ import {
   type HastRoot,
   rehypeAsides,
   rehypeHeadingLevels,
+  rehypeRefs,
   rehypeTables
 } from "@/lib/rehype-blog";
 
@@ -177,5 +178,24 @@ describe("rehypeTables", () => {
       (r.children[1] as HastElement).properties.className,
       undefined
     );
+  });
+});
+
+describe("rehypeRefs", () => {
+  const link = (label: string, href = "https://github.com/x/y/pull/1") =>
+    el("a", [text(label)], { href });
+
+  it("marks a link whose text is a PR or issue number as a vx-ref", () => {
+    const a = link("#5007");
+    run(rehypeRefs, root(el("p", [text("Lazy children. "), a])));
+    assert.deepEqual(a.properties.className, ["vx-ref"]);
+  });
+
+  it("leaves other links, and a number that is not the whole text, alone", () => {
+    const words = link("dft");
+    const mixed = link("PR #5007");
+    run(rehypeRefs, root(el("p", [words, mixed])));
+    assert.equal(words.properties.className, undefined);
+    assert.equal(mixed.properties.className, undefined);
   });
 });

@@ -1070,3 +1070,87 @@ test.describe("covers", () => {
     expect(sizes.size).toBe(2);
   });
 });
+
+// The posts' own numbers and words, drawn with the design system's cards.
+test.describe("figures, chains, quotes and references", () => {
+  test("btrblocks shows its TPC-H sizes as bars above the table, Vortex in Blue", async ({
+    page
+  }) => {
+    await page.goto("/blog/btrblocks-compressor");
+    const figure = page.locator(".vx-prose > figure.vx-figure").first();
+    await expect(figure.locator(".vx-figure-frame")).toHaveAttribute(
+      "aria-label",
+      /Parquet \+ zstd 4,465, Vortex default 2,776, Vortex compact 2,016/
+    );
+    await expect(figure.locator(".vx-bar.is-ours")).toHaveCount(2);
+    const table = page.locator(".vx-prose .vx-table-wrap").last();
+    const [f, t] = await Promise.all([
+      figure.boundingBox(),
+      table.boundingBox()
+    ]);
+    expect((f?.y ?? 0) < (t?.y ?? 0)).toBe(true);
+  });
+
+  test("the cascades are chains of steps", async ({ page }) => {
+    await page.goto("/blog/btrblocks-compressor");
+    const chains = page.locator(".vx-prose > .vx-chain");
+    await expect(chains).toHaveCount(2);
+    await expect(chains.first()).toHaveAttribute(
+      "aria-label",
+      "Dictionary, then REE, then BitPacking"
+    );
+    const step = chains.first().locator(".vx-chain-step").first();
+    expect(await step.evaluate((e) => getComputedStyle(e).borderTopStyle)).toBe(
+      "solid"
+    );
+  });
+
+  test("commit counts are grey bars, and names alone are a grid", async ({
+    page
+  }) => {
+    await page.goto("/blog/october-2025");
+    const bars = page.locator(".vx-figure .vx-bar");
+    expect(await bars.count()).toBeGreaterThan(5);
+    await expect(page.locator(".vx-figure .vx-bar.is-ours")).toHaveCount(0);
+    await expect(
+      page.locator("figure.vx-code", { hasText: "Connor Tsui" })
+    ).toHaveCount(0);
+    await page.goto("/blog/december-2025");
+    const names = page.locator("ul.vx-names li");
+    expect(await names.count()).toBeGreaterThan(10);
+    expect(
+      await page
+        .locator("ul.vx-names")
+        .evaluate((e) => getComputedStyle(e).display)
+    ).toBe("grid");
+  });
+
+  test("the Polar Signals line is a Quote with its source linked", async ({
+    page
+  }) => {
+    await page.goto("/blog/november-2025");
+    const quote = page.locator("figure.vx-quote");
+    await expect(quote.locator("blockquote")).toContainText("70% average");
+    await expect(quote.locator("figcaption a")).toHaveAttribute(
+      "href",
+      /polarsignals\.com/
+    );
+  });
+
+  test("PR numbers are quiet mono references, and #5024 is a link", async ({
+    page
+  }) => {
+    await page.goto("/blog/october-2025");
+    const ref = page.locator("a.vx-ref", { hasText: "#5024" });
+    await expect(ref).toHaveAttribute(
+      "href",
+      "https://github.com/vortex-data/vortex/pull/5024"
+    );
+    const style = await ref.evaluate((e) => {
+      const s = getComputedStyle(e);
+      return [s.textDecorationLine, s.fontFamily];
+    });
+    expect(style[0]).toBe("none");
+    expect(style[1]).toMatch(/Geist Mono|mono/i);
+  });
+});

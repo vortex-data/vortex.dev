@@ -179,3 +179,17 @@ function markNumbers(table: HastElement): void {
       addClass(r, "is-total");
   }
 }
+
+const REF = /^#\d+$/;
+
+/**
+ * Marks a link whose whole text is a PR or issue number ("#5024") as the
+ * Article card's `vx-ref`: quiet mono with a chip on hover, so a run of
+ * them reads as one reference.
+ */
+export function rehypeRefs() {
+  return (tree: HastRoot) => {
+    for (const a of elements(tree, "a"))
+      if (REF.test(textOf(a).trim())) addClass(a, "vx-ref");
+  };
+}

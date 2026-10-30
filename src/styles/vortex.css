@@ -797,7 +797,11 @@
   color: var(--ink);
 }
 .vx-prose > .vx-code, .vx-prose > .vx-callout, .vx-prose > .vx-figure, .vx-prose > .vx-table-wrap, .vx-prose > .vx-quote { margin: 1.9em 0; }
-/* An encoding chain (DetailStrip's vx-chain) set on its own line in a post. */
+/* An encoding chain: mono steps on raised, joined by arrows. DetailStrip in the Explorer and a
+   blog post both use it, so it lives here, where a site that copies only the blog finds it. */
+.vx-chain { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-8); font: 400 12.5px/1 var(--font-mono); color: var(--ink-body); }
+.vx-chain-step { padding: var(--space-4) var(--space-8); background: var(--raised); border: 1px solid var(--edge); border-radius: var(--radius-control); }
+.vx-chain-arrow { color: var(--ink-muted); }
 .vx-prose > .vx-chain { margin: 1.4em 0; }
 /* People named in a post, such as a month's contributors: a grid, not a list of bullets. */
 .vx-prose ul.vx-names {

@@ -2,6 +2,7 @@ import { type ComponentProps, isValidElement } from "react";
 import { InfoIcon, WarningIcon } from "@/components/icons";
 import { codeLabel } from "@/vendor/vortex-design/code-block.js";
 import { CopyCode } from "./copy-code";
+import { Bars, Chain, Names, Quote } from "./figures";
 
 /**
  * The elements of a post that take the design system's cards. Markdown
@@ -67,5 +68,9 @@ function Blockquote({
 export const mdxComponents = {
   figure: Figure,
   pre: Pre,
-  blockquote: Blockquote
+  blockquote: Blockquote,
+  Bars,
+  Chain,
+  Names,
+  Quote
 };
