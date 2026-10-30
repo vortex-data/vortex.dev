@@ -336,6 +336,10 @@ test.describe("blog index list", () => {
     await expect(row.locator(".vx-post-row-source")).toHaveText(
       `Elsewhere, on ${first.source}`
     );
+    await expect(row.locator(".vx-post-row-source")).toHaveAttribute(
+      "title",
+      first.source
+    );
     await expect(
       row.locator(".vx-post-row-source svg.vx-post-row-out")
     ).toHaveAttribute("aria-hidden", "true");
@@ -349,6 +353,38 @@ test.describe("blog index list", () => {
       page.locator("a.vx-post-row:not(.is-external) .vx-post-row-source")
     ).toHaveCount(0);
   });
+
+  // Note 81: a long host (datalakehousehub.com) ran out of the meta column
+  // into the title. Every listed host stays inside its row's meta.
+  for (const [width, height] of [
+    [1512, 860],
+    [1440, 900],
+    [375, 812]
+  ] as const) {
+    test(`every source host stays in its meta at ${width}px`, async ({
+      page
+    }) => {
+      await page.setViewportSize({ width, height });
+      await page.goto("/blog");
+      const out = await page
+        .locator("a.vx-post-row.is-external")
+        .evaluateAll((rows) =>
+          rows.flatMap((row) => {
+            const meta = row.querySelector(".vx-post-row-meta");
+            const host = row.querySelector(".vx-post-row-host");
+            const source = row.querySelector(".vx-post-row-source");
+            if (!meta || !host || !source) return ["missing parts"];
+            const m = meta.getBoundingClientRect();
+            const s = source.getBoundingClientRect();
+            const clipped = host.scrollWidth > host.clientWidth + 1;
+            return s.right > m.right + 0.5 || s.left < m.left - 0.5 || clipped
+              ? [host.textContent ?? ""]
+              : [];
+          })
+        );
+      expect(out).toEqual([]);
+    });
+  }
 });
 
 test.describe("blog post", () => {

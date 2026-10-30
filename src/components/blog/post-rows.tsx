@@ -9,9 +9,9 @@ function RowBody({ entry }: { entry: IndexEntry }) {
         <time dateTime={entry.date}>{formatPostDate(entry.date)}</time>
         {entry.authors.length > 0 && <span>{entry.authors.join(", ")}</span>}
         {entry.source && (
-          <span className="vx-post-row-source">
+          <span className="vx-post-row-source" title={entry.source}>
             <span className="vx-sr-only">Elsewhere, on </span>
-            {entry.source}
+            <span className="vx-post-row-host">{entry.source}</span>
             <ArrowOutwardIcon className="vx-post-row-out" />
           </span>
         )}
@@ -28,7 +28,8 @@ function RowBody({ entry }: { entry: IndexEntry }) {
  * The BlogIndex card's one list, newest first: each row the date over the
  * authors, then the title (an h2 under the index's h1) over the one-line
  * summary. A post on another site is an `is-external` row: a plain link to
- * the other page, with its source's host and `arrow_outward` closing the
+ * the other page, with its source's host (cut with an ellipsis if it is too
+ * long for the meta column, and whole in the title) and `arrow_outward` closing the
  * meta, and screen-reader text that says the link leaves the site.
  */
 export function PostRows({ entries }: { entries: readonly IndexEntry[] }) {

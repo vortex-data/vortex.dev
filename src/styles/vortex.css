@@ -655,7 +655,7 @@
 .vx-post-row {
   position: relative;
   display: grid;
-  grid-template-columns: 150px minmax(0, 1fr);
+  grid-template-columns: 180px minmax(0, 1fr);
   gap: var(--space-4) var(--space-24);
   margin: 0 calc(-1 * var(--space-12));
   padding: var(--space-16) var(--space-12);
@@ -673,8 +673,11 @@
   .vx-post-row-meta { grid-row: auto; display: flex; flex-wrap: wrap; gap: var(--space-4) var(--space-12); padding-top: 0; }
 }
 /* An external row: a post on another site. Its source (the host, then arrow_outward) closes the
-   meta, and screen-reader text before it says that the link leaves the site. */
-.vx-post-row-source { display: inline-flex; align-items: center; gap: var(--space-4); color: var(--ink-muted); }
+   meta, and screen-reader text before it says that the link leaves the site. The meta column holds
+   the longest listed host (datalakehousehub.com). A longer one ends in an ellipsis, and the source's
+   title gives it whole. */
+.vx-post-row-source { display: inline-flex; align-items: center; gap: var(--space-4); min-width: 0; max-width: 100%; color: var(--ink-muted); }
+.vx-post-row-host { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .vx-post-row-out { flex: none; width: 12px; height: 12px; fill: currentColor; }
 .vx-post-row.is-external:hover .vx-post-row-source { color: var(--accent-ink); }
 
