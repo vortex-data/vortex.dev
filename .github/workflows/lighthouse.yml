@@ -104,9 +104,10 @@ jobs:
       # deterministic. The linked report is the one the action uploads for
       # that URL and may be a different run.
       #
-      # Fork PRs get a read-only GITHUB_TOKEN that can't post comments, and a
-      # failed comment would fail this required check, so only same-repository
-      # PRs get one.
+      # Fork PRs, and Dependabot's PRs from this repository, get a read-only
+      # GITHUB_TOKEN that can't post comments. A failed comment must not fail
+      # this required check, so only same-repository, non-Dependabot PRs get
+      # one, and both comment steps are non-fatal for any other token limit.
       # `if: always()` so the PR comment still posts when assertions fail —
       # reviewers can see *which* category regressed without digging through
       # the workflow log.
@@ -116,8 +117,9 @@ jobs:
       # the 🟢 cutoff, so a cell can pass assertions and still show 🟡 — the
       # visual signals "we locked this in but it's improvable."
       - name: Format PR comment
-        if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && steps.lighthouse.outputs.links != ''
+        if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' && steps.lighthouse.outputs.links != ''
         id: lh-comment
+        continue-on-error: true
         env:
           LINKS_JSON: ${{ steps.lighthouse.outputs.links }}
         run: |
@@ -156,6 +158,7 @@ jobs:
 
       - name: Post or update PR comment
         if: github.event_name == 'pull_request' && steps.lh-comment.outputs.body != ''
+        continue-on-error: true
         uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88  # v3.0.5
         with:
           header: lighthouse
