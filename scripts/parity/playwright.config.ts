@@ -8,7 +8,7 @@ import { defineConfig } from '@playwright/test';
 function requiredEnv(name: string): string {
   const value = process.env[name];
   if (!value) {
-    throw new Error(`${name} must be set; bench/scripts/parity/run.sh sets it`);
+    throw new Error(`${name} must be set; scripts/parity/run.sh sets it`);
   }
   return value;
 }

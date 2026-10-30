@@ -3,7 +3,7 @@
 
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { verifyDeployment } from '../verify-web-deploy.mjs';
+import { verifyDeployment } from './verify-web-deploy.mjs';
 
 const SHA = 'a'.repeat(40);
 const chart = { commits: [{ sha: 'b'.repeat(40) }], series: { vortex: [1] } };
@@ -143,4 +143,29 @@ test('recognizes Vercel SSO redirects only as protected previews', async () => {
     ),
     /HTTP 302/,
   );
+});
+
+test("verifies bench under /bench on a deployment's own URL, with the given headers", async () => {
+  const seen = [];
+  const inner = fixture();
+  const underBench = async (url, init) => {
+    seen.push({ path: url.pathname, bypass: init.headers['x-vercel-protection-bypass'] });
+    assert.ok(url.pathname.startsWith('/bench'), url.pathname);
+    const path = url.pathname === '/bench' ? '/' : url.pathname.slice('/bench'.length);
+    return inner(new URL(`${path}${url.search}`, url.origin));
+  };
+  assert.equal(
+    await verifyDeployment(
+      'https://vortex-abc.vercel.app/bench',
+      SHA,
+      'production',
+      underBench,
+      noSleep,
+      { 'x-vercel-protection-bypass': 'secret' },
+    ),
+    'verified',
+  );
+  assert.ok(seen.some((request) => request.path === '/bench'));
+  assert.ok(seen.some((request) => request.path === '/bench/api/health'));
+  assert.ok(seen.every((request) => request.bypass === 'secret'));
 });

@@ -197,8 +197,23 @@ export function pageTitle(html: string): string | null {
   return decodeEntities(match[1]).replace(/\s+/g, ' ').trim();
 }
 
+/**
+ * The URL of a root-relative bench path on a server. A server URL with a path (`…/bench`) serves
+ * bench under that prefix, as the app does away from bench.vortex.dev: there the landing page is the
+ * prefix itself, not the prefix with a slash, which redirects.
+ */
+export function benchUrl(server: string, path: string): URL {
+  const url = new URL(server);
+  const prefix = url.pathname.replace(/\/+$/, '');
+  if (prefix === '') {
+    return new URL(path, url);
+  }
+  const landing = path === '/' || path.startsWith('/?') || path.startsWith('/#');
+  return new URL(`${prefix}${landing ? path.slice(1) : path}`, url);
+}
+
 async function capture(origin: string, path: string): Promise<Captured> {
-  const response = await fetch(new URL(path, origin), {
+  const response = await fetch(benchUrl(origin, path), {
     redirect: 'manual',
     signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   });

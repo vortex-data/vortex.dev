@@ -6,13 +6,29 @@ import { appendFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { setTimeout } from 'node:timers/promises';
 
-/** Verify the public read paths within a three-minute deadline. */
+/**
+ * The URL of a root-relative bench path under `base`. A base with a path (a deployment's own URL
+ * with `/bench`) serves bench under that prefix, where the landing page is the prefix itself: with
+ * a trailing slash it redirects.
+ */
+export function benchUrl(base, path) {
+  const prefix = base.pathname.replace(/\/+$/, '');
+  if (prefix === '') return new URL(path, base);
+  return new URL(`${prefix}${path === '/' ? '' : path}`, base);
+}
+
+/**
+ * Verify the public read paths within a three-minute deadline. `base` is where bench is served:
+ * `https://bench.vortex.dev`, or a deployment's own URL with `/bench`. `headers` go with every
+ * request, such as Vercel's protection bypass for a protected deployment URL.
+ */
 export async function verifyDeployment(
   base,
   sha,
   environment,
   fetchImpl = fetch,
   sleep = setTimeout,
+  headers = {},
 ) {
   assert.match(sha, /^[0-9a-f]{40}$/);
   assert.ok(['preview', 'production'].includes(environment));
@@ -27,7 +43,8 @@ export async function verifyDeployment(
       const remaining = deadline - Date.now();
       assert.ok(remaining > 0, 'Deployment verification deadline exceeded');
       try {
-        const response = await fetchImpl(new URL(path, origin), {
+        const response = await fetchImpl(benchUrl(origin, path), {
+          headers,
           redirect: 'manual',
           signal: AbortSignal.timeout(Math.min(20_000, remaining)),
         });
@@ -132,7 +149,17 @@ export async function verifyDeployment(
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
-    const result = await verifyDeployment(...process.argv.slice(2));
+    // Vercel's Protection Bypass for Automation, when the deployment URL is protected.
+    const bypass = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+    const [base, sha, environment] = process.argv.slice(2);
+    const result = await verifyDeployment(
+      base,
+      sha,
+      environment,
+      fetch,
+      setTimeout,
+      bypass ? { 'x-vercel-protection-bypass': bypass } : {},
+    );
     const message =
       result === 'protected'
         ? 'Deployment created; preview protection blocked verification. Health, build identity, and CDN caching remain unverified.'

@@ -4,6 +4,7 @@
 import { afterEach, expect, test } from 'bun:test';
 import { chartKeyFromSlug, groupKeyFromSlug } from '../../src/bench/lib/slug';
 import {
+  benchUrl,
   compareApi,
   compareApiDetailed,
   diffJson,
@@ -12,6 +13,20 @@ import {
   planRequests,
   UNKNOWN_CHART_SLUG,
 } from './compare-api';
+
+test('a server URL with a path serves bench under that prefix', () => {
+  expect(benchUrl('http://127.0.0.1:3101', '/').href).toBe('http://127.0.0.1:3101/');
+  expect(benchUrl('http://127.0.0.1:3101', '/api/groups').href).toBe(
+    'http://127.0.0.1:3101/api/groups',
+  );
+  expect(benchUrl('http://127.0.0.1:3102/bench', '/').href).toBe('http://127.0.0.1:3102/bench');
+  expect(benchUrl('http://127.0.0.1:3102/bench/', '/chart/qm.x').href).toBe(
+    'http://127.0.0.1:3102/bench/chart/qm.x',
+  );
+  expect(benchUrl('http://127.0.0.1:3102/bench', '/api/group/g?n=100').href).toBe(
+    'http://127.0.0.1:3102/bench/api/group/g?n=100',
+  );
+});
 
 test('identical bodies match', () => {
   expect(diffJson('{"a":[1,2]}', '{"a":[1,2]}')).toBeNull();
