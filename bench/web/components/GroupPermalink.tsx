@@ -3,7 +3,7 @@
 
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { getGroupSnapshot } from '@/lib/chart-store';
 import { GROUP_FILTER_PARAM, HIDDEN_SERIES_PARAM, SHOWN_SERIES_PARAM } from '@/lib/group-filter';
@@ -55,7 +55,7 @@ export function groupPermalinkUrl(
 
 /**
  * The copy-link control in a group's summary header: a real link to the group
- * (`/#<anchor>`). Without JavaScript it is a plain link, which a reader can
+ * (`/#<anchor>`, and once mounted the full permalink with the page's filters). Without JavaScript it is a plain link, which a reader can
  * follow or copy, named "Link to <group>". Once it has mounted, its name and
  * title say "Copy link", and a plain click (or Enter, or Space as on the
  * button it used to be) copies the group's permalink (see
@@ -90,6 +90,20 @@ export function GroupPermalink({
   // False on the server and in the first client render, so both name a plain
   // link; true once mounted, when a click copies.
   const [copies, setCopies] = useState(false);
+  // The server and first render link to `/#<anchor>`. Once mounted, the href
+  // is the permalink a copy writes (global filters and this group's series),
+  // so a modified or middle click opens what a plain click would copy.
+  const [href, setHref] = useState(`/#${encodeURIComponent(anchor)}`);
+  const permalink = useCallback((): string => {
+    const snapshot = getGroupSnapshot(groupSlug);
+    return groupPermalinkUrl(anchor, snapshot.hiddenSeries, snapshot.shownSeries, window.location);
+  }, [anchor, groupSlug]);
+  const refreshHref = useCallback((): void => {
+    setHref(permalink().slice(window.location.origin.length));
+  }, [permalink]);
+  useEffect(() => {
+    refreshHref();
+  }, [refreshHref]);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mountedRef = useRef(false);
 
@@ -122,13 +136,7 @@ export function GroupPermalink({
   };
 
   const copy = (): void => {
-    const snapshot = getGroupSnapshot(groupSlug);
-    const url = groupPermalinkUrl(
-      anchor,
-      snapshot.hiddenSeries,
-      snapshot.shownSeries,
-      window.location,
-    );
+    const url = permalink();
     // Older browsers and plain-HTTP hosts have no Clipboard API.
     const clipboard = navigator.clipboard as Clipboard | undefined;
     if (clipboard === undefined) {
@@ -143,7 +151,9 @@ export function GroupPermalink({
   return (
     <a
       className={`group-permalink${copied ? ' group-permalink--copied' : ''}`}
-      href={`/#${encodeURIComponent(anchor)}`}
+      href={href}
+      onPointerDown={refreshHref}
+      onFocus={refreshHref}
       title={copies ? 'Copy link to this group' : 'Link to this group'}
       aria-label={`${copies ? 'Copy link' : 'Link'} to ${groupName}`}
       onClick={(e) => {
