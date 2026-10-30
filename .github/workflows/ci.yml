@@ -123,18 +123,23 @@ jobs:
       # bumps, hits otherwise. System deps (apt packages) aren't covered by
       # the cache, so install those separately even on cache hit (~10s vs
       # ~3min for the full install).
+      # Key the cache on the installed version, not the range in package.json,
+      # which a lock refresh can move past, and on the runner image: browser
+      # builds link against the image's system libraries, so a cache made on
+      # ubuntu24 fails on ubuntu26.
       - name: Get Playwright version
         id: playwright-version
         run: |
-          VERSION=$(grep -oE '"@playwright/test": "[^"]+"' package.json | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          VERSION=$(node -p "require('@playwright/test/package.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "image=${ImageOS:-unknown}" >> "$GITHUB_OUTPUT"
 
       - name: Cache Playwright browsers
         id: playwright-cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
         with:
           path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ steps.playwright-version.outputs.version }}
+          key: ${{ runner.os }}-${{ steps.playwright-version.outputs.image }}-playwright-${{ steps.playwright-version.outputs.version }}
 
       - name: Install Playwright browsers (cache miss)
         if: steps.playwright-cache.outputs.cache-hit != 'true'
