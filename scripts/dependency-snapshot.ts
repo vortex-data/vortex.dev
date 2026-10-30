@@ -355,7 +355,7 @@ async function post(url: string, init: RequestInit): Promise<PostResult> {
   }
 }
 
-function describe(result: PostResult): string {
+function describeResult(result: PostResult): string {
   return result.status === 0
     ? `Request failed: ${result.body}`
     : `GitHub answered ${result.status}: ${result.body}`;
@@ -420,13 +420,13 @@ async function main(): Promise<void> {
     // A network error or a 5xx is worth one more try. Anything else, such as
     // a 401 or a 422, will not change on a second request.
     console.error(
-      `${describe(result)}. Retrying once in ${RETRY_DELAY_MS} ms.`
+      `${describeResult(result)}. Retrying once in ${RETRY_DELAY_MS} ms.`
     );
     await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
     result = await post(url, init);
   }
   if (result.status !== 201) {
-    throw new Error(describe(result));
+    throw new Error(describeResult(result));
   }
   console.error(`Submitted ${snapshot.sha} on ${snapshot.ref}: ${result.body}`);
 }
