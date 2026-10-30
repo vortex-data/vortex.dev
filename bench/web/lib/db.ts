@@ -121,11 +121,14 @@ export function resolveStatementTimeoutMillis(): number {
 }
 
 /**
- * The pool's connection limit, from `BENCH_DB_POOL_MAX` (default 8). The cache
- * fills size their concurrency from it (`lib/cache-fill.ts`).
+ * The pool's connection limit, from `BENCH_DB_POOL_MAX` (default 8), and never
+ * below 2. The cache fills size their concurrency from it (`lib/cache-fill.ts`).
+ * A fill holds one connection for its advisory lock while its queries take
+ * another, so on a pool of 1 every fill would wait for a connection it cannot
+ * get and fail at the connection timeout.
  */
 export function resolvePoolMax(): number {
-  return Number(process.env.BENCH_DB_POOL_MAX ?? '8');
+  return Math.max(2, Number(process.env.BENCH_DB_POOL_MAX ?? '8'));
 }
 
 function readConfig(): DbConfig {
