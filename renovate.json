@@ -14,7 +14,8 @@
     "customManagers:githubActionsVersions"
   ],
   "lockFileMaintenance": {
-    "enabled": true
+    "enabled": true,
+    "automerge": true
   },
   "automergeStrategy": "squash",
   "minimumReleaseAge": "7 days",
@@ -25,6 +26,11 @@
     "groupName": "all patch updates"
   },
   "packageRules": [
+    {
+      "description": "Renovate cannot apply minimumReleaseAge to Bun lock refreshes, so its stability check would stay pending and hold the automerge. bunfig.toml's install.minimumReleaseAge enforces the same 7-day wait while Bun regenerates the lockfile.",
+      "matchUpdateTypes": ["lockFileMaintenance"],
+      "minimumReleaseAge": null
+    },
     {
       "description": "Hold @types/node to the deployable Node major (Vercel tops out at 24). Raise in lockstep with .nvmrc and engines.node.",
       "matchPackageNames": ["@types/node"],
@@ -42,6 +48,10 @@
         "@types/react",
         "@types/react-dom"
       ]
+    },
+    {
+      "groupName": "TailwindCSS",
+      "matchPackageNames": ["tailwindcss", "@tailwindcss/**"]
     },
     {
       "groupName": "MDX content pipeline",
