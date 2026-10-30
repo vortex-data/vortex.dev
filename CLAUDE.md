@@ -56,7 +56,7 @@ This is a Next.js 16 marketing website for Vortex, a columnar file format. The s
 - `src/app/page.tsx` - Homepage with metadata for SEO
 - `src/components/hero/index.tsx` - Complex WebGL rendering with custom shaders
 - `src/app/layout.tsx` - Root layout with analytics providers and font loading
-- `next.config.mjs` - Plausible proxy configuration, security headers (CSP, HSTS, Permissions-Policy)
+- `next.config.mjs` - Plausible proxy configuration, security headers (CSP, HSTS, Permissions-Policy, COOP, CORP)
 
 The site is optimized for performance with font optimization, analytics integration, and responsive WebGL rendering.
 
