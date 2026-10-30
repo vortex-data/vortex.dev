@@ -427,7 +427,11 @@ async function checkSubscribe(): Promise<void> {
   try {
     res = await fetch(`${BASE}/api/subscribe`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        // The handler rejects requests that don't come from the site itself.
+        Origin: new URL(BASE).origin
+      },
       body: JSON.stringify({ email: "verify-suite@example.com" })
     });
   } catch (err) {
@@ -465,6 +469,53 @@ async function checkSubscribe(): Promise<void> {
   );
 }
 
+// The handler's guards run before the RESEND_API_KEY check, so they hold
+// whether or not the key is set, and none of these requests reaches Resend.
+async function checkSubscribeGuards(): Promise<void> {
+  const origin = new URL(BASE).origin;
+  const cases: {
+    name: string;
+    headers: Record<string, string>;
+    body: string;
+    status: number;
+  }[] = [
+    {
+      name: "/api/subscribe rejects a cross-site Origin",
+      headers: { Origin: "https://attacker.example" },
+      body: JSON.stringify({ email: "verify-suite@example.com" }),
+      status: 403
+    },
+    {
+      name: "/api/subscribe rejects a request with no Origin or Referer",
+      headers: {},
+      body: JSON.stringify({ email: "verify-suite@example.com" }),
+      status: 403
+    },
+    {
+      name: "/api/subscribe rejects an oversized body",
+      headers: { Origin: origin },
+      body: JSON.stringify({ email: `${"a".repeat(2048)}@example.com` }),
+      status: 413
+    }
+  ];
+  for (const c of cases) {
+    try {
+      const res = await fetch(`${BASE}/api/subscribe`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...c.headers },
+        body: c.body
+      });
+      if (res.status === c.status) pass(c.name, String(res.status));
+      else fail(c.name, `expected ${c.status}, got ${res.status}`);
+    } catch (err) {
+      fail(
+        c.name,
+        `request failed: ${err instanceof Error ? err.message : String(err)}`
+      );
+    }
+  }
+}
+
 // === Run ===============================================================
 
 async function main(): Promise<void> {
@@ -477,6 +528,7 @@ async function main(): Promise<void> {
   await checkRssAtom();
   await checkThemeParity();
   await checkSubscribe();
+  await checkSubscribeGuards();
 
   const htmlByPath = new Map<string, string>();
   for (const path of sitemapPaths) {
