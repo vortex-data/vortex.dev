@@ -13,7 +13,7 @@ SCRIPT = Path(__file__).resolve().parents[1] / "provision.sh"
 class TrustTests(unittest.TestCase):
     def render(self, role, **overrides):
         env = {k: v for k, v in os.environ.items()
-               if k not in {"GITHUB_REPO", "SCHEMA_GITHUB_REPO", "INGEST_GITHUB_REPO",
+               if k not in {"GITHUB_REPO", "SCHEMA_GITHUB_REPO", "INGEST_GITHUB_REPO", "READ_GITHUB_REPO",
                             "SCHEMA_GITHUB_BRANCH", "INGEST_GITHUB_BRANCH", "TARGET_ACCOUNT"}}
         env.update(overrides)
         return subprocess.run(["bash", str(SCRIPT), "--print-trust", role],
@@ -42,6 +42,19 @@ class TrustTests(unittest.TestCase):
             condition = json.loads(result.stdout)["Statement"][0]["Condition"]
             self.assertEqual(condition["StringEquals"]["token.actions.githubusercontent.com:sub"],
                              f"repo:example/{repo}:ref:refs/heads/{branch}")
+
+    def test_read_role_admits_branches_and_repository_pull_requests(self):
+        result = self.render("read")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        statement, = json.loads(result.stdout)["Statement"]
+        self.assertEqual(statement["Action"], "sts:AssumeRoleWithWebIdentity")
+        self.assertEqual(statement["Condition"], {
+            "StringEquals": {"token.actions.githubusercontent.com:aud": "sts.amazonaws.com"},
+            "StringLike": {"token.actions.githubusercontent.com:sub": [
+                "repo:vortex-data/vortex:ref:refs/heads/*",
+                "repo:vortex-data/vortex:pull_request",
+            ]},
+        })
 
     def test_shared_legacy_input_is_rejected(self):
         result = self.render("schema", GITHUB_REPO="example/old")

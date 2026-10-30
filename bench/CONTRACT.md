@@ -78,6 +78,10 @@ best-effort — a failure fails the bench job and alerts):
 
 1. **Commit upsert:** the writer builds the commit row from `git show` and upserts it
    (`ON CONFLICT (commit_sha) DO UPDATE`) before applying any record.
+   The row's `branch` column (migration 012) defaults to `develop`, the only branch the
+   ingest role may write from today, so the writer does not send it. The read service charts
+   only `develop` commits (`web/lib/branch.ts`); a writer that ingests another branch must set
+   `branch` on the commit row.
 2. **Direct write:** `INSERT … ON CONFLICT (measurement_id) DO UPDATE` into RDS as the
    least-privilege `bench_ingest` IAM role (IAM auth, `sslmode=verify-full`), against the
    schema in this repo's `migrations/`. Each JSONL file applies in one transaction.

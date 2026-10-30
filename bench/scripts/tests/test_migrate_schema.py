@@ -107,7 +107,7 @@ class MigrationTests(unittest.TestCase):
         self.run_cli("apply", 0, target=bootstrap)
         self.run_cli("status", 0, target=bootstrap)
         with psycopg.connect(self.target, autocommit=True) as conn:
-            for role in ("migrator", "bench_ingest", "bench_read"):
+            for role in ("migrator", "bench_ingest", "bench_read", "bench_ci_read"):
                 conn.execute(f"ALTER ROLE {role} PASSWORD 'test'")
         migrator = make_conninfo(self.target, user="migrator")
         for migration in migrations[bootstrap_end + 1:]:
@@ -117,18 +117,27 @@ class MigrationTests(unittest.TestCase):
         self.assertIn("0 migration(s) applied", self.run_cli("apply", 0, target=migrator).stderr)
         (self.migrations / "999_future.sql").write_text("CREATE TABLE future (id int);")
         self.run_cli("apply", 0, target=migrator)
-        for role, allowed in (("bench_read", "SELECT"), ("bench_ingest", "SELECT,INSERT,UPDATE")):
+        for role, allowed in (("bench_read", "SELECT"), ("bench_ci_read", "SELECT"),
+                              ("bench_ingest", "SELECT,INSERT,UPDATE")):
             with psycopg.connect(make_conninfo(self.target, user=role)) as conn:
                 for privilege in allowed.split(","):
                     self.assertTrue(conn.execute("SELECT has_table_privilege('future', %s)", (privilege,)).fetchone()[0])
                 self.assertFalse(conn.execute("SELECT has_table_privilege('future', 'DELETE')").fetchone()[0])
                 self.assertFalse(conn.execute("SELECT has_schema_privilege('public', 'CREATE')").fetchone()[0])
                 self.assertFalse(conn.execute("SELECT has_table_privilege('_applied_migrations', 'SELECT')").fetchone()[0])
-                if role == "bench_read":
+                if allowed == "SELECT":
                     self.assertFalse(conn.execute("SELECT has_table_privilege('commits', 'INSERT')").fetchone()[0])
                 else:
                     conn.execute("INSERT INTO future VALUES (1)")
                     conn.execute("UPDATE future SET id = 2")
+        with psycopg.connect(make_conninfo(self.target, user="bench_ci_read")) as conn:
+            self.assertEqual(conn.execute("SHOW default_transaction_read_only").fetchone()[0], "on")
+            self.assertEqual(conn.execute("SHOW statement_timeout").fetchone()[0], "1min")
+        with psycopg.connect(self.target) as conn:
+            conn.execute("INSERT INTO commits (commit_sha, timestamp, tree_sha, url) "
+                         "VALUES ('a', now(), 't', 'u')")
+            self.assertEqual(conn.execute("SELECT branch FROM commits").fetchone()[0], "develop")
+            conn.rollback()
         (self.migrations / "999_marked.sql").write_text(
             "-- migrate-schema: requires-superuser\nCREATE TABLE forbidden (id int);"
         )
