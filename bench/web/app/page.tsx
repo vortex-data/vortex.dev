@@ -93,13 +93,13 @@ export default async function Home({
 
 /**
  * How long the landing page waits for its data before it streams the loading
- * view instead. A Data Cache hit reads in a few milliseconds, well inside it,
- * so the common case stays plain HTML; a miss reads the database, about half a
- * second locally and seconds in production after an idle gap. Long enough that
- * a busy server's hit still lands inside it, short enough that a reader on a
- * miss sees the loading view almost at once.
+ * view instead. A Data Cache hit reads in a few milliseconds locally, but on
+ * Vercel it is a network read, and at 150 ms about one hit in twelve missed the
+ * wait (2026-10-30). The CDN then kept that loading-view copy for five minutes.
+ * A miss reads the database, about half a second locally and seconds in
+ * production after an idle gap, so 300 ms still shows the loading view early.
  */
-const LOADING_VIEW_AFTER_MS = 150;
+const LOADING_VIEW_AFTER_MS = 300;
 
 type SearchParams = Record<string, string | string[] | undefined>;
 type LandingData = [SearchParams, Group[], FilterUniverse];

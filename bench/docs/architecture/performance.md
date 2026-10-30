@@ -295,7 +295,7 @@ with one-off scripts that are not in this repository.
 
 Each request to `/` decides how to send the groups
 ([`app/page.tsx`](../../web/app/page.tsx)). It starts reading them and waits up
-to 150 ms (`LOADING_VIEW_AFTER_MS`). A Data Cache hit answers well inside that,
+to 300 ms (`LOADING_VIEW_AFTER_MS`). A Data Cache hit answers well inside that,
 so the page renders the groups directly, with no Suspense boundary: plain,
 visible HTML that a reader with JavaScript off can read in full. A miss gets a
 Suspense boundary instead: the "Loading benchmark summaries…" view streams at
@@ -330,10 +330,12 @@ keep misses rare, and an ingest causes none: it marks the entries stale rather
 than dropping them (see "Refresh on ingest"), so the next render of `/` takes
 the plain-HTML path with the previous data.
 
-The 150 ms threshold was measured against the local Data Cache, where a hit
-answers in a few milliseconds. Check it against Vercel's function logs on a
-preview deployment before relying on it: a hit there reads the cache over the
-network.
+The threshold was first 150 ms, measured against the local Data Cache, where a
+hit answers in a few milliseconds. On Vercel a hit reads the cache over the
+network: on 2026-10-30, 1 of 12 cache-busted production renders of `/` missed
+150 ms and streamed the loading view, which the CDN would then keep for five
+minutes. At 300 ms a hit has room, and a miss still shows the loading view
+early.
 
 ### Visual downsampling (LTTB)
 
