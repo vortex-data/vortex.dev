@@ -2,6 +2,8 @@ import type { CSSProperties } from "react";
 import { OpenInNewIcon } from "@/components/icons";
 import { formatReadDate, type Panel } from "@/lib/bench-summary";
 import {
+  benchCaption,
+  benchMethod,
   panelFactor,
   panelNote,
   panelRows,
@@ -79,25 +81,12 @@ export function BenchPanel({ panel }: { panel: Panel }) {
 
 /**
  * The design system's BenchmarkCard: Vortex against Parquet, Lance, and Arrow
- * in six panels, with a caption that says how to read them, a source line
+ * in six panels, with a short caption that names the panels' units (and the
+ * method behind them as its title and screen-reader text), a source line
  * that names bench.vortex.dev and the read date, and a line for each panel
  * whose figures are not bench's. The panels come from `getBenchSummary`; the
  * page leaves the card out when that read fails.
  */
-// The caption names each kind of value the panels show, so a panel that
-// fell back to bench's scores (against the fastest) is described too.
-function caption(panels: readonly Panel[]): string {
-  const units = new Set(panels.map((p) => p.unit));
-  return [
-    units.has("ms") && "times in ms, the geomean over queries or datasets",
-    units.has("× fastest") && "scores against the fastest = 1",
-    "the rest against Parquet = 1",
-    "best first"
-  ]
-    .filter(Boolean)
-    .join(", ");
-}
-
 export function BenchmarkCard({
   panels,
   readAt
@@ -106,12 +95,16 @@ export function BenchmarkCard({
   readAt: Date;
 }) {
   const notes = sourceNotes(panels);
+  const method = benchMethod(panels);
   return (
     <section className="vx-card vx-bench" aria-label="Benchmark summary">
       <div className="vx-bench-head">
         <h2 className="vx-bench-headline">
           Vortex against Parquet, Lance, and Arrow{" "}
-          <span className="vx-bench-sub">· {caption(panels)}</span>
+          <span className="vx-bench-sub" title={method}>
+            · {benchCaption(panels)}
+            <span className="vx-sr-only">. {method}</span>
+          </span>
         </h2>
         <a className="vx-label-sm vx-source vx-nav-link" href={SOURCE_URL}>
           <span className="vx-keep-case">bench.vortex.dev</span>

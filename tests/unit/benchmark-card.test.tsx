@@ -75,7 +75,7 @@ describe("BenchmarkCard", () => {
     );
     assert.ok(
       html.includes(
-        '<h2 class="vx-bench-headline">Vortex against Parquet, Lance, and Arrow <span class="vx-bench-sub">· times in ms, the geomean over queries or datasets, the rest against Parquet = 1, best first</span></h2>'
+        '<h2 class="vx-bench-headline">Vortex against Parquet, Lance, and Arrow <span class="vx-bench-sub" title="A time is the geomean over the queries or datasets that bench&#x27;s score covers. A ratio is against Parquet = 1.">· times in ms, ratios to Parquet, best first<span class="vx-sr-only">. A time is the geomean over the queries or datasets that bench&#x27;s score covers. A ratio is against Parquet = 1.</span></span></h2>'
       )
     );
     assert.ok(
@@ -102,7 +102,13 @@ describe("BenchmarkCard", () => {
     );
     assert.ok(
       html.includes(
-        "· times in ms, the geomean over queries or datasets, scores against the fastest = 1, the rest against Parquet = 1, best first"
+        "· times in ms, scores against the fastest, ratios to Parquet, best first<"
+      ),
+      html
+    );
+    assert.ok(
+      html.includes(
+        "A score is bench&#x27;s score against the fastest run = 1. It stands in for times that do not cover every query."
       ),
       html
     );
@@ -131,9 +137,10 @@ describe("BenchmarkCard", () => {
         ["1×", "1.07×", "1.99×", "5.59×"]
       ].flat()
     );
-    const exact = [...html.matchAll(/class="vx-sr-only">([^<]*)</g)].map(
-      (m) => m[1]
-    );
+    // The bars' screen-reader text; the caption's method is the first one.
+    const exact = [...html.matchAll(/class="vx-sr-only">([^<]*)</g)]
+      .map((m) => m[1])
+      .slice(1);
     assert.deepEqual(
       exact,
       [

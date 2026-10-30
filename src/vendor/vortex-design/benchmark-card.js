@@ -159,6 +159,39 @@ export function sourceNotes(panels) {
   return panels.filter((p) => p.source).map((p) => `${p.title}: ${p.source.note}`);
 }
 
+// The kinds of value a panel can show, by its unit, in the order the caption names them.
+const VALUE_KINDS = [
+  { units: ["ms"], caption: "times in ms", method: "A time is the geomean over the queries or datasets that bench's score covers." },
+  {
+    units: ["× fastest"],
+    caption: "scores against the fastest",
+    method: "A score is bench's score against the fastest run = 1. It stands in for times that do not cover every query.",
+  },
+  { units: ["× Parquet", "×"], caption: "ratios to Parquet", method: "A ratio is against Parquet = 1." },
+];
+const kindsShown = (panels) => {
+  const units = new Set(panels.map((p) => p.unit));
+  return VALUE_KINDS.filter((k) => k.units.some((u) => units.has(u)));
+};
+
+/**
+ * The few words after the headline's dot: each kind of value the panels show, then "best first"
+ * ("times in ms, ratios to Parquet, best first"). It never names a unit no panel shows.
+ */
+export function benchCaption(panels) {
+  return [...kindsShown(panels).map((k) => k.caption), "best first"].join(", ");
+}
+
+/**
+ * How each kind of value the panels show is made, one or two sentences each. The card puts it in
+ * the caption's `title` and in screen-reader text, so the caption itself stays short.
+ */
+export function benchMethod(panels) {
+  return kindsShown(panels)
+    .map((k) => k.method)
+    .join(" ");
+}
+
 /**
  * One panel's markup. A panel is {title, unit, kind, better, rows, systems?, source?}: the metric's
  * name, its unit ("ms" for a time, "× Parquet" for a throughput ratio, "×" for the file-size ratio),

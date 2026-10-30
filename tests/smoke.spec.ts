@@ -220,8 +220,15 @@ test.describe("home bands", () => {
         )
       );
     expect(widths).toEqual([1, 1, 1, 1, 1, 1]);
-    await expect(card.locator(".vx-bench-sub")).toHaveText(
-      "· times in ms, the geomean over queries or datasets, the rest against Parquet = 1, best first"
+    // Note 81: a short caption, with the method as its title and for
+    // screen readers.
+    const sub = card.locator(".vx-bench-sub");
+    await expect(sub).toHaveText(
+      /^· times in ms, ratios to Parquet, best first\. A time is the geomean/
+    );
+    await expect(sub).toHaveAttribute(
+      "title",
+      /A ratio is against Parquet = 1\.$/
     );
     await expect(
       card.locator(

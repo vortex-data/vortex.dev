@@ -100,3 +100,9 @@ export function panelNote(
 export function sourceNotes(panels: readonly BenchPanel[]): string[];
 
 export function renderPanel(panel: BenchPanel): string;
+
+/** The few words after the headline's dot, from the panels' units: "times in ms, ratios to Parquet, best first". */
+export function benchCaption(panels: readonly Pick<BenchPanel, "unit">[]): string;
+
+/** How each kind of value the panels show is made, for the caption's title and screen readers. */
+export function benchMethod(panels: readonly Pick<BenchPanel, "unit">[]): string;
