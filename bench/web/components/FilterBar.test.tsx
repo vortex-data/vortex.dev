@@ -176,4 +176,23 @@ describe('global filter URL round trips', () => {
     });
     expect(new URL(window.location.href).searchParams.get('format')).toBe('');
   });
+
+  it('writes a pending chip change before a same-origin link is followed', async () => {
+    window.history.replaceState(null, '', '/chart/qm.example');
+    await mount();
+    useFakeClock();
+    await click('format', 'vortex');
+    await click('format', 'parquet');
+    expect(new URL(window.location.href).searchParams.get('format')).toBe('parquet');
+
+    const link = document.createElement('a');
+    link.href = '/';
+    link.addEventListener('click', (event) => event.preventDefault());
+    document.body.appendChild(link);
+    await act(async () => {
+      link.click();
+    });
+    link.remove();
+    expect(new URL(window.location.href).searchParams.get('format')).toBe('');
+  });
 });

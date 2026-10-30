@@ -88,13 +88,26 @@ export function FilterBar({
     : seedActiveFormats(initialFormats, universe.formats);
 
   // Make a pending URL write when the page is left, so Back and a restored tab
-  // return to the current chips. On the landing page `LandingState` flushes too.
+  // return to the current chips: on `pagehide`, and before a same-origin link
+  // navigates on the client (a pending write is dropped once the path changes).
+  // Capturing, so a handler that stops the click cannot skip the flush. On the
+  // landing page `LandingState` flushes too.
   useEffect(() => {
     const onPageHide = (): void => {
       flushUrlWrites(window);
     };
+    const onClick = (event: MouseEvent): void => {
+      const link = (event.target as Element | null)?.closest?.('a[href]');
+      if (link instanceof HTMLAnchorElement && link.origin === window.location.origin) {
+        flushUrlWrites(window);
+      }
+    };
     window.addEventListener('pagehide', onPageHide);
-    return () => window.removeEventListener('pagehide', onPageHide);
+    document.addEventListener('click', onClick, true);
+    return () => {
+      window.removeEventListener('pagehide', onPageHide);
+      document.removeEventListener('click', onClick, true);
+    };
   }, []);
 
   // Close on outside click and on Escape, mirroring v3's document listeners.

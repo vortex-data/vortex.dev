@@ -155,6 +155,12 @@ the fills never ask for more connections at once than the pool holds. The pool
 is never smaller than 2 (`resolvePoolMax`), because a fill queries on a second
 connection while the first holds its lock.
 
+A background refresh (a stale read after an ingest, see above) has no retry: if
+another invocation holds the entry's lock, it fails at once and Next logs the
+`GroupCacheFillInProgressError`. That is expected. The lock holder's fill
+refreshes the shared entry, so a few of these errors after each ingest cost
+nothing; waiting and filling again would repeat the holder's query.
+
 `bench_read` uses a **static password** rather than RDS IAM auth because the
 Vercel runtime has no AWS credentials to mint an IAM token, and RDS `rds_iam`
 membership disables password auth. The CI roles (`migrator`, `bench_ingest`) do
