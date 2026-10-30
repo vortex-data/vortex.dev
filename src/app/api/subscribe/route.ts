@@ -97,9 +97,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Email is required" }, { status: 400 });
     }
 
-    // Basic email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    // Basic email validation. Domain labels exclude ".", so the pattern can
+    // match a string only one way and runs in linear time; a pattern whose
+    // label could also match "." backtracks polynomially (CodeQL
+    // js/polynomial-redos). 254 characters is the longest valid address.
+    const emailRegex = /^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/;
+    if (email.length > 254 || !emailRegex.test(email)) {
       return NextResponse.json(
         { error: "Invalid email format" },
         { status: 400 }
