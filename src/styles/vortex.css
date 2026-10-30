@@ -670,32 +670,13 @@
 .vx-post-row-excerpt { margin: 0; color: var(--ink-muted); }
 @container (max-width: 560px) {
   .vx-post-row { grid-template-columns: minmax(0, 1fr); }
-  .vx-post-row-meta { grid-row: auto; display: flex; gap: var(--space-12); padding-top: 0; }
+  .vx-post-row-meta { grid-row: auto; display: flex; flex-wrap: wrap; gap: var(--space-4) var(--space-12); padding-top: 0; }
 }
-/* Compact rows: the date, then a vx-h5 title over a one-line summary. For a run of short posts
-   of one kind, such as the monthly bulletins under the lead. */
-.vx-posts.is-compact .vx-post-row { padding-block: var(--space-12); }
-.vx-posts.is-compact .vx-post-row-meta { padding-top: var(--space-4); }
-.vx-posts-head { display: block; margin: var(--space-48) 0 var(--space-8); }
-
-/* The lead: the newest deep dive over the rows, as one link. Its cover, then the kind, the title,
-   the dek and the meta. */
-.vx-post-lead {
-  display: grid;
-  gap: var(--space-16);
-  padding: var(--space-24) 0 var(--space-8);
-  color: inherit;
-  text-decoration: none;
-}
-.vx-post-lead .vx-cover { aspect-ratio: 4 / 1; margin-bottom: var(--space-8); border: 1px solid var(--line); border-radius: var(--radius-card); }
-.vx-post-lead .vx-article-kind { margin: 0; }
-.vx-post-lead-title { margin: 0; color: var(--ink); text-wrap: balance; transition: color 150ms ease-out; }
-.vx-post-lead:hover .vx-post-lead-title { color: var(--accent-ink); }
-.vx-post-lead-dek { margin: 0; color: var(--ink-body); text-wrap: pretty; }
-.vx-post-lead-meta { margin: 0; }
-@media (max-width: 640px) {
-  .vx-post-lead .vx-cover { aspect-ratio: 8 / 3; }
-}
+/* An external row: a post on another site. Its source (the host, then arrow_outward) closes the
+   meta, and screen-reader text before it says that the link leaves the site. */
+.vx-post-row-source { display: inline-flex; align-items: center; gap: var(--space-4); color: var(--ink-muted); }
+.vx-post-row-out { flex: none; width: 12px; height: 12px; fill: currentColor; }
+.vx-post-row.is-external:hover .vx-post-row-source { color: var(--accent-ink); }
 
 /* Cover: a post's art, from coverFor(seed) in components/lib/cover.js. The blocks and the slab's
    characters take their colours from the tokens, so a cover follows the theme. */
@@ -714,8 +695,7 @@
   color: var(--ink-body);
 }
 .vx-article-head { margin-bottom: var(--space-32); }
-/* The head reads the post's kind (an Eyebrow), the title, the dek and the byline. */
-.vx-article-kind { margin: 0 0 var(--space-16); }
+/* The head reads the title, the dek and the byline. */
 .vx-article-title { margin: 0 0 var(--space-16); color: var(--ink); text-wrap: balance; }
 /* The dek says what the post is in one sentence. Two lines at most: a longer one is cut, except
    on a phone, where it runs to its end. */
@@ -731,13 +711,6 @@
   line-clamp: 2;
 }
 .vx-article-byline { margin: 0; }
-/* The post's cover: a band that meets the card's top and side edges. */
-.vx-article-cover {
-  aspect-ratio: 4 / 1;
-  margin: calc(-1 * var(--space-48)) calc(-1 * var(--space-48)) var(--space-32);
-  border-bottom: 1px solid var(--line);
-  border-radius: var(--radius-card) var(--radius-card) 0 0;
-}
 .vx-prose > * { margin: 0 0 1.1em; }
 .vx-prose > h2 { margin: 2em 0 0.6em; font: 500 28px/1.15 var(--font-display); letter-spacing: -0.02em; color: var(--ink); }
 .vx-prose > h3 { margin: 1.6em 0 0.5em; font: 600 22px/1.2 var(--font-display); letter-spacing: -0.02em; color: var(--ink); }
@@ -846,7 +819,6 @@
   .vx-article { padding: var(--space-8) 0 var(--space-24); font-size: 16px; border: 0; background: none; }
   .vx-article-title { font-size: 36px; }
   .vx-article-dek { display: block; font-size: 16px; -webkit-line-clamp: none; line-clamp: none; }
-  .vx-article-cover { margin: 0 0 var(--space-24); aspect-ratio: 8 / 3; border: 1px solid var(--line); border-radius: var(--radius-card); }
   .vx-post-nav { grid-template-columns: minmax(0, 1fr); }
   .vx-post-nav-link.is-next { grid-column: auto; text-align: left; }
 }

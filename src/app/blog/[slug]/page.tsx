@@ -1,13 +1,12 @@
 import type { Metadata } from "next";
 import NextLink from "next/link";
 import { notFound } from "next/navigation";
-import { PostCover } from "@/components/blog/post-cover";
 import { PostEnd } from "@/components/blog/post-end";
 import { ArrowBackIcon } from "@/components/icons";
 import { MDXRenderer } from "@/components/MDXRenderer";
 import { getAllPosts, getAllSlugs, getPostBySlug } from "@/lib/blog";
 import { baseUrl, siteName } from "@/lib/constants";
-import { adjacentPosts, bylineParts, kindLabel } from "@/lib/posts";
+import { adjacentPosts, bylineParts } from "@/lib/posts";
 
 interface BlogPostPageProps {
   params: Promise<{ slug: string }>;
@@ -83,9 +82,10 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
   const { older, newer } = adjacentPosts(getAllPosts(), slug);
   const [date, authors, readingTime] = bylineParts(post);
 
-  // The design system's Article card: the cover, the kind, the title, the dek
-  // and a mono byline, then the post in a 68ch reading column on `surface`,
-  // and its ending: the older and newer posts, links and the sign-up.
+  // The design system's Article card: the title, the dek and a mono byline,
+  // then the post in a 68ch reading column on `surface`, and its ending: the
+  // older and newer posts, links and the sign-up. The post's cover is its
+  // Open Graph image only. Its neighbours are the site's own posts by date.
   return (
     <div className="blog-page">
       <script
@@ -97,11 +97,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
         Back to blog
       </NextLink>
       <article className="vx-card vx-article vx-reading">
-        <PostCover slug={slug} className="vx-article-cover" />
         <header className="vx-article-head">
-          <p className="vx-label vx-eyebrow vx-article-kind">
-            {kindLabel(post.kind)}
-          </p>
           <h1 className="vx-h1 vx-article-title">{post.title}</h1>
           {post.excerpt && <p className="vx-article-dek">{post.excerpt}</p>}
           <p className="vx-label vx-article-byline">

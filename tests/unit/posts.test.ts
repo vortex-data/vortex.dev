@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { externalPosts } from "@/content/links";
 import {
   adjacentPosts,
   bylineParts,
   editUrl,
   formatPostDate,
-  kindLabel,
-  splitLead
+  indexEntries
 } from "@/lib/posts";
 
 describe("formatPostDate", () => {
@@ -14,13 +14,6 @@ describe("formatPostDate", () => {
     assert.equal(formatPostDate("2026-02-26T00:00:00.000Z"), "26 Feb 2026");
     assert.equal(formatPostDate("2025-09-08T00:00:00.000Z"), "8 Sep 2025");
     assert.equal(formatPostDate("2025-12-31T23:30:00.000Z"), "31 Dec 2025");
-  });
-});
-
-describe("kindLabel", () => {
-  it("names a post's kind as the Article card's eyebrow says it", () => {
-    assert.equal(kindLabel("deep-dive"), "Deep dive");
-    assert.equal(kindLabel("bulletin"), "Bulletin");
   });
 });
 
@@ -49,60 +42,42 @@ describe("bylineParts", () => {
 });
 
 describe("adjacentPosts", () => {
-  const p = (
-    slugAsParams: string,
-    date: string,
-    kind: "deep-dive" | "bulletin"
-  ) => ({ slugAsParams, date, kind });
+  const p = (slugAsParams: string, date: string) => ({ slugAsParams, date });
   // Newest first, as getAllPosts returns them.
   const posts = [
-    p("bull-4", "2026-04-01T00:00:00.000Z", "bulletin"),
-    p("deep-2", "2026-03-01T00:00:00.000Z", "deep-dive"),
-    p("bull-3", "2026-02-01T00:00:00.000Z", "bulletin"),
-    p("bull-2", "2026-01-01T00:00:00.000Z", "bulletin"),
-    p("deep-1", "2025-12-01T00:00:00.000Z", "deep-dive"),
-    p("bull-1", "2025-11-01T00:00:00.000Z", "bulletin")
+    p("d", "2026-04-01T00:00:00.000Z"),
+    p("c", "2026-03-01T00:00:00.000Z"),
+    p("b", "2026-02-01T00:00:00.000Z"),
+    p("a", "2026-01-01T00:00:00.000Z")
   ];
   const slugs = (a: {
     older: { slugAsParams: string } | null;
     newer: { slugAsParams: string } | null;
   }) => [a.older?.slugAsParams ?? null, a.newer?.slugAsParams ?? null];
 
-  it("takes the nearest older and newer posts of the same kind", () => {
-    assert.deepEqual(slugs(adjacentPosts(posts, "deep-2")), [
-      "deep-1",
-      "bull-4"
-    ]);
-    assert.deepEqual(slugs(adjacentPosts(posts, "bull-3")), [
-      "bull-2",
-      "bull-4"
-    ]);
-    assert.deepEqual(slugs(adjacentPosts(posts, "deep-1")), [
-      "bull-1",
-      "deep-2"
-    ]);
+  it("takes the nearest older and newer posts by date", () => {
+    assert.deepEqual(slugs(adjacentPosts(posts, "c")), ["b", "d"]);
+    assert.deepEqual(slugs(adjacentPosts(posts, "b")), ["a", "c"]);
   });
 
-  it("falls back to the nearest post of any kind, and to none at the ends", () => {
-    assert.deepEqual(slugs(adjacentPosts(posts, "bull-4")), ["bull-3", null]);
-    assert.deepEqual(slugs(adjacentPosts(posts, "bull-1")), [null, "bull-2"]);
+  it("has no neighbour past either end, and none for an unknown slug", () => {
+    assert.deepEqual(slugs(adjacentPosts(posts, "d")), ["c", null]);
+    assert.deepEqual(slugs(adjacentPosts(posts, "a")), [null, "b"]);
+    assert.deepEqual(slugs(adjacentPosts(posts, "x")), [null, null]);
   });
 
   it("treats two posts of one day as neighbours, in the order given", () => {
     const sameDay = [
-      p("b", "2025-09-08T00:00:00.000Z", "bulletin"),
-      p("a", "2025-09-08T00:00:00.000Z", "bulletin")
+      p("b", "2025-09-08T00:00:00.000Z"),
+      p("a", "2025-09-08T00:00:00.000Z")
     ];
     assert.deepEqual(slugs(adjacentPosts(sameDay, "b")), ["a", null]);
     assert.deepEqual(slugs(adjacentPosts(sameDay, "a")), [null, "b"]);
   });
 
   it("orders by date even when the list is not sorted", () => {
-    const shuffled = [3, 0, 5, 2, 1, 4].flatMap((i) => posts[i] ?? []);
-    assert.deepEqual(slugs(adjacentPosts(shuffled, "bull-3")), [
-      "bull-2",
-      "bull-4"
-    ]);
+    const shuffled = [2, 0, 3, 1].flatMap((i) => posts[i] ?? []);
+    assert.deepEqual(slugs(adjacentPosts(shuffled, "b")), ["a", "c"]);
   });
 });
 
@@ -115,34 +90,70 @@ describe("editUrl", () => {
   });
 });
 
-describe("splitLead", () => {
-  const p = (
-    slugAsParams: string,
-    date: string,
-    kind: "deep-dive" | "bulletin"
-  ) => ({
+describe("indexEntries", () => {
+  const post = (slugAsParams: string, date: string) => ({
     slugAsParams,
+    title: slugAsParams,
     date,
-    kind
+    authors: ["Ada"],
+    excerpt: `About ${slugAsParams}`
+  });
+  const link = (url: string, date: string) => ({
+    title: url,
+    url,
+    date,
+    source: new URL(url).hostname,
+    authors: [],
+    summary: "Elsewhere"
   });
 
-  it("leads with the newest deep dive and keeps the rest newest first", () => {
-    const posts = [
-      p("bull-3", "2026-03-01T00:00:00.000Z", "bulletin"),
-      p("deep-2", "2026-02-26T00:00:00.000Z", "deep-dive"),
-      p("bull-2", "2026-01-30T00:00:00.000Z", "bulletin"),
-      p("deep-1", "2025-12-01T00:00:00.000Z", "deep-dive")
-    ];
-    const { lead, rest } = splitLead(posts);
-    assert.equal(lead?.slugAsParams, "deep-2");
+  it("mixes own posts and posts elsewhere, newest first", () => {
+    const entries = indexEntries(
+      [post("b", "2026-02-01"), post("a", "2025-12-01")],
+      [link("https://x.example/c", "2026-03-01T00:00:00.000Z")].concat(
+        link("https://y.example/d", "2026-01-01T00:00:00.000Z")
+      )
+    );
     assert.deepEqual(
-      rest.map((x) => x.slugAsParams),
-      ["bull-3", "bull-2", "deep-1"]
+      entries.map((e) => e.href),
+      ["https://x.example/c", "/blog/b", "https://y.example/d", "/blog/a"]
     );
   });
 
-  it("has no lead when there is no deep dive", () => {
-    const posts = [p("b", "2026-01-30T00:00:00.000Z", "bulletin")];
-    assert.deepEqual(splitLead(posts), { lead: null, rest: posts });
+  it("marks an entry elsewhere by its source, and an own post by none", () => {
+    const [own, away] = indexEntries(
+      [post("b", "2026-02-01")],
+      [link("https://x.example/c", "2026-01-01")]
+    );
+    assert.equal(own?.source, null);
+    assert.equal(own?.summary, "About b");
+    assert.equal(away?.source, "x.example");
+    assert.equal(away?.summary, "Elsewhere");
+  });
+});
+
+describe("externalPosts", () => {
+  it("lists each post once, on its owner's https page, with every field", () => {
+    const urls = externalPosts.map((l) => l.url);
+    assert.equal(new Set(urls).size, urls.length);
+    for (const l of externalPosts) {
+      const url = new URL(l.url);
+      assert.equal(url.protocol, "https:", l.url);
+      assert.equal(url.hostname.replace(/^www\./, ""), l.source, l.url);
+      assert.ok(!Number.isNaN(Date.parse(l.date)), `${l.url} has a date`);
+      assert.ok(l.title.length > 0 && l.summary.length > 0, l.url);
+    }
+  });
+
+  it("is newest first, and keeps the btrblocks post native", () => {
+    const dates = externalPosts.map((l) => Date.parse(l.date));
+    assert.deepEqual(
+      [...dates].sort((a, b) => b - a),
+      dates
+    );
+    assert.ok(
+      !externalPosts.some((l) => l.url.includes("btrblocks")),
+      "the btrblocks post is on vortex.dev"
+    );
   });
 });

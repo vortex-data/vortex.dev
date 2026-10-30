@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { getAllSlugs, getPostBySlug } from "@/lib/blog";
 import { OG_CONTENT_TYPE, OG_SIZE, renderPostOgImage } from "@/lib/og";
-import { formatPostDate, kindLabel } from "@/lib/posts";
+import { formatPostDate } from "@/lib/posts";
 
 export const alt = "Vortex blog post";
 export const size = OG_SIZE;
@@ -25,7 +25,6 @@ export default async function OgImage({
   return renderPostOgImage({
     slug,
     title: post.title,
-    kind: kindLabel(post.kind),
     date: formatPostDate(post.date)
   });
 }

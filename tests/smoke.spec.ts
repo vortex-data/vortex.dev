@@ -1,4 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
+import { externalPosts } from "../src/content/links";
 
 /**
  * Browser smoke tests. Structural and behavioral checks against a real
@@ -282,44 +283,51 @@ test.describe("blog index", () => {
   });
 });
 
-test.describe("blog index lead", () => {
-  test("the newest deep dive leads with its cover, kind, title, dek and meta", async ({
+test.describe("blog index list", () => {
+  test("one list, newest first, mixes own posts with posts elsewhere", async ({
     page
   }) => {
     await page.goto("/blog");
-    const lead = page.locator("a.vx-post-lead");
-    await expect(lead).toHaveCount(1);
-    await expect(lead).toHaveAttribute("href", "/blog/btrblocks-compressor");
-    await expect(lead.locator(".vx-cover svg.vx-cover-art")).toBeVisible();
-    await expect(lead.locator(".vx-article-kind")).toHaveText("Deep dive");
-    await expect(lead.getByRole("heading", { level: 2 })).toHaveText(
-      "Have your cake and decompress it too"
-    );
-    await expect(lead.locator(".vx-post-lead-dek")).not.toBeEmpty();
-    await expect(lead.locator(".vx-post-lead-meta time")).toHaveText(
-      /^\d{1,2} \w{3} \d{4}$/
-    );
+    await expect(page.locator("ul.vx-posts")).toHaveCount(1);
+    for (const gone of [".vx-post-lead", ".vx-posts-head", ".vx-cover"])
+      await expect(page.locator(gone)).toHaveCount(0);
+    const rows = page.locator("ul.vx-posts > li > a.vx-post-row");
+    await expect(rows).toHaveCount(7 + externalPosts.length);
+    const dates = await rows
+      .locator(".vx-post-row-meta time")
+      .evaluateAll((ts) => ts.map((t) => t.getAttribute("datetime") ?? ""));
+    const times = dates.map((d) => Date.parse(d));
+    expect([...times].sort((a, b) => b - a)).toEqual(times);
+    await expect(
+      page.locator('a.vx-post-row[href="/blog/btrblocks-compressor"]')
+    ).toHaveCount(1);
   });
 
-  test("the bulletins follow as compact rows: date, title and summary", async ({
+  test("a post elsewhere is a plain link that names its source and says it leaves", async ({
     page
   }) => {
     await page.goto("/blog");
-    await expect(
-      page.getByRole("heading", { level: 2, name: "Bulletins" })
-    ).toBeVisible();
-    const rows = page.locator("ul.vx-posts.is-compact a.vx-post-row");
-    await expect(rows).toHaveCount(6);
-    const first = rows.first();
-    await expect(first.locator(".vx-post-row-meta > *")).toHaveCount(1);
-    await expect(first.locator(".vx-post-row-excerpt")).not.toHaveText(
-      "Overview of all work happening in Vortex"
+    const external = page.locator("a.vx-post-row.is-external");
+    await expect(external).toHaveCount(externalPosts.length);
+    const first = externalPosts[0];
+    if (!first) throw new Error("no external posts");
+    const row = page.locator(`a.vx-post-row[href="${first.url}"]`);
+    await expect(row).not.toHaveAttribute("target", /.*/);
+    await expect(row.locator(".vx-post-row-source")).toHaveText(
+      `Elsewhere, on ${first.source}`
     );
-    // No row repeats another's summary.
-    const summaries = await rows
-      .locator(".vx-post-row-excerpt")
-      .allTextContents();
-    expect(new Set(summaries).size).toBe(summaries.length);
+    await expect(
+      row.locator(".vx-post-row-source svg.vx-post-row-out")
+    ).toHaveAttribute("aria-hidden", "true");
+    await expect(
+      page.getByRole("link", {
+        name: new RegExp(`Elsewhere, on ${first.source}`)
+      })
+    ).not.toHaveCount(0);
+    // Own posts carry no source.
+    await expect(
+      page.locator("a.vx-post-row:not(.is-external) .vx-post-row-source")
+    ).toHaveCount(0);
   });
 });
 
@@ -352,19 +360,24 @@ test.describe("blog post", () => {
     ).toHaveAttribute("href", "/blog");
   });
 
-  test("the head reads the kind, the title, the dek and the byline", async ({
+  test("the head reads the title, the dek and the byline, with no kind and no cover", async ({
     page
   }) => {
     await page.goto("/blog/btrblocks-compressor");
-    const head = page.locator("article .vx-article-head");
-    await expect(head.locator(".vx-eyebrow.vx-article-kind")).toHaveText(
-      "Deep dive"
-    );
+    const article = page.locator("article.vx-article");
+    await expect(
+      article.locator("> header.vx-article-head:first-child")
+    ).toHaveCount(1);
+    for (const gone of [".vx-cover", ".vx-article-kind", ".vx-eyebrow"])
+      await expect(article.locator(gone)).toHaveCount(0);
+    const head = article.locator(".vx-article-head");
     await expect(head.locator(".vx-article-dek")).toHaveText(
       /BtrBlocks-style codec selection/
     );
+    await expect(
+      article.locator(".vx-post-nav-link .vx-label").first()
+    ).toHaveText(/^(Previous|Next)$/);
     await page.goto("/blog/november-2025");
-    await expect(page.locator(".vx-article-kind")).toHaveText("Bulletin");
     const dek = page.locator(".vx-article-dek");
     await expect(dek).toContainText("Polar Signals");
     // Two lines at most, except on a phone, where the dek runs to its end.
@@ -909,17 +922,12 @@ test.describe("design system rules on the blog", () => {
   const x = async (page: Page, selector: string) =>
     (await page.locator(selector).first().boundingBox())?.x ?? Number.NaN;
 
-  test("the lead is an h2 and the compact rows' titles are h3s, in line with the heading", async ({
+  test("each row's title is an h2, and its text is in line with the heading", async ({
     page
   }) => {
     await page.goto("/blog");
-    await expect(
-      page.locator("a.vx-post-lead h2.vx-post-lead-title")
-    ).toBeVisible();
-    const row = page
-      .locator("ul.vx-posts.is-compact > li > a.vx-post-row")
-      .first();
-    await expect(row.locator("h3.vx-post-row-title")).toBeVisible();
+    const row = page.locator("ul.vx-posts > li > a.vx-post-row").first();
+    await expect(row.locator("h2.vx-post-row-title")).toBeVisible();
     const gap =
       (await x(page, ".vx-post-row-meta")) - (await x(page, ".vx-blog-title"));
     expect(Math.abs(gap)).toBeLessThan(1);
@@ -991,51 +999,9 @@ test.describe("design system rules on the blog", () => {
   }
 });
 
-// Each post's Cover, drawn from its slug at build time: the band at the top
-// of the post and its Open Graph image.
+// Each post's Cover, drawn from its slug at build time, is its Open Graph
+// image only: no page shows it.
 test.describe("covers", () => {
-  const SLUGS = [
-    "btrblocks-compressor",
-    "december-2025",
-    "november-2025",
-    "october-2025",
-    "september-2025",
-    "september",
-    "welcome"
-  ];
-
-  test("each post opens on its own cover, with the slab and its characters", async ({
-    page
-  }) => {
-    const seen = new Set<string>();
-    for (const slug of SLUGS) {
-      await page.goto(`/blog/${slug}`);
-      const band = page.locator("article .vx-cover.vx-article-cover");
-      await expect(band.locator("svg.vx-cover-art")).toHaveAttribute(
-        "aria-hidden",
-        "true"
-      );
-      await expect(band.locator("rect.vx-cover-slab")).toHaveCount(1);
-      expect(await band.locator("text.vx-cover-ch").count()).toBeGreaterThan(3);
-      seen.add(await band.innerHTML());
-    }
-    expect(seen.size).toBe(SLUGS.length);
-  });
-
-  test("the slab takes the theme's accent", async ({ page }) => {
-    await page.goto("/blog/welcome");
-    const fill = () =>
-      page
-        .locator("rect.vx-cover-slab")
-        .evaluate((e) => getComputedStyle(e).fill);
-    const dark = await fill();
-    await page
-      .getByRole("group", { name: "Theme" })
-      .getByRole("button", { name: "Light" })
-      .click();
-    await expect.poll(fill).not.toBe(dark);
-  });
-
   test("each post's Open Graph image is its own 1200 × 630 PNG", async ({
     request
   }) => {
@@ -1139,30 +1105,31 @@ test.describe("figures, chains, quotes and references", () => {
 
 // Note 72: a post ends on its neighbours, one row of links and the sign-up.
 test.describe("post ending", () => {
-  test("btrblocks ends on the newest bulletin, as no deep dive is older", async ({
+  test("btrblocks, the newest post, ends on the next older one by date", async ({
     page
   }) => {
     await page.goto("/blog/btrblocks-compressor");
     const nav = page.getByRole("navigation", { name: "Older and newer posts" });
     const prev = nav.locator('a[rel="prev"]');
     await expect(prev).toHaveAttribute("href", "/blog/december-2025");
-    await expect(prev.locator(".vx-label")).toHaveText(
-      /^Previous · bulletin$/i
-    );
+    await expect(prev.locator(".vx-label")).toHaveText("Previous");
     await expect(nav.locator('a[rel="next"]')).toHaveCount(0);
   });
 
-  test("a bulletin's neighbours are bulletins", async ({ page }) => {
+  test("neighbours are the nearest own posts by date, never a post elsewhere", async ({
+    page
+  }) => {
     await page.goto("/blog/october-2025");
     const nav = page.getByRole("navigation", { name: "Older and newer posts" });
     await expect(nav.locator('a[rel="prev"]')).toHaveAttribute(
       "href",
       "/blog/september-2025"
     );
-    await expect(nav.locator('a[rel="next"]')).toHaveAttribute(
-      "href",
-      "/blog/november-2025"
-    );
+    const next = nav.locator('a[rel="next"]');
+    await expect(next).toHaveAttribute("href", "/blog/november-2025");
+    await expect(next.locator(".vx-label")).toHaveText("Next");
+    // A post elsewhere is never a neighbour.
+    await expect(nav.locator('a[href^="http"]')).toHaveCount(0);
   });
 
   test("one row of links: Slack, the post's file on GitHub, and the feed", async ({

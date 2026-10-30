@@ -121,21 +121,20 @@ function loadOgFonts() {
 
 // The text column on the left, and the cover's art to its right. The cover
 // is laid out at 792 × 408 with its left 384px clear, then drawn 1.5 times
-// as large, so its cells match the post band's at a phone's width.
+// as large, so its cells read at a link preview's size.
 const OG_PAD = 72;
 const OG_TEXT_WIDTH = 480;
 const OG_SCALE = 1.5;
 const OG_COVER = { width: 792, height: 408, clear: 384 } as const;
 
 /**
- * A post's Open Graph image: the post's Cover (the same seed as the band at
- * the top of the post) on the right, and on the left the site, the blog and
- * the post's kind in Geist Mono over its title in Funnel Display.
+ * A post's Open Graph image: the post's Cover, drawn from its slug, on the
+ * right, and on the left the site and the blog in Geist Mono over its title
+ * in Funnel Display.
  */
 export async function renderPostOgImage(props: {
   slug: string;
   title: string;
-  kind: string;
   date: string;
 }) {
   const { display, mono } = await loadOgFonts();
@@ -215,7 +214,7 @@ export async function renderPostOgImage(props: {
           }}
         >
           <div style={{ width: 10, height: 10, backgroundColor: c.accent }} />
-          <span>{`${siteName} blog · ${props.kind}`}</span>
+          <span>{`${siteName} blog`}</span>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
           <div

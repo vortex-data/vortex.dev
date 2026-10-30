@@ -1,7 +1,7 @@
 import NextLink from "next/link";
 import { NewsletterForm } from "@/components/newsletter-form";
 import type { BlogPostMeta } from "@/lib/blog";
-import { editUrl, kindLabel } from "@/lib/posts";
+import { editUrl } from "@/lib/posts";
 
 function NavLink({
   post,
@@ -16,9 +16,7 @@ function NavLink({
       href={`/blog/${post.slugAsParams}`}
       rel={side}
     >
-      <span className="vx-label">
-        {`${side === "prev" ? "Previous" : "Next"} · ${kindLabel(post.kind).toLowerCase()}`}
-      </span>
+      <span className="vx-label">{side === "prev" ? "Previous" : "Next"}</span>
       <span className="vx-h5 vx-post-nav-title">{post.title}</span>
     </NextLink>
   );

@@ -5,18 +5,6 @@ export function formatPostDate(iso: string): string {
   return formatDay(new Date(iso));
 }
 
-export type PostKind = "deep-dive" | "bulletin";
-
-const KIND_LABELS: Record<PostKind, string> = {
-  "deep-dive": "Deep dive",
-  bulletin: "Bulletin"
-};
-
-/** A post's kind as the Article card's eyebrow and the index's lead name it. */
-export function kindLabel(kind: PostKind): string {
-  return KIND_LABELS[kind];
-}
-
 /** The Article card's mono byline, which joins these with middle dots. */
 export function bylineParts(post: {
   date: string;
@@ -32,13 +20,14 @@ export function bylineParts(post: {
 }
 
 /**
- * The Article card's ending: the nearest older and newer posts by date. Each
- * is the nearest of the same kind when there is one, else the nearest of any
- * kind, else null.
+ * The Article card's ending: the nearest older and newer posts by date, or
+ * null at either end. Pass the site's own posts only: a post on another site
+ * is never a neighbour.
  */
-export function adjacentPosts<
-  T extends { slugAsParams: string; date: string; kind: PostKind }
->(posts: readonly T[], slug: string): { older: T | null; newer: T | null } {
+export function adjacentPosts<T extends { slugAsParams: string; date: string }>(
+  posts: readonly T[],
+  slug: string
+): { older: T | null; newer: T | null } {
   // Newest first. The sort is stable, so two posts of one day keep the
   // order they came in, and each is the other's neighbour.
   const byDate = [...posts].sort(
@@ -46,13 +35,7 @@ export function adjacentPosts<
   );
   const at = byDate.findIndex((p) => p.slugAsParams === slug);
   if (at < 0) return { older: null, newer: null };
-  const { kind } = byDate[at] as T;
-  const pick = (list: T[]) =>
-    list.find((p) => p.kind === kind) ?? list[0] ?? null;
-  return {
-    older: pick(byDate.slice(at + 1)),
-    newer: pick(byDate.slice(0, at).reverse())
-  };
+  return { older: byDate[at + 1] ?? null, newer: byDate[at - 1] ?? null };
 }
 
 const REPOSITORY = "https://github.com/vortex-data/vortex.dev";
@@ -62,14 +45,66 @@ export function editUrl(slug: string): string {
   return `${REPOSITORY}/blob/main/src/content/${slug}.mdx`;
 }
 
+/** A post on another site, as `src/content/links.ts` lists it. */
+export interface ExternalPost {
+  title: string;
+  /** The owner's own page for the post. */
+  url: string;
+  /** ISO 8601, as the page publishes it. */
+  date: string;
+  /** The owner's host, as the row shows it: "polarsignals.com". */
+  source: string;
+  authors: readonly string[];
+  /** The page's own description. */
+  summary: string;
+}
+
+/** One row of the BlogIndex card: a post of the site's own, or one elsewhere. */
+export interface IndexEntry {
+  key: string;
+  href: string;
+  title: string;
+  date: string;
+  authors: readonly string[];
+  summary: string | null;
+  /** The other site's host, or null for a post of the site's own. */
+  source: string | null;
+}
+
 /**
- * The BlogIndex card's lead: the newest deep dive, and the other posts in
- * the order given (newest first), which follow it as compact rows. With no
- * deep dive there is no lead.
+ * The BlogIndex card's one list: the site's own posts and the posts
+ * elsewhere, newest first. The sort is stable, so entries of one date keep
+ * the order they came in, own posts first.
  */
-export function splitLead<T extends { kind: PostKind }>(
-  posts: readonly T[]
-): { lead: T | null; rest: T[] } {
-  const lead = posts.find((p) => p.kind === "deep-dive") ?? null;
-  return { lead, rest: posts.filter((p) => p !== lead) };
+export function indexEntries(
+  posts: readonly {
+    slugAsParams: string;
+    title: string;
+    date: string;
+    authors: readonly string[];
+    excerpt?: string | null | undefined;
+  }[],
+  links: readonly ExternalPost[]
+): IndexEntry[] {
+  const own = posts.map((p) => ({
+    key: `post:${p.slugAsParams}`,
+    href: `/blog/${p.slugAsParams}`,
+    title: p.title,
+    date: p.date,
+    authors: p.authors,
+    summary: p.excerpt ?? null,
+    source: null
+  }));
+  const away = links.map((l) => ({
+    key: `link:${l.url}`,
+    href: l.url,
+    title: l.title,
+    date: l.date,
+    authors: l.authors,
+    summary: l.summary,
+    source: l.source
+  }));
+  return [...own, ...away].sort(
+    (a, b) => Date.parse(b.date) - Date.parse(a.date)
+  );
 }

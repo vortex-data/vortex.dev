@@ -18,8 +18,6 @@ const blog = defineCollection({
       title: s.string().max(99),
       date: s.isodate(),
       authors: s.array(s.string()),
-      // "deep-dive" posts lead the index; "bulletin" posts follow as compact rows.
-      kind: s.enum(["deep-dive", "bulletin"]),
       // The dek under the title and the index's one-line summary.
       excerpt: s.string().optional(),
       published: s.boolean().default(true),
