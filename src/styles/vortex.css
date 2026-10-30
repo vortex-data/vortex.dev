@@ -204,10 +204,9 @@
 }
 .vx-logos-soon {
   position: absolute;
-  top: -10px;
-  right: -18px;
+  top: -12px;
+  right: -24px;
   padding: 1px var(--space-4);
-  font-size: 9px;
   white-space: nowrap;
   background: var(--accent);
   color: var(--on-accent);
@@ -438,10 +437,13 @@
   color: var(--ink-muted);
 }
 .vx-tabs-list button:hover { color: var(--ink-body); }
-/* Six tabs fit a 340px phone: below 480px the side padding shrinks with the viewport, down to 4px.
-   Narrower than that, the list scrolls. */
+/* Six tabs fit a phone: the side padding steps down to 8px below 480px and 4px below 400px.
+   Narrower than about 330px, the list scrolls. */
 @media (max-width: 480px) {
-  .vx-tabs-list button { padding-inline: clamp(var(--space-4), 1.6vw, var(--space-12)); }
+  .vx-tabs-list button { padding-inline: var(--space-8); }
+}
+@media (max-width: 400px) {
+  .vx-tabs-list button { padding-inline: var(--space-4); }
 }
 .vx-tabs-list button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
 .vx-tabs-code { display: flex; align-items: flex-start; gap: var(--space-12); padding: var(--space-12) var(--space-16); }
