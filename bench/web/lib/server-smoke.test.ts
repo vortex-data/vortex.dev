@@ -128,8 +128,13 @@ describe.skipIf(!databaseAvailable || !BUILD_PRESENT)(
       const raw = await (await fetch(`${BASE}/chart/${slug}`)).text();
       // React's streaming SSR separates adjacent text expressions with
       // `<!-- -->` comment nodes; strip them so the assertions read the
-      // user-visible text.
-      const html = raw.replace(/<!--.*?-->/g, '');
+      // user-visible text. Comments can span lines, and removing one can join
+      // the text around it into a new `<!--`, so repeat until nothing changes.
+      let html = raw;
+      for (let previous = ''; previous !== html; ) {
+        previous = html;
+        html = html.replace(/<!--[\s\S]*?-->/g, '');
+      }
       expect(html).toContain('tpch sf=1 Q1 [nvme] - Vortex Benchmarks');
       expect(html).toContain('class="chart-meta"');
       expect(html).toContain('unit: ');
