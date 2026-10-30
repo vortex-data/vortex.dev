@@ -27,17 +27,17 @@ describe('compression summaries', () => {
         {
           format: 'vortex-file-compressed',
           valueBytes: 1,
-          parquetBytes: 4,
+          baselineBytes: 4,
           uncompressedBytes: 16,
         },
         {
           format: 'vortex-file-compressed',
           valueBytes: 900,
-          parquetBytes: 100,
+          baselineBytes: 100,
           uncompressedBytes: 3_600,
         },
-        { format: 'parquet', valueBytes: 4, parquetBytes: 4, uncompressedBytes: 16 },
-        { format: 'parquet', valueBytes: 100, parquetBytes: 100, uncompressedBytes: null },
+        { format: 'parquet', valueBytes: 4, baselineBytes: 4, uncompressedBytes: 16 },
+        { format: 'parquet', valueBytes: 100, baselineBytes: 100, uncompressedBytes: null },
       ],
     });
 
@@ -72,21 +72,21 @@ describe('compression summaries', () => {
           format: 'vortex-file-compressed',
           op: 'encode',
           valueNs: 100,
-          parquetNs: 200,
+          baselineNs: 200,
           uncompressedBytes: 1_000,
         },
         {
           format: 'vortex-file-compressed',
           op: 'encode',
           valueNs: 300,
-          parquetNs: 300,
+          baselineNs: 300,
           uncompressedBytes: 2_000,
         },
         {
           format: 'vortex-file-compressed',
           op: 'encode',
           valueNs: 500,
-          parquetNs: 250,
+          baselineNs: 250,
           uncompressedBytes: null,
         },
       ],
@@ -108,19 +108,19 @@ describe('compression summaries', () => {
         {
           format: 'vortex-file-compressed',
           valueBytes: 200,
-          parquetBytes: 100,
+          baselineBytes: 100,
           uncompressedBytes: 2_000,
         },
         {
           format: 'parquet',
           valueBytes: 100,
-          parquetBytes: 100,
+          baselineBytes: 100,
           uncompressedBytes: 500,
         },
         {
           format: 'lance',
           valueBytes: 300,
-          parquetBytes: 100,
+          baselineBytes: 100,
           uncompressedBytes: null,
         },
       ],
@@ -136,6 +136,52 @@ describe('compression summaries', () => {
       'vortex-file-compressed',
       'lance',
     ]);
+  });
+
+  it('compares string encoders with FSST at the newest string-bench commit', async () => {
+    query.mockResolvedValueOnce({
+      rows: [
+        { format: 'fsst', op: 'encode', valueNs: 400, baselineNs: 400, uncompressedBytes: 1_200 },
+        {
+          format: 'onpair-12',
+          op: 'encode',
+          valueNs: 200,
+          baselineNs: 400,
+          uncompressedBytes: 1_200,
+        },
+      ],
+    });
+    query.mockResolvedValueOnce({
+      rows: [
+        { format: 'fsst', valueBytes: 300, baselineBytes: 300, uncompressedBytes: 1_200 },
+        { format: 'onpair-12', valueBytes: 200, baselineBytes: 300, uncompressedBytes: 1_200 },
+      ],
+    });
+
+    const time = await collectGroupSummary({ k: 'CompressionTimeGroup', suite: 'strings' });
+    const size = await collectGroupSummary({ k: 'CompressionSizeGroup', suite: 'strings' });
+
+    expect(query.mock.calls.map((call) => call[1])).toEqual([
+      ['strings/%', 'fsst'],
+      ['strings/%', 'fsst'],
+    ]);
+    if (time === null || time.type !== 'compression') {
+      throw new Error('expected a compression summary');
+    }
+    expect(time.rankings).toEqual([
+      { name: 'onpair-12', operation: 'encode', ratio: 2, throughputGbS: 6 },
+      { name: 'fsst', operation: 'encode', ratio: 1, throughputGbS: 3 },
+    ]);
+    expect(time.explanation).toBe(
+      'Geomean throughput ratio to FSST | Aggregate throughput (higher is better)',
+    );
+    if (size === null || size.type !== 'compressionSize') {
+      throw new Error('expected a compressionSize summary');
+    }
+    expect(size.baseline).toBe('FSST');
+    expect(size.rankings.map((ranking) => ranking.name)).toEqual(['onpair-12', 'fsst']);
+    expect(size.rankings[0]?.ratio).toBeCloseTo(2 / 3, 6);
+    expect(size.rankings[0]?.compressionRatio).toBeCloseTo(6, 6);
   });
 
   it('applies extensible snapshot policies to timings and sizes', async () => {

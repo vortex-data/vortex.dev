@@ -527,6 +527,96 @@ describe.skipIf(!databaseAvailable)('summary math fidelity (testcontainers Postg
     ).toBeNull();
   });
 
+  it('splits string-bench rows into their own groups, summaries, and chart bundles', async () => {
+    const sha = 'a'.repeat(40);
+    await insertCommit(sha, '2026-04-23T12:00:00Z');
+    await insertCompTimePair(sha, 'encode', 100, 200);
+    await insertCompSizePair(sha, 100, 200);
+    // `string-bench` writes `strings/<column>` with the encoder in `dataset_variant`.
+    for (const [encoder, encodeNs, decodeNs, bytes] of [
+      ['fsst', 400, 100, 300],
+      ['onpair-12', 200, 50, 200],
+    ] as const) {
+      await getPool().query(
+        `INSERT INTO compression_times
+             (measurement_id, commit_sha, dataset, dataset_variant, format, op,
+              value_ns, all_runtimes_ns)
+           VALUES ($1, $2, 'strings/fineweb/text', $3, 'vortex-file-compressed', 'encode', $5,
+                   '{1}'::bigint[]),
+                  ($4, $2, 'strings/fineweb/text', $3, 'vortex-file-compressed', 'decode', $6,
+                   '{1}'::bigint[])`,
+        [nextId(), sha, encoder, nextId(), encodeNs, decodeNs],
+      );
+      await getPool().query(
+        `INSERT INTO compression_sizes
+             (measurement_id, commit_sha, dataset, dataset_variant, format,
+              value_bytes, uncompressed_bytes)
+           VALUES ($1, $2, 'strings/fineweb/text', $3, 'vortex-file-compressed', $4, 1200)`,
+        [nextId(), sha, encoder, bytes],
+      );
+    }
+
+    const groups = await collectGroups();
+    expect(groups.map((group) => group.name)).toEqual([
+      'Compression',
+      'Compression Size',
+      'String Encoding',
+      'String Encoding Size',
+    ]);
+    const byName = new Map(groups.map((group) => [group.name, group]));
+    expect(groupKeyFromSlug(byName.get('Compression')!.slug)).toEqual({
+      k: 'CompressionTimeGroup',
+    });
+    expect(byName.get('Compression')!.charts.map((chart) => chart.name)).toEqual(['tpch-lineitem']);
+    expect(byName.get('Compression')!.summary).toMatchObject({
+      type: 'compression',
+      rankings: [
+        { name: 'vortex-file-compressed', operation: 'encode', ratio: 2 },
+        { name: 'parquet', operation: 'encode', ratio: 1 },
+      ],
+    });
+    expect(groupKeyFromSlug(byName.get('String Encoding')!.slug)).toEqual({
+      k: 'CompressionTimeGroup',
+      suite: 'strings',
+    });
+    expect(byName.get('String Encoding')!.charts).toEqual(
+      ['fsst', 'onpair-12'].map((encoder) => ({
+        name: `fineweb/text/${encoder}`,
+        slug: chartKeyToSlug({
+          k: 'CompressionTime',
+          dataset: 'strings/fineweb/text',
+          dataset_variant: encoder,
+        }),
+      })),
+    );
+    expect(byName.get('String Encoding')!.summary).toMatchObject({
+      type: 'compression',
+      rankings: [
+        { name: 'onpair-12', operation: 'encode', ratio: 2, throughputGbS: 6 },
+        { name: 'fsst', operation: 'encode', ratio: 1, throughputGbS: 3 },
+        { name: 'onpair-12', operation: 'decode', ratio: 2, throughputGbS: 24 },
+        { name: 'fsst', operation: 'decode', ratio: 1, throughputGbS: 12 },
+      ],
+    });
+    expect(byName.get('String Encoding Size')!.summary).toMatchObject({
+      type: 'compressionSize',
+      baseline: 'FSST',
+      rankings: [
+        { name: 'onpair-12', ratio: 2 / 3, compressionRatio: 6 },
+        { name: 'fsst', ratio: 1, compressionRatio: 4 },
+      ],
+    });
+
+    const bundle = await collectGroupCharts(
+      { k: 'CompressionSizeGroup', suite: 'strings' },
+      parseCommitWindow(null),
+    );
+    expect(bundle?.charts.map((chart) => chart.name)).toEqual([
+      'fineweb/text/fsst',
+      'fineweb/text/onpair-12',
+    ]);
+  });
+
   it('ranks random access over every chart, not the alphabetically first one', async () => {
     // The bug this pins: the old summary walked the group's chart links and
     // published the first populated chart's raw times under the group-wide

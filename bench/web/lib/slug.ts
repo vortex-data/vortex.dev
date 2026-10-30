@@ -43,8 +43,9 @@ export type GroupKey =
       scale_factor: string | null;
       storage: string;
     }
-  | { k: 'CompressionTimeGroup' }
-  | { k: 'CompressionSizeGroup' }
+  // `suite` is absent for the `compress-bench` group, so its slug predates the split.
+  | { k: 'CompressionTimeGroup'; suite?: 'strings' }
+  | { k: 'CompressionSizeGroup'; suite?: 'strings' }
   | { k: 'RandomAccessGroup'; storage: RandomAccessStorage }
   | { k: 'VectorSearchGroup'; dataset: string; layout: string };
 
@@ -240,7 +241,7 @@ export function groupKeyToSlug(key: GroupKey): string {
       break;
     case 'CompressionTimeGroup':
     case 'CompressionSizeGroup':
-      ordered = { k: key.k };
+      ordered = key.suite === undefined ? { k: key.k } : { k: key.k, suite: key.suite };
       break;
   }
   return `${prefix}.${encodePayload(JSON.stringify(ordered))}`;
@@ -277,7 +278,14 @@ export function groupKeyFromSlug(slug: string): GroupKey {
       return { k: kind, storage };
     }
     case 'CompressionTimeGroup':
-    case 'CompressionSizeGroup':
-      return { k: kind };
+    case 'CompressionSizeGroup': {
+      if (obj.suite === undefined) {
+        return { k: kind };
+      }
+      if (obj.suite !== 'strings') {
+        throw new Error('compression group suite must be strings when present');
+      }
+      return { k: kind, suite: 'strings' };
+    }
   }
 }

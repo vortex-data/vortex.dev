@@ -52,6 +52,9 @@ const QUERY_DOCS: Readonly<Record<string, string>> = {
 /** The compression benchmark, whose two measurement kinds share one doc. */
 const COMPRESS_BENCH_DOC = 'benchmarks/compress-bench/README.md';
 
+/** The string encoding benchmark, which shares the compression tables. */
+const STRING_BENCH_DOC = 'benchmarks/string-bench/README.md';
+
 /** The random-access benchmark. */
 const RANDOM_ACCESS_BENCH_DOC = 'benchmarks/random-access-bench/README.md';
 
@@ -79,7 +82,7 @@ export function groupDocPath(key: GroupKey): string | null {
   switch (key.k) {
     case 'CompressionTimeGroup':
     case 'CompressionSizeGroup':
-      return COMPRESS_BENCH_DOC;
+      return key.suite === 'strings' ? STRING_BENCH_DOC : COMPRESS_BENCH_DOC;
     case 'RandomAccessGroup':
       return RANDOM_ACCESS_BENCH_DOC;
     case 'QueryGroup':

@@ -36,6 +36,11 @@ import type { PoolClient } from 'pg';
 import { BRANCH_COMMITS, factOnReadBranch } from './branch';
 import { getPool } from './db';
 import { randomAccessStorage } from './random-access';
+import {
+  compressionSuite,
+  type CompressionSuite,
+  STRING_DATASET_PREFIX,
+} from './compression-suite';
 import { groupDescription } from './descriptions';
 import type { FilterUniverse } from './chart-format';
 import { type ChartKind, compareCodeUnits, FAMILIES, type GroupKind } from './families';
@@ -710,9 +715,13 @@ function chartInGroup(group: GroupKey, key: ChartKey): boolean {
         key.storage === group.storage
       );
     case 'CompressionTimeGroup':
-      return key.k === 'CompressionTime';
+      return (
+        key.k === 'CompressionTime' && compressionSuite(key.dataset) === (group.suite ?? 'compress')
+      );
     case 'CompressionSizeGroup':
-      return key.k === 'CompressionSize';
+      return (
+        key.k === 'CompressionSize' && compressionSuite(key.dataset) === (group.suite ?? 'compress')
+      );
     case 'RandomAccessGroup':
       return key.k === 'RandomAccess' && randomAccessStorage(key.dataset) === group.storage;
     case 'VectorSearchGroup':
@@ -1148,6 +1157,8 @@ export interface GroupChartsResponse {
 const GROUP_ORDER: readonly string[] = [
   'Compression',
   'Compression Size',
+  'String Encoding',
+  'String Encoding Size',
   'Random Access (NVMe)',
   'Random Access (S3)',
   'Clickbench',
@@ -1421,7 +1432,50 @@ async function collectQueryGroups(): Promise<Group[]> {
 
 type DatasetVariantRow = { dataset: string; dataset_variant: string | null };
 
-/** The single `Compression` group, or `[]` if the fact table is empty. */
+/** Group display names per compression suite and family. */
+const COMPRESSION_GROUP_NAMES: Record<
+  'CompressionTimeGroup' | 'CompressionSizeGroup',
+  Record<CompressionSuite, string>
+> = {
+  CompressionTimeGroup: { compress: 'Compression', strings: 'String Encoding' },
+  CompressionSizeGroup: { compress: 'Compression Size', strings: 'String Encoding Size' },
+};
+
+/**
+ * Split one compression table's `(dataset, dataset_variant)` rows into the `compress-bench`
+ * group and the `string-bench` group, dropping a group with no rows. String charts drop the
+ * shared `strings/` prefix from their names.
+ */
+function compressionGroups(
+  rows: readonly DatasetVariantRow[],
+  groupKind: 'CompressionTimeGroup' | 'CompressionSizeGroup',
+): Group[] {
+  const chartKind = groupKind === 'CompressionTimeGroup' ? 'CompressionTime' : 'CompressionSize';
+  const suites: CompressionSuite[] = ['compress', 'strings'];
+  return suites.flatMap((suite) => {
+    const charts: ChartLink[] = rows
+      .filter((row) => compressionSuite(row.dataset) === suite)
+      .map((row) => {
+        const dataset =
+          suite === 'strings' ? row.dataset.slice(STRING_DATASET_PREFIX.length) : row.dataset;
+        return {
+          name: row.dataset_variant !== null ? `${dataset}/${row.dataset_variant}` : dataset,
+          slug: chartKeyToSlug({
+            k: chartKind,
+            dataset: row.dataset,
+            dataset_variant: row.dataset_variant,
+          }),
+        };
+      });
+    if (charts.length === 0) {
+      return [];
+    }
+    const key: GroupKey = suite === 'strings' ? { k: groupKind, suite } : { k: groupKind };
+    return [{ name: COMPRESSION_GROUP_NAMES[groupKind][suite], slug: groupKeyToSlug(key), charts }];
+  });
+}
+
+/** The `Compression` and `String Encoding` groups, or `[]` if the fact table is empty. */
 async function collectCompressionTimeGroup(): Promise<Group[]> {
   const text = `
     SELECT dataset, dataset_variant
@@ -1430,21 +1484,10 @@ async function collectCompressionTimeGroup(): Promise<Group[]> {
      ORDER BY dataset, dataset_variant NULLS FIRST
   `;
   const rows = (await getPool().query<DatasetVariantRow>(text)).rows;
-  if (rows.length === 0) {
-    return [];
-  }
-  const charts: ChartLink[] = rows.map((row) => ({
-    name: row.dataset_variant !== null ? `${row.dataset}/${row.dataset_variant}` : row.dataset,
-    slug: chartKeyToSlug({
-      k: 'CompressionTime',
-      dataset: row.dataset,
-      dataset_variant: row.dataset_variant,
-    }),
-  }));
-  return [{ name: 'Compression', slug: groupKeyToSlug({ k: 'CompressionTimeGroup' }), charts }];
+  return compressionGroups(rows, 'CompressionTimeGroup');
 }
 
-/** The single `Compression Size` group, or `[]` if the fact table is empty. */
+/** The `Compression Size` and `String Encoding Size` groups, or `[]` if the fact table is empty. */
 async function collectCompressionSizeGroup(): Promise<Group[]> {
   const text = `
     SELECT dataset, dataset_variant
@@ -1453,20 +1496,7 @@ async function collectCompressionSizeGroup(): Promise<Group[]> {
      ORDER BY dataset, dataset_variant NULLS FIRST
   `;
   const rows = (await getPool().query<DatasetVariantRow>(text)).rows;
-  if (rows.length === 0) {
-    return [];
-  }
-  const charts: ChartLink[] = rows.map((row) => ({
-    name: row.dataset_variant !== null ? `${row.dataset}/${row.dataset_variant}` : row.dataset,
-    slug: chartKeyToSlug({
-      k: 'CompressionSize',
-      dataset: row.dataset,
-      dataset_variant: row.dataset_variant,
-    }),
-  }));
-  return [
-    { name: 'Compression Size', slug: groupKeyToSlug({ k: 'CompressionSizeGroup' }), charts },
-  ];
+  return compressionGroups(rows, 'CompressionSizeGroup');
 }
 
 /** One random-access group per storage backend, omitting empty sections. */
