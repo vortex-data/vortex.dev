@@ -102,7 +102,8 @@ Vercel builds on its own builders: `bun install --frozen-lockfile`, `bun run bui
 production ready ──▶ deployment_status ──▶ .github/workflows/bench-verify-deploy.yml
    │
    ▼
-verify build SHA + read paths + CDN HIT under /bench on the deployment URL (bounded retries)
+verify build SHA + read paths under /bench on the deployment URL (bounded retries),
+then a CDN HIT on bench.vortex.dev once it serves this commit (skipped until then)
 ```
 
 - bench is part of the vortex.dev app, so the `vortex` project's git integration
@@ -114,7 +115,9 @@ verify build SHA + read paths + CDN HIT under /bench on the deployment URL (boun
   soon as it builds; `ci.yml` checks the same commit beside it, not before it.
 - After each production deployment, `bench-verify-deploy.yml` runs
   `scripts/verify-web-deploy.mjs` against bench under `/bench` on the deployment's
-  own URL. An authentication error or a failed probe fails the workflow. A protected
+  own URL, and checks CDN caching on bench.vortex.dev, the only form of bench's
+  pages production caches, once that domain serves the same commit. An
+  authentication error or a failed probe fails the workflow. A protected
   deployment URL needs Vercel's Protection Bypass for Automation; the workflow sends
   its secret from the `VERCEL_AUTOMATION_BYPASS_SECRET` repository secret.
 - A `bench-keep-warm` scheduled workflow pings the production deployment so the RDS

@@ -75,6 +75,12 @@ const wrapWithPlausible = plausibleScriptSrc
   : (config) => config;
 
 const nextConfig = wrapWithPlausible({
+  // src/app/global-not-found.tsx: the site's static 404 for every unmatched
+  // URL, which the app's two root layouts otherwise leave to Next.js's bare
+  // default page.
+  experimental: {
+    globalNotFound: true
+  },
   turbopack: {
     root: import.meta.dirname
   },
@@ -137,7 +143,8 @@ const nextConfig = wrapWithPlausible({
         headers: [
           { key: "Cross-Origin-Resource-Policy", value: "cross-origin" }
         ]
-      }
+      },
+      ...benchPrefixCdnRules(process.env.VERCEL_ENV)
     ];
   },
   async redirects() {
@@ -168,8 +175,11 @@ const nextConfig = wrapWithPlausible({
         // bench is not served under the marketing site's own hosts: those
         // paths 404 there, as before, and bench.vortex.dev stays its only
         // public address.
+        // The cron's /bench/api/health is the exception, as on bench's host
+        // below: Vercel may call it on any of the deployment's hosts.
+        { source: "/bench", has: SITE_HOSTS, destination: "/not-found" },
         {
-          source: "/bench/:path*",
+          source: "/bench/:path((?!api/health$).+)",
           has: SITE_HOSTS,
           destination: "/not-found"
         },
@@ -202,6 +212,31 @@ const nextConfig = wrapWithPlausible({
     };
   }
 });
+
+/**
+ * bench's CDN rule for its pages in the /bench form: five minutes fresh, as
+ * vercel.json gives `/` and `/chart/:slug` on bench.vortex.dev. bench's HTML
+ * depends on the host (its links are root-relative there and under /bench
+ * elsewhere), so production never sends it for the /bench form: should the
+ * CDN key a page by path alone, a cached /bench page must not answer for
+ * bench.vortex.dev. Previews and other non-production builds keep it. Vercel
+ * evaluates this at build time, once per deployment.
+ */
+export function benchPrefixCdnRules(vercelEnv) {
+  if (vercelEnv === "production") {
+    return [];
+  }
+  return ["/bench", "/bench/chart/:slug"].map((source) => ({
+    source,
+    missing: [...SITE_HOSTS, ...BENCH_HOST],
+    headers: [
+      {
+        key: "Vercel-CDN-Cache-Control",
+        value: "max-age=300, stale-while-revalidate=86400"
+      }
+    ]
+  }));
+}
 
 /** Next.js's suffix for a metadata route under `parent`: the first six base-36 digits of its djb2 hash. */
 function metadataRouteSuffix(parent) {

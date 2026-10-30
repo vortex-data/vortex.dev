@@ -20,7 +20,14 @@ export function benchUrl(base, path) {
 /**
  * Verify the public read paths within a three-minute deadline. `base` is where bench is served:
  * `https://bench.vortex.dev`, or a deployment's own URL with `/bench`. `headers` go with every
- * request, such as Vercel's protection bypass for a protected deployment URL.
+ * request to `base`, such as Vercel's protection bypass for a protected deployment URL.
+ *
+ * `cdnBase` is where the CDN check runs: a repeated landing page and chart API request must report
+ * a cache HIT there. Left out, it is `base`. A different `cdnBase` (bench.vortex.dev, for a check
+ * on a deployment's own URL) gets the check only while its `/api/health` reports this build; until
+ * then the check is skipped and the result is `cdn-skipped`. An empty `cdnBase` skips it too.
+ * bench's HTML differs between its two URL forms, so production caches only the
+ * bench.vortex.dev form, and that is the one to check.
  */
 export async function verifyDeployment(
   base,
@@ -29,6 +36,7 @@ export async function verifyDeployment(
   fetchImpl = fetch,
   sleep = setTimeout,
   headers = {},
+  cdnBase = base,
 ) {
   assert.match(sha, /^[0-9a-f]{40}$/);
   assert.ok(['preview', 'production'].includes(environment));
@@ -36,22 +44,23 @@ export async function verifyDeployment(
   assert.equal(origin.protocol, 'https:');
   assert.equal(origin.username + origin.password + origin.search + origin.hash, '');
   const deadline = Date.now() + 180_000;
+  const target = { origin, headers };
 
-  async function request(path, validate) {
+  async function request(path, validate, at = target) {
     let lastError;
     for (let attempt = 0; attempt < 4; attempt++) {
       const remaining = deadline - Date.now();
       assert.ok(remaining > 0, 'Deployment verification deadline exceeded');
       try {
-        const response = await fetchImpl(benchUrl(origin, path), {
-          headers,
+        const response = await fetchImpl(benchUrl(at.origin, path), {
+          headers: at.headers,
           redirect: 'manual',
           signal: AbortSignal.timeout(Math.min(20_000, remaining)),
         });
         const location = response.headers.get('location');
         const redirect =
           location && [301, 302, 303, 307, 308].includes(response.status)
-            ? new URL(location, origin)
+            ? new URL(location, at.origin)
             : null;
         const vercelSso =
           redirect?.origin === 'https://vercel.com' && redirect.pathname === '/sso-api';
@@ -132,26 +141,67 @@ export async function verifyDeployment(
     });
     if (result === 'protected') return 'protected';
   }
-  // Repeat the same URLs, without a cache-busting query, to verify CDN reuse.
+  if (!cdnBase) return 'cdn-skipped';
+  const cdn = { origin: new URL(cdnBase), headers: {} };
+  const sameHost = cdn.origin.href === origin.href;
+  if (sameHost) {
+    cdn.headers = headers;
+  } else {
+    assert.equal(cdn.origin.protocol, 'https:');
+    assert.equal(cdn.origin.pathname, '/', 'cdnBase serves bench from its root');
+    if (!(await servesBuild(cdn.origin))) return 'cdn-skipped';
+  }
+  // Request the same URLs again, without a cache-busting query, to verify CDN reuse. On a
+  // different host, the first request warms the cache.
   for (const path of ['/', `/api/chart/${chartSlug}`]) {
-    const result = await request(path, async (response) => {
-      await response.arrayBuffer();
-      assert.equal(
-        response.headers.get('x-vercel-cache'),
-        'HIT',
-        `${path}: CDN did not report HIT`,
-      );
-    });
+    if (!sameHost) {
+      await request(path, (response) => response.arrayBuffer(), cdn);
+    }
+    const result = await request(
+      path,
+      async (response) => {
+        await response.arrayBuffer();
+        assert.equal(
+          response.headers.get('x-vercel-cache'),
+          'HIT',
+          `${new URL(path, cdn.origin).href}: CDN did not report HIT`,
+        );
+      },
+      cdn,
+    );
     if (result === 'protected') return 'protected';
   }
   return 'verified';
+
+  /**
+   * Whether `at` serves this build: its health reports this commit. Vercel moves a domain to a
+   * new production deployment once that deployment is ready, so allow it a minute; a domain still
+   * served by another project or deployment never matches.
+   */
+  async function servesBuild(at) {
+    for (let attempt = 0; attempt < 7; attempt++) {
+      try {
+        const response = await fetchImpl(benchUrl(at, '/api/health'), {
+          redirect: 'manual',
+          signal: AbortSignal.timeout(Math.max(1, Math.min(20_000, deadline - Date.now()))),
+        });
+        if (response.ok && (await response.json()).build_sha === sha) return true;
+      } catch {
+        // An unreachable or unfamiliar host is not this build.
+      }
+      if (attempt < 6) await sleep(Math.min(10_000, Math.max(0, deadline - Date.now() - 30_000)));
+    }
+    return false;
+  }
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
     // Vercel's Protection Bypass for Automation, when the deployment URL is protected.
     const bypass = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
-    const [base, sha, environment] = process.argv.slice(2);
+    // An optional fourth argument is where the CDN check runs (see verifyDeployment); an empty
+    // one skips it.
+    const [base, sha, environment, cdnBase = base] = process.argv.slice(2);
     const result = await verifyDeployment(
       base,
       sha,
@@ -159,12 +209,16 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       fetch,
       setTimeout,
       bypass ? { 'x-vercel-protection-bypass': bypass } : {},
+      cdnBase,
     );
-    const message =
-      result === 'protected'
-        ? 'Deployment created; preview protection blocked verification. Health, build identity, and CDN caching remain unverified.'
-        : 'Verified build SHA, health, representative group/chart JSON, HTML pages, and CDN HIT.';
-    console.log(`${result === 'protected' ? '::notice::' : ''}${message}`);
+    const message = {
+      protected:
+        'Deployment created; preview protection blocked verification. Health, build identity, and CDN caching remain unverified.',
+      'cdn-skipped': `Verified build SHA, health, representative group/chart JSON and HTML pages. CDN caching unverified: ${cdnBase || 'no CDN URL was given'} does not serve this build yet.`,
+      verified:
+        'Verified build SHA, health, representative group/chart JSON, HTML pages, and CDN HIT.',
+    }[result];
+    console.log(`${result === 'verified' ? '' : '::notice::'}${message}`);
     if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `result=${result}\n`);
     if (process.env.GITHUB_STEP_SUMMARY)
       appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${message}\n`);
