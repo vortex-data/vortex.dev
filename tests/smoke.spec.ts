@@ -320,9 +320,9 @@ test.describe("blog index list", () => {
       row.locator(".vx-post-row-source svg.vx-post-row-out")
     ).toHaveAttribute("aria-hidden", "true");
     await expect(
-      page.getByRole("link", {
-        name: new RegExp(`Elsewhere, on ${first.source}`)
-      })
+      // A plain string matches a substring of the name, so the host's dots
+      // stay literal (no RegExp built from data).
+      page.getByRole("link", { name: `Elsewhere, on ${first.source}` })
     ).not.toHaveCount(0);
     // Own posts carry no source.
     await expect(
