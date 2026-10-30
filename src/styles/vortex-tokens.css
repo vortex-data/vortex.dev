@@ -13,8 +13,8 @@
   --grey-700: #2b2b29;
   --black: #171716;
   --blue: #1d0fed;
-  --blue-bright: #6e5cff;
-  --blue-soft: #a5a0f8;
+  --blue-bright: #2f63ff;
+  --blue-soft: #8fa9ff;
   --purple: #8731dd;
   --pink: #dd317e;
   --orange: #f27332;
@@ -34,7 +34,7 @@
   --ink-faint: var(--grey-500);
   --accent: var(--blue-bright);
   --accent-ink: var(--blue-soft);
-  --accent-soft: rgba(110, 92, 255, 0.16);
+  --accent-soft: rgba(47, 99, 255, 0.16);
   --primary: var(--grey-50);
   --on-primary: var(--black);
   --on-accent: var(--white);

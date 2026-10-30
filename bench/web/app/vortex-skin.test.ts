@@ -49,7 +49,7 @@ describe('vortex-skin.css', () => {
   });
 
   it('uses the Blue accent and warm greys in both themes', () => {
-    expect(valueOf(":root[data-theme='dark']", '--accent')).toBe('#a5a0f8');
+    expect(valueOf(":root[data-theme='dark']", '--accent')).toBe('#8fa9ff');
     expect(valueOf(":root[data-theme='light']", '--accent')).toBe('#1d0fed');
     expect(valueOf(":root[data-theme='dark']", '--page-bg')).toBe('#0f0f0e');
     expect(valueOf(":root[data-theme='dark']", '--card-bg')).toBe('#171716');
@@ -62,8 +62,8 @@ describe('vortex-skin.css', () => {
 
   it('gives Dark fills blue-bright and keeps blue-soft for words', () => {
     for (const sel of DARK) {
-      expect(valueOf(sel, '--accent'), sel).toBe('#a5a0f8');
-      expect(valueOf(sel, '--accent-fill'), sel).toBe('#6e5cff');
+      expect(valueOf(sel, '--accent'), sel).toBe('#8fa9ff');
+      expect(valueOf(sel, '--accent-fill'), sel).toBe('#2f63ff');
       expect(valueOf(sel, '--accent-fill-fg'), sel).toBe('#ffffff');
     }
     for (const sel of LIGHT) {

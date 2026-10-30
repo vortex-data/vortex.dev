@@ -62,7 +62,7 @@ export async function mountAsciiMark(host, opts = {}) {
     const read = (name, fallback) => css.getPropertyValue(name).trim() || fallback;
     inks = p.inks.map((n) => read(n, "#888"));
     field = read(p.field, light ? "#d4d4d2" : "#2b2b29");
-    brush = [read(p.brush[0], "#6e5cff"), read(p.brush[1], "#a5a0f8")];
+    brush = [read(p.brush[0], "#2f63ff"), read(p.brush[1], "#8fa9ff")];
   };
   paint();
   const repaints = [];

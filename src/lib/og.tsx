@@ -104,7 +104,7 @@ export const OG_COVER_COLOURS = {
   ink: "#ffffff", // --ink in Dark (white)
   muted: "#9c9c99", // --ink-muted in Dark (grey-450)
   edge: "#3c3c3a", // --edge in Dark (grey-600)
-  accent: "#6e5cff" // --accent in Dark (blue-bright)
+  accent: "#2f63ff" // --accent in Dark (blue-bright)
 } as const;
 
 // The faces as Google Fonts ships them, except that the Geist Mono file has

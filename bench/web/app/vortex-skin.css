@@ -53,9 +53,9 @@
     --code-bg: #0f0f0e;
     --tooltip-bg: #2b2b29;
     --tooltip-fg: #ffffff;
-    --accent: #a5a0f8;
+    --accent: #8fa9ff;
     --accent-fg: #171716;
-    --accent-fill: #6e5cff;
+    --accent-fill: #2f63ff;
     --accent-fill-fg: #ffffff;
     --raised: #2b2b29;
   }
@@ -70,9 +70,9 @@
   --code-bg: #0f0f0e;
   --tooltip-bg: #2b2b29;
   --tooltip-fg: #ffffff;
-  --accent: #a5a0f8;
+  --accent: #8fa9ff;
   --accent-fg: #171716;
-  --accent-fill: #6e5cff;
+  --accent-fill: #2f63ff;
   --accent-fill-fg: #ffffff;
   --raised: #2b2b29;
 }
