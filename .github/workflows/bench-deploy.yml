@@ -181,8 +181,9 @@ jobs:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
           set -Eeuo pipefail
-          # Outside a terminal the CLI prints its result as JSON.
-          args=(deploy --prebuilt --format json)
+          # The JSON's shape depends on whether the CLI thinks it is
+          # non-interactive, so say so: then .deployment.url is the full URL.
+          args=(deploy --prebuilt --non-interactive --format json)
           if [ "${TARGET}" = "production" ]; then
             args+=(--prod)
           fi
