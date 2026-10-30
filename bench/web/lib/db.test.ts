@@ -12,6 +12,7 @@ import {
   getPool,
   requireEnv,
   resetPool,
+  resolvePoolMax,
   resolveIdleTimeoutMillis,
   resolveConnectionTimeoutMillis,
   resolveStatementTimeoutMillis,
@@ -27,7 +28,7 @@ describe.skipIf(!databaseAvailable)('db pool roundtrip (testcontainers Postgres)
   beforeAll(async () => {
     // The pool roundtrip needs no schema; the harness sets the BENCH_DB_*
     // variables that getPool() reads.
-    vi.stubEnv('BENCH_DB_POOL_MAX', '1');
+    vi.stubEnv('BENCH_DB_POOL_MAX', '2');
     vi.stubEnv('BENCH_DB_CONNECTION_TIMEOUT_MS', '1000');
     container = await startBenchDatabase({ applySchema: false });
   });
@@ -48,13 +49,14 @@ describe.skipIf(!databaseAvailable)('db pool roundtrip (testcontainers Postgres)
 
   it('times out waiting for a pool slot and recovers after release', async () => {
     const pool = getPool();
-    const client = await pool.connect();
+    // 2 is the smallest pool (`resolvePoolMax`), so hold both connections.
+    const clients = [await pool.connect(), await pool.connect()];
     try {
       await expect(pool.query('SELECT 1')).rejects.toThrow(
         'timeout exceeded when trying to connect',
       );
     } finally {
-      client.release();
+      for (const client of clients) client.release();
     }
     expect(await sql`SELECT 1 AS one`).toEqual([{ one: 1 }]);
   }, 5000);
@@ -112,6 +114,27 @@ describe('resolveSsl', () => {
   it('throws (fails loud) on an unrecognized mode rather than silently disabling verification', () => {
     process.env.BENCH_DB_SSL = 'verify-ca';
     expect(() => resolveSsl()).toThrow(/BENCH_DB_SSL/);
+  });
+});
+
+describe('resolvePoolMax', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('defaults to 8', () => {
+    vi.stubEnv('BENCH_DB_POOL_MAX', undefined);
+    expect(resolvePoolMax()).toBe(8);
+  });
+
+  it('honors an override of 2 or more', () => {
+    vi.stubEnv('BENCH_DB_POOL_MAX', '4');
+    expect(resolvePoolMax()).toBe(4);
+  });
+
+  it('raises 1 to 2, so a cache fill has a connection for its queries beside its lock', () => {
+    vi.stubEnv('BENCH_DB_POOL_MAX', '1');
+    expect(resolvePoolMax()).toBe(2);
   });
 });
 

@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.5.15/schema.json",
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
   "vcs": {
     "enabled": true,
     "clientKind": "git",
@@ -24,7 +24,10 @@
       "!src/styles/vortex-tokens.css",
       "!src/styles/vortex.css",
       "!src/styles/vortex-base.css",
-      "!**/*.svg"
+      "!**/*.svg",
+      "!**/*.md",
+      "!**/*.yml",
+      "!**/*.yaml"
     ]
   },
   "formatter": {
