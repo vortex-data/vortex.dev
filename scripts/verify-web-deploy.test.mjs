@@ -169,3 +169,68 @@ test("verifies bench under /bench on a deployment's own URL, with the given head
   assert.ok(seen.some((request) => request.path === '/bench/api/health'));
   assert.ok(seen.every((request) => request.bypass === 'secret'));
 });
+
+/** A deployment URL serving bench under /bench, and bench.vortex.dev serving `liveSha`. */
+function twoHosts(liveSha, { hitOnHost = true } = {}) {
+  const deployment = fixture();
+  const hostHits = new Map();
+  const seen = [];
+  const fetcher = async (url, init) => {
+    seen.push({ host: url.host, path: url.pathname, headers: init.headers ?? {} });
+    if (url.host === 'bench.vortex.dev') {
+      const path = url.pathname;
+      hostHits.set(path, (hostHits.get(path) ?? 0) + 1);
+      if (path === '/api/health') return Response.json({ status: 'ok', build_sha: liveSha });
+      const cache = hitOnHost && hostHits.get(path) > 1 ? 'HIT' : 'MISS';
+      return new Response('{}', { headers: { 'x-vercel-cache': cache } });
+    }
+    const path = url.pathname === '/bench' ? '/' : url.pathname.slice('/bench'.length);
+    // The /bench form is never CDN-cached in production.
+    const response = await deployment(new URL(`${path}${url.search}`, url.origin));
+    return new Response(response.body, {
+      status: response.status,
+      headers: {
+        'content-type': response.headers.get('content-type') ?? '',
+        'x-vercel-cache': 'MISS',
+      },
+    });
+  };
+  return { fetcher, seen };
+}
+const bypass = { 'x-vercel-protection-bypass': 'secret' };
+const onDeployment = (fetcher, cdnBase) =>
+  verifyDeployment(
+    'https://vortex-abc.vercel.app/bench',
+    SHA,
+    'production',
+    fetcher,
+    noSleep,
+    bypass,
+    cdnBase,
+  );
+
+test('checks the CDN on bench.vortex.dev once it serves this build, without the bypass', async () => {
+  const { fetcher, seen } = twoHosts(SHA);
+  assert.equal(await onDeployment(fetcher, 'https://bench.vortex.dev'), 'verified');
+  const onHost = seen.filter((request) => request.host === 'bench.vortex.dev');
+  assert.ok(onHost.some((request) => request.path === '/'));
+  assert.ok(onHost.every((request) => !('x-vercel-protection-bypass' in request.headers)));
+});
+
+test('skips the CDN check while bench.vortex.dev serves another build', async () => {
+  const { fetcher, seen } = twoHosts('c'.repeat(40));
+  assert.equal(await onDeployment(fetcher, 'https://bench.vortex.dev'), 'cdn-skipped');
+  assert.ok(
+    seen.every((request) => request.host !== 'bench.vortex.dev' || request.path === '/api/health'),
+  );
+});
+
+test('fails when bench.vortex.dev serves this build but its CDN never hits', async () => {
+  const { fetcher } = twoHosts(SHA, { hitOnHost: false });
+  await assert.rejects(onDeployment(fetcher, 'https://bench.vortex.dev'), /CDN did not report HIT/);
+});
+
+test('skips the CDN check when no CDN URL is given', async () => {
+  const { fetcher } = twoHosts(SHA);
+  assert.equal(await onDeployment(fetcher, ''), 'cdn-skipped');
+});

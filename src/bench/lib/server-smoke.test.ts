@@ -244,14 +244,28 @@ describe.skipIf(!databaseAvailable || !BUILD_PRESENT)(
       expect((await getOnBenchHost('/Vortex_Black_NoBG.svg')).status).toBe(200);
       expect((await getOnBenchHost('/chart/ra.unknown-slug')).status).toBe(404);
       expect((await getOnBenchHost('/blog')).status).toBe(404);
+      expect((await getOnBenchHost('/bench/api/health')).status).toBe(200);
+    });
+
+    it("keeps bench off vortex.dev, apart from the cron's health check", async () => {
+      expect((await getOnHost('vortex.dev', '/bench')).status).toBe(404);
+      expect((await getOnHost('vortex.dev', '/bench/api/groups')).status).toBe(404);
+      const health = await getOnHost('vortex.dev', '/bench/api/health');
+      expect(health.status).toBe(200);
+      expect((JSON.parse(health.body) as { status: string }).status).toBe('ok');
     });
   },
 );
 
 /** GET `path` from the server as a request to bench.vortex.dev (`fetch` cannot set `Host`). */
 function getOnBenchHost(path: string): Promise<{ status: number; body: string }> {
+  return getOnHost('bench.vortex.dev', path);
+}
+
+/** GET `path` from the server as a request to `host`. */
+function getOnHost(host: string, path: string): Promise<{ status: number; body: string }> {
   return new Promise((resolve, reject) => {
-    const req = request(`${ORIGIN}${path}`, { headers: { host: 'bench.vortex.dev' } }, (res) => {
+    const req = request(`${ORIGIN}${path}`, { headers: { host } }, (res) => {
       let body = '';
       res.setEncoding('utf8');
       res.on('data', (chunk: string) => {

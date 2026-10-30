@@ -77,15 +77,20 @@ warmth:
   over config-file `Cache-Control` rules. Instead, `vercel.json` sets `Vercel-CDN-Cache-Control`
   on those routes: that header is consumed (and stripped) by Vercel's CDN alone at the highest
   precedence, so the CDN caches the rendered pages while browsers still revalidate every load.
-  Header rules match the path as requested, before the app's rewrites, so the rule names both
-  forms of each page: `/` and `/chart/:slug` on bench.vortex.dev's host, and `/bench` and
-  `/bench/chart/:slug`.
+  Header rules match the path as requested, before the app's rewrites, so the rule names
+  bench.vortex.dev's form of each page: `/` and `/chart/:slug` on that host. bench's HTML differs
+  between its two URL forms (its links are root-relative on bench.vortex.dev and under `/bench`
+  elsewhere), so the `/bench` form (`/bench`, `/bench/chart/:slug`) gets the same rule only
+  outside production, from `benchPrefixCdnRules` in `next.config.mjs`: in production a cached
+  `/bench` page must never answer for bench.vortex.dev.
 
 After each production deployment, `.github/workflows/bench-verify-deploy.yml` verifies the
-expected build SHA through `/api/health`, a representative group and chart JSON response, the
-landing and chart pages, and a CDN `HIT` on repeated landing/chart-API requests, under `/bench` on
-the deployment's own URL. The probe has a three-minute deadline, and fails on authentication
-errors or redirects. A protected deployment URL needs Vercel's Protection Bypass for Automation,
+expected build SHA through `/api/health`, a representative group and chart JSON response, and the
+landing and chart pages, under `/bench` on the deployment's own URL. It then checks for a CDN `HIT`
+on repeated landing/chart-API requests on bench.vortex.dev (`BENCH_SITE_BASE_URL`), the form
+production caches, once that domain's `/api/health` reports the deployment's commit; while the
+domain serves another deployment or project, it skips that check with a notice. The probe has a
+three-minute deadline, and fails on authentication errors or redirects. A protected deployment URL needs Vercel's Protection Bypass for Automation,
 whose secret the workflow sends from the `VERCEL_AUTOMATION_BYPASS_SECRET` repository secret. To
 check a protected deployment by hand, use `vercel curl`.
 

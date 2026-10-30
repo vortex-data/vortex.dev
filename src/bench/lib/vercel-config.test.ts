@@ -42,15 +42,11 @@ describe('vercel.json keep-warm cron', () => {
 });
 
 describe("vercel.json CDN rule for bench's pages", () => {
-  it('covers the landing and chart pages on bench.vortex.dev and under /bench, and nothing else', () => {
+  it('covers the landing and chart pages on bench.vortex.dev, and nothing else', () => {
     // Header rules match the path as requested, before the rewrites in
-    // next.config.mjs, so each page needs both of its forms. The marketing
-    // site's `/` (any other host) must not get the rule.
-    expect(cdnCachedSources()).toEqual([
-      '/bench',
-      '/bench/chart/:slug',
-      'bench.vortex.dev/',
-      'bench.vortex.dev/chart/:slug',
-    ]);
+    // next.config.mjs. The marketing site's `/` (any other host) must not get
+    // the rule, and neither may the /bench form in production, whose HTML
+    // differs (next.config.mjs adds that form's rule outside production).
+    expect(cdnCachedSources()).toEqual(['bench.vortex.dev/', 'bench.vortex.dev/chart/:slug']);
   });
 });

@@ -6,9 +6,16 @@
 # git integration, which reports every deployment to GitHub. When a production
 # deployment is ready, this runs scripts/verify-web-deploy.mjs against bench's
 # paths under /bench on that deployment's own URL: the build commit in
-# /api/health, a representative group and chart, the landing and chart pages,
-# and a CDN HIT on repeated requests. It probes the deployment's URL, not
-# bench.vortex.dev, so it checks the deployment it was told about.
+# /api/health, a representative group and chart, and the landing and chart
+# pages. It probes the deployment's URL, so it checks the deployment it was
+# told about.
+#
+# The CDN check (a cache HIT on a repeated landing page and chart API request)
+# runs on BENCH_SITE_BASE_URL, bench.vortex.dev, because production caches only
+# that form of bench's pages: their HTML differs from the /bench form's. It runs
+# only once bench.vortex.dev's /api/health reports this deployment's commit,
+# and is skipped, with a notice, while the domain serves another deployment or
+# project.
 #
 # A protected deployment URL needs Vercel's Protection Bypass for Automation:
 # set its secret as the repository secret VERCEL_AUTOMATION_BYPASS_SECRET.
@@ -56,7 +63,9 @@ jobs:
           DEPLOY_URL: ${{ github.event.deployment_status.environment_url }}
           EXPECTED_SHA: ${{ github.event.deployment.sha }}
           VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+          # bench.vortex.dev, where the CDN check runs. Unset, the check is skipped.
+          CDN_URL: ${{ vars.BENCH_SITE_BASE_URL }}
         run: |
           set -Eeuo pipefail
           [[ "${DEPLOY_URL}" == https://* ]] || { echo "::error::The deployment reported no HTTPS URL: '${DEPLOY_URL}'."; exit 1; }
-          node scripts/verify-web-deploy.mjs "${DEPLOY_URL%/}/bench" "${EXPECTED_SHA}" production
+          node scripts/verify-web-deploy.mjs "${DEPLOY_URL%/}/bench" "${EXPECTED_SHA}" production "${CDN_URL%/}"
