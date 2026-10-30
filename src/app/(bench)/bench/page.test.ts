@@ -6,7 +6,7 @@
 import { renderToReadableStream, renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import type { Group } from '@/lib/queries';
+import type { Group } from '@/bench/lib/queries';
 
 const { GROUPS, UNIVERSE, READ } = vi.hoisted(() => {
   const groups: Group[] = [
@@ -50,12 +50,12 @@ const { GROUPS, UNIVERSE, READ } = vi.hoisted(() => {
   };
 });
 
-vi.mock('@/lib/data-cache', () => ({
+vi.mock('@/bench/lib/data-cache', () => ({
   cachedGroups: () => new Promise((resolve) => setTimeout(() => resolve(GROUPS), READ.ms)),
   cachedFilterUniverse: async () => UNIVERSE,
 }));
 
-const { default: Home } = await import('@/app/page');
+const { default: Home } = await import('@/app/(bench)/bench/page');
 
 /** The landing page's server HTML, as a browser gets it. */
 async function landingHtml(): Promise<string> {

@@ -5,12 +5,13 @@ import { describe, it } from "node:test";
 // Third-party artwork keeps its own licence and copyright in the file that
 // ships it, so REUSE and the built bundle carry the right notice.
 const root = new URL("../../", import.meta.url);
-const sources = ["src/", "bench/web/components/", "bench/web/app/"].flatMap(
-  (dir) =>
-    readdirSync(new URL(dir, root), { recursive: true, encoding: "utf8" })
-      .filter((f) => /\.tsx?$/.test(f) && !f.includes(".test."))
-      .map((f) => `${dir}${f}`)
-);
+// bench lives under src/bench and src/app/(bench), so src/ covers both apps.
+const sources = readdirSync(new URL("src/", root), {
+  recursive: true,
+  encoding: "utf8"
+})
+  .filter((f) => /\.tsx?$/.test(f) && !f.includes(".test."))
+  .map((f) => `src/${f}`);
 const read = (f: string) => readFileSync(new URL(f, root), "utf8");
 
 // The patterns below name SPDX tags; REUSE must not read them as this file's own.

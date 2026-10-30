@@ -6,9 +6,9 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
-import { GroupSection } from '@/components/GroupSection';
-import type { FilterUniverse } from '@/lib/chart-format';
-import type { Group } from '@/lib/queries';
+import { GroupSection } from '@/bench/components/GroupSection';
+import type { FilterUniverse } from '@/bench/lib/chart-format';
+import type { Group } from '@/bench/lib/queries';
 
 const UNIVERSE: FilterUniverse = {
   engines: ['datafusion', 'duckdb'],

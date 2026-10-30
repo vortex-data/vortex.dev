@@ -132,9 +132,9 @@ describe('vortex-skin.css', () => {
   });
 
   it('loads after globals.css in the root layout', () => {
-    const layout = read('./layout.tsx');
-    const globals = layout.indexOf("import './globals.css';");
-    const skin = layout.indexOf("import './vortex-skin.css';");
+    const layout = read('../../app/(bench)/bench/layout.tsx');
+    const globals = layout.indexOf("import '@/bench/styles/globals.css';");
+    const skin = layout.indexOf("import '@/bench/styles/vortex-skin.css';");
     expect(globals).toBeGreaterThan(-1);
     expect(skin).toBeGreaterThan(globals);
   });

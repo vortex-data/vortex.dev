@@ -3,7 +3,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { PAGE_LEAVE_GRACE_MS, unlessPageLeft, watchPageLeave } from '@/lib/page-leave';
+import { PAGE_LEAVE_GRACE_MS, unlessPageLeft, watchPageLeave } from '@/bench/lib/page-leave';
 
 // A window stand-in: the helper only listens on it.
 function fakeWindow(): Window {

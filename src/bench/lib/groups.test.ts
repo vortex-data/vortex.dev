@@ -36,8 +36,8 @@ import {
 import { parseCommitWindow } from './window';
 import { getPool, resetPool } from './db';
 import { cacheFillSlots, withGroupCacheFillLock } from './cache-fill';
-import { GET as getGroups } from '@/app/api/groups/route';
-import { GET as getGroup } from '@/app/api/group/[slug]/route';
+import { GET as getGroups } from '@/app/(bench)/bench/api/groups/route';
+import { GET as getGroup } from '@/app/(bench)/bench/api/group/[slug]/route';
 
 function expectDefined<T>(value: T | null | undefined, message: string): T {
   if (value === null || value === undefined) {

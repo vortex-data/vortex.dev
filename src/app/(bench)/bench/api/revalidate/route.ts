@@ -6,7 +6,7 @@ import { timingSafeEqual } from 'node:crypto';
 import { revalidateTag } from 'next/cache';
 import { NextResponse } from 'next/server';
 
-import { BENCH_DATA_TAG } from '@/lib/data-cache';
+import { BENCH_DATA_TAG } from '@/bench/lib/data-cache';
 
 /**
  * `POST /api/revalidate` marks the [`BENCH_DATA_TAG`] Data Cache entries stale, so

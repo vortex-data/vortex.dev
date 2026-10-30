@@ -5,14 +5,14 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { cache } from 'react';
 
-import { Chart } from '@/components/Chart';
-import { Footer } from '@/components/Footer';
-import { Header } from '@/components/Header';
-import { parseFilterCsv, singleSearchParam, unitKindLabel } from '@/lib/chart-format';
-import { cachedDefaultChartPayload } from '@/lib/data-cache';
-import { chartPayload, collectFilterUniverse, type ChartResponse } from '@/lib/queries';
-import { chartKeyFromSlug, type ChartKey } from '@/lib/slug';
-import { DEFAULT_COMMIT_WINDOW, parseCommitWindow } from '@/lib/window';
+import { Chart } from '@/bench/components/Chart';
+import { Footer } from '@/bench/components/Footer';
+import { Header } from '@/bench/components/Header';
+import { parseFilterCsv, singleSearchParam, unitKindLabel } from '@/bench/lib/chart-format';
+import { cachedDefaultChartPayload } from '@/bench/lib/data-cache';
+import { chartPayload, collectFilterUniverse, type ChartResponse } from '@/bench/lib/queries';
+import { chartKeyFromSlug, type ChartKey } from '@/bench/lib/slug';
+import { DEFAULT_COMMIT_WINDOW, parseCommitWindow } from '@/bench/lib/window';
 
 // Rendered per request, like the landing page: the payload comes from Postgres
 // at request time and `force-dynamic` keeps `next build` independent of a live

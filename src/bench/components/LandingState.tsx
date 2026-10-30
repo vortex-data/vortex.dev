@@ -5,7 +5,7 @@
 
 import { useEffect, useRef } from 'react';
 
-import { groupBodiesReady } from '@/lib/group-bodies';
+import { groupBodiesReady } from '@/bench/lib/group-bodies';
 import {
   cancelOpenFragmentSync,
   flushOpenFragmentSync,
@@ -16,7 +16,7 @@ import {
   scrollToGroup,
   syncOpenFragment,
   takeOpenGroupsBootstrap,
-} from '@/lib/open-groups';
+} from '@/bench/lib/open-groups';
 import {
   navigationKind,
   planScroll,
@@ -24,7 +24,7 @@ import {
   restoreScroll,
   type SavedScroll,
   saveScroll,
-} from '@/lib/scroll-restore';
+} from '@/bench/lib/scroll-restore';
 // A chart card's title link: a full navigation to the chart page.
 const CHART_LINK = 'a[href^="/chart/"]';
 /**

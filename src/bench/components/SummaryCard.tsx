@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
-import { displayFormat, displaySeriesLabel } from '@/lib/chart-format';
-import { formatTimeNs } from '@/lib/format';
-import type { SeriesRanking, Summary } from '@/lib/summary';
+import { displayFormat, displaySeriesLabel } from '@/bench/lib/chart-format';
+import { formatTimeNs } from '@/bench/lib/format';
+import type { SeriesRanking, Summary } from '@/bench/lib/summary';
 
 /**
  * Hover text for a ranked series: its full label plus, when the series was not

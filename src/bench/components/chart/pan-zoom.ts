@@ -3,7 +3,7 @@
 
 import type { Chart as ChartJs } from 'chart.js';
 
-import { clampRangeWindow } from '@/lib/chart-format';
+import { clampRangeWindow } from '@/bench/lib/chart-format';
 
 import type { CardElements, CardState } from './types';
 

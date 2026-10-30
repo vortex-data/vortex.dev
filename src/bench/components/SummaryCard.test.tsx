@@ -4,8 +4,8 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
-import { SummaryCard } from '@/components/SummaryCard';
-import type { Summary } from '@/lib/summary';
+import { SummaryCard } from '@/bench/components/SummaryCard';
+import type { Summary } from '@/bench/lib/summary';
 
 function render(summary?: Summary): string {
   return renderToStaticMarkup(<SummaryCard summary={summary} />);

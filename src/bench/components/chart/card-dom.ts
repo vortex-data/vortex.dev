@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
-import { DEFAULT_VISIBLE, MAX_VISIBLE_POINTS } from '@/lib/chart-format';
+import { DEFAULT_VISIBLE, MAX_VISIBLE_POINTS } from '@/bench/lib/chart-format';
 
 import type { CardState } from './types';
 

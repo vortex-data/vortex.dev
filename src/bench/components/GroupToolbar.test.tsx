@@ -4,14 +4,14 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
-import { GroupToolbar } from '@/components/GroupToolbar';
+import { GroupToolbar } from '@/bench/components/GroupToolbar';
 import {
   initGlobalFilter,
   noteChartRecentData,
   noteGroupSeries,
   setShowEmptyCharts,
   toggleGroupSeries,
-} from '@/lib/chart-store';
+} from '@/bench/lib/chart-store';
 
 const UNIVERSE = { engines: ['datafusion', 'duckdb'], formats: ['parquet', 'vortex'] };
 

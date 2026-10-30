@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { FONTS_CSS } from '@/lib/fonts';
+import { FONTS_CSS } from '@/bench/lib/fonts';
 
 describe('FONTS_CSS', () => {
   it('loads Funnel Display, Geist and Geist Mono from Google Fonts in one request', () => {
@@ -21,7 +21,10 @@ describe('FONTS_CSS', () => {
 describe('the font bootstrap in the root layout', () => {
   it('writes out the same URL as FONTS_CSS, so the inline script stays a constant', async () => {
     const { readFileSync } = await import('node:fs');
-    const layout = readFileSync(new URL('../app/layout.tsx', import.meta.url), 'utf8');
+    const layout = readFileSync(
+      new URL('../../app/(bench)/bench/layout.tsx', import.meta.url),
+      'utf8',
+    );
     const script = layout.slice(
       layout.indexOf('const FONT_BOOTSTRAP'),
       layout.indexOf(';\n', layout.indexOf('const FONT_BOOTSTRAP')),

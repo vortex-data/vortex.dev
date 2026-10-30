@@ -3,7 +3,7 @@
 
 import { AsyncLocalStorage } from 'node:async_hooks';
 
-import { getPool, resolvePoolMax } from '@/lib/db';
+import { getPool, resolvePoolMax } from '@/bench/lib/db';
 
 // First int of every group cache fill's two-int PostgreSQL advisory-lock key: "benc". The second
 // is a hash of the cache entry's key (`cacheFillLockId`), so fills of different entries run at

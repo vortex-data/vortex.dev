@@ -7,13 +7,13 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { Chart } from '@/components/Chart';
-import { GroupBody } from '@/components/GroupBody';
-import { FETCH_TIMEOUT_MS } from '@/lib/chart-format';
-import { PAGE_LEAVE_GRACE_MS } from '@/lib/page-leave';
-import { bundleQueue, hydrationQueue, resetPayloadCache } from '@/lib/chart-store';
+import { Chart } from '@/bench/components/Chart';
+import { GroupBody } from '@/bench/components/GroupBody';
+import { FETCH_TIMEOUT_MS } from '@/bench/lib/chart-format';
+import { PAGE_LEAVE_GRACE_MS } from '@/bench/lib/page-leave';
+import { bundleQueue, hydrationQueue, resetPayloadCache } from '@/bench/lib/chart-store';
 
-vi.mock('@/lib/chart-js', () => ({
+vi.mock('@/bench/lib/chart-js', () => ({
   loadChartJs: () => new Promise(() => {}),
 }));
 

@@ -3,8 +3,8 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { groupHeadline, headlineText } from '@/lib/headline';
-import type { SeriesRanking, Summary } from '@/lib/summary';
+import { groupHeadline, headlineText } from '@/bench/lib/headline';
+import type { SeriesRanking, Summary } from '@/bench/lib/summary';
 
 const VX = 'vortex-file-compressed';
 const r = (name: string, score: number, measured = 10, total = 10): SeriesRanking => ({

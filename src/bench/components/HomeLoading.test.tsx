@@ -4,7 +4,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
-import { HomeLoading } from '@/components/HomeLoading';
+import { HomeLoading } from '@/bench/components/HomeLoading';
 
 describe('HomeLoading', () => {
   const html = renderToStaticMarkup(<HomeLoading />);

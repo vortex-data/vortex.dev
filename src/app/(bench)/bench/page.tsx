@@ -3,19 +3,19 @@
 
 import { Suspense } from 'react';
 
-import { Footer } from '@/components/Footer';
-import { GroupNav } from '@/components/GroupNav';
-import { GroupSection } from '@/components/GroupSection';
-import { Header } from '@/components/Header';
-import { HomeLoading } from '@/components/HomeLoading';
-import { LandingState } from '@/components/LandingState';
-import { OpenGroupsScript } from '@/components/OpenGroupsScript';
-import { groupAnchors } from '@/lib/anchor';
-import { type FilterUniverse, parseFilterCsv, singleSearchParam } from '@/lib/chart-format';
-import { cachedFilterUniverse, cachedGroups } from '@/lib/data-cache';
-import { parseGroupFilter } from '@/lib/group-filter';
-import type { Group } from '@/lib/queries';
-import { settlesWithin } from '@/lib/settles-within';
+import { Footer } from '@/bench/components/Footer';
+import { GroupNav } from '@/bench/components/GroupNav';
+import { GroupSection } from '@/bench/components/GroupSection';
+import { Header } from '@/bench/components/Header';
+import { HomeLoading } from '@/bench/components/HomeLoading';
+import { LandingState } from '@/bench/components/LandingState';
+import { OpenGroupsScript } from '@/bench/components/OpenGroupsScript';
+import { groupAnchors } from '@/bench/lib/anchor';
+import { type FilterUniverse, parseFilterCsv, singleSearchParam } from '@/bench/lib/chart-format';
+import { cachedFilterUniverse, cachedGroups } from '@/bench/lib/data-cache';
+import { parseGroupFilter } from '@/bench/lib/group-filter';
+import type { Group } from '@/bench/lib/queries';
+import { settlesWithin } from '@/bench/lib/settles-within';
 
 // Rendered per request, with CDN caching layered on by `vercel.json`: each
 // render reads every group from Postgres via `collectGroups()`, and Vercel's

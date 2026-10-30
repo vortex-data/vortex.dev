@@ -11,7 +11,7 @@ const { connect, poolMax, query, release } = vi.hoisted(() => ({
   release: vi.fn(),
 }));
 
-vi.mock('@/lib/db', () => ({
+vi.mock('@/bench/lib/db', () => ({
   getPool: () => ({ connect }),
   resolvePoolMax: () => poolMax.value,
 }));
@@ -22,7 +22,7 @@ import {
   GroupCacheFillInProgressError,
   retryGroupCacheFill,
   withGroupCacheFillLock,
-} from '@/lib/cache-fill';
+} from '@/bench/lib/cache-fill';
 
 /** A fill that runs until the test settles it. */
 function deferredFill(value: string): {

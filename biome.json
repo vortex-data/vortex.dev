@@ -20,7 +20,7 @@
       "!next-env.d.ts",
       "!bench/web/.next",
       "!bench/web/next-env.d.ts",
-      "!src/app/globals.css",
+      "!src/app/(site)/globals.css",
       "!src/styles/vortex-tokens.css",
       "!src/styles/vortex.css",
       "!src/styles/vortex-base.css",

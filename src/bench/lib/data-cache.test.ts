@@ -27,12 +27,12 @@ vi.mock('next/cache', () => ({
   },
 }));
 
-vi.mock('@/lib/cache-fill', () => ({
+vi.mock('@/bench/lib/cache-fill', () => ({
   withGroupCacheFillLock,
   retryGroupCacheFill,
 }));
 
-vi.mock('@/lib/queries', () => ({
+vi.mock('@/bench/lib/queries', () => ({
   collectGroups: vi.fn(async () => [{ name: 'g', slug: 'gs', charts: [] }]),
   collectFilterUniverse: vi.fn(async () => ({ engines: [], formats: [] })),
   collectGroupCharts: vi.fn(async () => ({ name: 'g', charts: [] })),
@@ -41,7 +41,7 @@ vi.mock('@/lib/queries', () => ({
 
 // Decoding drops an `-alias` suffix, standing in for the lenient decode that lets
 // many slugs name one key; encoding gives the canonical slug back.
-vi.mock('@/lib/slug', () => ({
+vi.mock('@/bench/lib/slug', () => ({
   groupKeyFromSlug: (s: string) => ({ slug: s.replace(/-alias$/, '') }),
   chartKeyFromSlug: (s: string) => ({ slug: s.replace(/-alias$/, '') }),
   groupKeyToSlug: (k: { slug: string }) => k.slug,
@@ -55,7 +55,7 @@ import {
   cachedDefaultGroupCharts,
   cachedFilterUniverse,
   cachedGroups,
-} from '@/lib/data-cache';
+} from '@/bench/lib/data-cache';
 
 afterEach(() => {
   cacheCalls.length = 0;
@@ -120,7 +120,7 @@ describe('data-cache wrappers', () => {
   });
 
   it('reads and fills an aliased slug under its canonical slug', async () => {
-    const { collectGroupCharts, chartPayload } = await import('@/lib/queries');
+    const { collectGroupCharts, chartPayload } = await import('@/bench/lib/queries');
     await cachedDefaultGroupCharts('gs-alias');
     await cachedDefaultChartPayload('cs-alias');
     expect(withGroupCacheFillLock.mock.calls[0]![0]).toBe('group-charts:gs');

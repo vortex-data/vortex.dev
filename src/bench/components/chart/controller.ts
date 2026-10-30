@@ -26,8 +26,8 @@ import {
   seriesPassesGroupFilter,
   throttle,
   visibleRange,
-} from '@/lib/chart-format';
-import { loadChartJs } from '@/lib/chart-js';
+} from '@/bench/lib/chart-format';
+import { loadChartJs } from '@/bench/lib/chart-js';
 import {
   chartIsHiddenAsEmpty,
   emptyGroupSnapshot,
@@ -41,10 +41,10 @@ import {
   noteGroupSeries,
   retryGroupBundle,
   subscribeGroupBundleRetry,
-} from '@/lib/chart-store';
-import { unlessPageLeft } from '@/lib/page-leave';
-import type { ChartResponse } from '@/lib/queries';
-import { effectiveTheme, onThemeChange } from '@/lib/theme';
+} from '@/bench/lib/chart-store';
+import { unlessPageLeft } from '@/bench/lib/page-leave';
+import type { ChartResponse } from '@/bench/lib/queries';
+import { effectiveTheme, onThemeChange } from '@/bench/lib/theme';
 
 import {
   renderDownsampleBadge,

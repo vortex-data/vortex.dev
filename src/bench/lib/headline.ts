@@ -15,8 +15,8 @@
  * style a part; it never carries the meaning alone.
  */
 
-import { displayFormat } from '@/lib/chart-format';
-import type { SeriesRanking, Summary } from '@/lib/summary';
+import { displayFormat } from '@/bench/lib/chart-format';
+import type { SeriesRanking, Summary } from '@/bench/lib/summary';
 
 export type HeadlineTone = 'better' | 'worse' | 'same' | 'neutral';
 

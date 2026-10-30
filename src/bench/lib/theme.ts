@@ -8,7 +8,7 @@
  * palette and listen for changes to recolor.
  */
 
-import type { ChartTheme } from '@/lib/chart-format';
+import type { ChartTheme } from '@/bench/lib/chart-format';
 
 const DARK_QUERY = '(prefers-color-scheme: dark)';
 

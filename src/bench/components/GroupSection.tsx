@@ -3,15 +3,15 @@
 
 import { Fragment } from 'react';
 
-import { GroupBody } from '@/components/GroupBody';
-import { GroupDocsLink } from '@/components/GroupDocsLink';
-import { GroupPermalink } from '@/components/GroupPermalink';
-import { InfoIcon } from '@/components/icons';
-import { SummaryCard } from '@/components/SummaryCard';
-import { groupDocUrl } from '@/lib/benchmark-docs';
-import type { FilterUniverse } from '@/lib/chart-format';
-import { groupHeadline } from '@/lib/headline';
-import type { Group } from '@/lib/queries';
+import { GroupBody } from '@/bench/components/GroupBody';
+import { GroupDocsLink } from '@/bench/components/GroupDocsLink';
+import { GroupPermalink } from '@/bench/components/GroupPermalink';
+import { InfoIcon } from '@/bench/components/icons';
+import { SummaryCard } from '@/bench/components/SummaryCard';
+import { groupDocUrl } from '@/bench/lib/benchmark-docs';
+import type { FilterUniverse } from '@/bench/lib/chart-format';
+import { groupHeadline } from '@/bench/lib/headline';
+import type { Group } from '@/bench/lib/queries';
 
 const NO_INITIAL_HIDDEN_SERIES: string[] = [];
 const NO_INITIAL_SHOWN_SERIES: string[] = [];

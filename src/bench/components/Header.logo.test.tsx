@@ -7,7 +7,7 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { Header } from '@/components/Header';
+import { Header } from '@/bench/components/Header';
 
 // The logo is a `next/link` to `/`. On `/` a soft navigation to `/` would drop the fragment that
 // lists the open groups while the groups stay open, so there the logo scrolls to the top instead.

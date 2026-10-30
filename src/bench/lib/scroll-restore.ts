@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
-import type { GroupBodiesReady } from '@/lib/group-bodies';
+import type { GroupBodiesReady } from '@/bench/lib/group-bodies';
 
 /**
  * The landing page's own scroll restoration, by element rather than by pixel.

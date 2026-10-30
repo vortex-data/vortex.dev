@@ -25,7 +25,7 @@ import {
 // Skips when Docker is unavailable OR when no `.next` production build exists
 // (`bun run --cwd bench/web build` first); both are environment, not code, conditions.
 
-const WEB_ROOT = fileURLToPath(new URL('..', import.meta.url));
+const WEB_ROOT = fileURLToPath(new URL('../../..', import.meta.url));
 const databaseAvailable = integrationDatabaseAvailable();
 const BUILD_PRESENT = existsSync(`${WEB_ROOT}/.next/BUILD_ID`);
 const PORT = 4319;

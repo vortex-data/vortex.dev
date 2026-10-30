@@ -6,7 +6,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 // `chartKeyFromSlug` validates the 400 path; a thrown error is a bad slug.
-vi.mock('@/lib/slug', () => ({
+vi.mock('@/bench/lib/slug', () => ({
   chartKeyFromSlug: (slug: string) => {
     if (slug === 'bad') {
       throw new Error('invalid');
@@ -20,18 +20,18 @@ type Payload = { display_name: string } | null;
 const cachedDefaultChartPayload = vi.fn<(slug: string) => Promise<Payload>>(async () => ({
   display_name: 'cached',
 }));
-vi.mock('@/lib/data-cache', () => ({
+vi.mock('@/bench/lib/data-cache', () => ({
   cachedDefaultChartPayload: (slug: string) => cachedDefaultChartPayload(slug),
 }));
 
 const chartPayload = vi.fn<(key: unknown, window: unknown) => Promise<Payload>>(async () => ({
   display_name: 'direct',
 }));
-vi.mock('@/lib/queries', () => ({
+vi.mock('@/bench/lib/queries', () => ({
   chartPayload: (key: unknown, window: unknown) => chartPayload(key, window),
 }));
 
-import { GET } from '@/app/api/chart/[slug]/route';
+import { GET } from '@/app/(bench)/bench/api/chart/[slug]/route';
 
 function get(slug: string, n: string | null): Promise<Response> {
   const query = n === null ? '' : `?n=${encodeURIComponent(n)}`;

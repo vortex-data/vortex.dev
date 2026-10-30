@@ -8,22 +8,22 @@ import { type DOMWindow, JSDOM, VirtualConsole } from 'jsdom';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
-import { GroupSection } from '@/components/GroupSection';
+import { GroupSection } from '@/bench/components/GroupSection';
 import {
   OPEN_GROUPS_BOOTSTRAP,
   OPEN_GROUPS_FINISH,
   OpenGroupsScript,
-} from '@/components/OpenGroupsScript';
-import { groupAnchors } from '@/lib/anchor';
-import type { FilterUniverse } from '@/lib/chart-format';
+} from '@/bench/components/OpenGroupsScript';
+import { groupAnchors } from '@/bench/lib/anchor';
+import type { FilterUniverse } from '@/bench/lib/chart-format';
 import {
   openAnchors,
   pageGroups,
   parseOpenFragment,
   resolveOpenAnchors,
   takeOpenGroupsBootstrap,
-} from '@/lib/open-groups';
-import { USER_INPUT } from '@/lib/scroll-restore';
+} from '@/bench/lib/open-groups';
+import { USER_INPUT } from '@/bench/lib/scroll-restore';
 
 const UNIVERSE: FilterUniverse = { engines: ['duckdb'], formats: ['parquet', 'vortex'] };
 const NAMES = ['TPC-H (NVMe) (SF=1)', 'Random Access', 'Clickbench'];

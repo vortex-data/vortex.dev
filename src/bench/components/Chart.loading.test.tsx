@@ -7,17 +7,17 @@ import { act, StrictMode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { Chart } from '@/components/Chart';
-import { FETCH_TIMEOUT_MS } from '@/lib/chart-format';
-import { PAGE_LEAVE_GRACE_MS } from '@/lib/page-leave';
-import { fullHistoryQueue } from '@/lib/chart-store';
-import { loadChartJs } from '@/lib/chart-js';
+import { Chart } from '@/bench/components/Chart';
+import { FETCH_TIMEOUT_MS } from '@/bench/lib/chart-format';
+import { PAGE_LEAVE_GRACE_MS } from '@/bench/lib/page-leave';
+import { fullHistoryQueue } from '@/bench/lib/chart-store';
+import { loadChartJs } from '@/bench/lib/chart-js';
 
 // Mock Chart.js construction to a NEVER-RESOLVING loader by default:
 // maybeConstruct awaits it forever and never reaches `new Chart(...)`, so the
 // fetch-orchestration path runs to completion without constructing a chart in
 // jsdom. Tests that need construction to complete override with mockResolvedValueOnce.
-vi.mock('@/lib/chart-js', () => ({
+vi.mock('@/bench/lib/chart-js', () => ({
   loadChartJs: vi.fn(() => new Promise(() => {})),
 }));
 

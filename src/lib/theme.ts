@@ -8,7 +8,7 @@ import {
 
 /**
  * Palette source of truth for TS-side consumers (OG image generation,
- * scripts). The CSS-side source lives in `src/app/globals.css` under
+ * scripts). The CSS-side source lives in `src/app/(site)/globals.css` under
  * `:root`. The two MUST stay in sync — `scripts/verify.ts` enforces this in
  * CI for the values that exist on both sides.
  *

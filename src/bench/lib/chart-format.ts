@@ -13,7 +13,7 @@
  * `lib/chart-store/`; the Chart.js wiring lives in `components/chart/`.
  */
 
-import type { ChartHistory, ChartResponse, CommitPoint, UnitKind } from '@/lib/queries';
+import type { ChartHistory, ChartResponse, CommitPoint, UnitKind } from '@/bench/lib/queries';
 
 // ---------------------------------------------------------------------------
 // Constants (ported verbatim from `chart-init.js`).

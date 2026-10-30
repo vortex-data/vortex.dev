@@ -5,7 +5,7 @@ import {
   BUNDLE_CONCURRENCY,
   FULL_HISTORY_CONCURRENCY,
   HYDRATION_CONCURRENCY,
-} from '@/lib/chart-format';
+} from '@/bench/lib/chart-format';
 
 // ---------------------------------------------------------------------------
 // Bounded priority queues (ported from chart-init.js sections 11 and 15).

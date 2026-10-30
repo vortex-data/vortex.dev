@@ -7,13 +7,13 @@ import { act, StrictMode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { Chart } from '@/components/Chart';
-import { resetGroup, resetPayloadCache, setGroupY } from '@/lib/chart-store';
+import { Chart } from '@/bench/components/Chart';
+import { resetGroup, resetPayloadCache, setGroupY } from '@/bench/lib/chart-store';
 
 // Chart.js never actually constructs in this suite; the loader resolves to a
 // throwing stub so any unexpected construction fails loudly. The lifecycle
 // under test ends at the fetch layer.
-vi.mock('@/lib/chart-js', () => ({
+vi.mock('@/bench/lib/chart-js', () => ({
   loadChartJs: () =>
     Promise.resolve(
       class StubChart {

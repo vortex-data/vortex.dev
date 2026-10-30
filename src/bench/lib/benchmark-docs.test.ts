@@ -3,8 +3,8 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { groupDocPath, groupDocUrl } from '@/lib/benchmark-docs';
-import { groupKeyToSlug } from '@/lib/slug';
+import { groupDocPath, groupDocUrl } from '@/bench/lib/benchmark-docs';
+import { groupKeyToSlug } from '@/bench/lib/slug';
 
 /** A query group for `dataset`; the other dims do not affect the doc. */
 function queryGroup(dataset: string) {

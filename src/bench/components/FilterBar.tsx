@@ -10,15 +10,15 @@ import {
   seedActiveFormats,
   seedActiveFromAllowlist,
   type FilterUniverse,
-} from '@/lib/chart-format';
+} from '@/bench/lib/chart-format';
 import {
   getGlobalFilterSnapshot,
   initGlobalFilter,
   subscribeGlobalFilter,
   toggleGlobalFilterValue,
-} from '@/lib/chart-store';
-import { FilterIcon } from '@/components/icons';
-import { flushUrlWrites, scheduleUrlWrite } from '@/lib/url-writes';
+} from '@/bench/lib/chart-store';
+import { FilterIcon } from '@/bench/components/icons';
+import { flushUrlWrites, scheduleUrlWrite } from '@/bench/lib/url-writes';
 
 /**
  * The global engine/format filter dropdown in the sticky header, the client

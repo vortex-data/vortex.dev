@@ -296,8 +296,8 @@ def main() -> int:
     parser.add_argument(
         "--migrations",
         type=Path,
-        default=Path(__file__).resolve().parent.parent / "migrations",
-        help="path to migrations directory (default: <repo>/migrations)",
+        default=Path(__file__).resolve().parent / "migrations",
+        help="path to migrations directory (default: db/migrations, beside this script)",
     )
     args = parser.parse_args()
 

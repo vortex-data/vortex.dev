@@ -5,12 +5,16 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
-import { Chart } from '@/components/Chart';
-import { GroupToolbar } from '@/components/GroupToolbar';
-import { chartPriority, type FilterUniverse } from '@/lib/chart-format';
-import { abortGroupBundle, ensureGroupBundle } from '@/lib/chart-store';
-import { noteGroupBodyClosed, noteGroupBodyOpen, seedGroupFilterOnce } from '@/lib/group-bodies';
-import type { ChartLink } from '@/lib/queries';
+import { Chart } from '@/bench/components/Chart';
+import { GroupToolbar } from '@/bench/components/GroupToolbar';
+import { chartPriority, type FilterUniverse } from '@/bench/lib/chart-format';
+import { abortGroupBundle, ensureGroupBundle } from '@/bench/lib/chart-store';
+import {
+  noteGroupBodyClosed,
+  noteGroupBodyOpen,
+  seedGroupFilterOnce,
+} from '@/bench/lib/group-bodies';
+import type { ChartLink } from '@/bench/lib/queries';
 
 /** Props for one group's body. */
 export interface GroupBodyProps {

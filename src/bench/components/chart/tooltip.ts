@@ -13,7 +13,7 @@ import {
   shortDate,
   shortSha,
   truncate,
-} from '@/lib/chart-format';
+} from '@/bench/lib/chart-format';
 
 import { benchDatasets } from './datasets';
 import type { CardState } from './types';
