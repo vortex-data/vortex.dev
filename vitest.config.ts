@@ -7,26 +7,32 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   // Transform JSX with the React automatic runtime for tests explicitly (no
   // `import React` needed; pulls from `react/jsx-runtime`), so the component
-  // tests do not depend on tsconfig's `jsx` setting. That comes from the shared
-  // `tsconfig.base.json` (`"react-jsx"`); it was `"preserve"` before Next.js 16,
+  // tests do not depend on tsconfig's `jsx` setting. That is `"react-jsx"` in
+  // `tsconfig.json`; it was `"preserve"` before Next.js 16,
   // and Vite (rolldown/oxc) leaves preserved JSX untransformed.
   // Vite's transform option is `oxc`, not `esbuild`, under rolldown-vite; the
   // typed form of the automatic runtime is the `{ runtime: 'automatic' }`
   // object (the bare `'react-jsx'` string is runtime-valid but not in the type).
   oxc: { jsx: { runtime: 'automatic' } },
-  // Mirror the `@/*` -> project-root path alias from tsconfig.json so tests can
-  // import App Router route handlers (which use the `@/lib/...` convention).
+  // Mirror the `@/*` -> `src/*` path alias from tsconfig.json so tests can
+  // import App Router route handlers (which use the `@/bench/...` convention).
   resolve: {
     alias: {
-      '@': fileURLToPath(new URL('.', import.meta.url)),
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
   test: {
     environment: 'node',
-    // `lib/**` unit + DB-backed tests, prop-driven component tests under
+    // bench's tests only: the site's run on `bun test tests/unit`. `lib/**`
+    // unit + DB-backed tests, prop-driven component tests under
     // `components/**` that render via `react-dom/server` (no DOM env needed),
-    // and `app/**` CSS/stylesheet tests that run in the node environment.
-    include: ['lib/**/*.test.ts', 'components/**/*.test.tsx', 'app/**/*.test.ts'],
+    // the stylesheet tests, and the route tests beside bench's routes.
+    include: [
+      'src/bench/lib/**/*.test.ts',
+      'src/bench/components/**/*.test.tsx',
+      'src/bench/styles/**/*.test.ts',
+      'src/app/(bench)/**/*.test.ts',
+    ],
     // Pulling and starting the Postgres testcontainer can take tens of seconds
     // on a cold image cache, so the hook + test budgets are generous.
     testTimeout: 120_000,

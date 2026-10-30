@@ -77,22 +77,28 @@
       "addLabels": ["github-actions"]
     },
     {
-      "description": "Keep bench's updates apart from the marketing site's.",
-      "matchFileNames": [
-        "bench/**",
-        ".github/workflows/bench-*.yml",
-        ".github/vercel-cli/**"
+      "description": "Keep bench's updates apart from the marketing site's: the packages only bench uses, and bench's workflows.",
+      "matchPackageNames": [
+        "@vercel/functions",
+        "chart.js",
+        "chartjs-plugin-zoom",
+        "pg",
+        "@types/pg",
+        "@testcontainers/**",
+        "jsdom",
+        "vite",
+        "vitest"
       ],
       "additionalBranchPrefix": "bench-",
       "commitMessageSuffix": "(bench)",
       "addLabels": ["bench"]
     },
     {
-      "description": "The root and bench/web package.json pin the same Bun in packageManager. Update both in one branch, without bench's prefix, so the two pins cannot drift. This rule comes after bench's so that it wins.",
-      "matchDepTypes": ["packageManager"],
-      "groupName": "Bun package manager",
-      "additionalBranchPrefix": "",
-      "commitMessageSuffix": ""
+      "description": "bench's workflows, in bench's branches too.",
+      "matchFileNames": [".github/workflows/bench-*.yml"],
+      "additionalBranchPrefix": "bench-",
+      "commitMessageSuffix": "(bench)",
+      "addLabels": ["bench"]
     }
   ]
 }
