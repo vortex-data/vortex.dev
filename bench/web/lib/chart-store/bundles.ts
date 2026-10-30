@@ -2,6 +2,7 @@
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
 import { chartHasRecentData, FETCH_TIMEOUT_MS } from '@/lib/chart-format';
+import { unlessPageLeft } from '@/lib/page-leave';
 import type { ChartResponse, GroupChartsResponse } from '@/lib/queries';
 
 import { noteChartRecentData, noteGroupSeries } from './group-store';
@@ -161,17 +162,25 @@ export function ensureGroupBundle(groupSlug: string, priority: number): Promise<
       }
       return { status: 'unavailable' };
     })
-    .catch((err: unknown): BundleResult => {
+    .catch((err: unknown): BundleResult | Promise<BundleResult> => {
       if (
         inFlightBundles.get(groupSlug)?.entry !== entry ||
         (controller.signal.aborted && controller.signal.reason?.name === 'AbortError')
       ) {
         return { status: 'aborted' };
       }
-      return {
-        status: 'failed',
-        error: controller.signal.aborted ? controller.signal.reason : err,
-      };
+      if (controller.signal.aborted) {
+        return { status: 'failed', error: controller.signal.reason };
+      }
+      // Leaving the page cancels the fetch with what looks like a network failure; that is
+      // dropped quietly (`lib/page-leave.ts`). A group closed meanwhile has aborted it.
+      return unlessPageLeft(
+        err,
+        (): BundleResult =>
+          inFlightBundles.get(groupSlug)?.entry === entry
+            ? { status: 'failed', error: err }
+            : { status: 'aborted' },
+      );
     })
     .then((result): BundleResult => {
       if (inFlightBundles.get(groupSlug)?.entry !== entry) {
