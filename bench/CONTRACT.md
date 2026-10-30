@@ -63,6 +63,13 @@ column-by-column; an unknown `kind` or a missing dimension field fails the inges
 `compression_size` records include `uncompressed_bytes`, the Arrow memory size after the
 source Parquet file is decoded. The column is nullable so historical rows remain valid.
 
+`string-bench` shares the two compression tables with `compress-bench`. Its records use the
+dataset `strings/<column>`, the string encoder (`onpair-12`, `fsst`, ...) as `dataset_variant`,
+and `vortex-file-compressed` as `format`; `encode` is the Vortex file write and `decode` the scan.
+Its `uncompressed_bytes` is the column's canonical Arrow `Utf8View` size. The site lists these
+rows in the `String Encoding` groups and compares each encoder with `fsst`, so the prefix and the
+`fsst` label are part of the contract.
+
 `random_access_time` records include `open_mode`. The value is `cached` for a reused accessor
 or `reopen` when each timed take includes a new accessor. Historical rows use `cached`.
 The `reopen` mode does not clear the OS page cache.

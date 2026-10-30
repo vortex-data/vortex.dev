@@ -31,6 +31,8 @@ const GROUP_KEYS: GroupKey[] = [
   { k: 'QueryGroup', dataset: 'tpch', dataset_variant: null, scale_factor: '1', storage: 'nvme' },
   { k: 'CompressionTimeGroup' },
   { k: 'CompressionSizeGroup' },
+  { k: 'CompressionTimeGroup', suite: 'strings' },
+  { k: 'CompressionSizeGroup', suite: 'strings' },
   { k: 'RandomAccessGroup', storage: 'nvme' },
   { k: 'RandomAccessGroup', storage: 's3' },
   { k: 'VectorSearchGroup', dataset: 'cohere', layout: 'partitioned' },
@@ -82,6 +84,19 @@ describe('group slug round-trip', () => {
     }).split('.')[0];
     const groupPrefix = groupKeyToSlug({ k: 'CompressionTimeGroup' }).split('.')[0];
     expect(chartPrefix).not.toBe(groupPrefix);
+  });
+
+  it('keeps the compress-bench group slugs from before the string-bench split', () => {
+    expect(groupKeyToSlug({ k: 'CompressionTimeGroup' })).toBe(
+      `ctg.${Buffer.from('{"k":"CompressionTimeGroup"}').toString('base64url')}`,
+    );
+  });
+
+  it.each(['compress', '', null, 1])('rejects invalid compression group suite %s', (suite) => {
+    const slug =
+      'ctg.' +
+      Buffer.from(JSON.stringify({ k: 'CompressionTimeGroup', suite })).toString('base64url');
+    expect(() => groupKeyFromSlug(slug)).toThrow();
   });
 
   it('resolves legacy random-access group slugs to NVMe', () => {

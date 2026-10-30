@@ -51,6 +51,10 @@ function staticDescription(name: string): string | null {
         'Compares compressed file sizes and compression ratios across different encoding ' +
         'strategies'
       );
+    case 'String Encoding':
+      return 'Measures Vortex file write and scan throughput for each string encoder';
+    case 'String Encoding Size':
+      return 'Compares Vortex file sizes for each string encoder';
     case 'Clickbench':
       return (
         "ClickHouse's analytical benchmark suite testing real-world query patterns on web " +

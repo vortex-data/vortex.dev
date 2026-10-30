@@ -41,6 +41,7 @@ import { getPool } from './db';
 import { randomAccessStorage, type RandomAccessStorage } from './random-access';
 import { compareCodeUnits } from './families';
 import type { GroupKey } from './slug';
+import { STRING_DATASET_PATTERN } from './compression-suite';
 
 /**
  * Freshness buckets for compression-time and compression-size summaries.
@@ -55,6 +56,9 @@ const ARROW_IPC_FORMAT = 'arrow-ipc';
 
 const COMPRESSION_SNAPSHOT_ANCHOR = 'vortex-file-compressed';
 const COMPRESSION_BASELINE = 'parquet';
+
+/** The `string-bench` encoder every other string encoder is compared with. */
+const STRING_ENCODING_BASELINE = 'fsst';
 
 function compressionSummaryQueryParams(): [string[], string[], string, string] {
   return [
@@ -154,6 +158,8 @@ export type Summary =
       title: string;
       rankings: CompressionSizeRanking[];
       explanation: string;
+      /** What `ratio` compares sizes with, when not Parquet. */
+      baseline?: string;
     }
   | {
       type: 'queryBenchmark';
@@ -178,9 +184,11 @@ export function collectGroupSummary(key: GroupKey): Promise<Summary | null> {
     case 'QueryGroup':
       return collectQuerySummary(key.dataset, key.dataset_variant, key.scale_factor, key.storage);
     case 'CompressionTimeGroup':
-      return collectCompressionSummary();
+      return key.suite === 'strings' ? collectStringEncodingSummary() : collectCompressionSummary();
     case 'CompressionSizeGroup':
-      return collectCompressionSizeSummary();
+      return key.suite === 'strings'
+        ? collectStringEncodingSizeSummary()
+        : collectCompressionSizeSummary();
     case 'RandomAccessGroup':
       return collectRandomAccessSummary(key.storage);
     case 'VectorSearchGroup':
@@ -516,7 +524,32 @@ async function collectVectorSearchSummary(
 async function collectCompressionSummary(): Promise<Summary | null> {
   // Both geomeans use the latest encode timestamp. If no encode pair exists,
   // they use the latest decode timestamp. SQL preserves sub-second precision.
-  const rows = await compressionSamples();
+  const rankings = compressionRankings(await compressionSamples());
+  if (rankings.length === 0) {
+    return null;
+  }
+  return {
+    type: 'compression',
+    title: 'Write Throughput',
+    rankings,
+    explanation: 'Geomean throughput ratio to Parquet | Aggregate throughput (higher is better)',
+  };
+}
+
+/** One timing paired with the baseline's timing for the same dataset, commit and operation. */
+interface CompressionTimeSample {
+  format: string;
+  op: string;
+  valueNs: number;
+  baselineNs: number;
+  uncompressedBytes: number | null;
+}
+
+/**
+ * Rank each `(operation, format)` by its geomean throughput ratio to the baseline, with its
+ * aggregate logical throughput, encode before decode and best first.
+ */
+function compressionRankings(rows: readonly CompressionTimeSample[]): CompressionRanking[] {
   const grouped = new Map<
     string,
     {
@@ -539,7 +572,7 @@ async function collectCompressionSummary(): Promise<Summary | null> {
       totalBytes: 0,
       totalNs: 0,
     };
-    aggregate.ratios.push(row.parquetNs / row.valueNs);
+    aggregate.ratios.push(row.baselineNs / row.valueNs);
     if (
       row.uncompressedBytes !== null &&
       row.uncompressedBytes > 0 &&
@@ -575,15 +608,7 @@ async function collectCompressionSummary(): Promise<Summary | null> {
     }
     return b.ratio - a.ratio || compareCodeUnits(a.name, b.name);
   });
-  if (rankings.length === 0) {
-    return null;
-  }
-  return {
-    type: 'compression',
-    title: 'Write Throughput',
-    rankings,
-    explanation: 'Geomean throughput ratio to Parquet | Aggregate throughput (higher is better)',
-  };
+  return rankings;
 }
 
 /**
@@ -594,15 +619,7 @@ async function collectCompressionSummary(): Promise<Summary | null> {
  * The JSON field lookup returns `NULL` before migration 009 adds the column, so web deployment
  * does not depend on migration deployment order.
  */
-async function compressionSamples(): Promise<
-  Array<{
-    format: string;
-    op: string;
-    valueNs: number;
-    parquetNs: number;
-    uncompressedBytes: number | null;
-  }>
-> {
+async function compressionSamples(): Promise<CompressionTimeSample[]> {
   const text = `
     WITH pairs AS (
       SELECT t.format AS format,
@@ -664,7 +681,7 @@ async function compressionSamples(): Promise<
     SELECT selected.format AS format,
            selected.op AS op,
            selected.value_ns AS "valueNs",
-           selected.parquet_ns AS "parquetNs",
+           selected.parquet_ns AS "baselineNs",
            uncompressed.uncompressed_bytes AS "uncompressedBytes"
       FROM selected
       LEFT JOIN latest_uncompressed_sizes uncompressed
@@ -673,29 +690,46 @@ async function compressionSamples(): Promise<
      ORDER BY selected.op, selected.format, selected.dataset,
               selected.dataset_variant NULLS FIRST
   `;
-  return (
-    await getPool().query<{
-      format: string;
-      op: string;
-      valueNs: number;
-      parquetNs: number;
-      uncompressedBytes: number | null;
-    }>(text, compressionSummaryQueryParams())
-  ).rows;
+  return (await getPool().query<CompressionTimeSample>(text, compressionSummaryQueryParams())).rows;
 }
 
 async function collectCompressionSizeSummary(): Promise<Summary | null> {
-  const rows = await compressionSizeSamples();
+  const rankings = compressionSizeRankings(await compressionSizeSamples());
+  if (rankings.length === 0) {
+    return null;
+  }
+  return {
+    type: 'compressionSize',
+    title: 'Compression Size Summary',
+    rankings,
+    explanation:
+      'Geometric means of compressed sizes versus Arrow (higher is better) and versus Parquet-zstd (lower is better)',
+  };
+}
+
+/** One size paired with the baseline's size for the same dataset and commit. */
+interface CompressionSizeSample {
+  format: string;
+  valueBytes: number;
+  baselineBytes: number;
+  uncompressedBytes: number | null;
+}
+
+/**
+ * Rank each format by its size ratios to the baseline and its compression ratio to Arrow. The
+ * order is by compression ratio once every format has one, and by baseline ratio until then.
+ */
+function compressionSizeRankings(rows: readonly CompressionSizeSample[]): CompressionSizeRanking[] {
   const grouped = new Map<string, { sizeRatios: number[]; compressionRatios: number[] }>();
   for (const row of rows) {
     const ratios = grouped.get(row.format) ?? { sizeRatios: [], compressionRatios: [] };
     if (
       row.valueBytes > 0 &&
       Number.isFinite(row.valueBytes) &&
-      row.parquetBytes > 0 &&
-      Number.isFinite(row.parquetBytes)
+      row.baselineBytes > 0 &&
+      Number.isFinite(row.baselineBytes)
     ) {
-      ratios.sizeRatios.push(row.valueBytes / row.parquetBytes);
+      ratios.sizeRatios.push(row.valueBytes / row.baselineBytes);
     }
     if (
       row.uncompressedBytes !== null &&
@@ -737,16 +771,7 @@ async function collectCompressionSizeSummary(): Promise<Summary | null> {
       compareCodeUnits(a.name, b.name)
     );
   });
-  if (rankings.length === 0) {
-    return null;
-  }
-  return {
-    type: 'compressionSize',
-    title: 'Compression Size Summary',
-    rankings,
-    explanation:
-      'Geometric means of compressed sizes versus Arrow (higher is better) and versus Parquet-zstd (lower is better)',
-  };
+  return rankings;
 }
 
 /**
@@ -759,14 +784,7 @@ async function collectCompressionSizeSummary(): Promise<Summary | null> {
  * deploy that includes this query. A JSON field lookup would tolerate an older schema, but it
  * serializes whole rows and timed out in production, so it was dropped once 009 was applied there.
  */
-async function compressionSizeSamples(): Promise<
-  Array<{
-    format: string;
-    valueBytes: number;
-    parquetBytes: number;
-    uncompressedBytes: number | null;
-  }>
-> {
+async function compressionSizeSamples(): Promise<CompressionSizeSample[]> {
   const text = `
     WITH pairs AS (
       SELECT s.format AS format,
@@ -837,7 +855,7 @@ async function compressionSizeSamples(): Promise<
     )
     SELECT selected.format AS format,
            selected.value_bytes AS "valueBytes",
-           selected.parquet_bytes AS "parquetBytes",
+           selected.parquet_bytes AS "baselineBytes",
            COALESCE(uncompressed.uncompressed_bytes, selected.uncompressed_bytes)
              AS "uncompressedBytes"
       FROM selected_with_arrow_ipc selected
@@ -846,14 +864,117 @@ async function compressionSizeSamples(): Promise<
        AND uncompressed.dataset_variant IS NOT DISTINCT FROM selected.dataset_variant
      ORDER BY selected.format, selected.dataset, selected.dataset_variant NULLS FIRST
   `;
-  return (
-    await getPool().query<{
-      format: string;
-      valueBytes: number;
-      parquetBytes: number;
-      uncompressedBytes: number | null;
-    }>(text, compressionSizeSummaryQueryParams())
+  return (await getPool().query<CompressionSizeSample>(text, compressionSizeSummaryQueryParams()))
+    .rows;
+}
+
+/**
+ * The `String Encoding` rollup: each string encoder's write (`encode`) and scan (`decode`)
+ * throughput against FSST's, on the columns both measured at the newest `string-bench` commit.
+ * The suite runs every encoder in one job, so one commit is a complete snapshot.
+ */
+async function collectStringEncodingSummary(): Promise<Summary | null> {
+  const text = `
+    WITH latest AS (
+      SELECT t.commit_sha
+        FROM compression_times t
+        JOIN ${BRANCH_COMMITS} c USING (commit_sha)
+       WHERE t.dataset LIKE $1
+       ORDER BY c.timestamp DESC, t.commit_sha DESC
+       LIMIT 1
+    )
+    SELECT t.dataset_variant AS format,
+           t.op AS op,
+           t.value_ns::float8 AS "valueNs",
+           b.value_ns::float8 AS "baselineNs",
+           s.uncompressed_bytes::float8 AS "uncompressedBytes"
+      FROM compression_times t
+      JOIN latest USING (commit_sha)
+      JOIN compression_times b
+        ON b.commit_sha = t.commit_sha
+       AND b.dataset = t.dataset
+       AND b.format = t.format
+       AND b.op = t.op
+       AND b.dataset_variant = $2
+      LEFT JOIN compression_sizes s
+        ON s.commit_sha = t.commit_sha
+       AND s.dataset = t.dataset
+       AND s.dataset_variant = t.dataset_variant
+       AND s.format = t.format
+     WHERE t.dataset LIKE $1
+       AND t.dataset_variant IS NOT NULL
+       AND t.op IN ('encode', 'decode')
+       AND t.value_ns > 0
+       AND b.value_ns > 0
+     ORDER BY t.op, t.dataset_variant, t.dataset
+  `;
+  const rows = (
+    await getPool().query<CompressionTimeSample>(text, [
+      STRING_DATASET_PATTERN,
+      STRING_ENCODING_BASELINE,
+    ])
   ).rows;
+  const rankings = compressionRankings(rows);
+  if (rankings.length === 0) {
+    return null;
+  }
+  return {
+    type: 'compression',
+    title: 'Write Throughput',
+    rankings,
+    explanation: 'Geomean throughput ratio to FSST | Aggregate throughput (higher is better)',
+  };
+}
+
+/**
+ * The `String Encoding Size` rollup: each string encoder's Vortex file size against FSST's and
+ * against the column's canonical size, at the newest `string-bench` commit.
+ */
+async function collectStringEncodingSizeSummary(): Promise<Summary | null> {
+  const text = `
+    WITH latest AS (
+      SELECT s.commit_sha
+        FROM compression_sizes s
+        JOIN ${BRANCH_COMMITS} c USING (commit_sha)
+       WHERE s.dataset LIKE $1
+       ORDER BY c.timestamp DESC, s.commit_sha DESC
+       LIMIT 1
+    )
+    SELECT s.dataset_variant AS format,
+           s.value_bytes::float8 AS "valueBytes",
+           b.value_bytes::float8 AS "baselineBytes",
+           s.uncompressed_bytes::float8 AS "uncompressedBytes"
+      FROM compression_sizes s
+      JOIN latest USING (commit_sha)
+      JOIN compression_sizes b
+        ON b.commit_sha = s.commit_sha
+       AND b.dataset = s.dataset
+       AND b.format = s.format
+       AND b.dataset_variant = $2
+     WHERE s.dataset LIKE $1
+       AND s.dataset_variant IS NOT NULL
+       AND s.value_bytes > 0
+       AND b.value_bytes > 0
+     ORDER BY s.dataset_variant, s.dataset
+  `;
+  const rows = (
+    await getPool().query<CompressionSizeSample>(text, [
+      STRING_DATASET_PATTERN,
+      STRING_ENCODING_BASELINE,
+    ])
+  ).rows;
+  const rankings = compressionSizeRankings(rows);
+  if (rankings.length === 0) {
+    return null;
+  }
+  return {
+    type: 'compressionSize',
+    title: 'String Encoding Size Summary',
+    rankings,
+    explanation:
+      'Geometric means of file sizes versus Arrow (higher is better) and versus FSST (lower is better)',
+    baseline: 'FSST',
+  };
 }
 
 async function collectQuerySummary(
