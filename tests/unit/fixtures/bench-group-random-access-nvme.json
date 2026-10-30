@@ -7,11 +7,11 @@
       "display_name": "feature-vectors/correlated",
       "unit_kind": "time_ns",
       "series": {
-        "vortex-file-compressed:cold": [1209291, 1236252, null, null, null],
-        "parquet:cold": [10781974, 10784105, null, null, null],
-        "lance:cold": [951081, 952246, null, null, null],
-        "arrow-ipc:cold": [2044002, 3730718, null, null, null],
-        "vortex-file-compressed:hot": [110418, 107654, null, null, null]
+        "vortex-file-compressed:hot": [110418, 107654, null, null, null],
+        "parquet:hot": [10354321, 10430477, null, null, null],
+        "lance:hot": [154771, 153570, null, null, null],
+        "arrow-ipc:hot": [2819676, 1335129, null, null, null],
+        "vortex-file-compressed:cold": [1209291, 1236252, null, null, null]
       }
     },
     {
@@ -20,11 +20,11 @@
       "display_name": "feature-vectors/uniform",
       "unit_kind": "time_ns",
       "series": {
-        "vortex-file-compressed:cold": [2356769, 2374317, null, null, null],
-        "parquet:cold": [137559887, 133802206, null, null, null],
-        "lance:cold": [1761123, 1810772, null, null, null],
-        "arrow-ipc:cold": [49861004, 35951190, null, null, null],
-        "vortex-file-compressed:hot": [984853, 1023791, null, null, null]
+        "vortex-file-compressed:hot": [984853, 1023791, null, null, null],
+        "parquet:hot": [137546685, 137992286, null, null, null],
+        "lance:hot": [982165, 998759, null, null, null],
+        "arrow-ipc:hot": [49583183, 52187750, null, null, null],
+        "vortex-file-compressed:cold": [2356769, 2374317, null, null, null]
       }
     },
     {
@@ -33,11 +33,11 @@
       "display_name": "nested-lists/correlated",
       "unit_kind": "time_ns",
       "series": {
-        "vortex-file-compressed:cold": [336783, 352557, null, null, null],
-        "parquet:cold": [4912625, 4893052, null, null, null],
-        "lance:cold": [429895, 436339, null, null, null],
-        "arrow-ipc:cold": [100073, 103886, null, null, null],
-        "vortex-file-compressed:hot": [98244, 96734, null, null, null]
+        "vortex-file-compressed:hot": [98244, 96734, null, null, null],
+        "parquet:hot": [4740464, 4832850, null, null, null],
+        "lance:hot": [113010, 115638, null, null, null],
+        "arrow-ipc:hot": [56383, 55985, null, null, null],
+        "vortex-file-compressed:cold": [336783, 352557, null, null, null]
       }
     },
     {
@@ -46,11 +46,11 @@
       "display_name": "nested-lists/uniform",
       "unit_kind": "time_ns",
       "series": {
-        "vortex-file-compressed:cold": [850357, 943825, null, null, null],
-        "parquet:cold": [38286166, 38424139, null, null, null],
-        "lance:cold": [1318625, 1346258, null, null, null],
-        "arrow-ipc:cold": [1121795, 1265763, null, null, null],
-        "vortex-file-compressed:hot": [423955, 421067, null, null, null]
+        "vortex-file-compressed:hot": [423955, 421067, null, null, null],
+        "parquet:hot": [39569156, 38667572, null, null, null],
+        "lance:hot": [841391, 848580, null, null, null],
+        "arrow-ipc:hot": [1081353, 1232824, null, null, null],
+        "vortex-file-compressed:cold": [850357, 943825, null, null, null]
       }
     },
     {
@@ -59,11 +59,11 @@
       "display_name": "nested-structs/correlated",
       "unit_kind": "time_ns",
       "series": {
-        "vortex-file-compressed:cold": [422279, 420708, null, null, null],
-        "parquet:cold": [9404889, 9615878, null, null, null],
-        "lance:cold": [490547, 484930, null, null, null],
-        "arrow-ipc:cold": [90364, 89430, null, null, null],
-        "vortex-file-compressed:hot": [120881, 120410, null, null, null]
+        "vortex-file-compressed:hot": [120881, 120410, null, null, null],
+        "parquet:hot": [9291171, 9459598, null, null, null],
+        "lance:hot": [216551, 214361, null, null, null],
+        "arrow-ipc:hot": [51535, 51409, null, null, null],
+        "vortex-file-compressed:cold": [422279, 420708, null, null, null]
       }
     },
     {
@@ -72,11 +72,11 @@
       "display_name": "nested-structs/uniform",
       "unit_kind": "time_ns",
       "series": {
-        "vortex-file-compressed:cold": [620198, 622078, null, null, null],
-        "parquet:cold": [37850813, 37834446, null, null, null],
-        "lance:cold": [2558267, 2439329, null, null, null],
-        "arrow-ipc:cold": [887290, 938270, null, null, null],
-        "vortex-file-compressed:hot": [265075, 250281, null, null, null]
+        "vortex-file-compressed:hot": [265075, 250281, null, null, null],
+        "parquet:hot": [37906744, 37750759, null, null, null],
+        "lance:hot": [2194352, 2180167, null, null, null],
+        "arrow-ipc:hot": [835952, 892694, null, null, null],
+        "vortex-file-compressed:cold": [620198, 622078, null, null, null]
       }
     },
     {
@@ -85,11 +85,11 @@
       "display_name": "taxi",
       "unit_kind": "time_ns",
       "series": {
-        "vortex-file-compressed:cold": [927198, 922392, null, null, null],
-        "parquet:cold": [17812885, 17913316, null, null, null],
-        "lance:cold": [1251132, 1249864, null, null, null],
-        "arrow-ipc:cold": [168412, 167889, null, null, null],
-        "vortex-file-compressed:hot": [222312, 218772, null, null, null]
+        "vortex-file-compressed:hot": [222312, 218772, null, null, null],
+        "parquet:hot": [17830822, 17437418, null, null, null],
+        "lance:hot": [432395, 439012, null, null, null],
+        "arrow-ipc:hot": [70759, 73165, null, null, null],
+        "vortex-file-compressed:cold": [927198, 922392, null, null, null]
       }
     },
     {
@@ -98,11 +98,11 @@
       "display_name": "taxi/correlated",
       "unit_kind": "time_ns",
       "series": {
-        "vortex-file-compressed:cold": [1092553, 1101477, null, null, null],
-        "parquet:cold": [24981353, 25099885, null, null, null],
-        "lance:cold": [1631034, 1631876, null, null, null],
-        "arrow-ipc:cold": [228782, 221890, null, null, null],
-        "vortex-file-compressed:hot": [257170, 252184, null, null, null]
+        "vortex-file-compressed:hot": [257170, 252184, null, null, null],
+        "parquet:hot": [25038867, 24779262, null, null, null],
+        "lance:hot": [659640, 632610, null, null, null],
+        "arrow-ipc:hot": [118273, 122058, null, null, null],
+        "vortex-file-compressed:cold": [1092553, 1101477, null, null, null]
       }
     },
     {
@@ -111,11 +111,11 @@
       "display_name": "taxi/uniform",
       "unit_kind": "time_ns",
       "series": {
-        "vortex-file-compressed:cold": [2916577, 2978837, null, null, null],
-        "parquet:cold": [39590379, 39465964, null, null, null],
-        "lance:cold": [8003975, 7960086, null, null, null],
-        "arrow-ipc:cold": [3097507, 3026104, null, null, null],
-        "vortex-file-compressed:hot": [818962, 829891, null, null, null]
+        "vortex-file-compressed:hot": [818962, 829891, null, null, null],
+        "parquet:hot": [39484266, 39349064, null, null, null],
+        "lance:hot": [6889605, 6999406, null, null, null],
+        "arrow-ipc:hot": [2940796, 2933221, null, null, null],
+        "vortex-file-compressed:cold": [2916577, 2978837, null, null, null]
       }
     }
   ]

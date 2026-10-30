@@ -31,7 +31,7 @@ describe("BenchPanel", () => {
 
   it("matches renderPanel for a missing and a partial system", () => {
     const panel: Panel = {
-      title: "Random access, NVMe, cold",
+      title: "Random access, NVMe, hot",
       unit: "ms",
       kind: "speed",
       better: "lower",
@@ -115,7 +115,7 @@ describe("BenchmarkCard", () => {
   });
 
   // Note 34: the bars and the big figure read the same numbers, so NVMe's
-  // bars give the 32× above them. Note 63: time panels show geomean ms, each
+  // bars give the 97× above them. Note 63: time panels show geomean ms, each
   // value carries a short unit, and below 2× the figure is a percentage.
   it("ends each bar in its value and unit, keeps the full unit for screen readers and hover, and the bars agree with the figure", () => {
     assert.ok(PANELS);
@@ -133,7 +133,7 @@ describe("BenchmarkCard", () => {
         ["1.58×", "1.00×", "0.53×"],
         ["42.25 ms", "65.62 ms", "578.63 ms"],
         ["17.00 ms", "65.88 ms", "N/A"],
-        ["2.22 ms", "3.53 ms", "3.72 ms", "70.36 ms"],
+        ["0.73 ms", "2.15 ms", "3.78 ms", "70.61 ms"],
         ["1×", "1.07×", "1.99×", "5.59×"]
       ].flat()
     );
@@ -150,11 +150,11 @@ describe("BenchmarkCard", () => {
         ["1.58× Parquet", "1.00× Parquet", "0.53× Parquet"],
         ["42.25 ms", "65.62 ms", "578.63 ms"],
         ["17.00 ms", "65.88 ms", "not available, no cuDF integration"],
-        ["2.22 ms", "3.53 ms", "3.72 ms", "70.36 ms"],
+        ["0.73 ms", "2.15 ms", "3.78 ms", "70.61 ms"],
         ["1×", "1.07×", "1.99×", "5.59×"]
       ].flat()
     );
-    assert.match(html, /<div class="vx-bar is-arrow" title="Arrow: 3\.72 ms">/);
+    assert.match(html, /<div class="vx-bar is-arrow" title="Arrow: 3\.78 ms">/);
     const big = [
       ...html.matchAll(
         /class="vx-bench-big"><span class="vx-stat">([^<]*)<\/span> <span class="vx-caption vx-bench-note">([^<]*)</g
@@ -165,7 +165,7 @@ describe("BenchmarkCard", () => {
       "58% faster than Parquet",
       "55% faster than Parquet",
       "3.9× faster than Parquet",
-      "32× faster than Parquet",
+      "97× faster than Parquet",
       "7% larger than Parquet"
     ]);
     // Each panel's value column fits its longest value, so its bars share a scale.
