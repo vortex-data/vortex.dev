@@ -1,7 +1,7 @@
 /* Vortex design system components (sections: base, brand, site, docs, blog, focus), copied by tools/site-styles.mjs.
    Edit the system, then run tools/site-styles.mjs; do not edit here.
    Made by: node tools/site-styles.mjs <site> --sections base,brand,site,docs,blog,focus --faces --vx-face --base
-   sha256 1aafa77dcc0315a1cf236f4e33cacc21e4a19c979d13ddb9fa32eb82ec187646 */
+   sha256 7ad714b9f6b4fbfe09110283f3da77411852f5c4ed0e2c8d4273bb1f9f8136ce */
 
 /* ------------------------------------------------------------------ base */
 /* Every component sizes with border-box, so it draws the same under a site's reset or none. */
@@ -698,11 +698,14 @@
 .vx-blog-title { margin: 0; color: var(--ink); }
 .vx-blog-feeds { display: flex; gap: var(--space-16); }
 /* With has-mark, a still of the ASCII mark sits in the heading's top right corner, above the feeds:
-   plain mono text, dim in edge, fading in from the left. It is static, so it adds no motion.
-   Phones leave it out. */
+   mono characters, dim in edge, fading in from the left. The frame is the data-frame attribute,
+   drawn by ::before, so it is decoration and not text that a contrast check reads. It is static,
+   so it adds no motion. Phones leave it out. */
 .vx-blog-head.has-mark { position: relative; min-height: 200px; align-items: flex-end; }
 .vx-blog-head.has-mark > :not(.vx-blog-mark) { position: relative; z-index: 1; }
+.vx-blog-mark::before { content: attr(data-frame); }
 .vx-blog-mark {
+  display: block;
   position: absolute;
   right: 0;
   top: 0;

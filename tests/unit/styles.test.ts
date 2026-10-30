@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 
 const read = (path: string) =>
@@ -70,6 +70,29 @@ describe("the design system's copies are unedited", () => {
       );
     });
   }
+
+  it("lists every vendored module in SHA256SUMS", () => {
+    // The site's own files there: the README, the sums, and the type
+    // declarations the site writes for modules the system ships without one.
+    const own = new Set([
+      "README.md",
+      "SHA256SUMS",
+      "ascii-core.d.ts",
+      "ascii-mark.d.ts",
+      "three.d.ts"
+    ]);
+    const listed = new Set(
+      read("src/vendor/vortex-design/SHA256SUMS")
+        .trim()
+        .split("\n")
+        .map((line) => line.split(/\s+/)[1])
+    );
+    const dir = new URL("../../src/vendor/vortex-design/", import.meta.url);
+    for (const file of readdirSync(dir)) {
+      if (own.has(file)) continue;
+      assert.ok(listed.has(file), `${file} is vendored but not in SHA256SUMS`);
+    }
+  });
 
   it("each vendored module matches vendor/vortex-design/SHA256SUMS", () => {
     const sums = read("src/vendor/vortex-design/SHA256SUMS").trim().split("\n");

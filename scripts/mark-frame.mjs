@@ -14,14 +14,36 @@ await page.addInitScript(() => {
   window.__chars = [];
   const fill = CanvasRenderingContext2D.prototype.fillText;
   CanvasRenderingContext2D.prototype.fillText = function (text, x, y, ...rest) {
-    window.__chars.push([text, x, y]);
+    window.__chars.push([text, x, y, this.fillStyle]);
     return fill.call(this, text, x, y, ...rest);
   };
 });
 await page.goto(url, { waitUntil: "networkidle" });
-await page.waitForFunction(() => document.querySelector("[data-mark-mode]"));
+// The still frame is the reduced-motion mark. Without WebGL the mark falls back
+// to its static symbol (or errors), and there is no frame to capture.
+const mode = await page
+  .waitForFunction(
+    () => document.querySelector("[data-mark-mode]")?.dataset.markMode
+  )
+  .then((handle) => handle.jsonValue());
+if (mode !== "reduced") {
+  await browser.close();
+  throw new Error(
+    `the mark drew in "${mode}" mode, not "reduced": no frame to capture`
+  );
+}
 const frame = await page.evaluate(() => {
-  const chars = window.__chars;
+  // The dot field behind the mark is drawn in its own colour, and every
+  // character in it is a ".". The mark's dimmest pixels are dots too, in an ink
+  // colour that also draws other characters, so only the field's colour goes.
+  const byColor = new Map();
+  for (const [text, , , color] of window.__chars) {
+    byColor.set(color, (byColor.get(color) ?? new Set()).add(text));
+  }
+  const field = [...byColor]
+    .filter(([, texts]) => texts.size === 1 && texts.has("."))
+    .map(([color]) => color);
+  const chars = window.__chars.filter((c) => !field.includes(c[3]));
   const step = (values) => {
     const sorted = [...new Set(values)].sort((a, b) => a - b);
     return Math.min(
@@ -48,11 +70,9 @@ const frame = await page.evaluate(() => {
   const keys = [...grid.keys()].map((k) => k.split(",").map(Number));
   const rows = Math.max(...keys.map(([r]) => r)) + 1;
   const cols = Math.max(...keys.map(([, c]) => c)) + 1;
-  // The mark's own characters only: the dots of the field behind it go.
   const lines = Array.from({ length: rows }, (_, r) =>
     Array.from({ length: cols }, (_, c) => grid.get(`${r},${c}`) ?? " ")
       .join("")
-      .replaceAll(".", " ")
       .trimEnd()
   );
   while (lines.length && !lines[0]) lines.shift();

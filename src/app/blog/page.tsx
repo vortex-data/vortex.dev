@@ -42,9 +42,12 @@ export default function BlogPage() {
   return (
     <div className="blog-page">
       <div className="vx-blog-head has-mark">
-        <pre className="vx-blog-mark" aria-hidden="true">
-          {MARK_FRAME}
-        </pre>
+        {/* The frame is the ::before's content, so it is decoration, not text. */}
+        <span
+          className="vx-blog-mark"
+          aria-hidden="true"
+          data-frame={MARK_FRAME}
+        />
         <h1 className="vx-h2 vx-blog-title">Blog</h1>
         <nav className="vx-label vx-blog-feeds" aria-label="Feeds">
           {FEEDS.map((f) => (
