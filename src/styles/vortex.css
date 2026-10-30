@@ -760,9 +760,8 @@
   opacity: 0;
   transition: opacity 150ms ease-out, color 150ms ease-out;
 }
-.vx-prose .vx-heading-link:hover .vx-anchor,
+.vx-prose > :is(h2, h3, h4, h5, h6):hover .vx-anchor,
 .vx-prose .vx-heading-link:focus-visible .vx-anchor,
-.vx-prose > :is(h2, h3, h4, h5, h6):hover > a.vx-anchor,
 .vx-prose a.vx-anchor:focus-visible {
   opacity: 1;
   color: var(--accent-ink);

@@ -2,6 +2,7 @@ import rehypePrettyCode from "rehype-pretty-code";
 import { defineCollection, defineConfig, s } from "velite";
 import {
   rehypeAsides,
+  rehypeHeadingIds,
   rehypeHeadingLevels,
   rehypeRefs,
   rehypeTables
@@ -37,6 +38,7 @@ const blog = defineCollection({
             }
           ],
           rehypeHeadingLevels,
+          rehypeHeadingIds,
           rehypeAsides,
           rehypeTables,
           rehypeRefs

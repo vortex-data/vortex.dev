@@ -1227,3 +1227,47 @@ test.describe("post ending", () => {
     expect(style).toEqual(["0px", "0px"]);
   });
 });
+
+// Note 75: every heading in a post can be linked to.
+test.describe("heading anchors", () => {
+  test("each heading has an id and links to itself, and its # shows on hover", async ({
+    page
+  }) => {
+    await page.goto("/blog/btrblocks-compressor");
+    const heading = page.getByRole("heading", {
+      level: 2,
+      name: "How Parquet does it"
+    });
+    await expect(heading).toHaveAttribute("id", "how-parquet-does-it");
+    const link = heading.locator("a.vx-heading-link");
+    await expect(link).toHaveAttribute("href", "#how-parquet-does-it");
+    const mark = link.locator(".vx-anchor");
+    const opacity = () => mark.evaluate((e) => getComputedStyle(e).opacity);
+    expect(await opacity()).toBe("0");
+    await heading.hover();
+    await expect.poll(opacity).toBe("1");
+    const ids = await page
+      .locator(".vx-prose :is(h2, h3, h4)")
+      .evaluateAll((hs) => hs.map((h) => h.id));
+    expect(ids.every(Boolean)).toBe(true);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  test("the # shows on keyboard focus, and a fragment lands on its heading", async ({
+    page,
+    browserName
+  }) => {
+    test.skip(browserName !== "chromium", "Tab order is Chromium's");
+    await page.goto("/blog/btrblocks-compressor#sampling");
+    const heading = page.locator("#sampling");
+    await expect(heading).toBeInViewport();
+    await heading.locator("a").focus();
+    await expect
+      .poll(() =>
+        heading
+          .locator(".vx-anchor")
+          .evaluate((e) => getComputedStyle(e).opacity)
+      )
+      .toBe("1");
+  });
+});

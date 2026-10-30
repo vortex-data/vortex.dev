@@ -193,3 +193,73 @@ export function rehypeRefs() {
       if (REF.test(textOf(a).trim())) addClass(a, "vx-ref");
   };
 }
+
+/**
+ * A heading's text as a URL fragment: lower case, accents dropped, and
+ * every run of other characters one hyphen. Empty text gives "section".
+ */
+export function slugify(text: string): string {
+  const slug = text
+    .normalize("NFKD")
+    .replace(/\p{M}/gu, "")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, "-")
+    .replace(/^-+|-+$/g, "");
+  return slug || "section";
+}
+
+function hasLink(node: HastNode): boolean {
+  if (node.type === "element" && node.tagName === "a") return true;
+  return (node.type === "element" ? node.children : []).some(hasLink);
+}
+
+/**
+ * Gives each of a post's headings an id from its text, unique in the post,
+ * and links the heading to itself, as the Article card asks. The "#" sits
+ * in the margin and shows on hover and focus. A heading that holds a link of
+ * its own gets the "#" as a separate link, because links cannot nest. Runs
+ * after rehypeHeadingLevels.
+ */
+export function rehypeHeadingIds() {
+  return (tree: HastRoot) => {
+    const used = new Map<string, number>();
+    visit(tree, (el) => {
+      if (!/^h[2-6]$/.test(el.tagName)) return;
+      const base = slugify(textOf(el));
+      const n = (used.get(base) ?? 0) + 1;
+      used.set(base, n);
+      const id = n === 1 ? base : `${base}-${n}`;
+      el.properties.id = id;
+      const href = `#${id}`;
+      if (el.children.some(hasLink)) {
+        el.children.unshift({
+          type: "element",
+          tagName: "a",
+          properties: {
+            href,
+            className: ["vx-anchor"],
+            ariaLabel: "Link to this section"
+          },
+          children: [{ type: "text", value: "#" }]
+        });
+        return;
+      }
+      el.children = [
+        {
+          type: "element",
+          tagName: "a",
+          properties: { href, className: ["vx-heading-link"] },
+          children: [
+            {
+              type: "element",
+              tagName: "span",
+              properties: { className: ["vx-anchor"], ariaHidden: "true" },
+              children: [{ type: "text", value: "#" }]
+            },
+            ...el.children
+          ]
+        }
+      ];
+    });
+  };
+}

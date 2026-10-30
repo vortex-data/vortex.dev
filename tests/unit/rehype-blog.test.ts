@@ -5,9 +5,11 @@ import {
   type HastNode,
   type HastRoot,
   rehypeAsides,
+  rehypeHeadingIds,
   rehypeHeadingLevels,
   rehypeRefs,
-  rehypeTables
+  rehypeTables,
+  slugify
 } from "@/lib/rehype-blog";
 
 const text = (value: string): HastNode => ({ type: "text", value });
@@ -197,5 +199,53 @@ describe("rehypeRefs", () => {
     run(rehypeRefs, root(el("p", [words, mixed])));
     assert.equal(words.properties.className, undefined);
     assert.equal(mixed.properties.className, undefined);
+  });
+});
+
+describe("slugify", () => {
+  it("turns a heading's text into a fragment", () => {
+    assert.equal(slugify("How Parquet does it"), "how-parquet-does-it");
+    assert.equal(slugify("ALP & ALP-RD: floats!"), "alp-alp-rd-floats");
+    assert.equal(slugify("Marqués"), "marques");
+    assert.equal(slugify("September Bulletin #2"), "september-bulletin-2");
+    assert.equal(slugify("  "), "section");
+  });
+});
+
+describe("rehypeHeadingIds", () => {
+  it("gives each heading an id and links it to itself, with a # in the margin", () => {
+    const h = el("h2", [text("How Parquet does it")]);
+    run(rehypeHeadingIds, root(h, el("p", [text("x")])));
+    assert.equal(h.properties.id, "how-parquet-does-it");
+    const [link] = h.children as HastElement[];
+    assert.equal(link?.tagName, "a");
+    assert.equal(link?.properties.href, "#how-parquet-does-it");
+    assert.deepEqual(link?.properties.className, ["vx-heading-link"]);
+    const [mark, label] = link?.children ?? [];
+    assert.deepEqual((mark as HastElement).properties, {
+      className: ["vx-anchor"],
+      ariaHidden: "true"
+    });
+    assert.deepEqual(label, text("How Parquet does it"));
+  });
+
+  it("keeps ids unique within a post", () => {
+    const a = el("h3", [text("Integers")]);
+    const b = el("h3", [text("Integers")]);
+    run(rehypeHeadingIds, root(a, b));
+    assert.equal(a.properties.id, "integers");
+    assert.equal(b.properties.id, "integers-2");
+  });
+
+  it("gives a heading that holds a link a separate # link, since links cannot nest", () => {
+    const inner = el("a", [text("DuckDB")], { href: "https://duckdb.org" });
+    const h = el("h3", [text("About "), inner]);
+    run(rehypeHeadingIds, root(h));
+    const [mark, ...rest] = h.children as HastElement[];
+    assert.equal(mark?.tagName, "a");
+    assert.equal(mark?.properties.href, "#about-duckdb");
+    assert.equal(mark?.properties.ariaLabel, "Link to this section");
+    assert.deepEqual(mark?.properties.className, ["vx-anchor"]);
+    assert.equal(rest[1], inner);
   });
 });
