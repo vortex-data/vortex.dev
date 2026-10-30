@@ -10,7 +10,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { GroupBody, type GroupBodyProps } from '@/components/GroupBody';
 import { GroupSection } from '@/components/GroupSection';
-import { OPEN_GROUPS_BOOTSTRAP, OpenGroupsScript } from '@/components/OpenGroupsScript';
+import {
+  OPEN_GROUPS_BOOTSTRAP,
+  OPEN_GROUPS_FINISH,
+  OpenGroupsScript,
+} from '@/components/OpenGroupsScript';
 import {
   abortGroupBundle,
   bundleQueue,
@@ -150,23 +154,27 @@ describe('GroupBody', () => {
     const group: Group = { name: 'G', slug: 'g', charts: PROPS.charts };
     const page = (
       <main>
-        <GroupSection
-          group={group}
-          anchor="g-anchor"
-          startIndex={PROPS.startIndex}
-          universe={PROPS.universe}
-        />
-        <OpenGroupsScript />
+        <OpenGroupsScript>
+          <GroupSection
+            group={group}
+            anchor="g-anchor"
+            startIndex={PROPS.startIndex}
+            universe={PROPS.universe}
+          />
+        </OpenGroupsScript>
       </main>
     );
     container.innerHTML = renderToString(page);
     window.history.replaceState(null, '', '/#g-anchor');
     // Markup set through innerHTML never runs its scripts, so run the
-    // bootstrap here, as the parser would have before hydration.
-    const script = document.createElement('script');
-    script.textContent = OPEN_GROUPS_BOOTSTRAP;
-    document.body.appendChild(script);
-    script.remove();
+    // bootstrap and its finish step here, as the parser would have before
+    // hydration.
+    for (const code of [OPEN_GROUPS_BOOTSTRAP, OPEN_GROUPS_FINISH]) {
+      const script = document.createElement('script');
+      script.textContent = code;
+      document.body.appendChild(script);
+      script.remove();
+    }
     // No `LandingState` here to take the script's marker; drop it.
     takeOpenGroupsBootstrap(document);
     const details = container.querySelector<HTMLDetailsElement>('details.group-disclosure');

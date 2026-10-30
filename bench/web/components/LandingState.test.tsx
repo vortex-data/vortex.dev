@@ -8,7 +8,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 
 import { LandingState } from '@/components/LandingState';
-import { OPEN_GROUPS_BOOTSTRAP } from '@/components/OpenGroupsScript';
+import { OPEN_GROUPS_BOOTSTRAP, OPEN_GROUPS_FINISH } from '@/components/OpenGroupsScript';
 import { noteGroupBodyOpen, resetGroupBodies } from '@/lib/group-bodies';
 import {
   OPEN_FRAGMENT_SYNC_DELAY_MS,
@@ -98,13 +98,16 @@ function openStates(): boolean[] {
   return GROUPS.map(({ anchor }) => disclosure(anchor).open);
 }
 
-/** Run the pre-paint script against the page, as the parser does before
- * hydration. Markup set through `innerHTML` never runs its scripts. */
+/** Run the pre-paint script and its finish step against the page, as the
+ * parser does before hydration. Markup set through `innerHTML` never runs its
+ * scripts. */
 function runBootstrap(): void {
-  const script = document.createElement('script');
-  script.textContent = OPEN_GROUPS_BOOTSTRAP;
-  document.body.appendChild(script);
-  script.remove();
+  for (const code of [OPEN_GROUPS_BOOTSTRAP, OPEN_GROUPS_FINISH]) {
+    const script = document.createElement('script');
+    script.textContent = code;
+    document.body.appendChild(script);
+    script.remove();
+  }
 }
 
 /** The two ways the page is left: `pagehide`, or the tab going hidden (a

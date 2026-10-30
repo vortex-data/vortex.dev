@@ -24,11 +24,10 @@ const NO_INITIAL_SHOWN_SERIES: string[] = [];
  * by default, whose only content is the `<summary>` row; then the group's
  * [`SummaryCard`]; then its [`GroupBody`]. The summary card sits outside the
  * `<details>`, so a collapsed group still shows its rankings table, and it is
- * server-rendered, so it shows before hydration. Opening the group mounts the
- * body's toolbar and charts below the card. (With JavaScript off, the page
- * shows no group at all: the groups stream inside the landing page's Suspense
- * boundary, whose hidden segment only React's inline script reveals; see
- * `app/page.tsx`.)
+ * server-rendered, so it shows before hydration and with JavaScript off.
+ * Opening the group mounts the body's toolbar and charts below the card.
+ * Without JavaScript opening it would show nothing more, so under the root's
+ * `no-js` class the summary row reads as a plain heading (globals.css).
  *
  * [`GroupBody`] is a client component. It server-renders as an empty
  * `<div class="group-body">` and mounts the group toolbar (group Y override,
@@ -58,7 +57,7 @@ const NO_INITIAL_SHOWN_SERIES: string[] = [];
  * The section carries `id={anchor}` — the human-readable anchor the page
  * derives from the group name via `lib/anchor.ts` (`#tpc-h-nvme-sf-1`, not the
  * opaque API slug) — so each group has a stable, legible URL fragment: the
- * summary row's [`GroupPermalink`] button copies `/#<anchor>`, which names a
+ * summary row's [`GroupPermalink`] link points at `/#<anchor>`, which names a
  * real element on the page. The page's fragment lists every open group's
  * anchor (`lib/open-groups.ts`); the pre-paint script ([`OpenGroupsScript`])
  * opens those groups before the first paint, and [`LandingState`] keeps the

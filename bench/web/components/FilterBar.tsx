@@ -33,6 +33,9 @@ import { FilterIcon } from '@/components/icons';
  * and in every chart island) and syncs the URL `?engine=`/`?format=` allowlists
  * with `history.replaceState`, so a refresh or share preserves the view; the
  * params are omitted only when the active set matches the defaults.
+ *
+ * Without JavaScript the dropdown cannot open, so it carries
+ * `data-requires-js` and is hidden (globals.css).
  */
 export function FilterBar({
   universe,
@@ -114,6 +117,7 @@ export function FilterBar({
     <div
       className={`filter-dropdown${open ? ' filter-dropdown--open' : ''}`}
       data-role="global-filter-bar"
+      data-requires-js
       ref={barRef}
     >
       <button

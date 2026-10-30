@@ -101,14 +101,6 @@ export const externalPosts: readonly ExternalPost[] = [
       "Evaluating SQL LIKE directly on FSST-compressed strings: a symbol-aware automaton and a SIMD prefilter let Vortex match without decompressing the column first."
   },
   {
-    title: "Loading Lakes",
-    url: "https://www.polarsignals.com/blog/posts/2026/07/07/loading-lakes",
-    date: "2026-07-07T00:00:00.000Z",
-    source: "polarsignals.com",
-    authors: ["Thor Hansen"],
-    summary: "Optimizing loading Great Lake tables with DataFusion"
-  },
-  {
     title: "My Journey Optimizing a CUDA Kernel with Polar Signals",
     url: "https://www.polarsignals.com/blog/posts/2026/06/24/optimizing-fsst-cuda",
     date: "2026-06-24T00:00:00.000Z",

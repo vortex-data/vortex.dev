@@ -10,7 +10,10 @@ function boot(
   prefersDark: boolean,
   blocked = false
 ) {
-  const root = { dataset: {} as Record<string, string> };
+  const root = {
+    className: "no-js __variable_a __variable_b",
+    dataset: {} as Record<string, string>
+  };
   runInNewContext(THEME_BOOTSTRAP, {
     document: { documentElement: root },
     location: { pathname },
@@ -22,7 +25,7 @@ function boot(
     },
     matchMedia: () => ({ matches: prefersDark })
   });
-  return root.dataset;
+  return Object.assign(root.dataset, { className: root.className });
 }
 
 const CASES: [string, string | null, boolean, "light" | "dark"][] = [
@@ -72,6 +75,16 @@ describe("THEME_BOOTSTRAP", () => {
   it("records the choice, which the switch shows pressed before hydration", () => {
     assert.equal(boot("/blog", "system", true).themeChoice, "system");
     assert.equal(boot("/blog", null, true).themeChoice, "dark");
+  });
+
+  it("first swaps the root's no-js class for js, keeping its other classes", () => {
+    assert.equal(
+      boot("/", null, false).className,
+      "js __variable_a __variable_b"
+    );
+    assert.ok(
+      THEME_BOOTSTRAP.startsWith("document.documentElement.className=")
+    );
   });
 
   it("is a constant that builds no code from values", () => {

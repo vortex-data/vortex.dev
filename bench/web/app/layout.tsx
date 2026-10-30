@@ -31,17 +31,24 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-// The pre-paint theme bootstrap, ported verbatim from
-// `render.rs::theme_bootstrap_script`: apply any stored theme choice before
-// first paint so a dark-mode visitor never flashes the light theme. Inline (not
-// a module) and in `<head>` so it runs before the body renders. The stored
-// theme lands as a `data-theme` attribute the server never rendered, so the
-// root `<html>` carries `suppressHydrationWarning` (attribute-level, one
-// element deep) to keep dev hydration checks quiet for themed visitors. The
-// script's bare catch is deliberate and v3-byte-identical: localStorage
+// The pre-paint bootstrap. Its first statement swaps the root's server-rendered
+// `no-js` class for `js`, so `.no-js [data-requires-js]` (globals.css) hides
+// the controls that do nothing without JavaScript only when no script runs.
+// The rest is ported verbatim from `render.rs::theme_bootstrap_script`: apply
+// any stored theme choice before first paint so a dark-mode visitor never
+// flashes the light theme. Inline (not a module) and in `<head>` so it runs
+// before the body renders, and a constant that builds no code from a value.
+// The class and the stored theme (a `data-theme` attribute) differ from what
+// the server rendered, so the root `<html>` carries `suppressHydrationWarning`
+// (attribute-level, one element deep) to keep dev hydration checks quiet. The
+// theme part's bare catch is deliberate and v3-byte-identical: localStorage
 // access throws in some private-browsing modes, and the correct fallback is
 // silently keeping the default prefers-color-scheme theme.
-const THEME_BOOTSTRAP = `(function(){try{var t=localStorage.getItem("bench-theme");if(t==="light"||t==="dark"){document.documentElement.dataset.theme=t;}}catch(e){}})();`;
+const THEME_BOOTSTRAP =
+  '(function(){' +
+  'document.documentElement.className=document.documentElement.className.replace("no-js","js");' +
+  'try{var t=localStorage.getItem("bench-theme");if(t==="light"||t==="dark"){document.documentElement.dataset.theme=t;}}catch(e){}' +
+  '})();';
 
 // This is a hack to load the web fonts without blocking page paint. The URL is
 // written out here rather than interpolated from FONTS_CSS, so the inline
@@ -58,7 +65,7 @@ const FONT_BOOTSTRAP =
  */
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className="no-js" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
         <link rel="preconnect" href="https://fonts.googleapis.com" />

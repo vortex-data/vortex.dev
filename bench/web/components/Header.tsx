@@ -4,7 +4,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 import { FilterBar } from '@/components/FilterBar';
 import type { FilterUniverse } from '@/lib/chart-format';
@@ -43,6 +43,12 @@ import { setAllGroupsOpen } from '@/lib/open-groups';
  * script in the root layout). The server renders the v3 default label "Light";
  * the mount effect immediately corrects the label to name the NEXT theme, the
  * exact v3 `updateThemeButtons` sequencing.
+ *
+ * Without JavaScript none of the buttons can work, so each carries
+ * `data-requires-js`, which hides it under the root's `no-js` class
+ * (globals.css), as does the filter dropdown ([`FilterBar`]). The mobile nav
+ * then shows in the header row instead of behind the hamburger, holding the
+ * GitHub link.
  */
 export function Header({
   universe,
@@ -62,6 +68,14 @@ export function Header({
   // theme before hydration) and on every toggle.
   useEffect(() => {
     setNextTheme(effectiveTheme() === 'light' ? 'dark' : 'light');
+  }, []);
+
+  // The pre-paint script has swapped `no-js` for `js` already. If React ever
+  // renders the root `<html>` afresh (a root-level hydration failure does), it
+  // puts the server's `no-js` back, which would hide every control that needs
+  // JavaScript; swap it again, before the browser paints.
+  useLayoutEffect(() => {
+    document.documentElement.classList.replace('no-js', 'js');
   }, []);
 
   // Close the mobile nav panel on outside click and on Escape.
@@ -111,6 +125,7 @@ export function Header({
             className="control-btn nav-mobile-toggle"
             type="button"
             data-role="nav-mobile-toggle"
+            data-requires-js
             aria-haspopup="true"
             aria-expanded={navOpen}
             aria-controls="bench-nav-controls"
@@ -154,6 +169,7 @@ export function Header({
               className="control-btn"
               type="button"
               data-action="expand-all"
+              data-requires-js
               onClick={() => setAllGroupsOpen(window, true)}
             >
               <ExpandAllIcon />
@@ -163,6 +179,7 @@ export function Header({
               className="control-btn"
               type="button"
               data-action="collapse-all"
+              data-requires-js
               onClick={() => setAllGroupsOpen(window, false)}
             >
               <CollapseAllIcon />
@@ -203,6 +220,7 @@ export function Header({
             className="control-btn theme-toggle"
             type="button"
             data-role="theme-toggle"
+            data-requires-js
             data-next-theme={nextTheme}
             aria-label={`Switch to ${nextTheme} mode`}
             onClick={onThemeToggle}

@@ -52,11 +52,22 @@ export function isThemeable(pathname: string | null): boolean {
 }
 
 /**
- * The design system's first-paint script for this site's paths. It sets
- * `<html data-theme>` (Dark outside the blog) and `data-theme-choice`, from
- * which the system's CSS shows the switch's choice pressed before hydration.
+ * The first statement of the first-paint script: it swaps the root's
+ * server-rendered `no-js` class for `js`, so `.no-js [data-requires-js]`
+ * (globals.css) hides the controls that do nothing without JavaScript only
+ * when no script runs. A constant, as the rest of the script is.
  */
-export const THEME_BOOTSTRAP = themeBootstrap({ themeable: THEMEABLE });
+const NO_JS_SWAP =
+  'document.documentElement.className=document.documentElement.className.replace("no-js","js");';
+
+/**
+ * The first-paint script for this site's paths: the `no-js` swap, then the
+ * design system's script, which sets `<html data-theme>` (Dark outside the
+ * blog) and `data-theme-choice`, from which the system's CSS shows the
+ * switch's choice pressed before hydration.
+ */
+export const THEME_BOOTSTRAP =
+  NO_JS_SWAP + themeBootstrap({ themeable: THEMEABLE });
 
 /**
  * `win.localStorage`, or null where reading the property itself throws

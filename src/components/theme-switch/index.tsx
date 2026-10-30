@@ -35,7 +35,9 @@ function storage(): Storage | null {
  * choice, so it renders every button unpressed. Until the first effect
  * reads the choice, the system's CSS shows the one `THEME_BOOTSTRAP` wrote
  * to `data-theme-choice` pressed, and `RouteTheme` follows the OS for
- * System. The group is a fieldset, as the card has it.
+ * System. The group is a fieldset, as the card has it. Without JavaScript it
+ * cannot switch, and the page stays Dark, so it carries `data-requires-js`
+ * and hides.
  */
 export function ThemeSwitch() {
   const pathname = usePathname();
@@ -44,7 +46,7 @@ export function ThemeSwitch() {
 
   if (!isThemeable(pathname)) return null;
   return (
-    <fieldset className="vx-theme-switch" aria-label="Theme">
+    <fieldset className="vx-theme-switch" aria-label="Theme" data-requires-js>
       {BUTTONS.map(({ choice: c, label, Icon }) => (
         <button
           key={c}

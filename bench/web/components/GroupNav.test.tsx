@@ -28,6 +28,13 @@ describe('GroupNav markup', () => {
     expect(html).toContain('>PolarSignals Profiling</button>');
   });
 
+  it('marks the whole menu as needing JavaScript, since neither its toggle nor its entries work without it', () => {
+    const html = renderToStaticMarkup(<GroupNav groups={GROUPS} />);
+    expect(html).toMatch(
+      /^<nav class="group-nav" aria-label="Jump to group" data-requires-js="true">/,
+    );
+  });
+
   it('renders nothing when there are no groups', () => {
     expect(renderToStaticMarkup(<GroupNav groups={[]} />)).toBe('');
   });

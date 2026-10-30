@@ -25,6 +25,81 @@
   flex-direction: column;
 }
 
+/* -------------------------------------------------------- no JavaScript
+   The server renders `<html class="no-js">` and the first-paint script swaps
+   it for `js` (src/lib/theme.ts), so these rules hold only when no script
+   runs. A control that does nothing without JavaScript carries
+   `data-requires-js` and hides rather than sitting dead; `!important` beats
+   the display rules those controls carry. */
+.no-js [data-requires-js] {
+  display: none !important;
+}
+
+/* InstallTabs: with the tabs hidden, every panel shows, stacked, under its
+   tab's name. */
+.no-js .vx-tabs-panels {
+  gap: var(--space-12);
+}
+.no-js .vx-tabs-panels > .vx-tabs-pre {
+  grid-area: auto;
+}
+.no-js .vx-tabs-pre.is-idle {
+  visibility: visible;
+}
+/* The name in the tabs' type (.vx-label-sm). */
+.no-js .vx-tabs-pre::before {
+  content: attr(data-label);
+  display: block;
+  margin-bottom: var(--space-4);
+  font: 500 11px/1.3 var(--font-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+/* LogoBanner: no script can pause the loop, so the logos sit still in
+   wrapped rows, as the design system lays them out under reduced motion. */
+.no-js .vx-logos-strip {
+  mask-image: none;
+}
+.no-js .vx-logos-track {
+  animation: none;
+  width: auto;
+}
+.no-js .vx-logos-set {
+  flex-wrap: wrap;
+  height: auto;
+  row-gap: var(--space-24);
+  padding-right: 0;
+}
+.no-js .vx-logos-set[aria-hidden="true"] {
+  display: none;
+}
+.no-js .vx-logos {
+  grid-template-areas: "label strip strip";
+}
+@media (max-width: 640px) {
+  .no-js .vx-logos {
+    grid-template-areas: "label label" "strip strip";
+  }
+}
+
+/* AsciiMark: the static symbol the server renders, for readers without
+   scripts. With scripts the host stays empty while the page loads, as the
+   design system draws it, and shows the symbol only once the mark reports
+   that it cannot draw (no WebGL, or an error). In Light it is inverted, as
+   the design system's own fallback is. */
+.js .ascii-mark-still {
+  visibility: hidden;
+}
+.js [data-mark-mode="static"] > .ascii-mark-still,
+.js [data-mark-mode="error"] > .ascii-mark-still {
+  visibility: visible;
+}
+:root[data-theme="light"] .ascii-mark-still {
+  filter: invert(1);
+}
+
 /* ------------------------------------------------------------------ blog
    The blog's page frame, and the parts the design system has no card for. */
 

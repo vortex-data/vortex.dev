@@ -97,6 +97,11 @@ describe.skipIf(!databaseAvailable || !BUILD_PRESENT)(
     });
 
     it('serves the landing page with header chrome and collapsed groups, and no chart islands', async () => {
+      // The first request may miss the Data Cache, read slowly and stream the
+      // loading view first (app/page.tsx); either way it fills the cache, so
+      // the second takes the plain-HTML path asserted below.
+      const first = await (await fetch(`${BASE}/`)).text();
+      expect(first).toContain('class="group-details"');
       const html = await (await fetch(`${BASE}/`)).text();
       // Header chrome (PR-4.4.b islands, server-rendered).
       expect(html).toContain('data-role="nav-mobile-toggle"');
@@ -114,13 +119,24 @@ describe.skipIf(!databaseAvailable || !BUILD_PRESENT)(
       expect(html).toContain('faster than Parquet'); // the fixture's compression group
       expect(html).not.toContain('class="chart-card"');
       expect(html).not.toContain('data-role="group-toolbar"');
-      // The open-groups bootstrap follows the last group's markup, so it runs
-      // before the groups paint.
-      const script = html.indexOf('data-role="open-groups-bootstrap"');
-      expect(html.lastIndexOf('class="group-details"')).toBeGreaterThan(0);
-      expect(script).toBeGreaterThan(html.lastIndexOf('class="group-details"'));
-      // The pre-paint theme bootstrap is inlined in <head>.
+      // The groups are visible HTML: no Suspense boundary streams them into a
+      // hidden segment that only React's inline script reveals, so a reader
+      // without JavaScript sees them.
+      expect(html).not.toContain('Loading benchmark summaries');
+      expect(html).not.toMatch(/<div hidden="?"? id="S:/);
+      expect(html).not.toContain('$RC(');
+      // The open-groups bootstrap precedes the first group and its finish
+      // step follows the last, so each listed group opens before it paints.
+      const bootstrap = html.indexOf('data-role="open-groups-bootstrap"');
+      const finish = html.indexOf('data-role="open-groups-finish"');
+      expect(bootstrap).toBeGreaterThan(0);
+      expect(bootstrap).toBeLessThan(html.indexOf('class="group-details"'));
+      expect(finish).toBeGreaterThan(html.lastIndexOf('class="group-details"'));
+      // The pre-paint theme bootstrap is inlined in <head>, and swaps the
+      // root's `no-js` class, which hides the controls that need JavaScript.
       expect(html).toContain('localStorage.getItem("bench-theme")');
+      expect(html).toContain('<html lang="en" class="no-js"');
+      expect(html).toContain('data-role="theme-toggle" data-requires-js="true"');
     });
 
     it('serves the chart permalink page with the v3 title and meta line', async () => {

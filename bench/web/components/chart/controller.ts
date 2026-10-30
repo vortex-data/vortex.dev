@@ -16,6 +16,7 @@ import {
   HOVER_PREFETCH_PRIORITY,
   IDENTITY_UNIT,
   INTERACTION_FULL_PRIORITY,
+  latestValuesSentence,
   MAX_VISIBLE_POINTS,
   normalizeChartPayload,
   PAN_THROTTLE_MS,
@@ -585,6 +586,7 @@ export class ChartController {
           range,
           legendPosition,
           onZoom: throttledRebuild,
+          onLegendToggle: () => this.syncLatestValues(),
         }),
       ) as ChartJs;
 
@@ -965,6 +967,26 @@ export class ChartController {
       ds.hidden = !seriesPassesGroupFilter(group, ds.label ?? '', globalVisible);
     }
     chart.update('none');
+    this.syncLatestValues();
+  }
+
+  /**
+   * Restate the canvas label's sentence about the latest commit with data
+   * (`latestValuesSentence`) from the visible series, in the locked display
+   * unit. It
+   * runs wherever the series' visibility or the payload changes: after
+   * construction and a payload swap (both through [`applyFilters`]), on a
+   * filter change, and on a legend click.
+   */
+  private syncLatestValues(): void {
+    const { chart, payload, displayUnit } = this.state;
+    if (!chart || !payload) {
+      return;
+    }
+    const series = benchDatasets(chart).flatMap((ds, i) =>
+      chart.isDatasetVisible(i) ? [{ label: ds.label ?? '', values: ds.rawData ?? [] }] : [],
+    );
+    this.cb.setLatestValues(latestValuesSentence(series, payload.commits, displayUnit));
   }
 
   /** Cancel any in-flight `?n=100` / `?n=all` request WITHOUT tearing down the

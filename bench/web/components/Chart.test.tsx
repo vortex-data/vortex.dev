@@ -18,6 +18,12 @@ describe('Chart (server-rendered card markup)', () => {
     expect(html).toContain('<canvas data-chart-index="7"');
   });
 
+  it('labels the canvas as an image named for the chart', () => {
+    expect(html).toContain(
+      '<canvas data-chart-index="7" role="img" aria-label="gnomad chart"></canvas>',
+    );
+  });
+
   it('renders the title permalink and the hidden downsample badge inside it', () => {
     expect(html).toContain('href="/chart/ra.eyJhIjoxfQ"');
     expect(html).toContain('data-role="downsample-badge"');
@@ -32,6 +38,13 @@ describe('Chart (server-rendered card markup)', () => {
     expect(html).toContain('data-y="log"');
     // Linear ships highlighted, matching the v3 resting state.
     expect(html).toMatch(/toolbar-btn toolbar-btn--active[^>]*data-y="linear"/);
+  });
+
+  it('marks its controls and its canvas as needing JavaScript, but not its title link', () => {
+    expect(html).toMatch(/class="toolbar toolbar--card"[^>]*data-requires-js="true"/);
+    expect(html).toContain('<div class="chart-wrap" data-requires-js="true">');
+    expect(html).toMatch(/data-role="range-strip"[^>]*data-requires-js="true"/);
+    expect(html).not.toMatch(/<a [^>]*data-requires-js/);
   });
 
   it('renders the tooltip host and the range strip with both handles', () => {

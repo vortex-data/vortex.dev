@@ -13,6 +13,10 @@ const DONE_MS = 1500;
  * between them). The copy button writes the selected tab's commands without
  * their prompts, shows `check` for 1.5s, and selects the text instead if the
  * clipboard is refused. `sparkVersion` is from `getSparkVersion`.
+ *
+ * Without JavaScript neither the tabs nor the copy button can work, so both
+ * carry `data-requires-js` and hide, and every panel shows, stacked under its
+ * tab's name (`data-label`, globals.css), so every command stays in reach.
  */
 export function InstallTabs({ sparkVersion }: { sparkVersion: string | null }) {
   const tabs = installTabs(sparkVersion);
@@ -55,6 +59,7 @@ export function InstallTabs({ sparkVersion }: { sparkVersion: string | null }) {
         className="vx-tabs-list"
         role="tablist"
         aria-label="Install Vortex"
+        data-requires-js
         onKeyDown={onKeyDown}
       >
         {tabs.map((tab, i) => (
@@ -88,6 +93,7 @@ export function InstallTabs({ sparkVersion }: { sparkVersion: string | null }) {
               role="tabpanel"
               id={`${id}-panel-${tab.key}`}
               aria-labelledby={`${id}-tab-${tab.key}`}
+              data-label={tab.label}
             >
               {tab.lines.map((line, n) => (
                 <span key={n}>
@@ -105,6 +111,7 @@ export function InstallTabs({ sparkVersion }: { sparkVersion: string | null }) {
           type="button"
           className={done ? "vx-copy is-done" : "vx-copy"}
           aria-label="Copy to clipboard"
+          data-requires-js
           onClick={copy}
         >
           <ContentCopyIcon className="is-copy" />
