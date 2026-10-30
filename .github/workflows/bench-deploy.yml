@@ -10,10 +10,17 @@
 #
 # Triggers: a production deploy on every push to main that touches bench/ or
 # the root files bench/web builds from (package.json, bun.lock, bunfig.toml,
-# tsconfig.base.json); a preview deploy on every same-repo pull request that
-# does, with the preview URL posted back to the PR as a sticky comment; and
-# `workflow_dispatch` for manual preview or production runs. Fork PRs are
-# skipped, since they can't read VERCEL_TOKEN.
+# tsconfig.base.json), or the Vercel CLI in .github/vercel-cli; a preview deploy
+# on every same-repo pull request that does, with the preview URL posted back to
+# the PR as a sticky comment; and `workflow_dispatch` for manual preview or
+# production runs. Fork PRs are skipped, since they can't read VERCEL_TOKEN.
+#
+# Every pull request starts this workflow, and the `changes` job skips the rest
+# when the PR can't affect bench (see .github/actions/changed-paths). A skipped
+# job reports success, so "Bench: deploy" can be a required check. Pushes keep
+# their `paths` filter: a push run that started only to skip would still queue
+# in the production concurrency group, and GitHub cancels the run already
+# pending there, which could be a real production deploy.
 #
 # The job runs in the `bench-production` or `bench-preview` GitHub environment.
 # Each holds VERCEL_TOKEN, a token scoped to the `benchmarks-website` project,
@@ -32,16 +39,10 @@ on:
       - 'bun.lock'
       - 'bunfig.toml'
       - 'tsconfig.base.json'
+      - '.github/vercel-cli/**'
       - '.github/workflows/bench-deploy.yml'
   pull_request:
     branches: [main]
-    paths:
-      - 'bench/**'
-      - 'package.json'
-      - 'bun.lock'
-      - 'bunfig.toml'
-      - 'tsconfig.base.json'
-      - '.github/workflows/bench-deploy.yml'
   workflow_dispatch:
     inputs:
       environment:
@@ -65,21 +66,41 @@ permissions:
 env:
   VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
   VERCEL_PROJECT_ID: ${{ vars.BENCH_VERCEL_PROJECT_ID }}
-  # renovate: datasource=npm depName=vercel
-  VERCEL_CLI_VERSION: "64.0.2"
 
 jobs:
+  changes:
+    name: Detect changed paths
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      bench: ${{ steps.paths.outputs.bench }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - id: paths
+        uses: ./.github/actions/changed-paths
+
   # Run bench's checks on the exact commit this run deploys. main takes squash
   # merges and does not require a branch to be up to date before it merges, so
   # the pushed commit itself is never checked before it lands, and Bench CI on
   # main runs beside this workflow, not before it.
   checks:
     name: Check the deployed commit
+    needs: changes
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
       contents: read
+    # Skipped, which counts as passing, when the change can't affect bench. If
+    # the path check itself fails, run anyway rather than skip. The deploy job
+    # needs this one, so it skips with it.
     if: >-
+      !cancelled() &&
+      (needs.changes.result != 'success' || needs.changes.outputs.bench == 'true') &&
       vars.BENCH_VERCEL_PROJECT_ID != '' && (
         github.event_name != 'pull_request' ||
         github.event.pull_request.head.repo.full_name == github.repository
@@ -94,7 +115,7 @@ jobs:
         uses: ./.github/actions/bench-checks
 
   deploy:
-    name: Build & deploy to Vercel
+    name: "Bench: deploy"
     needs: checks
     runs-on: ubuntu-24.04
     timeout-minutes: 20
@@ -133,17 +154,15 @@ jobs:
         with:
           node-version-file: .nvmrc
 
-      # An exact version, and `--before` gives the CLI's whole dependency tree
-      # the repository's 7-day cooldown, so this job, which holds VERCEL_TOKEN,
-      # never installs a freshly published package. There's no lockfile: the
-      # CLI pins vulnerable versions of its own dependencies that nothing here
-      # can patch (see CLAUDE.md "bench advisories"), and a lockfile would put
-      # them in front of dependency review on every PR.
+      # .github/vercel-cli pins the CLI and locks its whole dependency tree. Its
+      # overrides patch advisories in dependencies the CLI pins (see CLAUDE.md
+      # "bench advisories"). This job holds VERCEL_TOKEN, so lifecycle scripts
+      # stay off.
       - name: Install Vercel CLI
+        working-directory: .github/vercel-cli
         run: |
-          npm install -g --ignore-scripts --no-audit --no-fund \
-            --before="$(date -u -d '7 days ago' +%Y-%m-%dT%H:%M:%SZ)" \
-            "vercel@${VERCEL_CLI_VERSION}"
+          npm ci --ignore-scripts --no-audit --no-fund
+          echo "$PWD/node_modules/.bin" >> "$GITHUB_PATH"
 
       # Production verification probes the public domain, so it has to be set.
       - name: Require a public production verification URL
@@ -182,11 +201,13 @@ jobs:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
           set -Eeuo pipefail
+          # The JSON's shape depends on whether the CLI thinks it is
+          # non-interactive, so say so: then .deployment.url is the full URL.
+          args=(deploy --prebuilt --non-interactive --format json)
           if [ "${TARGET}" = "production" ]; then
-            url="$(vercel deploy --prebuilt --prod | tail -n1)"
-          else
-            url="$(vercel deploy --prebuilt | tail -n1)"
+            args+=(--prod)
           fi
+          url="$(vercel "${args[@]}" | jq -er '.deployment.url')"
           echo "url=${url}" >> "$GITHUB_OUTPUT"
           printf 'Deployed: %s\n' "$url"
 

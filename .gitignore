@@ -2,6 +2,7 @@
 
 # dependencies
 /node_modules
+/.github/vercel-cli/node_modules
 /.pnp
 .pnp.*
 .yarn/*
