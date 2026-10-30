@@ -64,8 +64,20 @@ export function lineChartConfig(input: {
   range: VisibleRange;
   legendPosition: 'top' | 'bottom';
   onZoom: (chart: ChartJs) => void;
+  /** After a legend click shows or hides a series. */
+  onLegendToggle: () => void;
 }): ChartConfiguration<'line', (number | null)[], string> {
-  const { Chart, state, tooltipHost, labels, datasets, range, legendPosition, onZoom } = input;
+  const {
+    Chart,
+    state,
+    tooltipHost,
+    labels,
+    datasets,
+    range,
+    legendPosition,
+    onZoom,
+    onLegendToggle,
+  } = input;
   return {
     type: 'line',
     data: { labels, datasets },
@@ -163,6 +175,7 @@ export function lineChartConfig(input: {
               ds.hidden = visible;
             }
             ci.update();
+            onLegendToggle();
           },
         },
         tooltip: {

@@ -3,10 +3,11 @@
 
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { getGroupSnapshot } from '@/lib/chart-store';
 import { GROUP_FILTER_PARAM, HIDDEN_SERIES_PARAM, SHOWN_SERIES_PARAM } from '@/lib/group-filter';
+import { CheckIcon, LinkIcon } from '@/components/icons';
 
 /** How long the copied-confirmation state stays visible, in milliseconds. */
 const COPIED_FEEDBACK_MS = 1500;
@@ -53,19 +54,28 @@ export function groupPermalinkUrl(
 }
 
 /**
- * The copy-link button in a group's summary header. Clicking it copies the
- * group's permalink (see [`groupPermalinkUrl`]) to the clipboard, including
- * its current series overrides, and once the copy has succeeded swaps the
- * link glyph for a checkmark for a moment as confirmation.
+ * The copy-link control in a group's summary header: a real link to the group
+ * (`/#<anchor>`, and once mounted the full permalink with the page's filters). Without JavaScript it is a plain link, which a reader can
+ * follow or copy, named "Link to <group>". Once it has mounted, its name and
+ * title say "Copy link", and a plain click (or Enter, or Space as on the
+ * button it used to be) copies the group's permalink (see
+ * [`groupPermalinkUrl`]) to the clipboard instead, including its current
+ * series overrides, and once the copy has succeeded swaps the link glyph for
+ * a checkmark for a moment as confirmation. A click with a modifier key stays
+ * a link click, so opening the group in a new tab or window still works (a
+ * middle click arrives as `auxclick`, which this never handles). The server
+ * and the first client render both carry the link wording, so hydration
+ * matches.
  *
  * It leaves the address bar alone: the fragment there holds the page's open
  * groups (`lib/open-groups.ts`), not a single group's link. Where the browser
  * has no Clipboard API (plain-HTTP hosts) or refuses the write, nothing was
- * copied, so the button claims nothing.
+ * copied, so the control claims nothing.
  *
- * The button lives inside the disclosure's `<summary>`, where any unhandled
- * click toggles the group open/closed; `preventDefault` suppresses that
- * native toggle so copying a link never collapses the group.
+ * The link lives inside the disclosure's `<summary>`. `preventDefault` stops
+ * the navigation, so copying a link never leaves or scrolls the page, and
+ * `stopPropagation` keeps the click from the summary, so it never collapses
+ * the group.
  */
 export function GroupPermalink({
   anchor,
@@ -77,14 +87,32 @@ export function GroupPermalink({
   groupSlug: string;
 }) {
   const [copied, setCopied] = useState(false);
+  // False on the server and in the first client render, so both name a plain
+  // link; true once mounted, when a click copies.
+  const [copies, setCopies] = useState(false);
+  // The server and first render link to `/#<anchor>`. Once mounted, the href
+  // is the permalink a copy writes (global filters and this group's series),
+  // so a modified or middle click opens what a plain click would copy.
+  const [href, setHref] = useState(`/#${encodeURIComponent(anchor)}`);
+  const permalink = useCallback((): string => {
+    const snapshot = getGroupSnapshot(groupSlug);
+    return groupPermalinkUrl(anchor, snapshot.hiddenSeries, snapshot.shownSeries, window.location);
+  }, [anchor, groupSlug]);
+  const refreshHref = useCallback((): void => {
+    setHref(permalink().slice(window.location.origin.length));
+  }, [permalink]);
+  useEffect(() => {
+    refreshHref();
+  }, [refreshHref]);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mountedRef = useRef(false);
 
-  // Cancel a pending feedback reset on unmount so it never fires after the
-  // island is gone, and note the unmount so a copy that settles later shows
-  // nothing.
+  // Switch to the copy wording, cancel a pending feedback reset on unmount so
+  // it never fires after the island is gone, and note the unmount so a copy
+  // that settles later shows nothing.
   useEffect(() => {
     mountedRef.current = true;
+    setCopies(true);
     return () => {
       mountedRef.current = false;
       if (timerRef.current !== null) {
@@ -107,80 +135,52 @@ export function GroupPermalink({
     }, COPIED_FEEDBACK_MS);
   };
 
+  const copy = (): void => {
+    const url = permalink();
+    // Older browsers and plain-HTTP hosts have no Clipboard API.
+    const clipboard = navigator.clipboard as Clipboard | undefined;
+    if (clipboard === undefined) {
+      return;
+    }
+    void clipboard.writeText(url).then(showCopied, () => {
+      // The browser refused the write: nothing was copied, so the control
+      // does not say otherwise.
+    });
+  };
+
   return (
-    <button
+    <a
       className={`group-permalink${copied ? ' group-permalink--copied' : ''}`}
-      type="button"
-      title="Copy link to this group"
-      aria-label={`Copy link to ${groupName}`}
+      href={href}
+      onPointerDown={refreshHref}
+      onFocus={refreshHref}
+      title={copies ? 'Copy link to this group' : 'Link to this group'}
+      aria-label={`${copies ? 'Copy link' : 'Link'} to ${groupName}`}
       onClick={(e) => {
-        // A <summary> toggles its <details> on any unhandled click;
-        // preventDefault keeps the copy action from also collapsing the group.
-        e.preventDefault();
-        e.stopPropagation();
-        const snapshot = getGroupSnapshot(groupSlug);
-        const url = groupPermalinkUrl(
-          anchor,
-          snapshot.hiddenSeries,
-          snapshot.shownSeries,
-          window.location,
-        );
-        // Older browsers and plain-HTTP hosts have no Clipboard API.
-        const clipboard = navigator.clipboard as Clipboard | undefined;
-        if (clipboard === undefined) {
+        // A modified click opens the link as the reader asked (a new tab or
+        // window).
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
           return;
         }
-        void clipboard.writeText(url).then(showCopied, () => {
-          // The browser refused the write: nothing was copied, so the button
-          // does not say otherwise.
-        });
+        // Copy instead of following the link, and keep the click from the
+        // <summary>, which would toggle the group.
+        e.preventDefault();
+        e.stopPropagation();
+        copy();
+      }}
+      onKeyDown={(e) => {
+        // A link activates on Enter alone; Space also activated the button
+        // this control was. preventDefault stops Space scrolling the page.
+        if (e.key === ' ') {
+          e.preventDefault();
+          copy();
+        }
       }}
     >
       {copied ? <CheckIcon /> : <LinkIcon />}
       <span className="visually-hidden" role="status">
         {copied ? 'Link copied' : ''}
       </span>
-    </button>
-  );
-}
-
-/** A chain-link glyph, matching the header icons' stroke style. */
-function LinkIcon() {
-  return (
-    <svg
-      className="btn-icon"
-      viewBox="0 0 24 24"
-      width="16"
-      height="16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-    </svg>
-  );
-}
-
-/** The copied-confirmation checkmark. */
-function CheckIcon() {
-  return (
-    <svg
-      className="btn-icon"
-      viewBox="0 0 24 24"
-      width="16"
-      height="16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M20 6 9 17l-5-5" />
-    </svg>
+    </a>
   );
 }

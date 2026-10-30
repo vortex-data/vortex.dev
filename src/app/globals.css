@@ -1,171 +1,154 @@
-@import "tailwindcss";
-@plugin "@tailwindcss/typography";
+@import "../styles/vortex-tokens.css";
+@import "../styles/vortex-base.css";
+@import "../styles/vortex.css";
 
+/* The design system's Dark ground. src/lib/theme.ts mirrors it (scripts/verify.ts). */
 :root {
-  --background: #101010;
+  --background: #0f0f0e;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-
-  --color-grey: #D9D9D9;
-  --color-spiral-black: rgba(16, 16, 16, 1);
-  --color-spiral-white: rgba(255, 255, 255, 1);
-  --color-spiral-grey: rgba(236, 236, 236, 1);
-  --color-spiral-grey-dark: rgba(143, 143, 143, 1);
-  --color-spiral-grey-light: rgba(207, 207, 207, 1);
-  --color-spiral-grey-lightest: rgba(241, 241, 241, 1);
-  --color-spiral-green: rgba(206, 229, 98, 1);
-  --color-spiral-washed-green: rgba(241, 248, 208, 1);
-  --color-spiral-light-blue: rgba(44, 185, 209, 1);
-  --color-spiral-washed-light-blue: rgba(213, 241, 246, 1);
-  --color-spiral-washed-lighter-blue: rgba(234, 248, 250, 1);
-  --color-spiral-blue: rgba(89, 113, 253, 1);
-  --color-spiral-pink: rgba(238, 179, 225, 1);
-  --color-spiral-orange: rgba(251, 134, 61, 1);
-  --color-spiral-red: rgba(204, 51, 51, 1);
-
-  /* Fonts */
-  --font-funnel: "Funnel Display", sans-serif;
-  --font-sans: "Geist", sans-serif;
-  --font-mono: "Geist Mono", monospace;
-
-  /* Breakpoints */
-  --breakpoint-2md: 57rem;
+/* The page frame from the design system's Home card: header, main and footer
+   share one --page-max column, and the footer stays at the foot of a short page. */
+.site-frame {
+  display: flex;
+  flex-direction: column;
+  max-width: var(--page-max);
+  min-height: 100dvh;
+  margin-inline: auto;
 }
 
-html {
-  scrollbar-width: thin;
-  scrollbar-color: var(--color-spiral-black) var(--color-spiral-grey);
+/* main fills the height the header and footer leave, and hands it on as a
+   flex column, so the homepage's hero and the Status card can fill it. */
+.site-main {
+  flex: 1 0 auto;
+  display: flex;
+  flex-direction: column;
 }
 
-body {
-  background: var(--background);
-  font-family: theme("fontFamily.sans");
-  text-rendering: optimizeLegibility;
+/* -------------------------------------------------------- no JavaScript
+   The server renders `<html class="no-js">` and the first-paint script swaps
+   it for `js` (src/lib/theme.ts), so these rules hold only when no script
+   runs. A control that does nothing without JavaScript carries
+   `data-requires-js` and hides rather than sitting dead; `!important` beats
+   the display rules those controls carry. */
+.no-js [data-requires-js] {
+  display: none !important;
+}
 
-  u {
-    text-decoration: none;
+/* InstallTabs: with the tabs hidden, every panel shows, stacked, under its
+   tab's name. */
+.no-js .vx-tabs-panels {
+  gap: var(--space-12);
+}
+.no-js .vx-tabs-panels > .vx-tabs-pre {
+  grid-area: auto;
+}
+.no-js .vx-tabs-pre.is-idle {
+  visibility: visible;
+}
+/* The name in the tabs' type (.vx-label-sm). */
+.no-js .vx-tabs-pre::before {
+  content: attr(data-label);
+  display: block;
+  margin-bottom: var(--space-4);
+  font: 500 11px/1.3 var(--font-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+/* LogoBanner: no script can pause the loop, so the logos sit still in
+   wrapped rows, as the design system lays them out under reduced motion. */
+.no-js .vx-logos-strip {
+  mask-image: none;
+}
+.no-js .vx-logos-track {
+  animation: none;
+  width: auto;
+}
+.no-js .vx-logos-set {
+  flex-wrap: wrap;
+  height: auto;
+  row-gap: var(--space-24);
+  padding-right: 0;
+}
+.no-js .vx-logos-set[aria-hidden="true"] {
+  display: none;
+}
+.no-js .vx-logos {
+  grid-template-areas: "label strip strip";
+}
+@media (max-width: 640px) {
+  .no-js .vx-logos {
+    grid-template-areas: "label label" "strip strip";
   }
 }
 
-@layer utilities {
-  .dashed-all {
-    @apply relative after:absolute after:inset-0;
-    /* Bottom dash */
-    @apply after:bg-[linear-gradient(to_right,white_12px,transparent_4px)] after:bg-bottom after:bg-[length:16px_1px] after:bg-repeat-x;
-    /* Top dash */
-    @apply after:bg-[linear-gradient(to_right,white_12px,transparent_4px)_top] after:bg-[length:16px_1px] after:bg-repeat-x;
-    /* Right dash */
-    @apply after:bg-[linear-gradient(to_bottom,white_12px,transparent_4px)_right] after:bg-[length:1px_16px] after:bg-repeat-y;
-    /* Left dash */
-    @apply after:bg-[linear-gradient(to_bottom,white_12px,transparent_4px)_left] after:bg-[length:1px_16px] after:bg-repeat-y;
-  }
+/* AsciiMark: the static symbol the server renders, for readers without
+   scripts. With scripts the host stays empty while the page loads, as the
+   design system draws it, and shows the symbol only once the mark reports
+   that it cannot draw (no WebGL, or an error). In Light it is inverted, as
+   the design system's own fallback is. */
+.js .ascii-mark-still {
+  visibility: hidden;
+}
+.js [data-mark-mode="static"] > .ascii-mark-still,
+.js [data-mark-mode="error"] > .ascii-mark-still {
+  visibility: visible;
+}
+:root[data-theme="light"] .ascii-mark-still {
+  filter: invert(1);
+}
 
-  .dashed-bottom {
-    @apply relative after:absolute after:left-0 after:right-0 after:bottom-0 after:h-px after:bg-[length:16px_1px] after:bg-repeat-x after:bg-[linear-gradient(to_right,white_12px,transparent_4px)];
-  }
+/* ------------------------------------------------------------------ blog
+   The blog's page frame, and the parts the design system has no card for. */
 
-  .dashed-top {
-    @apply relative before:absolute before:left-0 before:right-0 before:top-0 before:h-px before:bg-[length:16px_1px] before:bg-repeat-x before:bg-[linear-gradient(to_right,white_12px,transparent_4px)];
-  }
+/* One centred column for the index and the posts, as wide as the Article
+   card (68ch of 17px Geist and its padding), so the list and a post share
+   their edges. */
+.blog-page {
+  width: 100%;
+  max-width: calc(68ch + 2 * var(--space-48) + 2 * var(--page-pad));
+  margin-inline: auto;
+  padding: var(--space-48) var(--page-pad) var(--space-64);
+  font-size: 17px;
+}
 
-  .dashed-right {
-    @apply relative after:absolute after:top-0 after:bottom-0 after:right-0 after:w-px after:bg-[length:1px_16px] after:bg-repeat-y after:bg-[linear-gradient(to_bottom,white_12px,transparent_4px)];
-  }
-
-  .dashed-left {
-    @apply relative before:absolute before:top-0 before:bottom-0 before:left-0 before:w-px before:bg-[length:1px_16px] before:bg-repeat-y before:bg-[linear-gradient(to_bottom,white_12px,transparent_4px)];
+@media (max-width: 640px) {
+  .blog-page {
+    padding-block: var(--space-24) var(--space-48);
   }
 }
 
-/* Override prose bullets - outside layer for higher specificity */
-.prose.prose-grey :where(ul > li)::marker {
-  color: var(--color-spiral-grey);
+.blog-back {
+  margin-bottom: var(--space-16);
 }
 
-.prose.prose-grey blockquote {
-  border-left-color: var(--color-spiral-grey-dark);
+/* The byline's date and reading time each stay on one line. */
+.blog-nowrap {
+  white-space: nowrap;
 }
 
-.prose.prose-grey blockquote p::before,
-.prose.prose-grey blockquote p::after {
-  content: none;
+.blog-empty {
+  margin: var(--space-24) 0 0;
+  color: var(--ink-muted);
 }
 
-/* Custom prose styles for blog content */
-@layer components {
-  .prose-grey {
-    @apply prose-invert;
-  }
+/* The newsletter sign-up under the post list. */
+.blog-newsletter {
+  margin-top: var(--space-48);
+}
 
-  .prose-grey p {
-    @apply text-grey mb-4;
-  }
+.blog-newsletter-text {
+  margin: var(--space-8) 0 var(--space-12);
+  color: var(--ink-body);
+}
 
-  .prose-grey ol, .prose-grey ul {
-    @apply text-white space-y-2;
-  }
+.vx-article-end .blog-newsletter {
+  margin-top: var(--space-8);
+}
 
-  .prose-grey li {
-    @apply text-grey;
-  }
-
-  .prose.prose-grey a {
-    @apply !text-spiral-light-blue hover:!text-spiral-washed-light-blue transition-colors underline;
-  }
-
-  .prose-grey pre {
-    @apply bg-[#0d1117] border border-white/10 text-white font-mono text-sm p-4 rounded-lg overflow-x-auto;
-  }
-
-  .prose-grey pre code {
-    @apply bg-transparent p-0 rounded-none text-inherit;
-  }
-
-  .prose-grey code {
-    @apply text-white bg-white/10 px-1 py-0.5 rounded text-sm font-mono;
-  }
-
-  /* Syntax highlighting line styles */
-  .prose-grey pre [data-line] {
-    @apply px-4 -mx-4 border-l-2 border-transparent;
-  }
-
-  /* Highlighted lines */
-  .prose-grey pre [data-highlighted-line] {
-    @apply bg-white/10 border-l-white/50;
-  }
-
-  /* Line numbers */
-  .prose-grey pre [data-line-numbers] [data-line]::before {
-    counter-increment: line;
-    content: counter(line);
-    @apply inline-block w-8 mr-4 text-right text-white/30;
-  }
-
-  .prose-grey pre [data-line-numbers] {
-    counter-reset: line;
-  }
-
-  /* Highlighted words */
-  .prose-grey [data-highlighted-chars] {
-    @apply bg-white/20 rounded px-1 py-0.5;
-  }
-
-  /* Code block title/caption */
-  .prose-grey figcaption[data-rehype-pretty-code-title] {
-    @apply text-xs text-white/50 font-mono px-4 py-2 border-b border-white/10 bg-white/5 rounded-t-lg;
-  }
-
-  .prose-grey figcaption[data-rehype-pretty-code-title] + pre {
-    @apply rounded-t-none mt-0;
-  }
-
-  .prose-grey blockquote {
-    @apply border-l-spiral-blue text-grey italic;
-  }
-
+.blog-newsletter-done {
+  margin: 0;
+  color: var(--ink);
 }

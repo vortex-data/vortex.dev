@@ -3,6 +3,10 @@ import { getAllPosts } from "@/lib/blog";
 import { baseUrl } from "@/lib/constants";
 
 export async function GET(request: Request) {
+  // The site's own posts only. The blog index also lists posts on other
+  // sites (`src/content/links.ts`), but those are not ours to syndicate. Only
+  // JSON Feed marks a link item (`external_url`). In RSS and Atom a link item
+  // reads as our own post, so the three feeds would disagree.
   const posts = getAllPosts();
   const date = new Date();
 

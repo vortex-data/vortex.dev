@@ -37,7 +37,7 @@ function formatThroughput(valueGbS: number, operation: 'encode' | 'decode'): str
  * access, vector search) share one ranked-list arm because they use the same
  * [`SeriesRanking`] shape. The card renders in the group's section, after
  * its `<details>`, so it shows whether the group is open or collapsed. It is
- * server-rendered, so it shows before hydration too.
+ * server-rendered, so it shows before hydration and with JavaScript off too.
  *
  * Returns `null` when there is no summary or the variant has no content.
  */
@@ -132,9 +132,9 @@ export function SummaryCard({ summary }: { summary?: Summary | undefined }) {
             <div className="compression-size-panel compression-size-parquet-panel">
               <div className="compression-size-parquet-header">
                 <span className="compression-size-group">Vs Parquet</span>
-                <span className="compression-size-heading">⬇️ Min</span>
-                <span className="compression-size-heading">📊 Mean</span>
-                <span className="compression-size-heading">⬆️ Max</span>
+                <span className="compression-size-heading">Min</span>
+                <span className="compression-size-heading">Mean</span>
+                <span className="compression-size-heading">Max</span>
               </div>
               <div className="compression-size-parquet-list">
                 {summary.rankings.map((item) => {

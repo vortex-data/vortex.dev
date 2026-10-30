@@ -4,6 +4,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { ListIcon } from '@/components/icons';
 
 import { openAndScrollTo, syncOpenFragment } from '@/lib/open-groups';
 
@@ -52,7 +53,8 @@ export function jumpToGroup(slug: string, doc: Document = document): boolean {
  * Toggle-driven (not hover) so it works on touch and keyboard, mirroring the
  * header's hamburger nav ([`Header`]): `aria-expanded` / `aria-controls` on the
  * toggle, with outside-click and Escape closing the panel. Renders nothing when
- * there are no groups.
+ * there are no groups. Without JavaScript neither the toggle nor the entries
+ * work, so the whole menu carries `data-requires-js` and is hidden.
  */
 export function GroupNav({ groups }: { groups: GroupNavItem[] }) {
   const [open, setOpen] = useState(false);
@@ -88,7 +90,7 @@ export function GroupNav({ groups }: { groups: GroupNavItem[] }) {
   }
 
   return (
-    <nav className="group-nav" aria-label="Jump to group">
+    <nav className="group-nav" aria-label="Jump to group" data-requires-js>
       <button
         className="control-btn group-nav-toggle"
         type="button"
@@ -135,30 +137,5 @@ export function GroupNav({ groups }: { groups: GroupNavItem[] }) {
         </ul>
       </div>
     </nav>
-  );
-}
-
-/** A list/menu glyph for the toggle, matching the header icons' stroke style. */
-function ListIcon() {
-  return (
-    <svg
-      className="btn-icon"
-      viewBox="0 0 24 24"
-      width="16"
-      height="16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M8 6h13" />
-      <path d="M8 12h13" />
-      <path d="M8 18h13" />
-      <path d="M3 6h.01" />
-      <path d="M3 12h.01" />
-      <path d="M3 18h.01" />
-    </svg>
   );
 }

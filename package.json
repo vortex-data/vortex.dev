@@ -21,31 +21,29 @@
     "check:ci": "biome check",
     "typecheck": "tsc --noEmit",
     "verify": "bun scripts/verify.ts",
+    "test": "bun test tests/unit",
     "lighthouse": "bunx @lhci/cli@0.15.1 autorun",
     "test:e2e": "playwright test",
     "test:e2e:install": "playwright install --with-deps chromium webkit"
   },
   "dependencies": {
-    "@tailwindcss/typography": "^0.5.20",
     "@vercel/analytics": "^2.0.1",
     "feed": "^6.0.0",
     "next": "16.4.1",
     "next-plausible": "^4.0.0",
-    "ogl": "^1.0.11",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "rehype-pretty-code": "^0.14.5",
     "resend": "^6.32.1",
+    "three": "0.170.0",
     "velite": "^0.4.0"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.2",
     "@playwright/test": "^1.64.0",
-    "@tailwindcss/postcss": "4.3.3",
     "@types/node": "^26.6.5",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
-    "tailwindcss": "4.3.3",
     "typescript": "^7.0.2"
   },
   "trustedDependencies": [
@@ -53,7 +51,6 @@
     "sharp"
   ],
   "overrides": {
-    "postcss-selector-parser": "^6.1.5",
     "sharp": "^0.35.5",
     "zod": "^4.6.7"
   }

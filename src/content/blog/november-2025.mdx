@@ -2,7 +2,7 @@
 title: "November Bulletin"
 date: "2025-12-08"
 authors: ["Community Team"]
-excerpt: "Overview of all work happening in Vortex"
+excerpt: "Spice AI launched Cayenne on Vortex, Polar Signals replaced Parquet with Vortex, and Vortex became a DuckDB core extension."
 published: true
 ---
 
@@ -14,7 +14,7 @@ different processor types (CPUs & GPUs). We anticipate shipping lazy Array evalu
 
 - Spice AI launched the [Spice Cayenne Data Accelerator](https://spice.ai/blog/spice-cloud-v1-9-0-cayenne-data-accelerator) based on Vortex
 - Polar Signals [replaced Parquet with Vortex](https://www.polarsignals.com/blog/posts/2025/11/25/interface-parquet-vortex) for their profiling database
-  > Given how well Vortex’s design matched our needs, we tried it out and got a 70% average performance improvement on all our queries.
+  <Quote source="Polar Signals · engineering blog" href="https://www.polarsignals.com/blog/posts/2025/11/25/interface-parquet-vortex">Given how well Vortex’s design matched our needs, we tried it out and got a 70% average performance improvement on all our queries.</Quote>
 - Vortex is now a DuckDB [core extension](https://duckdb.org/docs/stable/core_extensions/vortex) only and was removed from the list of community releases. To install:
   ```sql
   INSTALL vortex;
@@ -34,20 +34,22 @@ We want to thank to anyone who has tried Vortex, provided feedback, asked questi
 
 The following contributed to the November releases.
 
-```text
-Joe Isaacs
-Connor Tsui
-Nicholas Gates
-Robert Kruszewski
-Andrew Duffy
-Alexander Droste
-Dan King
-Onur Satici
-Adam Gutglick
-Alfonso Subiotto Marqués
-Will Manning
-Dmitrii Blaginin
-Frederic Branczyk
-James Xu
-Nick Cameron
-```
+<Names
+  names={[
+    "Joe Isaacs",
+    "Connor Tsui",
+    "Nicholas Gates",
+    "Robert Kruszewski",
+    "Andrew Duffy",
+    "Alexander Droste",
+    "Dan King",
+    "Onur Satici",
+    "Adam Gutglick",
+    "Alfonso Subiotto Marqués",
+    "Will Manning",
+    "Dmitrii Blaginin",
+    "Frederic Branczyk",
+    "James Xu",
+    "Nick Cameron"
+  ]}
+/>

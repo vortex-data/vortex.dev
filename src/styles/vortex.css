@@ -1,0 +1,900 @@
+/* Vortex design system components (sections: base, brand, site, docs, blog, focus), copied by tools/site-styles.mjs.
+   Edit the system, then run tools/site-styles.mjs; do not edit here. */
+
+/* ------------------------------------------------------------------ base */
+/* Every component sizes with border-box, so it draws the same under a site's reset or none. */
+:where([class*="vx-"]),
+:where([class*="vx-"])::before,
+:where([class*="vx-"])::after {
+  box-sizing: border-box;
+}
+/* Text for screen readers only, such as a copy button's "Copied". */
+.vx-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.vx-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+}
+.vx-label,
+.vx-label-sm {
+  color: var(--ink-muted);
+}
+/* Units, addresses, hashes and identifiers keep their own case inside a mono label. */
+.vx-keep-case {
+  text-transform: none;
+  letter-spacing: 0;
+}
+/* A machine reference, such as an error digest or a commit hash, in a label or in text. It keeps
+   its case, selects whole for a bug report, and breaks anywhere rather than overflow a phone. */
+.vx-ref {
+  font-family: var(--font-mono);
+  font-size: inherit;
+  text-transform: none;
+  letter-spacing: 0;
+  user-select: all;
+  overflow-wrap: anywhere;
+}
+.vx-stat,
+.vx-num {
+  font-variant-numeric: tabular-nums;
+}
+.vx-link,
+.vx-prose a {
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-decoration-color: color-mix(in srgb, var(--ink) 30%, transparent);
+  text-underline-offset: 3px;
+  transition: color 150ms ease-out, text-decoration-color 150ms ease-out;
+}
+.vx-link:hover,
+.vx-prose a:hover {
+  color: var(--accent-ink);
+  text-decoration-color: currentColor;
+}
+/* A quiet link in mono capitals: header and footer navigation, feeds, source lines. */
+.vx-nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  color: var(--ink-muted);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color 150ms ease-out;
+}
+.vx-nav-link:hover,
+.vx-nav-link[aria-current="page"],
+.vx-nav-link[aria-current="true"] {
+  color: var(--ink);
+}
+.vx-nav-link svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}
+/* A source line: what a figure was read from, and when. */
+.vx-source {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+}
+.vx-kbd {
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 var(--space-4);
+  font: 400 11px/1 var(--font-mono);
+  color: var(--ink-muted);
+  background: var(--ground);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+}
+@media (max-width: 640px) {
+  :root {
+    --page-pad: var(--space-16);
+  }
+}
+
+/* ------------------------------------------------------------------ brand */
+/* The label, the strip, then the pause control at the end of the row. On a phone the label and
+   the control share the first row, over the strip. */
+.vx-logos {
+  display: grid;
+  grid-template-columns: 170px minmax(0, 1fr) auto;
+  grid-template-areas: "label strip pause";
+  align-items: center;
+  gap: var(--space-24);
+}
+.vx-logos > .vx-label {
+  grid-area: label;
+}
+@media (max-width: 640px) {
+  .vx-logos {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "label pause" "strip strip";
+  }
+}
+/* A toggle (WCAG 2.2.2). At rest it is raised with the outline pause in ink-muted. Pressed, it
+   sits on surface in ink with the filled pause, as a pressed switch does, and keeps its box. */
+.vx-logos-pause {
+  grid-area: pause;
+  display: grid;
+  place-items: center;
+  width: var(--control-sm);
+  height: var(--control-sm);
+  margin: 0;
+  padding: 0;
+  color: var(--ink-muted);
+  background: var(--raised);
+  border: 1px solid var(--edge);
+  border-radius: var(--radius-control);
+  cursor: pointer;
+  transition: color 150ms ease-out, background-color 150ms ease-out, border-color 150ms ease-out;
+}
+.vx-logos-pause:hover {
+  color: var(--ink);
+  border-color: var(--ink);
+}
+.vx-logos-pause[aria-pressed="true"] {
+  background: var(--surface);
+  color: var(--ink);
+}
+.vx-logos-pause svg {
+  grid-area: 1 / 1;
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}
+.vx-logos-pause svg + svg,
+.vx-logos-pause[aria-pressed="true"] svg:first-child {
+  visibility: hidden;
+}
+.vx-logos-pause[aria-pressed="true"] svg + svg {
+  visibility: visible;
+}
+.vx-logos-strip {
+  grid-area: strip;
+  overflow: hidden;
+  mask-image: linear-gradient(90deg, transparent, var(--ink) 8%, var(--ink) 92%, transparent);
+}
+.vx-logos-track {
+  display: flex;
+  width: max-content;
+  animation: vx-marquee 48s linear infinite;
+}
+/* The loop pauses while its control is pressed, under the pointer, and while focus is among the
+   logos. Focus on the control itself does not pause it, so a second press resumes the loop at once. */
+.vx-logos:has(.vx-logos-pause[aria-pressed="true"]) .vx-logos-track,
+.vx-logos-strip:hover .vx-logos-track,
+.vx-logos-strip:focus-within .vx-logos-track {
+  animation-play-state: paused;
+}
+.vx-logos-set {
+  display: flex;
+  align-items: center;
+  gap: var(--space-48);
+  padding-right: var(--space-48);
+  height: 56px;
+}
+.vx-logos-set img {
+  display: block;
+  filter: brightness(0) invert(1);
+  opacity: 0.62;
+  transition: opacity 150ms ease-out;
+}
+.vx-logos-set a {
+  position: relative;
+  display: block;
+  flex: none;
+}
+/* A logo whose Vortex support has not shipped carries a small "Coming soon" tag over its top
+   right corner, so the mark still reads, and the mark dims a little. */
+.vx-logos-set a.is-soon img {
+  opacity: 0.45;
+}
+.vx-logos-soon {
+  position: absolute;
+  top: -12px;
+  right: -24px;
+  padding: 1px var(--space-4);
+  white-space: nowrap;
+  background: var(--accent);
+  color: var(--on-accent);
+}
+.vx-logos-set img:hover,
+.vx-logos-set a:focus-visible img {
+  opacity: 1;
+}
+@keyframes vx-marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+/* Reduced motion: no marquee. Every logo sits still in wrapped rows, and the copies that only fed
+   the loop go, so none is left past the strip's edge. With nothing to pause, the control goes too. */
+@media (prefers-reduced-motion: reduce) {
+  .vx-logos-strip {
+    mask-image: none;
+  }
+  .vx-logos-track {
+    animation: none;
+    width: auto;
+  }
+  .vx-logos-set {
+    flex-wrap: wrap;
+    height: auto;
+    row-gap: var(--space-24);
+    padding-right: 0;
+  }
+  .vx-logos-set[aria-hidden="true"] {
+    display: none;
+  }
+  .vx-logos-pause {
+    display: none;
+  }
+  .vx-logos {
+    grid-template-areas: "label strip strip";
+  }
+}
+@media (max-width: 640px) and (prefers-reduced-motion: reduce) {
+  .vx-logos {
+    grid-template-areas: "label label" "strip strip";
+  }
+}
+
+/* ------------------------------------------------------------------ site */
+.vx-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+  height: var(--control-md);
+  padding: 0 var(--space-16);
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  font: 500 14px/1 var(--font-sans);
+  color: var(--ink);
+  background: transparent;
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color 150ms ease-out, border-color 150ms ease-out;
+}
+.vx-btn svg { width: 16px; height: 16px; fill: currentColor; }
+.vx-btn[disabled], .vx-btn[aria-disabled="true"] { opacity: 0.45; cursor: default; }
+.vx-btn-primary { background: var(--primary); color: var(--on-primary); }
+.vx-btn-secondary { border-color: var(--edge); }
+.vx-btn-secondary:hover { border-color: var(--ink); }
+.vx-btn-ghost:hover { background: var(--raised); }
+.vx-btn.is-mono { padding: 0 var(--space-12); font: 400 13px/1 var(--font-mono); }
+.vx-btn-count { display: inline-flex; align-items: center; gap: var(--space-4); padding-left: var(--space-12); border-left: 1px solid var(--edge); color: var(--ink-muted); }
+/* Buttons side by side, primary first, wrapping onto a second row on a phone. */
+.vx-btn-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-12); }
+
+/* A 404 or error page: the hero with no bands under it. It takes the height its parent (a flex
+   column between the header and the footer) leaves, and centres its text in it. With the mark it
+   takes the homepage hero's two columns, and stacks below 1100px as the hero does. */
+.vx-status { flex: 1 0 auto; display: grid; grid-template-columns: minmax(0, 760px); align-content: center; gap: var(--space-48); padding: var(--space-32) var(--page-pad); }
+.vx-status.has-mark { grid-template-columns: minmax(0, 760px) minmax(320px, 1fr); align-content: normal; }
+.vx-status-text { display: grid; align-content: center; justify-items: start; gap: var(--space-24); }
+.vx-status-text > * { margin: 0; }
+.vx-status-text h1 { color: var(--ink); }
+.vx-status-sentence { color: var(--ink-body); }
+/* The mark's cell has a height to fill. Its host is never taller than 9/10 of the cell's width. */
+.vx-status-mark { position: relative; min-height: 0; container-type: size; }
+.vx-status-mark > * { position: absolute; inset: 0; height: min(100cqh, 90cqw); margin: auto 0; }
+@media (max-width: 1099px) {
+  .vx-status.has-mark { grid-template-columns: minmax(0, 1fr); align-content: center; gap: var(--space-24); }
+  .vx-status-mark { height: 320px; }
+}
+@media (max-width: 640px) {
+  .vx-status-mark { height: 240px; }
+}
+
+/* A text field: raised, at control-md, with an edge that turns ink on hover, like the docs' search.
+   A row holds a field and its button. */
+.vx-field {
+  appearance: none;
+  box-sizing: border-box;
+  height: var(--control-md);
+  margin: 0;
+  padding: 0 var(--space-12);
+  font: 400 14px/1 var(--font-sans);
+  color: var(--ink);
+  background: var(--raised);
+  border: 1px solid var(--edge);
+  border-radius: var(--radius-control);
+  transition: border-color 150ms ease-out;
+}
+.vx-field::placeholder { color: var(--ink-muted); opacity: 1; }
+.vx-field:hover { border-color: var(--ink); }
+.vx-field[aria-invalid="true"] { border-color: var(--error-ink); }
+.vx-field:disabled { opacity: 0.45; cursor: default; }
+.vx-field-row { display: flex; gap: var(--space-8); max-width: 440px; }
+.vx-field-row > .vx-field { flex: 1 1 auto; min-width: 0; }
+.vx-field-error { margin: var(--space-8) 0 0; color: var(--error-ink); }
+
+/* The header: the wordmark, then either the site's navigation or the docs' label and search,
+   then the end group. */
+.vx-header {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: var(--space-24);
+  height: 64px;
+  padding: 0 var(--page-pad);
+  border-bottom: 1px solid var(--line);
+  background: var(--ground);
+}
+.vx-header-start { display: flex; flex-shrink: 0; align-items: center; gap: var(--space-12); }
+.vx-header-mark { height: 24px; width: auto; display: block; }
+.vx-header-mark.is-light, [data-theme="light"] .vx-header-mark.is-dark { display: none; }
+[data-theme="light"] .vx-header-mark.is-light { display: block; }
+.vx-header-label { padding-left: var(--space-12); border-left: 1px solid var(--edge); line-height: 16px; }
+.vx-header-nav { display: flex; gap: var(--space-24); margin-left: auto; }
+.vx-header-end { display: flex; align-items: center; gap: var(--space-16); margin-left: auto; }
+.vx-header-nav + .vx-header-end { margin-left: 0; }
+.vx-search {
+  appearance: none;
+  box-sizing: border-box;
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  max-width: 360px;
+  height: var(--control-md);
+  margin: 0 auto;
+  padding: 0 var(--space-4) 0 var(--space-12);
+  background: var(--raised);
+  border: 1px solid var(--edge);
+  border-radius: var(--radius-control);
+  font: 400 14px/1 var(--font-sans);
+  color: var(--ink-muted);
+  cursor: pointer;
+  transition: border-color 150ms ease-out;
+}
+.vx-search:hover { border-color: var(--ink); }
+.vx-search svg { width: 16px; height: 16px; flex-shrink: 0; fill: currentColor; }
+.vx-search-keys { display: flex; gap: var(--space-4); margin-left: auto; }
+@media (max-width: 760px) {
+  .vx-btn-count { display: none; }
+  .vx-search { flex: 0 0 auto; width: var(--control-md); justify-content: center; margin: 0 0 0 auto; padding: 0; }
+  .vx-search-text, .vx-search-keys { display: none; }
+}
+/* The site header needs about 790px on one row: the wordmark, five links and the GitHub button
+   with its count. Below 800px the nav takes a second row, and the end group stays on the right. */
+@media (max-width: 800px) {
+  .vx-header.has-nav { flex-wrap: wrap; height: auto; padding-block: var(--space-12); row-gap: var(--space-12); }
+  .vx-header.has-nav .vx-header-nav { order: 3; width: 100%; margin-left: 0; gap: var(--space-20); overflow-x: auto; }
+  .vx-header.has-nav .vx-header-end { margin-left: auto; }
+}
+/* With the ThemeSwitch in its end group the site header needs about 900px, so it takes two rows
+   below 920px. */
+@media (max-width: 920px) {
+  .vx-header.has-nav:has(.vx-theme-switch) { flex-wrap: wrap; height: auto; padding-block: var(--space-12); row-gap: var(--space-12); }
+  .vx-header.has-nav:has(.vx-theme-switch) .vx-header-nav { order: 3; width: 100%; margin-left: 0; gap: var(--space-20); overflow-x: auto; }
+  .vx-header.has-nav:has(.vx-theme-switch) .vx-header-end { margin-left: auto; }
+}
+@media (max-width: 640px) {
+  .vx-header-label, .vx-header-end .is-wide { display: none; }
+}
+/* The wordmark, the GitHub button and the switch need about 430px on one row, so below 480px the
+   button keeps its mark and count and drops the repository name. Without the switch the row needs
+   about 330px, so the name goes below 360px. The button's aria-label still names the repository. */
+@media (max-width: 480px) {
+  .vx-header-end:has(.vx-theme-switch) .vx-header-repo { display: none; }
+}
+@media (max-width: 360px) {
+  .vx-header-repo { display: none; }
+}
+/* The homepage headline, "Fast, small, open: pick three.", takes one line (822px) in the hero's 840px column. Where
+   it wraps, it never strands one word on its last line, and on phones its lines balance. */
+.vx-display { text-wrap: pretty; }
+/* The homepage headline sets at the h1 size on phones, where 64px would take four lines. */
+@media (max-width: 640px) {
+  .vx-display { font-size: 48px; text-wrap: balance; }
+}
+
+.vx-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-16) var(--space-24);
+  padding: var(--space-16) var(--page-pad);
+  border-top: 1px solid var(--line);
+  font: 400 11px/1.5 var(--font-mono);
+  letter-spacing: 0.02em;
+  color: var(--ink-muted);
+}
+.vx-footer-mark { height: 12px; width: auto; opacity: 0.85; }
+[data-theme="light"] .vx-footer-mark { filter: invert(1); }
+.vx-footer-text { flex: 1 1 420px; min-width: 0; margin: 0; }
+.vx-footer-credit { white-space: nowrap; }
+.vx-footer-nav { display: flex; flex-wrap: wrap; gap: var(--space-8) var(--space-16); }
+
+.vx-eyebrow { display: inline-flex; align-items: center; gap: var(--space-8); }
+.vx-eyebrow::before { content: ""; width: 6px; height: 6px; background: var(--accent); flex: none; }
+
+.vx-tabs { overflow: hidden; }
+.vx-tabs-list { display: flex; padding: 0 var(--space-4); border-bottom: 1px solid var(--line); overflow-x: auto; }
+.vx-tabs-list button {
+  appearance: none;
+  margin: 0 0 -1px;
+  padding: var(--space-12) var(--space-12) var(--space-8);
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  cursor: pointer;
+  color: var(--ink-muted);
+}
+.vx-tabs-list button:hover { color: var(--ink-body); }
+/* Six tabs fit a phone: the side padding steps down to 8px below 480px and 4px below 400px.
+   Narrower than about 330px, the list scrolls. */
+@media (max-width: 480px) {
+  .vx-tabs-list button { padding-inline: var(--space-8); }
+}
+@media (max-width: 400px) {
+  .vx-tabs-list button { padding-inline: var(--space-4); }
+}
+.vx-tabs-list button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+.vx-tabs-code { display: flex; align-items: flex-start; gap: var(--space-12); padding: var(--space-12) var(--space-16); }
+/* Every panel shares one grid cell and only the selected one shows, so the block is always the
+   tallest panel's height and switching tabs never moves the page. */
+.vx-tabs-panels { display: grid; flex: 1; min-width: 0; }
+.vx-tabs-panels > .vx-tabs-pre { grid-area: 1 / 1; }
+.vx-tabs-pre { margin: 0; flex: 1; min-width: 0; font: 400 13px/1.6 var(--font-mono); color: var(--ink-body); white-space: pre-wrap; overflow-wrap: anywhere; }
+.vx-tabs-pre.is-idle { visibility: hidden; }
+.vx-prompt { color: var(--ink-muted); user-select: none; }
+.vx-copy { all: unset; cursor: pointer; color: var(--ink-muted); padding: 2px; }
+.vx-copy:hover { color: var(--ink); }
+.vx-copy svg { width: 16px; height: 16px; fill: currentColor; display: block; }
+.vx-copy .is-check, .vx-copy.is-done .is-copy { display: none; }
+.vx-copy.is-done .is-check { display: block; }
+
+/* A bar's value has one width in every row of a panel, so every track has one length and the bars
+   share a scale. renderPanel sets --bar-value on each panel's vx-bars to fit its longest value
+   ("578.63 ms" is 9ch, "5.12×" 5ch), and the value takes it in its own 11px figures. 6ch is the
+   fallback. A name takes 7ch, which holds "Parquet". */
+.vx-bench { overflow: hidden; container: vx-bench / inline-size; --bar-value: 6ch; --bar-name: 7ch; }
+.vx-bench-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--space-8) var(--space-16); padding: var(--space-12) var(--space-20); border-bottom: 1px solid var(--line); }
+.vx-bench-headline { margin: 0; font: 500 14px/1.3 var(--font-sans); color: var(--ink); }
+.vx-bench-sub { color: var(--ink-muted); font-weight: 400; }
+/* Two, three or six columns by the card's own width, so a panel's text is never much under 175px.
+   At 1440 the six share one row. */
+.vx-bench-panels { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+/* Each panel rules its top and left edges 1px outside itself. The head's rule and the card's
+   clipped edge hide the outer ones, so a rule shows only between panels, in any number of rows.
+   The panels in a row share three rows (title, figure, bars), so a title that takes a third line
+   moves every figure in its row down with it. */
+.vx-bench-panel { display: grid; grid-row: span 3; grid-template-rows: subgrid; gap: var(--space-8); align-content: start; padding: var(--space-12) var(--space-16); border-top: 1px solid var(--line); border-left: 1px solid var(--line); margin: -1px 0 0 -1px; }
+.vx-bench-title { display: grid; }
+/* One line for a title. The panels in a row share their rows, so a title that wraps moves every
+   figure in its row down with it and the figures still line up. */
+.vx-bench-metric { text-wrap: balance; }
+/* The factor and the words that say who won share a line, and the words wrap under it in a
+   narrow panel. A 4px gap keeps "1.07× larger than Parquet" on one line in six columns. */
+.vx-bench-big { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-4); color: var(--ink); }
+.vx-bench-note { color: var(--ink-muted); }
+/* The sources of panels whose figures are not bench's, under the panels. */
+
+/* A bar chart's rows: name, a bar on its track, the value. Vortex is the one Blue row. */
+.vx-bars { display: grid; gap: var(--space-8); }
+.vx-bar {
+  display: grid;
+  grid-template-columns: var(--bar-name, 56px) minmax(0, 1fr) var(--bar-value, auto);
+  gap: var(--space-8);
+  align-items: center;
+  font: 400 12px/1 var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-muted);
+}
+.vx-bar-value { text-align: right; }
+.vx-bar-extra { margin-left: var(--space-8); }
+.vx-bar-track { height: 6px; background: var(--chart-track); }
+.vx-bar-fill { display: block; height: 100%; background: var(--chart-muted); }
+.vx-bar.is-ours { color: var(--accent-ink); }
+.vx-bar.is-ours .vx-bar-fill { background: var(--chart-1); }
+/* Parquet, Lance and Arrow take muted tints of their colours, so the bars are not grey on grey.
+   One value serves both themes, at 3.4:1 on either track, and Vortex's Blue still leads. */
+.vx-bar.is-parquet .vx-bar-fill { background: var(--chart-parquet); }
+.vx-bar.is-lance .vx-bar-fill { background: var(--chart-lance); }
+.vx-bar.is-arrow .vx-bar-fill { background: var(--chart-arrow); }
+.vx-bars.is-lg .vx-bar { gap: var(--space-12); font-size: 12.5px; }
+.vx-bars.is-lg .vx-bar-track { height: 10px; }
+/* The card's bars end in their values with a short unit ("42.25 ms", "5.12×"), small and muted,
+   Vortex's included, so the magnitudes read at a glance and the bars and the factor still lead.
+   The value with its full unit is the row's title and screen-reader text. A system with no score
+   says "Not measured" where its bar would be. In a panel whose text is narrower than about 175px,
+   a bar beside its name and value was 15 to 50px wide. So there each bar runs the panel's width
+   under its name and value: about 140px on a 375px phone. One column would give 190px bars, but
+   the card would grow taller than a phone's screen. */
+.vx-bench .vx-bars { align-content: start; }
+.vx-bench .vx-bar { grid-template-columns: minmax(0, 1fr) auto; row-gap: var(--space-4); }
+.vx-bench .vx-bar-value { font-size: 11px; color: var(--ink-muted); inline-size: var(--bar-value); }
+.vx-bench .vx-bar-track { grid-column: 1 / -1; grid-row: 2; }
+.vx-bench .vx-bar-missing { grid-column: 1 / -1; grid-row: 2; }
+@container vx-bench (min-width: 410px) {
+  .vx-bench .vx-bar { grid-template-columns: var(--bar-name, 56px) minmax(0, 1fr) auto; }
+  .vx-bench .vx-bar-track { grid-column: auto; grid-row: auto; }
+  .vx-bench .vx-bar-missing { grid-column: 2 / -1; grid-row: auto; }
+}
+@container vx-bench (min-width: 640px) {
+  .vx-bench-panels { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .vx-bench-panel { padding: var(--space-12) var(--space-20); }
+}
+@container vx-bench (min-width: 1260px) {
+  .vx-bench-panels { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .vx-bench-panel { padding-inline: var(--space-16); }
+}
+
+/* ------------------------------------------------------------------ docs */
+/* A fieldset, so its margin and minimum width are cleared. Until a script presses a button, the
+   choice THEME_BOOTSTRAP wrote to data-theme-choice on the root shows pressed. */
+.vx-theme-switch {
+  display: inline-flex;
+  gap: 2px;
+  min-width: 0;
+  margin: 0;
+  padding: 2px;
+  background: var(--raised);
+  border: 1px solid var(--edge);
+  border-radius: var(--radius-control);
+}
+.vx-theme-switch button {
+  all: unset;
+  box-sizing: border-box;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-control);
+  color: var(--ink-muted);
+  transition: color 150ms ease-out, background-color 150ms ease-out;
+}
+.vx-theme-switch button:hover { color: var(--ink); }
+.vx-theme-switch button[aria-pressed="true"],
+:root[data-theme-choice="light"] .vx-theme-switch:not(:has([aria-pressed="true"])) button[data-choice="light"],
+:root[data-theme-choice="dark"] .vx-theme-switch:not(:has([aria-pressed="true"])) button[data-choice="dark"],
+:root[data-theme-choice="system"] .vx-theme-switch:not(:has([aria-pressed="true"])) button[data-choice="system"] { background: var(--surface); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
+.vx-theme-switch svg { width: 16px; height: 16px; fill: currentColor; }
+
+/* DocsNav and Toc style the lists Sphinx writes, so they select its elements. */
+.vx-docs-nav {
+  box-sizing: border-box;
+  width: 260px;
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  padding: var(--space-8) var(--space-12) var(--space-24);
+  background: var(--ground);
+  border-right: 1px solid var(--line);
+}
+.vx-docs-nav-label { margin: var(--space-16) var(--space-8) var(--space-4); }
+.vx-docs-nav a {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  min-height: var(--control-md);
+  padding: 0 var(--space-8);
+  border-radius: var(--radius-control);
+  font: 400 14px/1.3 var(--font-sans);
+  color: var(--ink-body);
+  text-decoration: none;
+  transition: background-color 150ms ease-out, color 150ms ease-out;
+}
+.vx-docs-nav a:hover { background: var(--wash); color: var(--ink); }
+.vx-docs-nav a[aria-current="page"] { background: var(--raised); color: var(--ink); font-weight: 500; }
+.vx-docs-nav a.is-nested { padding-left: var(--space-20); }
+.vx-docs-nav a svg { width: 16px; height: 16px; margin-left: auto; fill: var(--ink-muted); }
+
+.vx-toc { width: 220px; display: grid; align-content: start; gap: var(--space-12); }
+.vx-toc ul { list-style: none; margin: 0; padding: 0; border-left: 1px solid var(--line); }
+.vx-toc a {
+  display: block;
+  margin-left: -1px;
+  padding: var(--space-4) 0 var(--space-4) var(--space-16);
+  font: 400 14px/1.4 var(--font-sans);
+  color: var(--ink-muted);
+  text-decoration: none;
+  transition: color 150ms ease-out, box-shadow 150ms ease-out;
+}
+.vx-toc a:hover { color: var(--ink); }
+.vx-toc a[aria-current="true"] { color: var(--ink); box-shadow: inset 2px 0 0 var(--accent); }
+.vx-toc li.is-nested a { padding-left: calc(var(--space-16) + var(--space-12)); }
+
+.vx-code { background: var(--raised); border-radius: var(--radius-card); overflow: hidden; }
+.vx-code-head {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 36px;
+  padding: var(--space-4) var(--space-8) var(--space-4) var(--space-16);
+  border-bottom: 1px solid var(--edge);
+}
+.vx-code-pre {
+  margin: 0;
+  padding: var(--space-16);
+  overflow-x: auto;
+  font: 400 13px/1.6 var(--font-mono);
+  color: var(--syntax-plain);
+  tab-size: 4;
+}
+.vx-tok-key { color: var(--syntax-keyword); }
+.vx-tok-fn { color: var(--syntax-function); }
+.vx-tok-str { color: var(--syntax-string); }
+.vx-tok-com { color: var(--syntax-comment); font-style: italic; }
+.vx-code-inline,
+.vx-prose :not(pre) > code {
+  padding: 1px var(--space-4);
+  font: 400 0.875em/1 var(--font-mono);
+  color: var(--ink);
+  background: var(--raised);
+  border: 1px solid var(--edge);
+  border-radius: var(--radius-control);
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+.vx-callout {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  gap: var(--space-12);
+  padding: var(--space-12) var(--space-16);
+  background: var(--raised);
+  border-radius: var(--radius-card);
+  font: 400 14px/1.55 var(--font-sans);
+  color: var(--ink-body);
+}
+.vx-callout-icon { width: 20px; height: 20px; margin-top: 1px; fill: var(--ink); }
+.vx-callout-title { margin: 0 0 2px; font-weight: 600; color: var(--ink); }
+.vx-callout-body { margin: 0; }
+.vx-callout-body + .vx-callout-body { margin-top: var(--space-8); }
+
+/* ------------------------------------------------------------------ blog */
+.vx-blog-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-8) var(--space-24);
+  padding-bottom: var(--space-16);
+  border-bottom: 1px solid var(--line);
+}
+.vx-blog-title { margin: 0; color: var(--ink); }
+.vx-blog-feeds { display: flex; gap: var(--space-16); }
+
+/* Post rows sit in a .vx-posts list, which they measure to decide their layout. */
+/* The list is a ul of li > a.vx-post-row. Each row reaches 12px past the column on both sides, so
+   its text sits on the column's edge, under the heading, and its wash has room. The rule between
+   rows spans the column only, as the heading's rule does. */
+.vx-posts { container-type: inline-size; margin: 0; padding: 0; list-style: none; }
+/* The index groups its rows by year: a quiet mono h2 over each year's list, on the column's edge. */
+.vx-posts-year { margin: var(--space-32) 0 0; padding-bottom: var(--space-4); color: var(--ink-muted); }
+.vx-blog-head + .vx-posts-year { margin-top: var(--space-24); }
+.vx-post-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr);
+  gap: var(--space-4) var(--space-24);
+  margin: 0 calc(-1 * var(--space-12));
+  padding: var(--space-16) var(--space-12);
+  color: inherit;
+  text-decoration: none;
+  transition: background-color 150ms ease-out;
+}
+.vx-post-row::after { content: ""; position: absolute; right: var(--space-12); bottom: 0; left: var(--space-12); border-bottom: 1px solid var(--line); }
+.vx-post-row:hover { background: var(--wash); }
+.vx-post-row-meta { grid-row: span 2; display: grid; align-content: start; gap: var(--space-4); padding-top: var(--space-4); }
+.vx-post-row-title { margin: 0; color: var(--ink); }
+.vx-post-row-excerpt { margin: 0; color: var(--ink-muted); }
+@container (max-width: 560px) {
+  .vx-post-row { grid-template-columns: minmax(0, 1fr); }
+  .vx-post-row-meta { grid-row: auto; display: flex; flex-wrap: wrap; gap: var(--space-4) var(--space-12); padding-top: 0; }
+}
+/* An external row: a post on another site. Its source (the host, then arrow_outward) closes the
+   meta, and screen-reader text before it says that the link leaves the site. The meta column holds
+   the longest listed host (datalakehousehub.com). A longer one ends in an ellipsis, and the source's
+   title gives it whole. */
+.vx-post-row-source { display: inline-flex; align-items: center; gap: var(--space-4); min-width: 0; max-width: 100%; color: var(--ink-muted); }
+.vx-post-row-host { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vx-post-row-out { flex: none; width: 12px; height: 12px; fill: currentColor; }
+.vx-post-row.is-external:hover .vx-post-row-source { color: var(--accent-ink); }
+
+/* Cover: a post's art, from coverFor(seed) in components/lib/cover.js. The blocks and the slab's
+   characters take their colours from the tokens, so a cover follows the theme. */
+.vx-cover { display: block; overflow: hidden; background: var(--ground); }
+.vx-cover-art { display: block; width: 100%; height: 100%; }
+.vx-cover-slab { fill: var(--accent); }
+.vx-cover-edge { fill: var(--edge); }
+.vx-cover-muted { fill: var(--ink-muted); }
+.vx-cover-ch { fill: var(--ground); font: 500 16px var(--font-mono); text-anchor: middle; dominant-baseline: central; }
+
+.vx-article {
+  box-sizing: border-box;
+  max-width: calc(68ch + 2 * var(--space-48));
+  margin: 0 auto;
+  padding: var(--space-48) var(--space-48) var(--space-32);
+  color: var(--ink-body);
+}
+.vx-article-head { margin-bottom: var(--space-32); }
+/* The head reads the title, the dek and the byline. */
+.vx-article-title { margin: 0 0 var(--space-16); color: var(--ink); text-wrap: balance; }
+/* The dek says what the post is in one sentence. Two lines at most: a longer one is cut, except
+   on a phone, where it runs to its end. */
+.vx-article-dek {
+  display: -webkit-box;
+  margin: 0 0 var(--space-16);
+  overflow: hidden;
+  font: 400 18px/1.5 var(--font-sans);
+  color: var(--ink-muted);
+  text-wrap: pretty;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+.vx-article-byline { margin: 0; }
+.vx-prose > * { margin: 0 0 1.1em; }
+.vx-prose > h2 { margin: 2em 0 0.6em; font: 500 28px/1.15 var(--font-display); letter-spacing: -0.02em; color: var(--ink); }
+.vx-prose > h3 { margin: 1.6em 0 0.5em; font: 600 22px/1.2 var(--font-display); letter-spacing: -0.02em; color: var(--ink); }
+.vx-prose > h4 { margin: 1.4em 0 0.4em; font: 600 18px/1.3 var(--font-display); letter-spacing: -0.02em; color: var(--ink); }
+.vx-prose > h5,
+.vx-prose > h6 { margin: 1.4em 0 0.4em; font-size: 1em; font-weight: 600; color: var(--ink); }
+.vx-prose > :is(h2, h3, h4, h5, h6) { position: relative; scroll-margin-top: var(--space-24); }
+/* A heading links to itself. Its "#" sits in the margin, so it never moves the heading, and shows
+   on hover and on focus. A heading that holds a link of its own gets the "#" as a separate link. */
+.vx-prose a.vx-heading-link { color: inherit; text-decoration: none; }
+.vx-prose a.vx-heading-link:hover { color: inherit; }
+.vx-prose .vx-anchor {
+  position: absolute;
+  right: 100%;
+  padding-right: var(--space-8);
+  font-family: var(--font-mono);
+  font-weight: 400;
+  color: var(--ink-muted);
+  text-decoration: none;
+  opacity: 0;
+  transition: opacity 150ms ease-out, color 150ms ease-out;
+}
+.vx-prose > :is(h2, h3, h4, h5, h6):hover .vx-anchor,
+.vx-prose .vx-heading-link:focus-visible .vx-anchor,
+.vx-prose a.vx-anchor:focus-visible {
+  opacity: 1;
+  color: var(--accent-ink);
+}
+.vx-prose strong { font-weight: 600; color: var(--ink); }
+/* A PR or issue number ("#5024") is a machine reference: quiet mono, with a chip on hover, so a
+   run of them reads as one reference rather than a row of underlines. */
+.vx-prose a.vx-ref {
+  padding: 0 var(--space-4);
+  font-size: 14px;
+  color: var(--ink-muted);
+  text-decoration: none;
+  white-space: nowrap;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  transition: color 150ms ease-out, border-color 150ms ease-out;
+}
+.vx-prose a.vx-ref:hover { color: var(--ink); border-color: var(--edge); }
+/* Markers are drawn here, because a site's reset often removes them. */
+.vx-prose ul, .vx-prose ol { padding-left: 1.4em; }
+.vx-prose ul { list-style: disc; }
+.vx-prose ol { list-style: decimal; }
+.vx-prose ul ul { list-style: circle; }
+.vx-prose li + li { margin-top: 0.4em; }
+.vx-prose li::marker { color: var(--ink-muted); }
+.vx-prose blockquote {
+  margin: 1.6em 0;
+  padding-left: var(--space-16);
+  border-left: 2px solid var(--accent);
+  font-size: 18px;
+  line-height: 1.55;
+  color: var(--ink);
+}
+.vx-prose > .vx-code, .vx-prose > .vx-callout, .vx-prose > .vx-figure, .vx-prose > .vx-table-wrap, .vx-prose > .vx-quote { margin: 1.9em 0; }
+/* An encoding chain: mono steps on raised, joined by arrows. DetailStrip in the Explorer and a
+   blog post both use it, so it lives here, where a site that copies only the blog finds it. */
+.vx-chain { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-8); font: 400 12.5px/1 var(--font-mono); color: var(--ink-body); }
+.vx-chain-step { padding: var(--space-4) var(--space-8); background: var(--raised); border: 1px solid var(--edge); border-radius: var(--radius-control); }
+.vx-chain-arrow { color: var(--ink-muted); }
+.vx-prose > .vx-chain { margin: 1.4em 0; }
+/* People named in a post, such as a month's contributors: a grid, not a list of bullets. */
+.vx-prose ul.vx-names {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(12em, 1fr));
+  gap: var(--space-4) var(--space-24);
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.vx-prose ul.vx-names li + li { margin-top: 0; }
+/* A note at the end of a post, such as where it first appeared. */
+.vx-prose > .vx-article-note { margin-top: 2.4em; padding-top: var(--space-16); border-top: 1px solid var(--line); color: var(--ink-muted); }
+
+/* Quote: someone else's words, with a linked source. The post's own line is the blockquote above. */
+.vx-quote { padding: var(--space-20) var(--space-24); border: 1px solid var(--line); border-radius: var(--radius-card); }
+.vx-quote .vx-quote-text { margin: 0; padding: 0; border: 0; color: var(--ink); quotes: "\201C" "\201D"; text-wrap: pretty; }
+.vx-quote-text::before { content: open-quote; }
+.vx-quote-text::after { content: close-quote; }
+.vx-quote-source { margin-top: var(--space-12); }
+
+/* The post's end: older and newer posts, one row of links, then the site's sign-up. */
+.vx-article-end { display: grid; gap: var(--space-24); margin-top: var(--space-48); padding-top: var(--space-24); border-top: 1px solid var(--line); }
+.vx-post-nav { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-12); }
+.vx-post-nav-link {
+  display: grid;
+  align-content: start;
+  gap: var(--space-8);
+  padding: var(--space-16);
+  color: inherit;
+  text-decoration: none;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  transition: background-color 150ms ease-out, border-color 150ms ease-out;
+}
+.vx-post-nav-link:hover { background: var(--wash); border-color: var(--edge); }
+.vx-post-nav-link.is-prev { grid-column: 1; }
+.vx-post-nav-link.is-next { grid-column: 2; text-align: right; }
+.vx-post-nav-title { margin: 0; color: var(--ink); text-wrap: balance; }
+.vx-article-links { display: flex; flex-wrap: wrap; gap: var(--space-8) var(--space-24); margin: 0; }
+@media (max-width: 640px) {
+  .vx-article { padding: var(--space-8) 0 var(--space-24); font-size: 16px; border: 0; background: none; }
+  .vx-article-title { font-size: 36px; }
+  .vx-article-dek { display: block; font-size: 16px; -webkit-line-clamp: none; line-clamp: none; }
+  .vx-post-nav { grid-template-columns: minmax(0, 1fr); }
+  .vx-post-nav-link.is-next { grid-column: auto; text-align: left; }
+}
+
+/* Tables: a post's tables, which Markdown writes, and data tables. */
+.vx-table-wrap { overflow-x: auto; }
+.vx-prose table,
+.vx-table { width: 100%; border-collapse: collapse; font: 400 14px/1.4 var(--font-sans); font-variant-numeric: tabular-nums; }
+.vx-prose th,
+.vx-table th {
+  padding: var(--space-8) var(--space-12) var(--space-8) 0;
+  text-align: left;
+  font: 500 11px/1.2 var(--font-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  border-bottom: 1px solid var(--edge);
+}
+.vx-prose td,
+.vx-table td { padding: var(--space-8) var(--space-12) var(--space-8) 0; border-bottom: 1px solid var(--line); }
+.vx-prose .is-num,
+.vx-table .is-num { text-align: right; font-family: var(--font-mono); font-size: 13px; white-space: nowrap; }
+.vx-prose tr.is-total td,
+.vx-table tr.is-total td { color: var(--ink); font-weight: 600; border-bottom: 0; }
+/* Data tables: every cell in mono, rows at app height, and column names keep their case. */
+.vx-table.is-data th,
+.vx-table.is-data td { padding: var(--space-8) var(--space-12); }
+.vx-table.is-data th { text-transform: none; letter-spacing: 0; }
+.vx-table.is-data td { height: var(--app-row); box-sizing: border-box; white-space: nowrap; font-family: var(--font-mono); font-size: 13px; color: var(--ink-body); }
+.vx-table th.is-selected { color: var(--accent-ink); }
+.vx-table td.is-selected { background: var(--accent-soft); color: var(--ink); }
+
+.vx-figure { margin: 0; container-type: inline-size; }
+.vx-figure-frame { display: grid; gap: var(--space-12); padding: var(--space-20); border: 1px solid var(--line); border-radius: var(--radius-card); }
+.vx-figure-caption { margin-top: var(--space-12); font: 400 14px/1.5 var(--font-sans); color: var(--ink-muted); }
+.vx-figure-caption .vx-source { display: flex; margin-top: var(--space-4); }
+@container (max-width: 520px) {
+  .vx-figure .vx-bars { --bar-name: 96px; --bar-value: 72px; }
+  .vx-figure .vx-bar-extra { display: none; }
+}
+
+/* ------------------------------------------------------------------ focus
+   One rule for every focusable element, last so that it wins over the resets above. Rows and
+   segments inside a clipped container draw it inside their edge. */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+:where(.vx-docs-nav a, .vx-toc a, .vx-post-row, .vx-tree-node, .vx-filemap-bar > button, .vx-tabs-list button):focus-visible { outline-offset: -2px; }

@@ -361,6 +361,9 @@ describe('Chart opt-in full-history loading', () => {
         this.options = config.options;
         charts.push(this);
       }
+      isDatasetVisible(): boolean {
+        return true;
+      }
       update(): void {}
       destroy(): void {}
     }
@@ -638,6 +641,9 @@ describe('Chart opt-in full-history loading', () => {
           stubConstructed = true;
           this.data = { labels: config.data.labels ?? [], datasets: config.data.datasets ?? [] };
           this.options = config.options ?? {};
+        }
+        isDatasetVisible(): boolean {
+          return true;
         }
         update(): void {}
         destroy(): void {}

@@ -1,0 +1,779 @@
+{
+  "name": "Clickbench",
+  "charts": [
+    {
+      "name": "Q0",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJjbGlja2JlbmNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOm51bGwsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4IjowfQ",
+      "display_name": "clickbench Q0 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:vortex-file-compressed": [
+          1281790,
+          1262025,
+          null,
+          null,
+          null
+        ],
+        "datafusion:parquet": [1269626, 1258830, null, null, null],
+        "datafusion:lance": [981331, 951505, null, null, null],
+        "duckdb:parquet": [11141430, 11285009, null, null, null]
+      }
+    },
+    {
+      "name": "Q1",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJjbGlja2JlbmNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOm51bGwsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4IjoxfQ",
+      "display_name": "clickbench Q1 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:vortex-file-compressed": [
+          6097567,
+          5911932,
+          null,
+          null,
+          null
+        ],
+        "datafusion:parquet": [16152441, 15938402, null, null, null],
+        "datafusion:lance": [181310816, 187916943, null, null, null],
+        "duckdb:parquet": [17363298, 17959231, null, null, null]
+      }
+    },
+    {
+      "name": "Q2",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJjbGlja2JlbmNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOm51bGwsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4IjoyfQ",
+      "display_name": "clickbench Q2 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:vortex-file-compressed": [
+          11084058,
+          10910542,
+          null,
+          null,
+          null
+        ],
+        "datafusion:parquet": [19615344, 18356302, null, null, null],
+        "datafusion:lance": [131038772, 135153699, null, null, null],
+        "duckdb:parquet": [24063325, 24602465, null, null, null]
+      }
+    },
+    {
+      "name": "Q3",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJjbGlja2JlbmNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOm51bGwsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4IjozfQ",
+      "display_name": "clickbench Q3 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:vortex-file-compressed": [
+          13823777,
+          12882985,
+          null,
+          null,
+          null
+        ],
+        "datafusion:parquet": [17508082, 17543901, null, null, null],
+        "datafusion:lance": [126384144, 127255878, null, null, null],
+        "duckdb:parquet": [25254240, 25774313, null, null, null]
+      }
+    },
+    {
+      "name": "Q4",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJjbGlja2JlbmNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOm51bGwsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4Ijo0fQ",
+      "display_name": "clickbench Q4 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:vortex-file-compressed": [
+          59178557,
+          58813976,
+          null,
+          null,
+          null
+        ],
+        "datafusion:parquet": [63344187, 64314624, null, null, null],
+        "datafusion:lance": [175856259, 173893245, null, null, null],
+        "duckdb:parquet": [64317873, 64696993, null, null, null]
+      }
+    },
+    {
+      "name": "Q5",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJjbGlja2JlbmNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOm51bGwsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4Ijo1fQ",
+      "display_name": "clickbench Q5 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:vortex-file-compressed": [
+          78530328,
+          80193467,
+          null,
+          null,
+          null
+        ],
+        "datafusion:parquet": [89300821, 89452541, null, null, null],
+        "datafusion:lance": [938445344, 966511021, null, null, null],
+        "duckdb:parquet": [86229699, 88595042, null, null, null]
+      }
+    },
+    {
+      "name": "Q6",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJjbGlja2JlbmNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOm51bGwsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4Ijo2fQ",
+      "display_name": "clickbench Q6 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:vortex-file-compressed": [
+          1294854,
+          1250080,
+          null,
+          null,
+          null
+        ],
+        "datafusion:parquet": [1259546, 1267751, null, null, null],
+        "datafusion:lance": [127288573, 134963862, null, null, null],
+        "duckdb:parquet": [22004729, 22478867, null, null, null]
+      }
+    },
+    {
+      "name": "Q7",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJjbGlja2JlbmNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOm51bGwsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4Ijo3fQ",
+      "display_name": "clickbench Q7 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:vortex-file-compressed": [
+          9530770,
+          9686378,
+          null,
+          null,
+          null
+        ],
+        "datafusion:parquet": [16762651, 16963512, null, null, null],
+        "datafusion:lance": [189425370, 194314314, null, null, null],
+        "duckdb:parquet": [20506775, 19229203, null, null, null]
+      }
+    },
+    {
+      "name": "Q8",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJjbGlja2JlbmNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOm51bGwsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4Ijo4fQ",
+      "display_name": "clickbench Q8 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:vortex-file-compressed": [
+          81758399,
+          78315154,
+          null,
+          null,
+          null
+        ],
+        "datafusion:parquet": [87560886, 87207143, null, null, null],
+        "datafusion:lance": [202104841, 203939107, null, null, null],
+        "duckdb:parquet": [78436672, 78485193, null, null, null]
+      }
+    },
+    {
+      "name": "Q9",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJjbGlja2JlbmNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOm51bGwsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4Ijo5fQ",
+      "display_name": "clickbench Q9 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:vortex-file-compressed": [
+          172474690,
+          172685433,
+          null,
+          null,
+          null
+        ],
+        "datafusion:parquet": [192473178, 194251440, null, null, null],
+        "datafusion:lance": [297456456, 303871434, null, null, null],
+        "duckdb:parquet": [105983196, 106029992, null, null, null]
+      }
+    },
+    {
+      "name": "Q10",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJjbGlja2JlbmNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOm51bGwsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4IjoxMH0",
+      "display_name": "clickbench Q10 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:vortex-file-compressed": [
+          24500682,
+          23678260,
+          null,
+          null,
+          null
+        ],
+        "datafusion:parquet": [37595344, 36053196, null, null, null],
+        "datafusion:lance": [684996684, 684945146, null, null, null],
+        "duckdb:parquet": [41965764, 42400121, null, null, null]
+      }
+    },
+    {
+      "name": "Q11",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJjbGlja2JlbmNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOm51bGwsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4IjoxMX0",
+      "display_name": "clickbench Q11 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:vortex-file-compressed": [
+          26908310,
+          26296483,
+          null,
+          null,
+          null
+        ],
+        "datafusion:parquet": [43463408, 44452573, null, null, null],
+        "datafusion:lance": [720051723, 723042451, null, null, null],
+        "duckdb:parquet": [47734359, 47626338, null, null, null]
+      }
+    },
+    {
+      "name": "Q12",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJjbGlja2JlbmNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOm51bGwsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4IjoxMn0",
+      "display_name": "clickbench Q12 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:vortex-file-compressed": [
+          72478091,
+          74644604,
+          null,
+          null,
+          null
+        ],
+        "datafusion:parquet": [95702198, 95681958, null, null, null],
+        "datafusion:lance": [1589100765, 1624314415, null, null, null],
+        "duckdb:parquet": [94637174, 94064574, null, null, null]
+      }
+    },
+    {
+      "name": "Q13",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJjbGlja2JlbmNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOm51bGwsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4IjoxM30",
+      "display_name": "clickbench Q13 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:vortex-file-compressed": [
+          118272462,
+          120362177,
+          null,
+          null,
+          null
+        ],
+        "datafusion:parquet": [147336795, 147604991, null, null, null],
+        "datafusion:lance": [1700170135, 1736613719, null, null, null],
+        "duckdb:parquet": [152826628, 152711702, null, null, null]
+      }
+    },
+    {
+      "name": "Q14",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJjbGlja2JlbmNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOm51bGwsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4IjoxNH0",
+      "display_name": "clickbench Q14 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:vortex-file-compressed": [
+          74815597,
+          77724106,
+          null,
+          null,
+          null
+        ],
+        "datafusion:parquet": [100637909, 100308237, null, null, null],
+        "datafusion:lance": [1640977466, 1675468337, null, null, null],
+        "duckdb:parquet": [103510779, 105349694, null, null, null]
+      }
+    },
+    {
+      "name": "Q15",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJjbGlja2JlbmNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOm51bGwsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4IjoxNX0",
+      "display_name": "clickbench Q15 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:vortex-file-compressed": [
+          64314898,
+          63354447,
+          null,
+          null,
+          null
+        ],
+        "datafusion:parquet": [72016867, 77667319, null, null, null],
+        "datafusion:lance": [180296505, 178674574, null, null, null],
+        "duckdb:parquet": [89355191, 90397041, null, null, null]
+      }
+    },
+    {
+      "name": "Q16",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJjbGlja2JlbmNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOm51bGwsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4IjoxNn0",
+      "display_name": "clickbench Q16 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:vortex-file-compressed": [
+          155047734,
+          151592595,
+          null,
+          null,
+          null
+        ],
+        "datafusion:parquet": [155433723, 156896792, null, null, null],
+        "datafusion:lance": [1045913367, 1065434711, null, null, null],
+        "duckdb:parquet": [182704891, 179030788, null, null, null]
+      }
+    },
+    {
+      "name": "Q17",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJjbGlja2JlbmNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOm51bGwsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4IjoxN30",
+      "display_name": "clickbench Q17 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:vortex-file-compressed": [
+          154427057,
+          153091676,
+          null,
+          null,
+          null
+        ],
+        "datafusion:parquet": [157239118, 158330670, null, null, null],
+        "datafusion:lance": [1039204292, 1052471669, null, null, null],
+        "duckdb:parquet": [179657670, 180500988, null, null, null]
+      }
+    },
+    {
+      "name": "Q18",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJjbGlja2JlbmNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOm51bGwsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4IjoxOH0",
+      "display_name": "clickbench Q18 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:vortex-file-compressed": [
+          297954678,
+          300413266,
+          null,
+          null,
+          null
+        ],
+        "datafusion:parquet": [313373426, 311836383, null, null, null],
+        "datafusion:lance": [1173796128, 1230042609, null, null, null],
+        "duckdb:parquet": [311987835, 317459186, null, null, null]
+      }
+    },
+    {
+      "name": "Q19",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJjbGlja2JlbmNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOm51bGwsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4IjoxOX0",
+      "display_name": "clickbench Q19 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:vortex-file-compressed": [
+          8030977,
+          8438933,
+          null,
+          null,
+          null
+        ],
+        "datafusion:parquet": [19184321, 18772657, null, null, null],
+        "datafusion:lance": [139039813, 139959652, null, null, null],
+        "duckdb:parquet": [21333683, 22115837, null, null, null]
+      }
+    },
+    {
+      "name": "Q20",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJjbGlja2JlbmNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOm51bGwsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4IjoyMH0",
+      "display_name": "clickbench Q20 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:vortex-file-compressed": [
+          71594523,
+          69863367,
+          null,
+          null,
+          null
+        ],
+        "datafusion:parquet": [183158198, 177889011, null, null, null],
+        "datafusion:lance": [2347634893, 2361883909, null, null, null],
+        "duckdb:parquet": [185065014, 193461525, null, null, null]
+      }
+    },
+    {
+      "name": "Q21",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJjbGlja2JlbmNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOm51bGwsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4IjoyMX0",
+      "display_name": "clickbench Q21 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:vortex-file-compressed": [
+          79261352,
+          81421372,
+          null,
+          null,
+          null
+        ],
+        "datafusion:parquet": [173607256, 172583349, null, null, null],
+        "datafusion:lance": [3145193956, 3182384524, null, null, null],
+        "duckdb:parquet": [245562480, 257951250, null, null, null]
+      }
+    },
+    {
+      "name": "Q22",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJjbGlja2JlbmNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOm51bGwsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4IjoyMn0",
+      "display_name": "clickbench Q22 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:vortex-file-compressed": [
+          96836393,
+          95818546,
+          null,
+          null,
+          null
+        ],
+        "datafusion:parquet": [261422755, 261678825, null, null, null],
+        "datafusion:lance": [3668887265, 3739059642, null, null, null],
+        "duckdb:parquet": [329292632, 344707441, null, null, null]
+      }
+    },
+    {
+      "name": "Q23",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJjbGlja2JlbmNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOm51bGwsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4IjoyM30",
+      "display_name": "clickbench Q23 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:vortex-file-compressed": [
+          186997398,
+          202147398,
+          null,
+          null,
+          null
+        ],
+        "datafusion:parquet": [1010389428, 1009552410, null, null, null],
+        "datafusion:lance": [8486241038, 8373727267, null, null, null],
+        "duckdb:parquet": [174928783, 176624792, null, null, null]
+      }
+    },
+    {
+      "name": "Q24",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJjbGlja2JlbmNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOm51bGwsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4IjoyNH0",
+      "display_name": "clickbench Q24 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:vortex-file-compressed": [
+          15757873,
+          16673938,
+          null,
+          null,
+          null
+        ],
+        "datafusion:parquet": [30376154, 31105522, null, null, null],
+        "datafusion:lance": [1468772853, 1496154107, null, null, null],
+        "duckdb:parquet": [32115655, 33166524, null, null, null]
+      }
+    },
+    {
+      "name": "Q25",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJjbGlja2JlbmNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOm51bGwsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4IjoyNX0",
+      "display_name": "clickbench Q25 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:vortex-file-compressed": [
+          20485177,
+          19595648,
+          null,
+          null,
+          null
+        ],
+        "datafusion:parquet": [37809796, 37529915, null, null, null],
+        "datafusion:lance": [1442149988, 1474596294, null, null, null],
+        "duckdb:parquet": [43993574, 43648989, null, null, null]
+      }
+    },
+    {
+      "name": "Q26",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJjbGlja2JlbmNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOm51bGwsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4IjoyNn0",
+      "display_name": "clickbench Q26 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:vortex-file-compressed": [
+          16452953,
+          16983007,
+          null,
+          null,
+          null
+        ],
+        "datafusion:parquet": [31526899, 30414679, null, null, null],
+        "datafusion:lance": [1485672291, 1508589099, null, null, null],
+        "duckdb:parquet": [33835215, 33313554, null, null, null]
+      }
+    },
+    {
+      "name": "Q27",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJjbGlja2JlbmNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOm51bGwsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4IjoyN30",
+      "display_name": "clickbench Q27 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:vortex-file-compressed": [
+          106969857,
+          103716044,
+          null,
+          null,
+          null
+        ],
+        "datafusion:parquet": [193750845, 192769401, null, null, null],
+        "datafusion:lance": [1415859154, 1433510124, null, null, null],
+        "duckdb:parquet": [201897896, 196788168, null, null, null]
+      }
+    },
+    {
+      "name": "Q28",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJjbGlja2JlbmNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOm51bGwsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4IjoyOH0",
+      "display_name": "clickbench Q28 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:vortex-file-compressed": [
+          552700529,
+          555179604,
+          null,
+          null,
+          null
+        ],
+        "datafusion:parquet": [618170587, 626707086, null, null, null],
+        "datafusion:lance": [1819281681, 1850977891, null, null, null],
+        "duckdb:parquet": [981238132, 982276503, null, null, null]
+      }
+    },
+    {
+      "name": "Q29",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJjbGlja2JlbmNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOm51bGwsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4IjoyOX0",
+      "display_name": "clickbench Q29 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:vortex-file-compressed": [
+          24768115,
+          25041194,
+          null,
+          null,
+          null
+        ],
+        "datafusion:parquet": [28760072, 29776491, null, null, null],
+        "datafusion:lance": [146562343, 144830445, null, null, null],
+        "duckdb:parquet": [27235004, 26045909, null, null, null]
+      }
+    },
+    {
+      "name": "Q30",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJjbGlja2JlbmNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOm51bGwsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4IjozMH0",
+      "display_name": "clickbench Q30 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:vortex-file-compressed": [
+          59689229,
+          59203064,
+          null,
+          null,
+          null
+        ],
+        "datafusion:parquet": [91208790, 91574039, null, null, null],
+        "datafusion:lance": [1680987300, 1711642803, null, null, null],
+        "duckdb:parquet": [108769678, 107518294, null, null, null]
+      }
+    },
+    {
+      "name": "Q31",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJjbGlja2JlbmNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOm51bGwsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4IjozMX0",
+      "display_name": "clickbench Q31 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:vortex-file-compressed": [
+          68241742,
+          67129154,
+          null,
+          null,
+          null
+        ],
+        "datafusion:parquet": [103328894, 104438661, null, null, null],
+        "datafusion:lance": [1715901272, 1747561970, null, null, null],
+        "duckdb:parquet": [160612131, 160171355, null, null, null]
+      }
+    },
+    {
+      "name": "Q32",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJjbGlja2JlbmNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOm51bGwsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4IjozMn0",
+      "display_name": "clickbench Q32 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:vortex-file-compressed": [
+          291176620,
+          292084906,
+          null,
+          null,
+          null
+        ],
+        "datafusion:parquet": [317330818, 310023017, null, null, null],
+        "datafusion:lance": [412758106, 413405795, null, null, null],
+        "duckdb:parquet": [399487412, 395013900, null, null, null]
+      }
+    },
+    {
+      "name": "Q33",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJjbGlja2JlbmNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOm51bGwsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4IjozM30",
+      "display_name": "clickbench Q33 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:vortex-file-compressed": [
+          323006683,
+          324926840,
+          null,
+          null,
+          null
+        ],
+        "datafusion:parquet": [379007016, 381438290, null, null, null],
+        "datafusion:lance": [1305579008, 1321157851, null, null, null],
+        "duckdb:parquet": [479002012, 495379326, null, null, null]
+      }
+    },
+    {
+      "name": "Q34",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJjbGlja2JlbmNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOm51bGwsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4IjozNH0",
+      "display_name": "clickbench Q34 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:vortex-file-compressed": [
+          322751125,
+          323204536,
+          null,
+          null,
+          null
+        ],
+        "datafusion:parquet": [381324558, 377334490, null, null, null],
+        "datafusion:lance": [1307611121, 1337574722, null, null, null],
+        "duckdb:parquet": [474621547, 485373863, null, null, null]
+      }
+    },
+    {
+      "name": "Q35",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJjbGlja2JlbmNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOm51bGwsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4IjozNX0",
+      "display_name": "clickbench Q35 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:vortex-file-compressed": [
+          56630145,
+          59446887,
+          null,
+          null,
+          null
+        ],
+        "datafusion:parquet": [65773189, 66572760, null, null, null],
+        "datafusion:lance": [174139391, 170997082, null, null, null],
+        "duckdb:parquet": [64455995, 65146945, null, null, null]
+      }
+    },
+    {
+      "name": "Q36",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJjbGlja2JlbmNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOm51bGwsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4IjozNn0",
+      "display_name": "clickbench Q36 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:vortex-file-compressed": [
+          38078259,
+          37873293,
+          null,
+          null,
+          null
+        ],
+        "datafusion:parquet": [73301739, 73635287, null, null, null],
+        "datafusion:lance": [1231665926, 1255736981, null, null, null],
+        "duckdb:parquet": [34144165, 32746115, null, null, null]
+      }
+    },
+    {
+      "name": "Q37",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJjbGlja2JlbmNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOm51bGwsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4IjozN30",
+      "display_name": "clickbench Q37 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:vortex-file-compressed": [
+          21305243,
+          21487378,
+          null,
+          null,
+          null
+        ],
+        "datafusion:parquet": [35519837, 35199636, null, null, null],
+        "datafusion:lance": [763505902, 776186960, null, null, null],
+        "duckdb:parquet": [24805328, 24924299, null, null, null]
+      }
+    },
+    {
+      "name": "Q38",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJjbGlja2JlbmNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOm51bGwsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4IjozOH0",
+      "display_name": "clickbench Q38 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:vortex-file-compressed": [
+          13415985,
+          13333193,
+          null,
+          null,
+          null
+        ],
+        "datafusion:parquet": [47932871, 47635464, null, null, null],
+        "datafusion:lance": [407859608, 413224945, null, null, null],
+        "duckdb:parquet": [25998435, 27816774, null, null, null]
+      }
+    },
+    {
+      "name": "Q39",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJjbGlja2JlbmNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOm51bGwsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4IjozOX0",
+      "display_name": "clickbench Q39 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:vortex-file-compressed": [
+          79549474,
+          79675478,
+          null,
+          null,
+          null
+        ],
+        "datafusion:parquet": [144248518, 143998085, null, null, null],
+        "datafusion:lance": [349148969, 364251017, null, null, null],
+        "duckdb:parquet": [54633753, 54927116, null, null, null]
+      }
+    },
+    {
+      "name": "Q40",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJjbGlja2JlbmNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOm51bGwsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4Ijo0MH0",
+      "display_name": "clickbench Q40 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:vortex-file-compressed": [
+          10832706,
+          10308021,
+          null,
+          null,
+          null
+        ],
+        "datafusion:parquet": [19988250, 20411730, null, null, null],
+        "datafusion:lance": [365449838, 379564944, null, null, null],
+        "duckdb:parquet": [16070678, 16971731, null, null, null]
+      }
+    },
+    {
+      "name": "Q41",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJjbGlja2JlbmNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOm51bGwsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4Ijo0MX0",
+      "display_name": "clickbench Q41 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:vortex-file-compressed": [
+          10204094,
+          10203310,
+          null,
+          null,
+          null
+        ],
+        "datafusion:parquet": [19125018, 18947718, null, null, null],
+        "datafusion:lance": [408156666, 405774775, null, null, null],
+        "duckdb:parquet": [16566654, 17400574, null, null, null]
+      }
+    },
+    {
+      "name": "Q42",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJjbGlja2JlbmNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOm51bGwsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4Ijo0Mn0",
+      "display_name": "clickbench Q42 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:vortex-file-compressed": [
+          10672402,
+          10629113,
+          null,
+          null,
+          null
+        ],
+        "datafusion:parquet": [19258414, 19328770, null, null, null],
+        "datafusion:lance": [357755219, 352241895, null, null, null],
+        "duckdb:parquet": [16054501, 15985651, null, null, null]
+      }
+    }
+  ]
+}

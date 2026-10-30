@@ -2,7 +2,7 @@
 title: "October Bulletin"
 date: "2025-11-6"
 authors: ["Community Team"]
-excerpt: "Overview of all work happening in Vortex"
+excerpt: "An experimental GPU scan landed, the DataFusion integration pushed filters into struct fields, and DuckDB 1.4.2 made Vortex a core extension."
 published: true
 ---
 
@@ -31,7 +31,7 @@ You can now try Vortex as part of [dft](https://github.com/datafusion-contrib/da
 
 ### DataFusion
 
-1. Added support for pushing down filters onto fields of struct columns. #5024
+1. Added support for pushing down filters onto fields of struct columns. [#5024](https://github.com/vortex-data/vortex/pull/5024)
 
 ### DuckDB
 
@@ -43,17 +43,20 @@ We want to thank to anyone who has tried Vortex, provided feedback, asked questi
 
 Special thanks go for all the contributors who took the time and care to contribute to Vortex this month (in descending count of commits):
 
-```text
-    41  Connor Tsui
-    38  Joe Isaacs
-    24  Nicholas Gates
-    22  Robert Kruszewski
-    22  Adam Gutglick
-    10  Andrew Duffy
-    8   Dan King
-    8   Alexander Droste
-    7   Onur Satici
-    5   Alfonso Subiotto Marqués
-    2   Dmitrii Blaginin
-    1   Maksim Dergousov
-```
+<Bars
+  title="Commits"
+  bars={[
+    { name: "Connor Tsui", value: 41 },
+    { name: "Joe Isaacs", value: 38 },
+    { name: "Nicholas Gates", value: 24 },
+    { name: "Robert Kruszewski", value: 22 },
+    { name: "Adam Gutglick", value: 22 },
+    { name: "Andrew Duffy", value: 10 },
+    { name: "Dan King", value: 8 },
+    { name: "Alexander Droste", value: 8 },
+    { name: "Onur Satici", value: 7 },
+    { name: "Alfonso Subiotto Marqués", value: 5 },
+    { name: "Dmitrii Blaginin", value: 2 },
+    { name: "Maksim Dergousov", value: 1 }
+  ]}
+/>

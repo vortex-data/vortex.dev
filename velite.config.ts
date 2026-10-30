@@ -1,5 +1,13 @@
 import rehypePrettyCode from "rehype-pretty-code";
 import { defineCollection, defineConfig, s } from "velite";
+import {
+  rehypeAsides,
+  rehypeHeadingIds,
+  rehypeHeadingLevels,
+  rehypeRefs,
+  rehypeTables
+} from "./src/lib/rehype-blog";
+import { shikiTheme } from "./src/vendor/vortex-design/code-block.js";
 
 const blog = defineCollection({
   name: "Blog",
@@ -10,6 +18,7 @@ const blog = defineCollection({
       title: s.string().max(99),
       date: s.isodate(),
       authors: s.array(s.string()),
+      // The dek under the title and the index's one-line summary.
       excerpt: s.string().optional(),
       published: s.boolean().default(true),
       metadata: s.metadata(),
@@ -18,10 +27,19 @@ const blog = defineCollection({
           [
             rehypePrettyCode,
             {
-              theme: "night-owl",
-              keepBackground: false
+              // The design system's Shiki theme: colours from its syntax-*
+              // tokens, so code follows the blog's Light and Dark themes.
+              theme: shikiTheme,
+              keepBackground: false,
+              // A fence with no language is still a CodeBlock.
+              defaultLang: { block: "plaintext" }
             }
-          ]
+          ],
+          rehypeHeadingLevels,
+          rehypeHeadingIds,
+          rehypeAsides,
+          rehypeTables,
+          rehypeRefs
         ]
       })
     })

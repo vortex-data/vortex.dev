@@ -256,13 +256,16 @@ headline, and its summary table, both server-rendered. Its toolbar and cards
 ([`GroupBody`](../../web/components/GroupBody.tsx)) mount only while it is open,
 so a collapsed group hydrates no island. The open groups live in
 the URL fragment (`/#compression,clickbench`), which the CDN never sees. An
-inline script after the last group
-([`OpenGroupsScript`](../../web/components/OpenGroupsScript.tsx)) opens them
-while they are still in React's hidden streamed segment, so a reload or Back
-never shows them collapsed first. It also leaves a marker for the client code: a
-group the reader opens or closes before hydration stays that way, and a reader
-who scrolls, touches, clicks or presses a key before hydration is not moved,
-neither by the restore nor by the scroll to a link's first group. Scroll is
+inline script before the first group
+([`OpenGroupsScript`](../../web/components/OpenGroupsScript.tsx)) opens each
+listed group as soon as the parser inserts it: its `MutationObserver` callback
+runs before the browser can paint the new nodes. So a reload or Back never
+shows them collapsed first, even on a connection slow enough that the first
+groups paint before the last arrive. A second script after the last group ends
+the work and leaves a marker for the client code: a group the reader opens or
+closes before hydration stays that way, and a reader who scrolls, touches,
+clicks or presses a key before hydration is not moved, neither by the restore
+nor by the scroll to a link's first group. Scroll is
 restored by element, not by pixel
 ([`lib/scroll-restore.ts`](../../web/lib/scroll-restore.ts)): the open bodies
 mount only after hydration, so a saved `scrollY` would land against a shorter
@@ -278,8 +281,7 @@ with one-off scripts that are not in this repository.
 - The groups first paint at 413 → 182 ms. First contentful paint rises
   124 → 184 ms, because the previous build first paints its "Loading benchmark
   summaries…" card and shows it until its 2.3 MB page has parsed. The new page
-  is small enough that its first paint already shows the groups; the card shows
-  only while a slow network holds them back.
+  is small enough that its first paint already shows the groups.
 - Back and Reload with two groups open put the same card within 1 px of its
   saved offset. The reader sees the top of the page for 1–2 frames, then that
   spot. The Layout Instability API scores these loads at 1.4–1.8. It counts
@@ -288,6 +290,48 @@ with one-off scripts that are not in this repository.
   two scrolls cancel both, so the reader sees no shift after the jump.
 - Expand All mounts all 791 islands in the toggle tasks that follow the click:
   574 ms of blocking time against 500 ms.
+
+Each request to `/` decides how to send the groups
+([`app/page.tsx`](../../web/app/page.tsx)). It starts reading them and waits up
+to 150 ms (`LOADING_VIEW_AFTER_MS`). A Data Cache hit answers well inside that,
+so the page renders the groups directly, with no Suspense boundary: plain,
+visible HTML that a reader with JavaScript off can read in full. A miss gets a
+Suspense boundary instead: the "Loading benchmark summaries…" view streams at
+once and the groups follow into a hidden segment that React's inline script
+reveals. Without JavaScript that reveal never runs, so the loading view says to
+reload in a few minutes (the CDN keeps a copy of `/` for five). A client
+navigation to `/` on a miss shows the same loading view instead of holding the
+previous page. A database failure inside the wait fails the render, so `/`
+returns a real 500; one after it reaches the reader as an error inside a 200
+response that has already started.
+
+Measured as above (local dump, desktop, CPU 4×, median of 5; the cold runs on a
+server restarted with an empty Data Cache), against the build that always waited
+for the data (c4e0934, on #120) and, for the first column, the build that always
+streamed the loading view (511c316):
+
+| `/` | Always streamed | Always waited | Decides per request |
+| --- | --- | --- | --- |
+| Miss: time to first byte | 40 ms | 590 ms | 180 ms |
+| Miss: first contentful paint | 184 ms (loading view) | 720 ms | 328 ms (loading view) |
+| Miss: groups laid out | 613 ms | 633 ms | 605 ms |
+| Hit: time to first byte | 12 ms | 12 ms | 13 ms |
+| Hit: first contentful paint | 96 ms (loading view) | 140 ms | 136 ms |
+| Hit: groups laid out | 368 ms | 39 ms | 50 ms |
+| Client navigation on a miss: loading view | (not measured) | never | 175 ms |
+| Client navigation on a miss: groups | (not measured) | 583 ms | 593 ms |
+
+"Groups laid out" is the first animation frame in which a group section has
+layout. In production a miss costs the cold database read, seconds after an idle
+gap (see "The cost being hidden"); the CDN and the 24-hour Data Cache backstop
+keep misses rare, and an ingest causes none: it marks the entries stale rather
+than dropping them (see "Refresh on ingest"), so the next render of `/` takes
+the plain-HTML path with the previous data.
+
+The 150 ms threshold was measured against the local Data Cache, where a hit
+answers in a few milliseconds. Check it against Vercel's function logs on a
+preview deployment before relying on it: a hit there reads the cache over the
+network.
 
 ### Visual downsampling (LTTB)
 

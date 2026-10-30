@@ -76,4 +76,7 @@ export interface CardCallbacks {
   setRetryable: (on: boolean) => void;
   /** Flip once the Chart.js instance exists, so the pre-data placeholder hides. */
   setConstructed: (on: boolean) => void;
+  /** The canvas label's sentence about the latest values (see
+   * `latestValuesSentence`), or `null` before the chart has data. */
+  setLatestValues: (sentence: string | null) => void;
 }

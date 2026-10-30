@@ -54,6 +54,20 @@ describe('Header (server-rendered chrome)', () => {
     expect(allChips).toHaveLength(2);
   });
 
+  it('marks every control that does nothing without JavaScript, and no link', () => {
+    for (const control of [
+      'data-role="nav-mobile-toggle"',
+      'data-action="expand-all"',
+      'data-action="collapse-all"',
+      'data-role="global-filter-bar"',
+      'data-role="theme-toggle"',
+    ]) {
+      expect(html).toContain(`${control} data-requires-js="true"`);
+    }
+    expect(html.match(/data-requires-js/g)).toHaveLength(5);
+    expect(html).not.toMatch(/<a [^>]*data-requires-js/);
+  });
+
   it('omits the filter dropdown when the universe is empty', () => {
     const bare = renderToStaticMarkup(
       <Header universe={{ engines: [], formats: [] }} initialEngines={[]} initialFormats={[]} />,

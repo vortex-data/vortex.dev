@@ -5,7 +5,7 @@
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 
-import { FilterIcon } from '@/components/FilterBar';
+import { FilterIcon } from '@/components/icons';
 import { DEFAULT_VISIBLE, type FilterUniverse } from '@/lib/chart-format';
 import {
   applyGroupMacro,

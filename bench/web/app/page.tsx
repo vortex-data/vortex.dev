@@ -11,9 +11,11 @@ import { HomeLoading } from '@/components/HomeLoading';
 import { LandingState } from '@/components/LandingState';
 import { OpenGroupsScript } from '@/components/OpenGroupsScript';
 import { groupAnchors } from '@/lib/anchor';
-import { parseFilterCsv, singleSearchParam } from '@/lib/chart-format';
+import { type FilterUniverse, parseFilterCsv, singleSearchParam } from '@/lib/chart-format';
 import { cachedFilterUniverse, cachedGroups } from '@/lib/data-cache';
-import { parseGroupFilter, type GroupFilter } from '@/lib/group-filter';
+import { parseGroupFilter } from '@/lib/group-filter';
+import type { Group } from '@/lib/queries';
+import { settlesWithin } from '@/lib/settles-within';
 
 // Rendered per request, with CDN caching layered on by `vercel.json`: each
 // render reads every group from Postgres via `collectGroups()`, and Vercel's
@@ -42,8 +44,9 @@ export const dynamic = 'force-dynamic';
  *
  * The URL fragment lists the open groups' anchors (`#tpc-h-nvme-sf-1,clickbench`,
  * see `lib/open-groups.ts`). The server never sees it, so `/` stays one CDN
- * cache entry. [`OpenGroupsScript`], right after the last group, opens the
- * listed groups before they paint; [`LandingState`] opens them after a client
+ * cache entry. [`OpenGroupsScript`], whose scripts sit before the first group
+ * and after the last, opens each listed group before it paints, even while
+ * the page is still arriving; [`LandingState`] opens them after a client
  * navigation (after a full load it keeps what the reader opened or closed
  * before hydration), writes the fragment after opens and closes (coalescing a
  * burst of toggles into two writes), and owns the scroll: a reload or Back
@@ -52,42 +55,65 @@ export const dynamic = 'force-dynamic';
  * group. Neither moves a reader who scrolled, touched, clicked or pressed a
  * key before hydration.
  *
- * The content (`HomeContent`) renders inside a Suspense boundary. A browser
- * gets it streamed into a hidden segment that React reveals with an inline
- * script, so with JavaScript off it never shows: a reader without JavaScript
- * sees only the [`HomeLoading`] fallback. This predates the collapsed groups.
+ * Each request decides how to send the groups. It starts reading the data and
+ * waits up to [`LOADING_VIEW_AFTER_MS`] for it:
+ *
+ * - If the read settles in time (a Data Cache hit, nearly every request), the
+ *   page renders the groups directly, with no Suspense boundary: ordinary,
+ *   visible HTML, so a reader without JavaScript sees every group's header row
+ *   and summary table. A read that fails in time fails the render: a real 500.
+ * - Otherwise (a miss: a cold database read) it renders a Suspense boundary
+ *   whose fallback is the loading view ([`HomeLoading`]), around a component
+ *   that awaits the same read. The loading view streams at once and the groups
+ *   follow into a hidden segment that React's inline script reveals. A client
+ *   navigation to `/` shows the loading view the same way. Without JavaScript
+ *   the reveal never runs, so the loading view says to reload.
+ *
+ * See `docs/architecture/performance.md` for the measured cost of each path.
  */
 export default async function Home({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const params = await searchParams;
-  const initialEngines = parseFilterCsv(singleSearchParam(params.engine));
-  const initialFormats = parseFilterCsv(singleSearchParam(params.format));
-  const initialGroupFilter = parseGroupFilter(params);
-
+  const data: Promise<LandingData> = Promise.all([
+    searchParams,
+    cachedGroups(),
+    cachedFilterUniverse(),
+  ]);
+  if (await settlesWithin(data, LOADING_VIEW_AFTER_MS)) {
+    return <HomeContent data={await data} />;
+  }
   return (
     <Suspense fallback={<HomeLoading />}>
-      <HomeContent
-        initialEngines={initialEngines}
-        initialFormats={initialFormats}
-        initialGroupFilter={initialGroupFilter}
-      />
+      <HomeStreamed data={data} />
     </Suspense>
   );
 }
 
-async function HomeContent({
-  initialEngines,
-  initialFormats,
-  initialGroupFilter,
-}: {
-  initialEngines: string[] | null;
-  initialFormats: string[] | null;
-  initialGroupFilter: GroupFilter | null;
-}) {
-  const [groups, universe] = await Promise.all([cachedGroups(), cachedFilterUniverse()]);
+/**
+ * How long the landing page waits for its data before it streams the loading
+ * view instead. A Data Cache hit reads in a few milliseconds, well inside it,
+ * so the common case stays plain HTML; a miss reads the database, about half a
+ * second locally and seconds in production after an idle gap. Long enough that
+ * a busy server's hit still lands inside it, short enough that a reader on a
+ * miss sees the loading view almost at once.
+ */
+const LOADING_VIEW_AFTER_MS = 150;
+
+type SearchParams = Record<string, string | string[] | undefined>;
+type LandingData = [SearchParams, Group[], FilterUniverse];
+
+/** The groups once a slow read finishes, streamed behind the loading view. */
+async function HomeStreamed({ data }: { data: Promise<LandingData> }) {
+  return <HomeContent data={await data} />;
+}
+
+/** The landing page's header, groups and footer, from data already read. */
+function HomeContent({ data: [params, groups, universe] }: { data: LandingData }) {
+  const initialEngines = parseFilterCsv(singleSearchParam(params.engine));
+  const initialFormats = parseFilterCsv(singleSearchParam(params.format));
+  const initialGroupFilter = parseGroupFilter(params);
   // Human-readable permalink anchors, one per section in render order (see
   // lib/anchor.ts for why these are not the opaque API slugs).
   const anchors = groupAnchors(groups.map((group) => group.name));
@@ -101,41 +127,40 @@ async function HomeContent({
           <p className="empty">No data ingested yet.</p>
         ) : (
           <>
-            {groups.map((group, i) => {
-              const startIndex = nextIndex;
-              nextIndex += group.charts.length;
-              // Accept opaque values copied by the first permalink version,
-              // but generate readable anchors for every new link.
-              const ownsInitialFilter =
-                initialGroupFilter?.groupAnchor === anchors[i] ||
-                initialGroupFilter?.groupAnchor === group.slug;
-              return (
-                <GroupSection
-                  key={group.slug}
-                  group={group}
-                  anchor={anchors[i]!}
-                  startIndex={startIndex}
-                  universe={universe}
-                  initialHiddenSeries={
-                    ownsInitialFilter ? (initialGroupFilter?.hiddenSeries ?? []) : []
-                  }
-                  initialShownSeries={
-                    ownsInitialFilter ? (initialGroupFilter?.shownSeries ?? []) : []
-                  }
-                />
-              );
-            })}
-            {/* After the last group's markup, in the same streamed chunk, so
-                it opens the fragment's groups before they paint. */}
-            <OpenGroupsScript />
-            {/* A browser never shows this hint. It streams inside the
-                Suspense boundary's hidden segment, which only React's inline
-                script reveals, so with JavaScript off the page shows the
-                loading fallback alone; with JavaScript on, `<noscript>`
-                shows nothing. */}
+            {/* Shown only with JavaScript off, above the groups. */}
             <noscript>
-              <p className="no-script">JavaScript is required to render the charts.</p>
+              <p className="no-script no-script--lead">
+                These summaries are complete without JavaScript. The charts need it.
+              </p>
             </noscript>
+            {/* Its scripts sit before the first group and after the last, so
+                it opens each of the fragment's groups before it paints. */}
+            <OpenGroupsScript>
+              {groups.map((group, i) => {
+                const startIndex = nextIndex;
+                nextIndex += group.charts.length;
+                // Accept opaque values copied by the first permalink version,
+                // but generate readable anchors for every new link.
+                const ownsInitialFilter =
+                  initialGroupFilter?.groupAnchor === anchors[i] ||
+                  initialGroupFilter?.groupAnchor === group.slug;
+                return (
+                  <GroupSection
+                    key={group.slug}
+                    group={group}
+                    anchor={anchors[i]!}
+                    startIndex={startIndex}
+                    universe={universe}
+                    initialHiddenSeries={
+                      ownsInitialFilter ? (initialGroupFilter?.hiddenSeries ?? []) : []
+                    }
+                    initialShownSeries={
+                      ownsInitialFilter ? (initialGroupFilter?.shownSeries ?? []) : []
+                    }
+                  />
+                );
+              })}
+            </OpenGroupsScript>
           </>
         )}
       </main>

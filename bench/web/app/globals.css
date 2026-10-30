@@ -137,6 +137,16 @@ a:hover {
   text-decoration: underline;
 }
 
+/* Without JavaScript. The server renders `<html class="no-js">` and the
+ * root layout's pre-paint script swaps the class for `js`, so these rules
+ * hold only when no script runs. A control that does nothing without
+ * JavaScript carries `data-requires-js` and is hidden rather than left dead.
+ * `!important` beats every display rule those controls carry, the mobile
+ * ones included. */
+.no-js [data-requires-js] {
+  display: none !important;
+}
+
 .sticky-header {
   position: fixed;
   top: 0;
@@ -410,6 +420,8 @@ main {
   font-style: italic;
 }
 
+/* The landing page's loading view (`HomeLoading`), streamed while a slow
+ * read of the groups finishes. */
 .summary-loading {
   display: grid;
   min-height: calc(100vh - var(--header-height) - 5rem);
@@ -435,6 +447,10 @@ main {
   margin: 0;
   color: var(--muted);
   font-size: 0.875rem;
+}
+
+.summary-loading-panel noscript p {
+  margin-top: 0.75rem;
 }
 
 .chart-spinner.summary-loading-spinner {
@@ -535,8 +551,8 @@ main {
   font-variant-numeric: tabular-nums;
 }
 /*
- * The copy-link button next to a group's chart count (GroupPermalink). A bare
- * icon button with the info icon's muted-to-foreground hover treatment; the
+ * The copy-link control next to a group's chart count (GroupPermalink). A bare
+ * icon link with the info icon's muted-to-foreground hover treatment; the
  * `--copied` state swaps in an accent-colored checkmark as confirmation.
  */
 .group-permalink {
@@ -550,6 +566,7 @@ main {
   border-radius: 6px;
   background: transparent;
   color: var(--muted);
+  text-decoration: none;
   cursor: pointer;
   flex-shrink: 0;
   transition:
@@ -560,6 +577,7 @@ main {
 .group-permalink:focus-visible {
   color: var(--fg);
   background: var(--border);
+  text-decoration: none;
 }
 .group-permalink--copied,
 .group-permalink--copied:hover,
@@ -569,7 +587,7 @@ main {
 /*
  * The docs link next to a group title (GroupDocsLink), pointing at the
  * benchmark's explainer doc in the monorepo. Sized and coloured like the
- * permalink button beside it so the summary row reads as one row of quiet
+ * copy-link control beside it so the summary row reads as one row of quiet
  * affordances.
  */
 .group-docs-link {
@@ -592,7 +610,7 @@ main {
   color: var(--fg);
   background: var(--border);
 }
-/* Screen-reader-only text (the permalink button's copied announcement). */
+/* Screen-reader-only text (the permalink's copied announcement). */
 .visually-hidden {
   position: absolute;
   width: 1px;
@@ -699,6 +717,31 @@ main {
 /* A collapsed group ends with its summary card: the section's own border
  * closes it. */
 .group-disclosure:not([open]) ~ .benchmark-scores-summary {
+  border-bottom: 0;
+}
+
+/* The body follows the `<details>`, not inside it, so the disclosure does not
+ * hide it. A collapsed group's body is empty today (`GroupBody` mounts its
+ * content only while the group is open); this keeps it hidden whatever it
+ * holds, with or without JavaScript. */
+.group-disclosure:not([open]) ~ .group-body {
+  display: none;
+}
+
+/* Without JavaScript a group's summary still toggles its <details>, but
+ * opening it shows nothing more, so the row reads as a plain heading: no
+ * chevron, no pointer, no hover, and no open state. CSS cannot remove its
+ * Tab stop. */
+.no-js .group-summary {
+  cursor: default;
+}
+.no-js .group-summary-row::before {
+  display: none;
+}
+.no-js .group-summary:hover .group-summary-row {
+  background: none;
+}
+.no-js .group-disclosure[open] ~ .benchmark-scores-summary {
   border-bottom: 0;
 }
 
@@ -1404,6 +1447,10 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
   color: var(--muted);
   font-size: 0.875rem;
 }
+/* The landing page's note opens `<main>`, above the first group. */
+.no-script--lead {
+  margin: 0 0 1.5rem;
+}
 
 /* Per-card loading + error indicators (lazy-fetch on details toggle). */
 .chart-loading,
@@ -1653,6 +1700,18 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
   }
   .nav-controls.nav-controls--open {
     display: flex;
+  }
+  /* Without JavaScript the hamburger cannot open the panel, so the nav sits
+   * in the header row instead. Its only control that works without
+   * JavaScript, the GitHub link, shows; the rest are hidden. */
+  .no-js .nav-controls {
+    display: flex;
+    position: static;
+    flex-direction: row;
+    padding: 0;
+    border-bottom: 0;
+    background: none;
+    box-shadow: none;
   }
   .nav-controls .filter-dropdown {
     width: 100%;

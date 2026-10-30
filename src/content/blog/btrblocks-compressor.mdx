@@ -6,15 +6,14 @@ excerpt: "How Vortex uses BtrBlocks-style codec selection to beat Parquet+ZSTD o
 published: true
 ---
 
-> This blogpost was originally posted on the [SpiralDB blog](https://spiraldb.com/post/cascading-compression-with-btrblocks).
-
 We've written about individual compression codecs in Vortex before: [FastLanes](https://blog.spiraldb.com/life-in-the-fastlanes/) for bit-packing integers, [FSST](https://blog.spiraldb.com/compressing-strings-with-fsst/) for strings, and [ALP](https://blog.spiraldb.com/alp-rust-is-faster-than-c/) for floating point. But we've never explained how Vortex decides _which_ codec to use for a given column, or how it layers multiple codecs on top of each other.
 
 On TPC-H at scale factor 10, Vortex files are **38% smaller** and decompress **10–25x faster** than Parquet with ZSTD, without using any general-purpose compression. The difference comes down to how the codecs are selected and composed, a framework inspired by the BtrBlocks paper from TU Munich.
 
 > 🎓
 > Maximilian Kuschewski, David Sauerwein, Adnan Alhomssi, and Viktor Leis. 2023. BtrBlocks: Efficient Columnar Compression for Data Lakes.
-> _Proc. ACM Manag. Data 1, 2, Article 118 (June 2023)._ > _[https://doi.org/10.1145/3589263](https://doi.org/10.1145/3589263)_
+> _Proc. ACM Manag. Data 1, 2, Article 118 (June 2023)._
+> _[https://doi.org/10.1145/3589263](https://doi.org/10.1145/3589263)_
 
 The core idea: don't pick one codec. Try them all, and let the data decide.
 
@@ -76,6 +75,8 @@ No single codec handles this well. A cascade of three does:
 2. The codes are fed back into the compressor. **REE** wins because the codes have long runs. It collapses `[0, 1, 0, 0, 0, 1, ...]` into run ends and values.
 
 3. The REE values are fed back in. **BitPacking** wins since the values are all 0 or 1, packing into a single bit each.
+
+<Chain steps={["Dictionary", "REE", "BitPacking"]} />
 
 Result: 32-bit integers compressed to roughly 1 bit per element (plus small dictionary overhead), all lightweight encodings, full random access.
 
@@ -157,6 +158,17 @@ let compact = WriteStrategyBuilder::default()
 
 On TPC-H at scale factor 10:
 
+<Bars
+  title="TPC-H SF10 · total file size"
+  unit="MB"
+  better="↓"
+  bars={[
+    { name: "Parquet + zstd", value: 4465 },
+    { name: "Vortex default", value: 2776, ours: true, extra: "0.62×" },
+    { name: "Vortex compact", value: 2016, ours: true, extra: "0.45×" }
+  ]}
+/>
+
 | Table     | Parquet (ZSTD) | Vortex (default)     | Vortex (compact)     |
 | --------- | -------------- | -------------------- | -------------------- |
 | lineitem  | 3,103 MB       | 1,759 MB             | 1,306 MB             |
@@ -181,7 +193,11 @@ root: vortex.alp(f64, len=8388608) nbytes=4.19 MB
     buffer (align=8): 4.19 MB
 ```
 
-ALP won the float evaluation because values like `0.04` and `0.09` round-trip perfectly through ALP's decimal scaling. The resulting integers (4, 9, 1, ...) all fit in 0–10, so BitPacking won with a bit-width of 4. ALP → BitPacking. Two lightweight layers, 15x compression ratio, full random access.
+ALP won the float evaluation because values like `0.04` and `0.09` round-trip perfectly through ALP's decimal scaling. The resulting integers (4, 9, 1, ...) all fit in 0–10, so BitPacking won with a bit-width of 4.
+
+<Chain steps={["ALP", "BitPacking"]} />
+
+Two lightweight layers, 15x compression ratio, full random access.
 
 # Per-column configurability
 
@@ -245,3 +261,5 @@ Upcoming posts:
 Further out: **cross-column compression**. Everything here treats each column independently, but real data has inter-column correlations. Dates that differ by a few days, zip codes determined by city, totals that are sums of other columns. [Corra](https://arxiv.org/abs/2403.17229) shows that encoding a column as a residual relative to a correlated reference column can compress 50–85% smaller than per-column encoding alone. This is orthogonal to cascading; Corra-style transforms would run _before_ the per-column compressor, shrinking value domains so the cascade can be even more effective.
 
 All of this code is open source under Apache license.
+
+<Note>This blogpost was originally posted on the [SpiralDB blog](https://spiraldb.com/post/cascading-compression-with-btrblocks).</Note>

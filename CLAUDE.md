@@ -26,39 +26,38 @@ They share one Bun workspace and the CI policy, and deploy separately:
 
 ## Architecture Overview
 
-This is a Next.js 16 marketing website for Vortex, a columnar file format. The site features:
+This is a Next.js 16 marketing website for Vortex, a columnar file format, drawn with the Vortex design system. The site features:
 
 ### Core Technologies
 
-- **Next.js 16** with App Router and Turbopack for development
+- **Next.js 16** with App Router and Turbopack
 - **React 19** with TypeScript
-- **TailwindCSS 4** for styling
-- **OGL** (WebGL library) for 3D graphics and ASCII art effect
+- **The design system's CSS** (`src/styles/`), `globals.css` and CSS modules for styling, with no CSS framework
+- **three.js** (WebGL) for the design system's ASCII mark, loaded once the page is idle
 - **Plausible Analytics** for privacy-focused tracking
 - **Vercel Analytics** for performance monitoring
 
 ### Visual System
 
-- **3D Logo Animation**: WebGL-rendered GLTF model (`/public/logo.glb`) with ASCII art shader effect
-- **Interactive Mouse/Touch Controls**: Model rotates based on user interaction
-- **Responsive Design**: Different camera positions and sizing for mobile/desktop
-- **Custom Fonts**: Geist Sans, Geist Mono, and Funnel Display
+- **Design system**: `src/styles/vortex-tokens.css` and `src/styles/vortex.css` are copies of the Vortex design system's styles (change the system, not the copies), and the markup uses its `vx-` classes
+- **ASCII mark**: `src/components/ascii-mark` mounts the system's renderer (`src/vendor/vortex-design/`) on the homepage and the 404, with the static symbol as its fallback
+- **Themes**: Dark only, except the blog, which carries the ThemeSwitch (`src/lib/theme.ts`)
+- **Custom Fonts**: Geist, Geist Mono and Funnel Display, self-hosted through `next/font`
 
 ### Component Structure
 
-- `HeroASCII` - Main 3D logo component with WebGL rendering and ASCII conversion
-- `Overlay` - Text overlay on top of the 3D scene
 - Layout components (`Header`, `Footer`) wrap all pages
-- 404 page has its own hero variant (`hero-404`, `overlay-404`)
+- The homepage composes the hero (`InstallTabs`, `AsciiMark`), `BenchmarkCard` and `LogoBanner`
+- The 404 and error pages (`not-found.tsx`, `error.tsx`) share the hero's layout in `src/app/status.module.css`
 
 ### Key Files
 
 - `src/app/page.tsx` - Homepage with metadata for SEO
-- `src/components/hero/index.tsx` - Complex WebGL rendering with custom shaders
 - `src/app/layout.tsx` - Root layout with analytics providers and font loading
+- `src/app/globals.css` - The page frame, and the site's rules on top of the design system
 - `next.config.mjs` - Plausible proxy configuration, security headers (CSP, HSTS, Permissions-Policy, COOP, CORP)
 
-The site is optimized for performance with font optimization, analytics integration, and responsive WebGL rendering.
+The site is optimized for performance with font optimization, analytics integration, and an ASCII mark that loads only once the page is idle.
 
 ## Licensing
 
@@ -124,9 +123,9 @@ Keep them in lockstep when bumping, and move to a new major only after Vercel of
 
 - **zod `<4.6.6`** (GHSA-mrhx-c7xc-m3w5, high memory exhaustion on oversized constrained collections). Path: bench's `@vercel/functions > @vercel/oidc > @vercel/cli-config` pins `zod@4.1.11` exactly. `overrides.zod = "^4.6.7"` puts it on 4.6.7. bench only imports `attachDatabasePool`, which does not load the OIDC code that uses zod. The snapshot scopes bench's zod `runtime`, because `@vercel/functions` is in bench's `dependencies`, so dependency review would block a PR that drops the override without `allow-ghsas: GHSA-mrhx-c7xc-m3w5` on the Dependency Review step in `ci.yml`. Drop the override once `@vercel/cli-config` accepts zod 4.6.6 or later.
 
-- **postcss-selector-parser `<6.1.5`** (GHSA-rj75-hqrm-r3gf, moderate quadratic-time parsing). `@tailwindcss/typography@0.5.20`, the latest release, pins `postcss-selector-parser@6.0.10` exactly, so lockfile maintenance cannot reach the fix. `overrides["postcss-selector-parser"] = "^6.1.5"` stays on the same major. `renovate.json` keeps it on 6.x (`allowedVersions: "<7"`), so Renovate doesn't move the override to a major typography hasn't adopted. The built CSS does not change: with the font URLs normalized, the site's stylesheet is byte-identical with and without the override. Drop the override once `@tailwindcss/typography` ships a release that declares `postcss-selector-parser@^6.1.5` or later.
-
 **Removed: `@lhci/cli`.** It brought eight advisories into `bun.lock`: extract-zip (two, with no fixed release), basic-ftp, body-parser, qs, tmp (two) and uuid. CI never used it, because the Lighthouse workflow runs `treosh/lighthouse-ci-action`, which ships its own copy. `bun run lighthouse` now fetches a pinned `@lhci/cli@0.15.1` with `bunx` when you run it. Do not add it back as a dependency.
+
+**Cleared, for the record:** postcss-selector-parser `<6.1.5` (GHSA-rj75-hqrm-r3gf) went with `@tailwindcss/typography`, its only parent, when the blog moved to the design system's prose styles and dropped the plugin.
 
 **Held back on purpose:** `@types/node` stays on `^26` in both apps to match the runtime (see "Node version"); `renovate.json` caps it with `allowedVersions: "<27"` so Renovate does not open 27.x / 28.x PRs ahead of the runtime.
 

@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   canonicalHistory,
+  chartAriaLabel,
   chartHasRecentData,
   chartPriority,
   clampRangeWindow,
@@ -22,6 +23,7 @@ import {
   IDENTITY_UNIT,
   INTERACTION_FULL_PRIORITY,
   LAZY_HYDRATION_ROOT_MARGIN,
+  latestValuesSentence,
   lttbIndices,
   magnitudeReference,
   MAX_VISIBLE_POINTS,
@@ -107,68 +109,318 @@ describe('small formatting helpers', () => {
 
 describe('seriesStyle', () => {
   const tag = (engine: string, format: string) => ({ engine, format });
+  const style = (engine: string, format: string, theme: 'dark' | 'light' = 'dark') =>
+    seriesStyle(`${engine}:${format}`, tag(engine, format), theme);
 
-  it('makes the hero Vortex series the loudest: red/green, distinct per engine, thickest', () => {
-    const dfv = seriesStyle(
-      'datafusion:vortex-file-compressed',
-      tag('datafusion', 'vortex-file-compressed'),
+  it('draws Vortex in cobalt on both cards, with the thickest line', () => {
+    for (const theme of ['dark', 'light'] as const) {
+      expect(style('datafusion', 'vortex-file-compressed', theme).color).toBe('#2f63ff');
+    }
+    expect(style('datafusion', 'vortex-file-compressed').width).toBeGreaterThan(
+      style('datafusion', 'parquet').width,
     );
-    const dkv = seriesStyle(
-      'duckdb:vortex-file-compressed',
-      tag('duckdb', 'vortex-file-compressed'),
-    );
-    expect(dfv.color).toBe('#ef4444');
-    expect(dkv.color).toBe('#22c55e');
-    expect(dfv.color).not.toBe(dkv.color);
-    const muted = seriesStyle('duckdb:lance', tag('duckdb', 'lance'));
-    expect(dfv.width).toBeGreaterThan(muted.width);
+    expect(style('datafusion', 'parquet').width).toBeGreaterThan(style('duckdb', 'lance').width);
   });
 
-  it('puts Parquet a notch under Vortex (blue, thinner than the hero)', () => {
-    const vortex = seriesStyle(
-      'datafusion:vortex-file-compressed',
-      tag('datafusion', 'vortex-file-compressed'),
-    );
-    const parquet = seriesStyle('datafusion:parquet', tag('datafusion', 'parquet'));
-    expect(parquet.color).toBe('#38bdf8');
-    expect(parquet.width).toBeLessThan(vortex.width);
+  it("draws the duckdb run of a format dashed, in the format's color and width", () => {
+    for (const format of ['vortex-file-compressed', 'vortex-compact', 'parquet', 'lance']) {
+      for (const theme of ['dark', 'light'] as const) {
+        const datafusion = style('datafusion', format, theme);
+        const duckdb = style('duckdb', format, theme);
+        expect(duckdb.color, format).toBe(datafusion.color);
+        expect(duckdb.width, format).toBe(datafusion.width);
+        expect(datafusion.dash, format).toEqual([]);
+        expect(duckdb.dash, format).toEqual([6, 4]);
+      }
+    }
   });
 
-  it('distinguishes the two lance engines but keeps them thinner than Parquet', () => {
-    const parquet = seriesStyle('datafusion:parquet', tag('datafusion', 'parquet'));
-    const dfLance = seriesStyle('datafusion:lance', tag('datafusion', 'lance'));
-    const dkLance = seriesStyle('duckdb:lance', tag('duckdb', 'lance'));
-    expect(dfLance.width).toBeLessThan(parquet.width);
-    expect(dfLance.color).not.toBe(dkLance.color);
+  it('draws a cold random-access run dashed and a hot one solid', () => {
+    const cold = seriesStyle('parquet:cold', { format: 'parquet' }, 'dark');
+    const hot = seriesStyle('parquet:hot', { format: 'parquet' }, 'dark');
+    expect(cold.color).toBe(hot.color);
+    expect(cold.dash).toEqual([6, 4]);
+    expect(hot.dash).toEqual([]);
   });
 
-  it('gives vortex-compact its own purple, never the vortex red/green', () => {
-    const compact = seriesStyle('datafusion:vortex-compact', tag('datafusion', 'vortex-compact'));
-    expect(compact.color).toBe('#a855f7');
-    expect(compact.color).not.toBe('#ef4444');
-    expect(compact.color).not.toBe('#22c55e');
+  it('changes color, never width or dash, with the theme', () => {
+    const dark = style('duckdb', 'parquet', 'dark');
+    const light = style('duckdb', 'parquet', 'light');
+    expect(light.color).not.toBe(dark.color);
+    expect(light.width).toBe(dark.width);
+    expect(light.dash).toEqual(dark.dash);
   });
 
   it('derives engine/format from the label when meta is absent', () => {
-    expect(seriesStyle('datafusion:vortex-file-compressed', undefined).color).toBe('#ef4444');
+    expect(seriesStyle('duckdb:parquet', undefined, 'dark')).toEqual(style('duckdb', 'parquet'));
   });
 
-  it('colors the engine-less compression-time series by its format', () => {
-    // Compression-time series carry a format but no engine; they pick up the
-    // format's signature color (here Vortex red) rather than the gray fallback.
-    const comp = seriesStyle('vortex-file-compressed:encode', { format: 'vortex-file-compressed' });
-    expect(comp.color).toBe('#ef4444');
-  });
-
-  it('falls back to a muted color + width for an unknown series', () => {
-    const unknown = seriesStyle('datafusion:mystery', tag('datafusion', 'mystery'));
-    expect(unknown.color).toBe('#94a3b8');
-    const hero = seriesStyle(
-      'datafusion:vortex-file-compressed',
-      tag('datafusion', 'vortex-file-compressed'),
+  it('colors the engine-less series by their format', () => {
+    // Compression-time, size and random-access series carry a format but no
+    // engine; they take the format's signature color, as datafusion does.
+    const comp = seriesStyle('parquet:encode', { format: 'parquet' }, 'light');
+    expect(comp).toEqual(style('datafusion', 'parquet', 'light'));
+    expect(seriesStyle('arrow-ipc', { format: 'arrow-ipc' }, 'dark')).toEqual(
+      style('datafusion', 'arrow'),
     );
-    expect(unknown.width).toBeLessThan(hero.width);
   });
+
+  it('falls back to a thin neutral gray for an unknown series', () => {
+    const unknown = style('datafusion', 'mystery');
+    expect(unknown.color).toBe('#8a8a87');
+    expect(unknown.width).toBeLessThan(style('datafusion', 'vortex-file-compressed').width);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Palette legibility. The series colors must read against the card and apart
+// from each other, also for readers with red-green color blindness. The
+// helpers below are the standard formulas, written out so the test needs no
+// color library: WCAG 2.x relative luminance and contrast, CIE Lab (D65),
+// CIEDE2000, and the Machado, Oliveira and Fernandes (2009) simulation of
+// protanopia and deuteranopia at full severity, applied in linear sRGB.
+// ---------------------------------------------------------------------------
+
+type Rgb = [number, number, number];
+type Lab = [number, number, number];
+
+const srgb = (hex: string): Rgb => [
+  parseInt(hex.slice(1, 3), 16) / 255,
+  parseInt(hex.slice(3, 5), 16) / 255,
+  parseInt(hex.slice(5, 7), 16) / 255,
+];
+const linear = (c: number): number => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+const linearRgb = (hex: string): Rgb => srgb(hex).map(linear) as Rgb;
+
+function luminance(hex: string): number {
+  const [r, g, b] = linearRgb(hex);
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+function contrast(a: string, b: string): number {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x) as [number, number];
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+/** The HSL hue in degrees, the hue the design brief names (cobalt is 225°). */
+function hslHue(hex: string): number {
+  const [r, g, b] = srgb(hex);
+  const max = Math.max(r, g, b);
+  const d = max - Math.min(r, g, b);
+  if (d === 0) {
+    return 0;
+  }
+  const h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  return (h * 60 + 360) % 360;
+}
+
+function hueGap(a: number, b: number): number {
+  const d = Math.abs(a - b) % 360;
+  return d > 180 ? 360 - d : d;
+}
+
+function labOf([r, g, b]: Rgb): Lab {
+  const x = (0.4124564 * r + 0.3575761 * g + 0.1804375 * b) / 0.95047;
+  const y = 0.2126729 * r + 0.7151522 * g + 0.072175 * b;
+  const z = (0.0193339 * r + 0.119192 * g + 0.9503041 * b) / 1.08883;
+  const f = (t: number): number => (t > 216 / 24389 ? Math.cbrt(t) : ((24389 / 27) * t + 16) / 116);
+  return [116 * f(y) - 16, 500 * (f(x) - f(y)), 200 * (f(y) - f(z))];
+}
+
+type Vision = 'normal' | 'protanopia' | 'deuteranopia';
+
+const MACHADO: Record<Exclude<Vision, 'normal'>, number[][]> = {
+  protanopia: [
+    [0.152286, 1.052583, -0.204868],
+    [0.114503, 0.786281, 0.099216],
+    [-0.003882, -0.048116, 1.051998],
+  ],
+  deuteranopia: [
+    [0.367322, 0.860646, -0.227968],
+    [0.280085, 0.672501, 0.047413],
+    [-0.01182, 0.04294, 0.968881],
+  ],
+};
+
+function seen(hex: string, vision: Vision): Lab {
+  const rgb = linearRgb(hex);
+  if (vision === 'normal') {
+    return labOf(rgb);
+  }
+  const m = MACHADO[vision];
+  const clamp = (v: number): number => Math.min(1, Math.max(0, v));
+  return labOf(
+    m.map((row) => clamp(row[0]! * rgb[0] + row[1]! * rgb[1] + row[2]! * rgb[2])) as Rgb,
+  );
+}
+
+/** CIEDE2000 (Sharma, Wu and Dalal 2005), with kL = kC = kH = 1. */
+function deltaE2000([l1, a1, b1]: Lab, [l2, a2, b2]: Lab): number {
+  const rad = Math.PI / 180;
+  const cBar = (Math.hypot(a1, b1) + Math.hypot(a2, b2)) / 2;
+  const g = 0.5 * (1 - Math.sqrt(cBar ** 7 / (cBar ** 7 + 25 ** 7)));
+  const ap1 = (1 + g) * a1;
+  const ap2 = (1 + g) * a2;
+  const cp1 = Math.hypot(ap1, b1);
+  const cp2 = Math.hypot(ap2, b2);
+  const hueOf = (b: number, a: number): number =>
+    a === 0 && b === 0 ? 0 : (Math.atan2(b, a) / rad + 360) % 360;
+  const hp1 = hueOf(b1, ap1);
+  const hp2 = hueOf(b2, ap2);
+  let dhp = 0;
+  if (cp1 * cp2 !== 0) {
+    dhp = hp2 - hp1;
+    dhp += dhp > 180 ? -360 : dhp < -180 ? 360 : 0;
+  }
+  const dL = l2 - l1;
+  const dC = cp2 - cp1;
+  const dH = 2 * Math.sqrt(cp1 * cp2) * Math.sin((dhp / 2) * rad);
+  const lBar = (l1 + l2) / 2;
+  const cpBar = (cp1 + cp2) / 2;
+  let hBar = hp1 + hp2;
+  if (cp1 * cp2 !== 0) {
+    hBar =
+      Math.abs(hp1 - hp2) > 180
+        ? (hp1 + hp2 + (hp1 + hp2 < 360 ? 360 : -360)) / 2
+        : (hp1 + hp2) / 2;
+  }
+  const t =
+    1 -
+    0.17 * Math.cos((hBar - 30) * rad) +
+    0.24 * Math.cos(2 * hBar * rad) +
+    0.32 * Math.cos((3 * hBar + 6) * rad) -
+    0.2 * Math.cos((4 * hBar - 63) * rad);
+  const sl = 1 + (0.015 * (lBar - 50) ** 2) / Math.sqrt(20 + (lBar - 50) ** 2);
+  const sc = 1 + 0.045 * cpBar;
+  const sh = 1 + 0.015 * cpBar * t;
+  const rt =
+    -Math.sin(2 * 30 * Math.exp(-(((hBar - 275) / 25) ** 2)) * rad) *
+    2 *
+    Math.sqrt(cpBar ** 7 / (cpBar ** 7 + 25 ** 7));
+  return Math.sqrt((dL / sl) ** 2 + (dC / sc) ** 2 + (dH / sh) ** 2 + rt * (dC / sc) * (dH / sh));
+}
+
+const deltaE = (a: string, b: string, vision: Vision = 'normal'): number =>
+  deltaE2000(seen(a, vision), seen(b, vision));
+
+const colorBlind = (a: string, b: string): number =>
+  Math.min(deltaE(a, b, 'protanopia'), deltaE(a, b, 'deuteranopia'));
+
+describe('the color helpers', () => {
+  it('match the published reference values', () => {
+    // Sharma, Wu and Dalal (2005), table 1, pairs 1, 7 and 17.
+    expect(deltaE2000([50, 2.6772, -79.7751], [50, 0, -82.7485])).toBeCloseTo(2.0425, 4);
+    expect(deltaE2000([50, 0, 0], [50, -1, 2])).toBeCloseTo(2.3669, 4);
+    expect(deltaE2000([50, 2.5, 0], [73, 25, -18])).toBeCloseTo(27.1492, 4);
+    expect(contrast('#ffffff', '#000000')).toBeCloseTo(21, 6);
+    expect(hslHue('#2f63ff')).toBeCloseTo(225, 0);
+    // Machado's matrices keep white white and black black.
+    expect(deltaE('#ffffff', '#ffffff', 'deuteranopia')).toBe(0);
+    expect(seen('#ffffff', 'protanopia')[0]).toBeCloseTo(100, 0);
+  });
+});
+
+describe('series palette legibility', () => {
+  const CARD = { dark: '#171716', light: '#ffffff' } as const;
+  const THEMES = ['dark', 'light'] as const;
+  const VORTEX = '#2f63ff';
+  const tag = (engine: string, format: string) => ({ engine, format });
+  const query = (key: string) => {
+    const [engine, format] = key.split(':') as [string, string];
+    return { key, engine, format };
+  };
+  /** Every series a TPC-H style query chart can hold at once. */
+  const QUERY = [
+    'datafusion:vortex-file-compressed',
+    'duckdb:vortex-file-compressed',
+    'datafusion:vortex-compact',
+    'duckdb:vortex-compact',
+    'datafusion:parquet',
+    'duckdb:parquet',
+    'duckdb:duckdb',
+    'datafusion:lance',
+    'duckdb:lance',
+    'datafusion:arrow',
+  ].map(query);
+  /** The engine-less formats of the compression, size and random-access charts. */
+  const FORMATS = [
+    'vortex-file-compressed',
+    'vortex-compact',
+    'parquet',
+    'duckdb',
+    'lance',
+    'arrow',
+    'arrow-ipc',
+  ];
+  /** arrow-ipc is Arrow on disk: the two share one color and never one chart. */
+  const family = (format: string): string => (format === 'arrow-ipc' ? 'arrow' : format);
+  const queryColor = (
+    q: { key: string; engine: string; format: string },
+    theme: 'dark' | 'light',
+  ) => seriesStyle(q.key, tag(q.engine, q.format), theme).color;
+  const formatColor = (format: string, theme: 'dark' | 'light') =>
+    seriesStyle(format, { format }, theme).color;
+
+  for (const theme of THEMES) {
+    describe(`on the ${theme} card`, () => {
+      it('gives every series at least 3:1 contrast against the card', () => {
+        const colors = [
+          ...QUERY.map((q) => queryColor(q, theme)),
+          ...FORMATS.map((f) => formatColor(f, theme)),
+          seriesStyle('datafusion:mystery', tag('datafusion', 'mystery'), theme).color,
+        ];
+        for (const color of colors) {
+          expect(contrast(color, CARD[theme]), color).toBeGreaterThanOrEqual(3);
+        }
+      });
+
+      it('keeps every pair of formats at least ΔE2000 25 apart, and 12 for color-blind readers', () => {
+        for (const [i, a] of FORMATS.entries()) {
+          for (const b of FORMATS.slice(i + 1)) {
+            if (family(a) === family(b)) {
+              continue;
+            }
+            const [ca, cb] = [formatColor(a, theme), formatColor(b, theme)];
+            expect(deltaE(ca, cb), `${a} ${ca} / ${b} ${cb}`).toBeGreaterThanOrEqual(25);
+            expect(colorBlind(ca, cb), `${a} ${ca} / ${b} ${cb}`).toBeGreaterThanOrEqual(12);
+          }
+        }
+      });
+
+      it('gives every series of a query chart its format color, on every engine', () => {
+        for (const q of QUERY) {
+          expect(queryColor(q, theme), q.key).toBe(formatColor(q.format, theme));
+        }
+      });
+
+      it('draws Vortex in cobalt, with Lance and Parquet well away from its hue', () => {
+        expect(formatColor('vortex-file-compressed', theme)).toBe(VORTEX);
+        const vortexHue = hslHue(VORTEX);
+        for (const q of QUERY.filter((q) => q.format === 'lance')) {
+          expect(hueGap(hslHue(queryColor(q, theme)), vortexHue), q.key).toBeGreaterThanOrEqual(25);
+        }
+        for (const q of QUERY.filter((q) => q.format === 'parquet')) {
+          expect(hueGap(hslHue(queryColor(q, theme)), vortexHue), q.key).toBeGreaterThanOrEqual(20);
+        }
+      });
+
+      it("keeps every other format out of Vortex's blue family", () => {
+        // Blue family: HSL hue 215-235° within 15 L* of Vortex's cobalt.
+        // vortex-compact may sit in it or out of it; the ΔE rules keep it
+        // apart from vortex-file-compressed either way.
+        const vortexL = labOf(linearRgb(VORTEX))[0];
+        const others = QUERY.filter(
+          (q) => q.format !== 'vortex-file-compressed' && q.format !== 'vortex-compact',
+        );
+        for (const q of others) {
+          const color = queryColor(q, theme);
+          const inHue = hslHue(color) >= 215 && hslHue(color) <= 235;
+          const nearL = Math.abs(labOf(linearRgb(color))[0] - vortexL) < 15;
+          expect(inHue && nearL, `${q.key} ${color}`).toBe(false);
+        }
+      });
+    });
+  }
 });
 
 describe('seriesOrder', () => {
@@ -197,6 +449,70 @@ describe('seriesOrder', () => {
 
   it('keeps the whole Vortex pair in front of the whole Parquet pair', () => {
     expect(ord('duckdb', 'vortex-file-compressed')).toBeLessThan(ord('datafusion', 'parquet'));
+  });
+});
+
+describe('the chart canvas label', () => {
+  const MS = pickDisplayUnit('time_ns', [2_500_000]);
+
+  it('names the chart alone before it has data', () => {
+    expect(chartAriaLabel('tpch q1', null)).toBe('tpch q1 chart');
+  });
+
+  const COMMITS = [
+    { timestamp: '2026-10-25T10:00:00Z' },
+    { timestamp: '2026-10-26T10:00:00Z' },
+    { timestamp: '2026-10-27T10:00:00Z' },
+  ];
+
+  it("states each series' latest value in the display unit, in one dated sentence", () => {
+    const sentence = latestValuesSentence(
+      [
+        { label: 'duckdb:parquet', values: [3_000_000, 2_000_000, 2_500_000] },
+        { label: 'duckdb:vortex-file-compressed', values: [1_200_000, 1_100_000, 1_000_000] },
+      ],
+      COMMITS,
+      MS,
+    );
+    expect(sentence).toBe(
+      'Latest commit with data (2026-10-27): duckdb:parquet 2.50 ms, duckdb:vortex 1.00 ms.',
+    );
+    expect(chartAriaLabel('tpch q1', sentence)).toBe(
+      'tpch q1 chart. Latest commit with data (2026-10-27): duckdb:parquet 2.50 ms, duckdb:vortex 1.00 ms.',
+    );
+  });
+
+  it('takes the latest commit where any series has a value, and leaves out a series without one there', () => {
+    expect(
+      latestValuesSentence(
+        [
+          { label: 'datafusion:parquet', values: [3_000_000, null, null] },
+          { label: 'duckdb:parquet', values: [3_000_000, 2_000_000, null] },
+          { label: 'duckdb:lance', values: [Number.NaN, Number.NaN, Number.NaN] },
+          { label: 'duckdb:arrow', values: [] },
+        ],
+        // The newest commit has no results yet; a padded slot has no commit.
+        [null, ...COMMITS],
+        MS,
+      ),
+    ).toBe('Latest commit with data (2026-10-25): duckdb:parquet 2.00 ms.');
+  });
+
+  it('says so when no series is shown, or none has data', () => {
+    expect(latestValuesSentence([], COMMITS, MS)).toBe('No series is shown.');
+    expect(
+      latestValuesSentence([{ label: 'vortex', values: [null, null, null] }], COMMITS, MS),
+    ).toBe('No visible series has data.');
+  });
+
+  it('gives a dimensionless value without a unit, and no date when the commit has none', () => {
+    expect(
+      latestValuesSentence(
+        [{ label: 'vortex', values: [4.25] }],
+        [{ timestamp: undefined as unknown as string }],
+        pickDisplayUnit('ratio', [4.25]),
+      ),
+    ).toBe('Latest commit with data: vortex 4.25.');
   });
 });
 

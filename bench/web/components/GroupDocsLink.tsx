@@ -3,10 +3,12 @@
 
 'use client';
 
+import { BookIcon } from '@/components/icons';
+
 /**
  * The "what does this measure?" link in a group's summary header, pointing at
  * the benchmark's explainer doc in the monorepo (see [`@/lib/benchmark-docs`]).
- * It is the long-form counterpart to the ⓘ tooltip's one-liner, and the same
+ * It is the long-form counterpart to the info tooltip's one-liner, and the same
  * doc the monorepo's PR benchmark comment links.
  *
  * The link lives inside the disclosure's `<summary>`, where any click that
@@ -29,27 +31,5 @@ export function GroupDocsLink({ href, groupName }: { href: string; groupName: st
     >
       <BookIcon />
     </a>
-  );
-}
-
-/** An open-book glyph, matching the header icons' stroke style. */
-function BookIcon() {
-  return (
-    <svg
-      className="btn-icon"
-      viewBox="0 0 24 24"
-      width="16"
-      height="16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M12 7a4 4 0 0 0-4-4H3v14h5a4 4 0 0 1 4 4" />
-      <path d="M12 7a4 4 0 0 1 4-4h5v14h-5a4 4 0 0 0-4 4" />
-      <path d="M12 7v14" />
-    </svg>
   );
 }

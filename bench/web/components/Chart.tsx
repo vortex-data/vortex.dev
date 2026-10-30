@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from '
 
 import { ChartController } from '@/components/chart/controller';
 import {
+  chartAriaLabel,
   chartPriority,
   LAZY_HYDRATION_ROOT_MARGIN,
   throttle,
@@ -48,7 +49,7 @@ import type { ChartResponse } from '@/lib/queries';
  * - High-frequency mutations (slider value, badge text, range-strip geometry,
  *   tooltip markup, `dataset.data` rebuilds) stay imperative on refs, exactly
  *   as v3 mutated the DOM; React state is reserved for low-frequency bits (the
- *   Y-button highlight, the loading/error indicators).
+ *   Y-button highlight, the loading/error indicators, the canvas label).
  * - Group open/close stays native `<details>` behavior. On the landing page the
  *   island exists only while its group is open: [`GroupBody`] mounts the cards
  *   on the disclosure's `toggle` event (fired for user clicks and for scripted
@@ -93,6 +94,9 @@ export function Chart({ slug, name, index, groupSlug, initialPayload }: ChartIsl
   const [error, setError] = useState<string | null>(null);
   const [retryable, setRetryable] = useState(false);
   const [constructed, setConstructed] = useState(false);
+  // The canvas label's sentence about the latest commit with data (`latestValuesSentence`),
+  // which the controller restates whenever the visible series or the data change.
+  const [latestValues, setLatestValues] = useState<string | null>(null);
 
   // The live controller for the CURRENT mount. Created inside the mount effect
   // (not once per component instance) because `destroy()` is one-way and React
@@ -175,7 +179,7 @@ export function Chart({ slug, name, index, groupSlug, initialPayload }: ChartIsl
         strip: stripRef.current,
         stripWindow: stripWindowRef.current,
       }),
-      { setY, setLoading, setError, setRetryable, setConstructed },
+      { setY, setLoading, setError, setRetryable, setConstructed, setLatestValues },
     );
     controllerRef.current = controller;
     if (initialPayload) {
@@ -335,6 +339,8 @@ export function Chart({ slug, name, index, groupSlug, initialPayload }: ChartIsl
       // remount (or any re-mount) would briefly suppress the placeholder until
       // the fresh controller reconstructs.
       setConstructed(false);
+      // The canvas label names the chart alone until the next chart has data.
+      setLatestValues(null);
     };
   }, []);
 
@@ -402,8 +408,11 @@ export function Chart({ slug, name, index, groupSlug, initialPayload }: ChartIsl
           onClick={() => controllerRef.current?.onWindowChipClick()}
         />
       </h3>
+      {/* Without JavaScript nothing draws the chart, so its controls and its
+          canvas carry `data-requires-js` and are hidden (globals.css); the
+          title link and the page's `<noscript>` note remain. */}
       {/* biome-ignore lint/a11y/useAriaPropsSupportedByRole: deliberate markup, as bench has always rendered the chart toolbar. */}
-      <div className="toolbar toolbar--card" aria-label="Chart controls">
+      <div className="toolbar toolbar--card" aria-label="Chart controls" data-requires-js>
         {/* biome-ignore lint/a11y/useSemanticElements: a fieldset would change the toolbar's layout. */}
         <div className="toolbar-group" role="group" aria-label="Visible commits">
           <span className="toolbar-label">Show</span>
@@ -444,14 +453,21 @@ export function Chart({ slug, name, index, groupSlug, initialPayload }: ChartIsl
         </div>
       </div>
       <div className="chart-tooltip-host" ref={tooltipHostRef} />
-      <div className="chart-wrap">
+      <div className="chart-wrap" data-requires-js>
         {!constructed && !error && (
           <div className="chart-placeholder" role="status" aria-live="polite">
             <span className="chart-spinner" aria-hidden="true" />
             <span className="chart-placeholder-text">loading…</span>
           </div>
         )}
-        <canvas data-chart-index={index} ref={canvasRef} />
+        {/* An image to assistive technology, named for the chart; once the
+            chart has data the name also gives the latest values. */}
+        <canvas
+          data-chart-index={index}
+          role="img"
+          aria-label={chartAriaLabel(name, latestValues)}
+          ref={canvasRef}
+        />
       </div>
       {/* The aria value attributes track the window's left edge as a percent
           of the full history; the strip render keeps aria-valuenow current. */}
@@ -465,6 +481,7 @@ export function Chart({ slug, name, index, groupSlug, initialPayload }: ChartIsl
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={100}
+        data-requires-js
         ref={stripRef}
       >
         <div className="chart-range-strip-track">

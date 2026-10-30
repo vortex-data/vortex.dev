@@ -13,6 +13,8 @@ path = [
   "src/**.ts",
   "src/**.tsx",
   "src/**.css",
+  # The design system's modules, vendored unchanged (src/vendor/vortex-design/README.md).
+  "src/vendor/**.js",
   "scripts/**",
   "tests/**",
   ".github/**",
@@ -45,10 +47,9 @@ SPDX-License-Identifier = "CC-BY-4.0"
 [[annotations]]
 path = [
   "src/app/favicon.ico",
-  "src/assets/logo.svg",
-  "src/assets/logo-mobile.svg",
-  "public/logo.glb",
-  "public/404.glb",
+  "src/assets/vortex_symbol_dark_theme.svg",
+  "src/assets/vortex_wordmark.svg",
+  "src/assets/vortex_wordmark_dark_theme.svg",
   "bench/public/Vortex_Black_NoBG.svg",
   "bench/public/Vortex_White_NoBG.svg",
   "bench/web/public/Vortex_Black_NoBG.svg",
@@ -71,7 +72,98 @@ path = "src/assets/lf_white.svg"
 SPDX-FileCopyrightText = "The Linux Foundation"
 SPDX-License-Identifier = "LicenseRef-Third-Party"
 
+# Adopters' logos for the homepage's logo banner, used only to show who builds on Vortex. Each
+# belongs to its owner and is not relicensed. Each file comes from its owner's own site,
+# brand page or official repository, and each owner is named as it names itself.
 [[annotations]]
-path = "src/assets/spiral.svg"
-SPDX-FileCopyrightText = "Spiral"
+path = "src/assets/logos/spiral.svg"
+SPDX-FileCopyrightText = "Fulcrum Technologies, Inc. dba Spiral, Inc"
 SPDX-License-Identifier = "LicenseRef-Third-Party"
+
+[[annotations]]
+path = "src/assets/logos/microsoft.png"
+SPDX-FileCopyrightText = "Microsoft Corporation"
+SPDX-License-Identifier = "LicenseRef-Third-Party"
+
+[[annotations]]
+path = "src/assets/logos/palantir.svg"
+SPDX-FileCopyrightText = "Palantir Technologies Inc."
+SPDX-License-Identifier = "LicenseRef-Third-Party"
+
+[[annotations]]
+path = "src/assets/logos/firebolt.svg"
+SPDX-FileCopyrightText = "Firebolt Analytics Inc"
+SPDX-License-Identifier = "LicenseRef-Third-Party"
+
+[[annotations]]
+path = "src/assets/logos/spiceai.svg"
+SPDX-FileCopyrightText = "Spice AI, Inc."
+SPDX-License-Identifier = "LicenseRef-Third-Party"
+
+[[annotations]]
+path = "src/assets/logos/datologyai.svg"
+SPDX-FileCopyrightText = "DatologyAI, Inc."
+SPDX-License-Identifier = "LicenseRef-Third-Party"
+
+[[annotations]]
+path = "src/assets/logos/arrow.svg"
+SPDX-FileCopyrightText = "The Apache Software Foundation"
+SPDX-License-Identifier = "LicenseRef-Third-Party"
+
+[[annotations]]
+path = "src/assets/logos/iceberg.svg"
+SPDX-FileCopyrightText = "The Apache Software Foundation"
+SPDX-License-Identifier = "LicenseRef-Third-Party"
+
+[[annotations]]
+path = "src/assets/logos/langchain.svg"
+SPDX-FileCopyrightText = "LangChain Inc."
+SPDX-License-Identifier = "LicenseRef-Third-Party"
+
+[[annotations]]
+path = "src/assets/logos/dash0.svg"
+SPDX-FileCopyrightText = "Dash0 Inc."
+SPDX-License-Identifier = "LicenseRef-Third-Party"
+
+# Milvus is an LF AI & Data Foundation project, which holds the project's trademark.
+[[annotations]]
+path = "src/assets/logos/milvus.svg"
+SPDX-FileCopyrightText = "The Linux Foundation (LF AI & Data Foundation)"
+SPDX-License-Identifier = "LicenseRef-Third-Party"
+
+[[annotations]]
+path = "src/assets/logos/duckdb.svg"
+SPDX-FileCopyrightText = "DuckDB Foundation"
+SPDX-License-Identifier = "LicenseRef-Third-Party"
+
+[[annotations]]
+path = "src/assets/logos/clickhouse.svg"
+SPDX-FileCopyrightText = "ClickHouse, Inc."
+SPDX-License-Identifier = "LicenseRef-Third-Party"
+
+# Apache DataFusion, Apache Spark, Apache Hudi and Apache Paimon, and their logos, are trademarks
+# of The Apache Software Foundation.
+[[annotations]]
+path = [
+  "src/assets/logos/datafusion.svg",
+  "src/assets/logos/spark.svg",
+  "src/assets/logos/hudi.png",
+  "src/assets/logos/paimon.png",
+]
+SPDX-FileCopyrightText = "The Apache Software Foundation"
+SPDX-License-Identifier = "LicenseRef-Third-Party"
+
+# The fonts the post Open Graph images set their text in (src/lib/og.tsx). They are the design
+# system's Funnel Display and Geist Mono, as Google Fonts distributes them, under the SIL Open
+# Font License. next/og cannot read the woff2 files next/font serves. The Geist Mono file has its
+# GSUB table removed, because next/og's font parser cannot read its contextual alternates. The
+# licence allows a modified version, and the font names no Reserved Font Name.
+[[annotations]]
+path = "src/lib/og-assets/FunnelDisplay-Medium.ttf"
+SPDX-FileCopyrightText = "2024 The Funnel Project Authors (https://github.com/Dicotype/Funnel)"
+SPDX-License-Identifier = "OFL-1.1"
+
+[[annotations]]
+path = "src/lib/og-assets/GeistMono-Regular.ttf"
+SPDX-FileCopyrightText = "2024 The Geist Project Authors (https://github.com/vercel/geist-font.git)"
+SPDX-License-Identifier = "OFL-1.1"

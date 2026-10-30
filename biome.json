@@ -10,6 +10,7 @@
     "includes": [
       "**",
       "!src/content",
+      "!src/vendor",
       "!public",
       "!bun.lock",
       "!.next",
@@ -20,6 +21,9 @@
       "!bench/web/.next",
       "!bench/web/next-env.d.ts",
       "!src/app/globals.css",
+      "!src/styles/vortex-tokens.css",
+      "!src/styles/vortex.css",
+      "!src/styles/vortex-base.css",
       "!**/*.svg",
       "!**/*.md",
       "!**/*.yml",
@@ -44,8 +48,7 @@
   },
   "css": {
     "parser": {
-      "cssModules": true,
-      "tailwindDirectives": true
+      "cssModules": true
     },
     "linter": {
       "enabled": true

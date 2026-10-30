@@ -84,6 +84,8 @@ describe('GroupSection', () => {
       />,
     );
     expect(html).toContain('class="group-info-icon"');
+    expect(html).toMatch(/class="group-info-icon"[^>]*><svg [^>]*viewBox="0 -960 960 960"/);
+    expect(html).not.toContain('ⓘ');
     expect(html).toContain('data-tooltip="Tests selecting arbitrary row indices on NVMe"');
     expect(html).toContain('2 charts');
   });
@@ -119,7 +121,7 @@ describe('GroupSection', () => {
     expect(html).not.toContain('group-docs-link');
   });
 
-  it('renders the copy-link button in the summary header', () => {
+  it('renders the copy-link control in the summary header, a link to the group', () => {
     const html = renderToStaticMarkup(
       <GroupSection
         group={RANDOM_ACCESS}
@@ -129,7 +131,8 @@ describe('GroupSection', () => {
       />,
     );
     expect(html).toContain('class="group-permalink"');
-    expect(html).toContain('aria-label="Copy link to Random Access"');
+    expect(html).toContain('href="/#random-access"');
+    expect(html).toContain('aria-label="Link to Random Access"');
   });
 
   it('renders the summary card after the disclosure, so a collapsed group shows it', () => {
