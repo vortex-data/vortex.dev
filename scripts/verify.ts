@@ -418,6 +418,13 @@ async function checkThemeParity(): Promise<void> {
 // In environments where RESEND_API_KEY *is* set (e.g. a dev with .env.local
 // + the var exported into the verify shell), the test is skipped rather
 // than calling the real Resend API.
+//
+// The handler rate-limits by client IP, and its counts outlive one run of this
+// suite on a warm server. Each run claims its own client identity, so reruns
+// within the rate window stay deterministic. Vercel replaces X-Real-IP with
+// the real address, so this only isolates runs against a local server.
+const VERIFY_CLIENT_IP = `verify-${crypto.randomUUID()}`;
+
 async function checkSubscribe(): Promise<void> {
   if (process.env.RESEND_API_KEY) {
     pass("/api/subscribe", "skipped (RESEND_API_KEY is set in this shell)");
@@ -427,7 +434,12 @@ async function checkSubscribe(): Promise<void> {
   try {
     res = await fetch(`${BASE}/api/subscribe`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        // The handler rejects requests that don't come from the site itself.
+        Origin: new URL(BASE).origin,
+        "X-Real-IP": VERIFY_CLIENT_IP
+      },
       body: JSON.stringify({ email: "verify-suite@example.com" })
     });
   } catch (err) {
@@ -465,6 +477,67 @@ async function checkSubscribe(): Promise<void> {
   );
 }
 
+// The handler's guards run before the RESEND_API_KEY check, so they hold
+// whether or not the key is set, and none of these requests reaches Resend.
+async function checkSubscribeGuards(): Promise<void> {
+  const origin = new URL(BASE).origin;
+  const cases: {
+    name: string;
+    headers: Record<string, string>;
+    body: string;
+    status: number;
+  }[] = [
+    {
+      name: "/api/subscribe rejects a cross-site Origin",
+      headers: { Origin: "https://attacker.example" },
+      body: JSON.stringify({ email: "verify-suite@example.com" }),
+      status: 403
+    },
+    {
+      name: "/api/subscribe rejects the same host on another scheme",
+      headers: {
+        Origin: origin.startsWith("https:")
+          ? origin.replace(/^https:/, "http:")
+          : origin.replace(/^http:/, "https:")
+      },
+      body: JSON.stringify({ email: "verify-suite@example.com" }),
+      status: 403
+    },
+    {
+      name: "/api/subscribe rejects a request with no Origin or Referer",
+      headers: {},
+      body: JSON.stringify({ email: "verify-suite@example.com" }),
+      status: 403
+    },
+    {
+      name: "/api/subscribe rejects an oversized body",
+      headers: { Origin: origin },
+      body: JSON.stringify({ email: `${"a".repeat(2048)}@example.com` }),
+      status: 413
+    }
+  ];
+  for (const c of cases) {
+    try {
+      const res = await fetch(`${BASE}/api/subscribe`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Real-IP": VERIFY_CLIENT_IP,
+          ...c.headers
+        },
+        body: c.body
+      });
+      if (res.status === c.status) pass(c.name, String(res.status));
+      else fail(c.name, `expected ${c.status}, got ${res.status}`);
+    } catch (err) {
+      fail(
+        c.name,
+        `request failed: ${err instanceof Error ? err.message : String(err)}`
+      );
+    }
+  }
+}
+
 // === Run ===============================================================
 
 async function main(): Promise<void> {
@@ -477,6 +550,7 @@ async function main(): Promise<void> {
   await checkRssAtom();
   await checkThemeParity();
   await checkSubscribe();
+  await checkSubscribeGuards();
 
   const htmlByPath = new Map<string, string>();
   for (const path of sitemapPaths) {
