@@ -1,3 +1,7 @@
+// compileMDXComponent evaluates code with `new Function`. The CSP has no
+// 'unsafe-eval', which is safe only while this runs on the server, so make
+// importing it from a Client Component a build error.
+import "server-only";
 import * as runtime from "react/jsx-runtime";
 import { mdxComponents } from "@/components/blog/mdx-components";
 import { WarningIcon } from "@/components/icons";

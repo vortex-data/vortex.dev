@@ -82,8 +82,9 @@ best-effort — a failure fails the bench job and alerts):
    least-privilege `bench_ingest` IAM role (IAM auth, `sslmode=verify-full`), against the
    schema in this repo's `migrations/`. Each JSONL file applies in one transaction.
 3. **Revalidate ping:** `POST {BENCH_SITE_BASE_URL}/api/revalidate` with
-   `Authorization: Bearer $BENCH_REVALIDATE_TOKEN`, to flush the Next.js Data Cache so the
-   next read recomputes against freshly written data.
+   `Authorization: Bearer $BENCH_REVALIDATE_TOKEN`, to mark the Next.js Data Cache stale so
+   it refreshes against freshly written data: the next read serves the previous data once
+   while each entry refreshes in the background, and later reads get the new data.
 
 ### `measurement_id`: the frozen hash contract
 
@@ -109,8 +110,11 @@ vectors ARE the contract.
     (fails closed — an unconfigured deployment never silently accepts unauthenticated
     revalidation).
   - `401 { "error": "unauthorized" }` on a missing/incorrect token.
-  - `200 { "revalidated": true }` on success — flushes the `BENCH_DATA_TAG` Data Cache
-    entries. The response is never CDN-cached.
+  - `200 { "revalidated": true }` on success — marks the `BENCH_DATA_TAG` Data Cache
+    entries stale (the `'max'` profile). The next read of each entry serves the previous
+    data once and refreshes it in the background, so a page never waits on the database
+    because of an ingest; new results can take about one more CDN cycle (five minutes)
+    to appear. The response is never CDN-cached.
 
 ## Bumping `SCHEMA_VERSION` (procedure)
 

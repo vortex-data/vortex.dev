@@ -70,9 +70,11 @@ by two independent layers, so the common case is cheap and ingest can flush both
 **Freshness propagation.** The primary mechanism is
 `POST /api/revalidate` (token-gated; `web/app/api/revalidate/route.ts`): on a
 successful ingest, `scripts/post-ingest.py` calls it and it runs
-`revalidateTag('bench-data', { expire: 0 })`, expiring Layer 1 at once (not the
-stale-while-revalidate `'max'` profile) so the next read recomputes against fresh
-data. The 24h backstop is only the safety cap if that hook never fires. The
+`revalidateTag('bench-data', 'max')`, the stale-while-revalidate profile: the
+next read of each Layer 1 entry serves the previous data once and refreshes the
+entry in the background, so no page waits on the database because of an ingest,
+and the reads after it get the fresh data. The 24h backstop is only the safety
+cap if that hook never fires. The
 endpoint **fails closed** — a missing `BENCH_REVALIDATE_TOKEN` returns `503`,
 never silently accepting an unauthenticated flush; the token compare is
 constant-time.
@@ -138,10 +140,18 @@ gap so idle requests don't pay a fresh TLS+auth connect. Each statement has a
 30-second server-side timeout, so a request timeout cannot leave unbounded work
 running in PostgreSQL.
 
-Group Data Cache fills share a PostgreSQL advisory lock across production and
-preview functions. One invocation runs the group discovery and summary work.
-Contenders release their connections and retry the Data Cache read with bounded
-backoff instead of issuing duplicate summary queries.
+Each group Data Cache entry (the group list, and each group's default bundle)
+fills under its own PostgreSQL advisory lock (`web/lib/cache-fill.ts`), shared
+across production and preview functions. Different entries fill at once; for one
+entry, one invocation runs the fill, and contenders release their connections
+and retry the Data Cache read with bounded backoff instead of issuing duplicate
+queries. A bundle's fill resolves only its own group: one family's discovery,
+then that group's summary, not every group's. Entries and locks use the slug's
+canonical form, so the many spellings that decode to one group share them. In
+one process, a second request for an entry shares the running fill, and fills
+take turns for up to two slots sized from `BENCH_DB_POOL_MAX` at two connections
+per fill (one slot for a pool of 2 or 3), the group list taking every slot, so
+the fills never ask for more connections at once than the pool holds.
 
 `bench_read` uses a **static password** rather than RDS IAM auth because the
 Vercel runtime has no AWS credentials to mint an IAM token, and RDS `rds_iam`
