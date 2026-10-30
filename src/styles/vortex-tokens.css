@@ -1,5 +1,7 @@
 /* Vortex design system tokens, copied by tools/site-styles.mjs.
-   Edit the system, then run tools/site-styles.mjs; do not edit here. */
+   Edit the system, then run tools/site-styles.mjs; do not edit here.
+   Made by: node tools/site-styles.mjs <site> --sections base,brand,site,docs,blog,focus --faces --vx-face --base
+   sha256 28ff622d2c049d9c7b73ebab1f1c29fd4c61761c6b2de1cac042256d0f2dfd05 */
 :root, [data-theme="dark"] {
   --white: #ffffff;
   --grey-50: #fcfcf9;
@@ -31,7 +33,6 @@
   --ink: var(--white);
   --ink-body: var(--grey-300);
   --ink-muted: var(--grey-450);
-  --ink-faint: var(--grey-500);
   --accent: var(--blue-bright);
   --accent-ink: var(--blue-soft);
   --accent-soft: rgba(47, 99, 255, 0.16);
@@ -45,7 +46,7 @@
   --syntax-function: var(--orange);
   --syntax-string: var(--white);
   --syntax-comment: var(--grey-450);
-  --chart-1: var(--accent);
+  --chart-vortex: var(--accent);
   --chart-muted: var(--grey-600);
   --chart-parquet: #0d8a97;
   --chart-lance: #976fa1;
@@ -60,7 +61,6 @@
   --status-warn: var(--orange);
   --status-error: var(--red);
   --status-idle: var(--grey-500);
-  --shadow-float: 0 8px 24px rgba(0, 0, 0, 0.5);
   color-scheme: dark;
 }
 [data-theme="light"] {
@@ -73,7 +73,6 @@
   --ink: var(--black);
   --ink-body: var(--grey-600);
   --ink-muted: var(--grey-500);
-  --ink-faint: var(--grey-400);
   --accent: var(--blue);
   --accent-ink: var(--blue);
   --accent-soft: rgba(29, 15, 237, 0.1);
@@ -87,7 +86,7 @@
   --syntax-function: #a8460f;
   --syntax-string: var(--black);
   --syntax-comment: var(--grey-500);
-  --chart-1: var(--accent);
+  --chart-vortex: var(--accent);
   --chart-muted: var(--grey-300);
   --chart-track: var(--grey-100);
   --chart-2: #a8460f;
@@ -99,7 +98,6 @@
   --status-warn: var(--orange);
   --status-error: var(--red);
   --status-idle: var(--grey-400);
-  --shadow-float: 0 8px 16px rgba(0, 0, 0, 0.08);
   color-scheme: light;
 }
 :root {

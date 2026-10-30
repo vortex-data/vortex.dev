@@ -1,5 +1,7 @@
 /* Vortex design system components (sections: base, brand, site, docs, blog, focus), copied by tools/site-styles.mjs.
-   Edit the system, then run tools/site-styles.mjs; do not edit here. */
+   Edit the system, then run tools/site-styles.mjs; do not edit here.
+   Made by: node tools/site-styles.mjs <site> --sections base,brand,site,docs,blog,focus --faces --vx-face --base
+   sha256 7ad714b9f6b4fbfe09110283f3da77411852f5c4ed0e2c8d4273bb1f9f8136ce */
 
 /* ------------------------------------------------------------------ base */
 /* Every component sizes with border-box, so it draws the same under a site's reset or none. */
@@ -83,6 +85,7 @@
 .vx-source {
   display: inline-flex;
   flex-wrap: wrap;
+  white-space: normal;
   align-items: center;
   gap: var(--space-4);
 }
@@ -197,7 +200,7 @@
   display: block;
   flex: none;
 }
-/* A logo whose Vortex support has not shipped carries a small "Coming soon" tag over its top
+/* A logo whose Vortex support has not shipped carries a small tag ("In proposal") tag over its top
    right corner, so the mark still reads, and the mark dims a little. */
 .vx-logos-set a.is-soon img {
   opacity: 0.45;
@@ -253,6 +256,26 @@
 }
 
 /* ------------------------------------------------------------------ site */
+/* Page: the frame and the bands a page is built from. .vx-page holds the header, a main and the
+   footer in a column, so the footer sits at the bottom of a short page. A .vx-band is one slice of
+   the page, at page-max with page-pad on both sides, as the header and footer are. */
+.vx-page { min-height: 100dvh; display: flex; flex-direction: column; }
+.vx-page > main { flex: 1 0 auto; }
+.vx-band { box-sizing: border-box; width: 100%; max-width: var(--page-max); margin-inline: auto; padding: var(--space-80) var(--page-pad); }
+.vx-band.is-compact { padding-block: var(--space-48); }
+@media (min-width: 761px) {
+  .vx-band { padding-block: var(--space-152); }
+  .vx-band.is-compact { padding-block: var(--space-120); }
+}
+/* A page head: an Eyebrow, the heading and a lede, at the reading measure. */
+.vx-page-head { display: grid; justify-items: start; gap: var(--space-18); max-width: 840px; }
+.vx-page-head > * { margin: 0; }
+.vx-page-head > .vx-lede { color: var(--ink-body); }
+/* Two columns on the 24px gutter. They stack where the page's nav moves to a second row. */
+.vx-split { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gutter); align-items: start; }
+@media (max-width: 760px) {
+  .vx-split { grid-template-columns: minmax(0, 1fr); }
+}
 .vx-btn {
   display: inline-flex;
   align-items: center;
@@ -484,8 +507,6 @@
    narrow panel. A 4px gap keeps "1.07× larger than Parquet" on one line in six columns. */
 .vx-bench-big { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-4); color: var(--ink); }
 .vx-bench-note { color: var(--ink-muted); }
-/* The sources of panels whose figures are not bench's, under the panels. */
-
 /* A bar chart's rows: name, a bar on its track, the value. Vortex is the one Blue row. */
 .vx-bars { display: grid; gap: var(--space-8); }
 .vx-bar {
@@ -498,16 +519,19 @@
   color: var(--ink-muted);
 }
 .vx-bar-value { text-align: right; }
+.vx-bar-missing { grid-column: 2 / -1; }
 .vx-bar-extra { margin-left: var(--space-8); }
 .vx-bar-track { height: 6px; background: var(--chart-track); }
 .vx-bar-fill { display: block; height: 100%; background: var(--chart-muted); }
 .vx-bar.is-ours { color: var(--accent-ink); }
-.vx-bar.is-ours .vx-bar-fill { background: var(--chart-1); }
-/* Parquet, Lance and Arrow take muted tints of their colours, so the bars are not grey on grey.
-   One value serves both themes, at 3.4:1 on either track, and Vortex's Blue still leads. */
+.vx-bar.is-ours .vx-bar-fill { background: var(--chart-vortex); }
+/* Parquet, Lance and Arrow take muted tints of their colours, so the bars are not grey on grey,
+   drawn at 42% so that Vortex's Blue is the one solid bar and leads even where the others are
+   longer. Every bar prints its value, so the bar is never the only way to read it. */
 .vx-bar.is-parquet .vx-bar-fill { background: var(--chart-parquet); }
 .vx-bar.is-lance .vx-bar-fill { background: var(--chart-lance); }
 .vx-bar.is-arrow .vx-bar-fill { background: var(--chart-arrow); }
+.vx-bar:is(.is-parquet, .is-lance, .is-arrow) .vx-bar-fill { opacity: 0.42; }
 .vx-bars.is-lg .vx-bar { gap: var(--space-12); font-size: 12.5px; }
 .vx-bars.is-lg .vx-bar-track { height: 10px; }
 /* The card's bars end in their values with a short unit ("42.25 ms", "5.12×"), small and muted,
@@ -673,6 +697,32 @@
 }
 .vx-blog-title { margin: 0; color: var(--ink); }
 .vx-blog-feeds { display: flex; gap: var(--space-16); }
+/* With has-mark, a still of the ASCII mark sits in the heading's top right corner, above the feeds:
+   mono characters, dim in edge, fading in from the left. The frame is the data-frame attribute,
+   drawn by ::before, so it is decoration and not text that a contrast check reads. It is static,
+   so it adds no motion. Phones leave it out. */
+.vx-blog-head.has-mark { position: relative; min-height: 200px; align-items: flex-end; }
+.vx-blog-head.has-mark > :not(.vx-blog-mark) { position: relative; z-index: 1; }
+.vx-blog-mark::before { content: attr(data-frame); }
+.vx-blog-mark {
+  display: block;
+  position: absolute;
+  right: 0;
+  top: 0;
+  margin: 0;
+  font: 400 12px/14px var(--font-mono);
+  color: var(--edge);
+  white-space: pre;
+  pointer-events: none;
+  user-select: none;
+  transform: scale(0.6);
+  transform-origin: right top;
+  mask-image: linear-gradient(90deg, transparent, var(--ink) 40%);
+}
+@media (max-width: 760px) {
+  .vx-blog-head.has-mark { min-height: 0; }
+  .vx-blog-mark { display: none; }
+}
 
 /* Post rows sit in a .vx-posts list, which they measure to decide their layout. */
 /* The list is a ul of li > a.vx-post-row. Each row reaches 12px past the column on both sides, so
@@ -747,7 +797,7 @@
 .vx-prose > * { margin: 0 0 1.1em; }
 .vx-prose > h2 { margin: 2em 0 0.6em; font: 500 28px/1.15 var(--font-display); letter-spacing: -0.02em; color: var(--ink); }
 .vx-prose > h3 { margin: 1.6em 0 0.5em; font: 600 22px/1.2 var(--font-display); letter-spacing: -0.02em; color: var(--ink); }
-.vx-prose > h4 { margin: 1.4em 0 0.4em; font: 600 18px/1.3 var(--font-display); letter-spacing: -0.02em; color: var(--ink); }
+.vx-prose > h4 { margin: 1.4em 0 0.4em; font: 600 18px/1.25 var(--font-display); letter-spacing: -0.01em; color: var(--ink); }
 .vx-prose > h5,
 .vx-prose > h6 { margin: 1.4em 0 0.4em; font-size: 1em; font-weight: 600; color: var(--ink); }
 .vx-prose > :is(h2, h3, h4, h5, h6) { position: relative; scroll-margin-top: var(--space-24); }
@@ -864,7 +914,7 @@
 .vx-table th {
   padding: var(--space-8) var(--space-12) var(--space-8) 0;
   text-align: left;
-  font: 500 11px/1.2 var(--font-mono);
+  font: 500 11px/1.3 var(--font-mono);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--ink-muted);
@@ -896,5 +946,5 @@
 /* ------------------------------------------------------------------ focus
    One rule for every focusable element, last so that it wins over the resets above. Rows and
    segments inside a clipped container draw it inside their edge. */
-:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
-:where(.vx-docs-nav a, .vx-toc a, .vx-post-row, .vx-tree-node, .vx-filemap-bar > button, .vx-tabs-list button):focus-visible { outline-offset: -2px; }
+:is(a, button, input, select, textarea, summary, [tabindex]):focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+:is(.vx-docs-nav a, .vx-toc a, .vx-post-row, .vx-tree-node, .vx-filemap-bar > button, .vx-tabs-list button):focus-visible { outline-offset: -2px; }

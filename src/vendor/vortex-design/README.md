@@ -2,8 +2,15 @@
 
 Copied unchanged from the Vortex design system's `components/lib/`: `ascii-mark.js`,
 `ascii-core.js`, `benchmark-card.js`, `benchmark-card.d.ts`, `theme.js`, `callout.js`,
-`code-block.js` and their `.d.ts` files on 2026-10-29, `cover.js` and `cover.d.ts` on 2026-10-30, the rest on 2026-10-28. Do not edit them here: change the
+`code-block.js` and their `.d.ts` files, `cover.js` and `cover.d.ts`. Do not edit them here: change the
 system, then copy them again. Biome skips this folder.
+
+`SHA256SUMS` lists the hash of each file copied from the system, and
+`tests/unit/styles.test.ts` fails if a file no longer matches it, so a hand edit
+shows up in CI. After copying, run
+`shasum -a 256 $(awk '{print $2}' SHA256SUMS) > SHA256SUMS` in this folder, and
+list a newly copied file there first. The `.d.ts` files for `ascii-core`, `ascii-mark`
+and `three` are the site's own, so they are not listed.
 
 | File | What it is |
 | --- | --- |

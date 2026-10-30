@@ -28,7 +28,7 @@ export type BenchPanel = {
   rows: readonly BenchRow[];
   /** The systems the panel shows, in order. It must name Vortex and Parquet. Omitted, every row shows. */
   systems?: readonly string[];
-  /** For figures that are not bench's: where they come from, which the card prints under the panels. */
+  /** For figures that are not bench's: where they come from, as the panel title's hover title and screen-reader text. */
   source?: PanelSource;
 };
 
@@ -99,6 +99,9 @@ export function panelNote(
 
 
 export function renderPanel(panel: BenchPanel): string;
+
+/** One comparison's bars on their own, for a chart outside the card: the bars renderPanel draws. */
+export function renderBars(chart: Pick<BenchPanel, "unit" | "better" | "rows" | "systems">): string;
 
 /** A bar row's class: `vx-bar` with `is-ours`, `is-parquet`, `is-lance`, `is-arrow`,
  * `is-missing` or `is-na` as they apply. */
