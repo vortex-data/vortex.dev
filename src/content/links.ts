@@ -2,10 +2,11 @@ import type { ExternalPost } from "@/lib/posts";
 
 /**
  * Posts on other sites that the blog index lists among its own, newest
- * first. The BlogIndex card's rule: each is the owner's own page (the company
- * or project that wrote it), not a news site, an aggregator or a repost, and
- * it is mainly about Vortex. The title, date, authors and summary are the
- * page's own, as published: the summary is its description. The feeds and the
+ * first. The BlogIndex card's rule: each is the owner's own page (an official
+ * blog, or an engineer's or researcher's own blog or newsletter), not a news
+ * site, an aggregator, a repost, a landing page or docs, and Vortex is a
+ * significant part of it. The title, date, authors and summary are the page's
+ * own, as published: the summary is its description. The feeds and the
  * sitemap list the site's own posts only.
  */
 export const externalPosts: readonly ExternalPost[] = [
@@ -89,6 +90,24 @@ export const externalPosts: readonly ExternalPost[] = [
     authors: ["Joe Isaacs", "Martin Prammer"],
     summary:
       "Evaluating SQL LIKE directly on FSST-compressed strings: a symbol-aware automaton and a SIMD prefilter let Vortex match without decompressing the column first."
+  },
+  {
+    title: "AI Datasets Are Never Done. So We Built Loon.",
+    url: "https://zilliz.com/blog/why-we-built-loon-a-storage-engine-for-ai-data-that-never-stops-changing",
+    date: "2026-06-05T04:00:00.000Z",
+    source: "zilliz.com",
+    authors: ["Ted Xu"],
+    summary:
+      "Loon is a new storage engine for Milvus 3.0 and Zilliz Vector Lakebase, built to manage evolving vector datasets with ColumnGroups, row ID alignment, and Manifests."
+  },
+  {
+    title: "We built SmithDB, the data layer for agent observability",
+    url: "https://www.langchain.com/blog/introducing-smithdb",
+    date: "2026-05-13T17:39:00.000Z",
+    source: "langchain.com",
+    authors: [],
+    summary:
+      "Introducing SmithDB: LangSmith's purpose-built distributed database for agent observability, delivering up to 12x faster performance with full portability."
   },
   {
     title: "Vortex: The Columnar Format for Data Workloads",
