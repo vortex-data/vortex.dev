@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
-import { getPool } from '@/lib/db';
+import { getPool, resolvePoolMax } from '@/lib/db';
 
 // First int of every group cache fill's two-int PostgreSQL advisory-lock key: "benc". The second
 // is a hash of the cache entry's key (`cacheFillLockId`), so fills of different entries run at
@@ -11,14 +11,25 @@ const GROUP_CACHE_FILL_LOCK_SPACE = 0x62656e63;
 
 const CACHE_FILL_RETRY_DELAYS_MS = [250, 750, 2_000, 4_000, 8_000] as const;
 
+// At most this many fills run at once in one process, however large the pool.
+const MAX_CACHE_FILL_SLOTS = 2;
+
+// A group bundle's fill holds one pool connection for its lock and runs one query or one
+// transaction at a time, so it never asks for more than two connections.
+const BUNDLE_FILL_CONNECTIONS = 2;
+
 /**
- * Fill slots in one process. A fill holds one pool connection for its lock and asks for more while
- * it runs: a group bundle two at once (its discovery and its summary), the group list seven (the
- * summaries' `QUERY_CONCURRENCY` in `lib/queries.ts`). The group list takes every slot, so with the
- * default pool of 8 the fills in one process never ask for more than 8 connections at once: 1 + 7,
- * or 2 × (1 + 2). A fill waiting for a slot holds no connection.
+ * Fill slots in one process: as many group-bundle fills as the pool holds at their two connections
+ * each, from one up to [`MAX_CACHE_FILL_SLOTS`]. The group list takes every slot; it holds its lock
+ * and runs seven summaries at once (`QUERY_CONCURRENCY` in `lib/queries.ts`). So with the default
+ * pool of 8 the fills in one process never ask for more than 8 connections at once: 1 + 7, or
+ * 2 × 2. A pool of 2 or 3 runs one fill at a time, so the fill always has a connection for its
+ * queries. A fill waiting for a slot holds no connection.
  */
-export const CACHE_FILL_SLOTS = 2;
+export function cacheFillSlots(): number {
+  const fit = Math.floor(resolvePoolMax() / BUNDLE_FILL_CONNECTIONS);
+  return Number.isFinite(fit) ? Math.min(MAX_CACHE_FILL_SLOTS, Math.max(1, fit)) : 1;
+}
 
 /** Another process is already filling this group cache entry. */
 export class GroupCacheFillInProgressError extends Error {
@@ -40,28 +51,32 @@ export function cacheFillLockId(key: string): number {
   return hash | 0;
 }
 
-let freeSlots = CACHE_FILL_SLOTS;
-const slotWaiters: { slots: number; grant: () => void }[] = [];
+let usedSlots = 0;
+const slotWaiters: { exclusive: boolean; grant: (slots: number) => void }[] = [];
 
 // First come, first served: a fill that needs every slot waits at the head of the queue for the
 // running fills to finish, and no later fill passes it.
 function grantSlots(): void {
-  while (slotWaiters.length > 0 && slotWaiters[0]!.slots <= freeSlots) {
-    const waiter = slotWaiters.shift()!;
-    freeSlots -= waiter.slots;
-    waiter.grant();
+  const capacity = cacheFillSlots();
+  while (slotWaiters.length > 0) {
+    const slots = slotWaiters[0]!.exclusive ? capacity : 1;
+    if (usedSlots + slots > capacity) {
+      return;
+    }
+    usedSlots += slots;
+    slotWaiters.shift()!.grant(slots);
   }
 }
 
-async function withFillSlots<T>(slots: number, run: () => Promise<T>): Promise<T> {
-  await new Promise<void>((grant) => {
-    slotWaiters.push({ slots, grant });
+async function withFillSlots<T>(exclusive: boolean, run: () => Promise<T>): Promise<T> {
+  const slots = await new Promise<number>((grant) => {
+    slotWaiters.push({ exclusive, grant });
     grantSlots();
   });
   try {
     return await run();
   } finally {
-    freeSlots += slots;
+    usedSlots -= slots;
     grantSlots();
   }
 }
@@ -75,7 +90,7 @@ const runningFills = new Map<string, Promise<unknown>>();
  * for that entry.
  *
  * In one process, a fill for an entry that is already filling shares that fill, and fills take
- * turns for [`CACHE_FILL_SLOTS`]; `exclusive` takes every slot. Lock contention with another
+ * turns for [`cacheFillSlots`]; `exclusive` takes every slot. Lock contention with another
  * process (another instance, or a preview deployment on the same database) fails immediately and
  * releases the pool connection. The caller can then retry the Data Cache read without keeping a
  * database connection queued behind the active fill. Session advisory locks disappear
@@ -90,11 +105,11 @@ export function withGroupCacheFillLock<T>(
   if (running !== undefined) {
     return running as Promise<T>;
   }
-  const started = withFillSlots(exclusive ? CACHE_FILL_SLOTS : 1, () =>
-    fillUnderLock(cacheFillLockId(key), fill),
-  ).finally(() => {
-    runningFills.delete(key);
-  });
+  const started = withFillSlots(exclusive, () => fillUnderLock(cacheFillLockId(key), fill)).finally(
+    () => {
+      runningFills.delete(key);
+    },
+  );
   runningFills.set(key, started);
   return started;
 }

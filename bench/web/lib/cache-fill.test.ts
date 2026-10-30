@@ -2,20 +2,22 @@
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
 import { EventEmitter } from 'node:events';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { connect, query, release } = vi.hoisted(() => ({
+const { connect, poolMax, query, release } = vi.hoisted(() => ({
   connect: vi.fn(),
+  poolMax: { value: 8 },
   query: vi.fn(),
   release: vi.fn(),
 }));
 
 vi.mock('@/lib/db', () => ({
   getPool: () => ({ connect }),
+  resolvePoolMax: () => poolMax.value,
 }));
 
 import {
-  CACHE_FILL_SLOTS,
+  cacheFillSlots,
   cacheFillLockId,
   GroupCacheFillInProgressError,
   retryGroupCacheFill,
@@ -171,7 +173,7 @@ describe('group cache fills in one process', () => {
   });
 
   it('runs fills of different entries at once, up to the slot count', async () => {
-    expect(CACHE_FILL_SLOTS).toBe(2);
+    expect(cacheFillSlots()).toBe(2);
     const fills = ['a', 'b', 'c'].map((name) => deferredFill(name));
 
     const results = fills.map((f, i) => withGroupCacheFillLock(`group-charts:${i}`, f.fill));
@@ -224,7 +226,7 @@ describe('group cache fills in one process', () => {
       text.includes('pg_try_advisory_lock') ? { rows: [{ acquired: false }] } : { rows: [] },
     );
     const lost = await Promise.allSettled(
-      Array.from({ length: CACHE_FILL_SLOTS + 1 }, (_, i) =>
+      Array.from({ length: cacheFillSlots() + 1 }, (_, i) =>
         withGroupCacheFillLock(`group-charts:lost-${i}`, async () => 'never'),
       ),
     );
@@ -240,6 +242,58 @@ describe('group cache fills in one process', () => {
     await expect(
       withGroupCacheFillLock('groups', async () => 'groups', { exclusive: true }),
     ).resolves.toBe('groups');
+  });
+});
+
+describe('cache fill slots', () => {
+  beforeEach(() => {
+    connect.mockReset();
+    query.mockReset();
+    release.mockReset();
+    query.mockImplementation(async (text: string) =>
+      text.includes('pg_try_advisory_lock') ? { rows: [{ acquired: true }] } : { rows: [] },
+    );
+    connect.mockImplementation(async () => Object.assign(new EventEmitter(), { query, release }));
+  });
+
+  afterEach(() => {
+    poolMax.value = 8;
+  });
+
+  it('fit the pool at two connections per fill, from one up to two', () => {
+    for (const [max, slots] of [
+      [1, 1],
+      [2, 1],
+      [3, 1],
+      [4, 2],
+      [8, 2],
+      [100, 2],
+      [Number.NaN, 1],
+    ] as const) {
+      poolMax.value = max;
+      expect(cacheFillSlots()).toBe(slots);
+    }
+  });
+
+  it('runs one fill at a time on a pool of 2, so a fill always has a connection to query on', async () => {
+    poolMax.value = 2;
+    const first = deferredFill('a');
+    const second = deferredFill('b');
+
+    const results = [
+      withGroupCacheFillLock('group-charts:small-a', first.fill),
+      withGroupCacheFillLock('group-charts:small-b', second.fill),
+    ];
+    await settle();
+    expect(connect).toHaveBeenCalledOnce();
+    expect(second.fill).not.toHaveBeenCalled();
+
+    first.finish();
+    await settle();
+    expect(second.fill).toHaveBeenCalledOnce();
+
+    second.finish();
+    await expect(Promise.all(results)).resolves.toEqual(['a', 'b']);
   });
 });
 

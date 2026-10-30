@@ -39,10 +39,13 @@ vi.mock('@/lib/queries', () => ({
   chartPayload: vi.fn(async () => ({ display_name: 'c' })),
 }));
 
+// Decoding drops an `-alias` suffix, standing in for the lenient decode that lets
+// many slugs name one key; encoding gives the canonical slug back.
 vi.mock('@/lib/slug', () => ({
-  groupKeyFromSlug: (s: string) => ({ slug: s }),
-  chartKeyFromSlug: (s: string) => ({ slug: s }),
+  groupKeyFromSlug: (s: string) => ({ slug: s.replace(/-alias$/, '') }),
+  chartKeyFromSlug: (s: string) => ({ slug: s.replace(/-alias$/, '') }),
   groupKeyToSlug: (k: { slug: string }) => k.slug,
+  chartKeyToSlug: (k: { slug: string }) => k.slug,
 }));
 
 import {
@@ -91,5 +94,17 @@ describe('data-cache wrappers', () => {
     expect(withGroupCacheFillLock.mock.calls[0]![2]).toEqual({ exclusive: true });
     expect(withGroupCacheFillLock.mock.calls[1]![0]).toBe('group-charts:gs');
     expect(withGroupCacheFillLock.mock.calls[1]![2]).toBeUndefined();
+  });
+
+  it('reads and fills an aliased slug under its canonical slug', async () => {
+    const { collectGroupCharts, chartPayload } = await import('@/lib/queries');
+    await cachedDefaultGroupCharts('gs-alias');
+    await cachedDefaultChartPayload('cs-alias');
+    expect(withGroupCacheFillLock.mock.calls[0]![0]).toBe('group-charts:gs');
+    expect(vi.mocked(collectGroupCharts)).toHaveBeenLastCalledWith(
+      { slug: 'gs' },
+      expect.anything(),
+    );
+    expect(vi.mocked(chartPayload)).toHaveBeenLastCalledWith({ slug: 'cs' }, expect.anything());
   });
 });

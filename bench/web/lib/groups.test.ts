@@ -35,7 +35,7 @@ import {
 } from './test-harness';
 import { parseCommitWindow } from './window';
 import { getPool, resetPool } from './db';
-import { CACHE_FILL_SLOTS, withGroupCacheFillLock } from './cache-fill';
+import { cacheFillSlots, withGroupCacheFillLock } from './cache-fill';
 import { GET as getGroups } from '@/app/api/groups/route';
 import { GET as getGroup } from '@/app/api/group/[slug]/route';
 
@@ -824,11 +824,11 @@ describe.skipIf(!databaseAvailable)('summary math fidelity (testcontainers Postg
 
   // A cached fill holds one connection for its advisory lock. The group-list fill then runs the
   // discovery (one statement per family, five at once) and the summaries (QUERY_CONCURRENCY, 7, at
-  // once) through `pool.query`; a group-bundle fill runs its group's discovery and summary at once,
+  // once) through `pool.query`; a group-bundle fill runs its group's discovery, then its summary,
   // then builds the group's charts on one `connect()`ed client. pg fails a request that waits
   // BENCH_DB_CONNECTION_TIMEOUT_MS for a free pool slot, so the fills in one process must never ask
   // for more connections at once than the default pool size, 8: the group list's lock plus 7
-  // summaries, or two bundles' locks plus their two queries each (`CACHE_FILL_SLOTS`). The test
+  // summaries, or two bundles' locks plus one query each (`cacheFillSlots`). The test
   // starts the group list and every bundle at once and counts requests, not checked-out clients,
   // because a pool of 8 never checks out more than 8: a wider fan-out would only queue.
   it('keeps concurrent cached fills within the pool size', async () => {
@@ -851,7 +851,7 @@ describe.skipIf(!databaseAvailable)('summary math fidelity (testcontainers Postg
     }
 
     const slugs = (await collectGroups()).map((group) => group.slug);
-    expect(slugs.length).toBeGreaterThan(CACHE_FILL_SLOTS);
+    expect(slugs.length).toBeGreaterThan(cacheFillSlots());
     const pool = getPool();
     const connect = pool.connect.bind(pool);
     let requested = 0;

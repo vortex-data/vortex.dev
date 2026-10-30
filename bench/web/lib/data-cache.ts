@@ -14,7 +14,7 @@ import {
   type Group,
   type GroupChartsResponse,
 } from '@/lib/queries';
-import { chartKeyFromSlug, groupKeyFromSlug } from '@/lib/slug';
+import { chartKeyFromSlug, chartKeyToSlug, groupKeyFromSlug, groupKeyToSlug } from '@/lib/slug';
 import { DEFAULT_COMMIT_WINDOW } from '@/lib/window';
 
 /**
@@ -54,7 +54,9 @@ const GROUP_PAYLOAD_CACHE_VERSION = 'v9';
 // key (an `unstable_cache` argument), so one wrapper covers every group. A
 // `null` result (the group has no data) is cached too, which is correct: a
 // missing group stays a 404 until the next ingest revalidates the tag. Each
-// group fills under its own lock, so different groups fill at once.
+// group fills under its own lock, so different groups fill at once. Callers
+// pass the canonical slug (`cachedDefaultGroupCharts`), so every spelling of a
+// group shares one entry and one lock.
 const groupChartsCached = unstable_cache(
   async (slug: string): Promise<GroupChartsResponse | null> =>
     withGroupCacheFillLock(`group-charts:${slug}`, () =>
@@ -72,7 +74,7 @@ const chartPayloadCached = unstable_cache(
 );
 
 // The group list runs every group's summary at once, so it takes every fill
-// slot in its process (see `CACHE_FILL_SLOTS`).
+// slot in its process (see `cacheFillSlots`).
 const groupsCached = unstable_cache(
   async (): Promise<Group[]> =>
     withGroupCacheFillLock('groups', collectGroups, { exclusive: true }),
@@ -86,14 +88,23 @@ const filterUniverseCached = unstable_cache(
   CACHE_OPTIONS,
 );
 
-/** The default last-100 bundle for one group, served from the Data Cache. */
-export function cachedDefaultGroupCharts(slug: string): Promise<GroupChartsResponse | null> {
-  return retryGroupCacheFill(() => groupChartsCached(slug));
+/**
+ * The default last-100 bundle for one group, served from the Data Cache. A slug
+ * decodes leniently (the prefix, field order and unknown fields are ignored), so
+ * many slugs name one group; the entry and its fill lock use the canonical one.
+ * Rejects like `groupKeyFromSlug` on a malformed slug.
+ */
+export async function cachedDefaultGroupCharts(slug: string): Promise<GroupChartsResponse | null> {
+  const canonical = groupKeyToSlug(groupKeyFromSlug(slug));
+  return retryGroupCacheFill(() => groupChartsCached(canonical));
 }
 
-/** The default last-100 payload for one chart, served from the Data Cache. */
-export function cachedDefaultChartPayload(slug: string): Promise<ChartResponse | null> {
-  return chartPayloadCached(slug);
+/**
+ * The default last-100 payload for one chart, served from the Data Cache under
+ * the chart's canonical slug, like [`cachedDefaultGroupCharts`].
+ */
+export async function cachedDefaultChartPayload(slug: string): Promise<ChartResponse | null> {
+  return chartPayloadCached(chartKeyToSlug(chartKeyFromSlug(slug)));
 }
 
 /** Every group + chart link, served from the Data Cache. */

@@ -1559,7 +1559,7 @@ function discoverGroups(groupKind: GroupKind): Promise<Group[]> {
 /**
  * Bound on how many queries one request runs concurrently: the per-group
  * summaries in [`collectGroups`] (PR-5.1.5 fix e). [`collectGroupCharts`] no
- * longer fans out; it runs its group's discovery and summary at once, then two
+ * longer fans out; it runs its group's discovery, then its summary, then two
  * statements per group, or more in slices of 25 charts for large groups, one
  * after another on one connection. Kept one below the `BENCH_DB_POOL_MAX`
  * default because a cached fill holds one pool connection for its advisory
@@ -1629,16 +1629,19 @@ export async function collectGroups(): Promise<Group[]> {
  * Collect one group with its summary and description, or `null` when it has no
  * data: the entry [`collectGroups`] returns for `key`, built from `key`'s family
  * discovery and `key`'s summary alone instead of every family and every
- * group's summary. The two queries run at once.
+ * group's summary.
+ *
+ * The summary runs after the discovery, as in [`collectGroups`]. Each query
+ * takes its own `READ COMMITTED` snapshot, so a summary read first could predate
+ * an ingest that the discovery then sees, and cache a new group with no summary.
  */
 export async function collectGroup(key: GroupKey): Promise<Group | null> {
   const targetSlug = groupKeyToSlug(key);
-  const [groups, summary] = await Promise.all([discoverGroups(key.k), collectGroupSummary(key)]);
-  const group = groups.find((g) => g.slug === targetSlug);
+  const group = (await discoverGroups(key.k)).find((g) => g.slug === targetSlug);
   if (group === undefined) {
     return null;
   }
-  attachGroupDetails(group, summary);
+  attachGroupDetails(group, await collectGroupSummary(key));
   return group;
 }
 
