@@ -9,7 +9,9 @@ import type { GroupBodiesReady } from '@/lib/group-bodies';
  * The server never sees the fragment, so an open group's body (its toolbar and
  * chart cards) exists only after hydration, and the browser's own restoration
  * would land against a shorter page. [`LandingState`] therefore sets
- * `history.scrollRestoration = 'manual'` on `/` and does the work here:
+ * `history.scrollRestoration = 'manual'` on `/` while a group is open (with
+ * none open the collapsed list is as tall before hydration as after, so the
+ * browser's own restoration stays on) and does the work here:
  *
  * - **Save.** On `pagehide`, when the tab goes hidden, and before a chart
  *   link is followed, it records the element nearest the top of the viewport

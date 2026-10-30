@@ -573,14 +573,83 @@ describe('LandingState', () => {
   });
 
   describe('scroll restoration', () => {
-    it('switches the page to manual scroll restoration and sets back the mode it found on unmount', async () => {
+    // The browser restores natively while no group is open: the collapsed list is the same
+    // height before and after hydration. An open group's body exists only after hydration, so
+    // then the page restores by element and the browser must not.
+    it('keeps native scroll restoration while no group is open, and manual while one is', async () => {
       await mount('/');
+      expect(window.history.scrollRestoration).toBe('auto');
+
+      disclosure(FIRST).open = true;
+      await flush();
+      expect(window.history.scrollRestoration).toBe('manual');
+
+      disclosure('clickbench').open = true;
+      disclosure(FIRST).open = false;
+      await flush();
+      expect(window.history.scrollRestoration).toBe('manual');
+
+      setAllGroupsOpen(window, false);
+      await flush();
+      expect(window.history.scrollRestoration).toBe('auto');
+
+      window.location.hash = 'random-access';
+      await flush();
+      expect(window.history.scrollRestoration).toBe('manual');
+    });
+
+    it('switches to manual on mount when the fragment opens groups', async () => {
+      await mount(`/#${FIRST},clickbench`);
+      expect(window.history.scrollRestoration).toBe('manual');
+    });
+
+    it('switches to manual on mount when the pre-paint script opened groups', async () => {
+      await hydrate('/#clickbench');
+      expect(window.history.scrollRestoration).toBe('manual');
+    });
+
+    it('sets back the mode it found on unmount', async () => {
+      await mount(`/#${FIRST}`);
       expect(window.history.scrollRestoration).toBe('manual');
 
       await act(async () => {
         root?.unmount();
       });
       root = null;
+      expect(window.history.scrollRestoration).toBe('auto');
+    });
+
+    // On Reload or Back the browser uses the mode the history entry had when the page was left.
+    it.each(['reload', 'back_forward'] as const)(
+      'on %s with no group open, leaves the scroll to the browser',
+      async (type) => {
+        navigation(type);
+        sessionStorage.setItem(
+          'bench-scroll:/',
+          JSON.stringify({ kind: 'group', slug: 'qm.click', offset: 40 }),
+        );
+        place(document.getElementById('clickbench')!, 900);
+        window.history.scrollRestoration = 'auto';
+        await mount('/');
+        await nextFrame();
+        expect(scrollTo).not.toHaveBeenCalled();
+        expect(scrollSpy).not.toHaveBeenCalled();
+      },
+    );
+
+    // A group opened just before a reload: the fragment write had not landed, so the page
+    // reloads with no group open, but the browser kept the manual mode and restores nothing.
+    it('on reload with no group open after leaving in manual mode, restores by element', async () => {
+      navigation('reload');
+      sessionStorage.setItem(
+        'bench-scroll:/',
+        JSON.stringify({ kind: 'group', slug: 'qm.click', offset: 40 }),
+      );
+      place(document.getElementById('clickbench')!, 900);
+      window.history.scrollRestoration = 'manual';
+      await mount('/');
+      await nextFrame();
+      expect(scrollTo).toHaveBeenCalledWith({ top: 860, behavior: 'instant' });
       expect(window.history.scrollRestoration).toBe('auto');
     });
 

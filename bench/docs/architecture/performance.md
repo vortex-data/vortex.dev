@@ -269,7 +269,9 @@ nor by the scroll to a link's first group. Scroll is
 restored by element, not by pixel
 ([`lib/scroll-restore.ts`](../../web/lib/scroll-restore.ts)): the open bodies
 mount only after hydration, so a saved `scrollY` would land against a shorter
-page.
+page. While no group is open the page leaves restoration to the browser
+(`history.scrollRestoration` stays `auto`), because the collapsed list is as
+tall before hydration as after; it switches to `manual` while a group is open.
 
 Measured against the previous build, the head of `claude/bench-cleanup`
 (b4caf7c): a local restore of the production dump, desktop (1440×900), no
