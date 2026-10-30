@@ -155,6 +155,15 @@ export const externalPosts: readonly ExternalPost[] = [
       "Vortex is a new columnar file format with a very promising design. SpiralDB and DuckLabs have partnered to give you a very fast experience while reading and writing Vortex files!"
   },
   {
+    title: "Databases in 2025: A Year in Review",
+    url: "https://www.cs.cmu.edu/~pavlo/blog/2026/01/2025-databases-retrospective.html",
+    date: "2026-01-04T00:00:00.000Z",
+    source: "cs.cmu.edu",
+    authors: ["Andy Pavlo"],
+    summary:
+      "The world tried to kill Andy off but he had to stay alive to to talk about what happened with databases in 2025."
+  },
+  {
     title: "Introducing the Spice Cayenne Data Accelerator",
     url: "https://spice.ai/blog/introducing-spice-cayenne-data-accelerator",
     date: "2025-12-17T00:00:00.000Z",
