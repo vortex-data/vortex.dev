@@ -10,6 +10,21 @@
 // Types: benchmark-card.d.ts.
 
 const isOurs = (system) => String(system).toLowerCase() === "vortex";
+
+/** The systems whose bars take a muted tint of their bench hue (`chart-parquet`, `chart-lance`,
+ * `chart-arrow`). Every other system's bar stays `chart-muted`. */
+const TINTED = new Set(["parquet", "lance", "arrow"]);
+
+/**
+ * A bar row's class: `is-ours` for Vortex, `is-parquet`, `is-lance` or `is-arrow` for a tinted
+ * system, and `is-missing` or `is-na` for a row with no bar.
+ */
+export function barClass(row) {
+  const system = String(row.system).toLowerCase();
+  const tint = TINTED.has(system) ? ` is-${system}` : "";
+  const state = { "not-measured": " is-missing", "n/a": " is-na" }[row.state] ?? "";
+  return `vx-bar${row.ours ? " is-ours" : ""}${tint}${state}`;
+}
 const find = (rows, name) => rows.find((r) => String(r.system).toLowerCase() === name);
 
 /**
@@ -207,7 +222,7 @@ export function renderPanel({ title, unit, kind, better, rows, systems }) {
   const shown = panelRows(pickSystems(rows, systems), better, unit);
   const bars = shown
     .map((r) => {
-      const cls = `vx-bar${r.ours ? " is-ours" : ""}${{ "not-measured": " is-missing", "n/a": " is-na" }[r.state] ?? ""}`;
+      const cls = barClass(r);
       const tip = `title="${esc(r.system)}: ${esc(r.exact)}"`;
       if (r.state === "not-measured") return `<div class="${cls}" ${tip}><span>${esc(r.system)}</span><span class="vx-bar-missing">Not measured</span></div>`;
       const fill = r.state === "n/a" ? "" : `<span class="vx-bar-fill" style="width:${Math.max(1.5, r.width)}%"></span>`;

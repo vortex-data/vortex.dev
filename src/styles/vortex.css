@@ -481,6 +481,11 @@
 .vx-bar-fill { display: block; height: 100%; background: var(--chart-muted); }
 .vx-bar.is-ours { color: var(--accent-ink); }
 .vx-bar.is-ours .vx-bar-fill { background: var(--chart-1); }
+/* Parquet, Lance and Arrow take muted tints of their bench hues, so the bars are not grey on grey.
+   One value serves both themes, at 3.4:1 on either track, and Vortex's Blue still leads. */
+.vx-bar.is-parquet .vx-bar-fill { background: var(--chart-parquet); }
+.vx-bar.is-lance .vx-bar-fill { background: var(--chart-lance); }
+.vx-bar.is-arrow .vx-bar-fill { background: var(--chart-arrow); }
 .vx-bars.is-lg .vx-bar { gap: var(--space-12); font-size: 12.5px; }
 .vx-bars.is-lg .vx-bar-track { height: 10px; }
 /* The card's bars end in their values with a short unit ("42.25 ms", "5.12×"), small and muted,

@@ -152,7 +152,7 @@ describe("BenchmarkCard", () => {
         ["1×", "1.07×", "1.99×", "5.59×"]
       ].flat()
     );
-    assert.match(html, /<div class="vx-bar" title="Arrow: 3\.72 ms">/);
+    assert.match(html, /<div class="vx-bar is-arrow" title="Arrow: 3\.72 ms">/);
     const big = [
       ...html.matchAll(
         /class="vx-bench-big"><span class="vx-stat">([^<]*)<\/span> <span class="vx-caption vx-bench-note">([^<]*)</g
@@ -213,7 +213,7 @@ describe("BenchmarkCard", () => {
     assert.equal(html.match(/<a /g)?.length, 1, "one link, to bench");
     assert.ok(
       html.includes(
-        '<div class="vx-bar is-na" title="Lance: not available, no cuDF integration"><span>Lance</span><span class="vx-bar-track"></span><span class="vx-bar-value" aria-hidden="true">N/A</span>'
+        '<div class="vx-bar is-lance is-na" title="Lance: not available, no cuDF integration"><span>Lance</span><span class="vx-bar-track"></span><span class="vx-bar-value" aria-hidden="true">N/A</span>'
       )
     );
   });

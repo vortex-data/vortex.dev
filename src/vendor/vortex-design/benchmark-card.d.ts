@@ -101,6 +101,10 @@ export function sourceNotes(panels: readonly BenchPanel[]): string[];
 
 export function renderPanel(panel: BenchPanel): string;
 
+/** A bar row's class: `vx-bar` with `is-ours`, `is-parquet`, `is-lance`, `is-arrow`,
+ * `is-missing` or `is-na` as they apply. */
+export function barClass(row: Pick<PanelRow, "system" | "state" | "ours">): string;
+
 /** The few words after the headline's dot, from the panels' units: "times in ms, ratios to Parquet, best first". */
 export function benchCaption(panels: readonly Pick<BenchPanel, "unit">[]): string;
 

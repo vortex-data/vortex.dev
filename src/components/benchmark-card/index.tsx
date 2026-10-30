@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import { OpenInNewIcon } from "@/components/icons";
 import { formatReadDate, type Panel } from "@/lib/bench-summary";
 import {
+  barClass,
   benchCaption,
   benchMethod,
   panelFactor,
@@ -14,12 +15,6 @@ import {
 } from "@/vendor/vortex-design/benchmark-card.js";
 
 const SOURCE_URL = "https://bench.vortex.dev";
-
-const STATE_CLASS = {
-  measured: "",
-  "not-measured": " is-missing",
-  "n/a": " is-na"
-};
 
 /**
  * One panel of the design system's BenchmarkCard, drawn in JSX from the
@@ -47,7 +42,7 @@ export function BenchPanel({ panel }: { panel: Panel }) {
       </div>
       <div className="vx-bars" style={column}>
         {shown.map((r) => {
-          const className = `vx-bar${r.ours ? " is-ours" : ""}${STATE_CLASS[r.state]}`;
+          const className = barClass(r);
           const tip = `${r.system}: ${r.exact}`;
           if (r.state === "not-measured")
             return (
