@@ -2,7 +2,7 @@
   "name": "benchmarks-web",
   "version": "0.1.0",
   "private": true,
-  "packageManager": "bun@1.4.3",
+  "packageManager": "bun@1.4.4",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
