@@ -8,14 +8,21 @@ function boot(
   pathname: string,
   stored: string | null,
   prefersDark: boolean,
-  blocked = false
+  blocked = false,
+  webgl = true
 ) {
   const root = {
     className: "no-js __variable_a __variable_b",
     dataset: {} as Record<string, string>
   };
   runInNewContext(THEME_BOOTSTRAP, {
-    document: { documentElement: root },
+    document: {
+      documentElement: root,
+      createElement: () => ({
+        getContext: () =>
+          webgl ? { getExtension: () => ({ loseContext() {} }) } : null
+      })
+    },
     location: { pathname },
     localStorage: {
       getItem: (key: string) => {
@@ -84,6 +91,16 @@ describe("THEME_BOOTSTRAP", () => {
     );
     assert.ok(
       THEME_BOOTSTRAP.startsWith("document.documentElement.className=")
+    );
+  });
+
+  it("marks the homepage no-webgl before first paint when the browser has no WebGL", () => {
+    assert.match(boot("/", null, false, false, false).className, / no-webgl$/);
+    assert.doesNotMatch(boot("/", null, false).className, /no-webgl/);
+    // Only the homepage lays itself out by it, so no other page probes.
+    assert.doesNotMatch(
+      boot("/blog", null, false, false, false).className,
+      /no-webgl/
     );
   });
 

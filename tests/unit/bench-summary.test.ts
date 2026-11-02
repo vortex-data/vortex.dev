@@ -95,6 +95,7 @@ const timeRows = (ms: Record<string, number>, total: number): Row[] =>
 const PANELS: Panel[] = [
   {
     title: "Scan throughput",
+    short: "Scan",
     unit: "× Parquet",
     kind: "speed",
     better: "higher",
@@ -108,6 +109,7 @@ const PANELS: Panel[] = [
   },
   {
     title: "Write throughput",
+    short: "Write",
     unit: "× Parquet",
     kind: "speed",
     better: "higher",
@@ -121,6 +123,7 @@ const PANELS: Panel[] = [
   },
   {
     title: "ClickBench on DataFusion",
+    short: "ClickBench",
     unit: "ms",
     kind: "speed",
     better: "lower",
@@ -130,6 +133,7 @@ const PANELS: Panel[] = [
   GPU_PANEL,
   {
     title: "Random access, NVMe, hot",
+    short: "Random access",
     unit: "ms",
     kind: "speed",
     better: "lower",
@@ -138,6 +142,7 @@ const PANELS: Panel[] = [
   },
   {
     title: "Size vs Parquet+Zstd",
+    short: "File size",
     unit: "×",
     kind: "size",
     better: "lower",

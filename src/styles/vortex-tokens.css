@@ -1,7 +1,7 @@
 /* Vortex design system tokens, copied by tools/site-styles.mjs.
    Edit the system, then run tools/site-styles.mjs; do not edit here.
    Made by: node tools/site-styles.mjs <site> --sections base,brand,site,docs,blog,focus --faces --vx-face --base
-   sha256 28ff622d2c049d9c7b73ebab1f1c29fd4c61761c6b2de1cac042256d0f2dfd05 */
+   sha256 0c365a361fc87b432e57ca3d1f5f22ef0337be812030511f27797226528f29d6 */
 :root, [data-theme="dark"] {
   --white: #ffffff;
   --grey-50: #fcfcf9;
@@ -140,6 +140,7 @@
 .vx-body { font-family: var(--font-sans); font-size: 16px; line-height: 1.6; font-weight: 400; letter-spacing: 0; }
 .vx-small { font-family: var(--font-sans); font-size: 14px; line-height: 1.5; font-weight: 400; letter-spacing: 0; }
 .vx-caption { font-family: var(--font-sans); font-size: 12.5px; line-height: 1.4; font-weight: 400; letter-spacing: 0; }
-.vx-label { font-family: var(--font-mono); font-size: 12px; line-height: 1.3; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; }
-.vx-label-sm { font-family: var(--font-mono); font-size: 11px; line-height: 1.3; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; }
+.vx-display-mono { font-family: var(--font-mono); font-size: 40px; line-height: 1.1; font-weight: 500; letter-spacing: -0.04em; }
+.vx-label { font-family: var(--font-mono); font-size: 12px; line-height: 1.3; font-weight: 500; letter-spacing: 0; }
+.vx-label-sm { font-family: var(--font-mono); font-size: 11px; line-height: 1.3; font-weight: 500; letter-spacing: 0; }
 .vx-mono { font-family: var(--font-mono); font-size: 13px; line-height: 1.6; font-weight: 400; letter-spacing: 0; }

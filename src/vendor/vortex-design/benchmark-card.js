@@ -234,3 +234,66 @@ export function renderBars({ unit, better, rows, systems }) {
     .join("");
   return `<div class="vx-bars" style="--bar-value:${valueWidth(shown)}">${bars}</div>`;
 }
+
+/**
+ * How Vortex does against Parquet in a few words, for a table's last column: the big figure and its
+ * word ("5.1× faster", "14% larger"), "as fast" or "the same size" when level, and "Vortex not
+ * measured" or "Parquet not measured" when either has no score.
+ */
+export function panelVerdict(kind, vs) {
+  if (vs.vortexWins === null || vs.vortexWins === undefined) return panelNote(kind, vs);
+  if (level(kind, vs)) return kind === "size" ? "the same size" : "as fast";
+  return `${panelFactor(kind, vs)} ${panelNote(kind, vs).replace(/ than Parquet$/, "")}`;
+}
+
+/**
+ * The systems a results table shows as columns: Vortex and Parquet first, then the others in the
+ * order the panels first name them (their `systems`, or their rows).
+ */
+export function resultsSystems(panels) {
+  const seen = new Map([["vortex", "Vortex"], ["parquet", "Parquet"]]);
+  for (const p of panels) for (const s of p.systems ?? p.rows.map((r) => r.system)) if (!seen.has(String(s).toLowerCase())) seen.set(String(s).toLowerCase(), s);
+  return [...seen.values()];
+}
+
+/**
+ * One panel as a row of the results table: {name, cells, verdict}. `name` is the panel's `short`
+ * name, or its title. There is a cell per name in `systems`, with the label and exact value a bar
+ * shows (`panelRows`); a system the panel does not show was not run, and reads "—". `best` marks
+ * the measured cells with the panel's best score, every one of them when they tie.
+ */
+export function resultsRow(panel, systems) {
+  const { title, short, unit, kind, better, rows } = panel;
+  const shown = panelRows(pickSystems(rows, panel.systems), better, unit);
+  const top = shown[0]?.state === "measured" ? shown[0].score : null;
+  const cells = systems.map((system) => {
+    const r = shown.find((x) => String(x.system).toLowerCase() === String(system).toLowerCase());
+    if (!r) return { system, label: "—", exact: "not run in this benchmark", state: "not-run", ours: isOurs(system), best: false };
+    return { system, label: r.label, exact: r.exact, state: r.state, ours: r.ours, best: top !== null && r.state === "measured" && r.score === top };
+  });
+  return { name: short ?? title, cells, verdict: panelVerdict(kind, versusParquet(rows, better)), source: panel.source ?? null };
+}
+
+/**
+ * The results table: one row per panel and a column per system, Vortex first in Blue, the best
+ * figure in each row underlined, and the verdict against Parquet last. `read` is the date the
+ * figures were read ("2 Nov 2026"), for the head; the foot keys the underline and links bench.
+ * `icon` is the markup of the open_in_new icon that ends the source link, as every source line does.
+ */
+export function renderResults(panels, { read, icon = "" } = {}) {
+  const systems = resultsSystems(panels);
+  const cls = (...c) => (c.filter(Boolean).length ? ` class="${c.filter(Boolean).join(" ")}"` : "");
+  const head = `<p class="vx-results-head"><span>Against Apache Parquet</span>${read ? `<span class="vx-results-read">read ${esc(read)}</span>` : ""}</p>`;
+  const cols = `<tr><th scope="col">Benchmark</th>${systems.map((s) => `<th scope="col"${cls(isOurs(s) && "is-ours")}>${esc(s)}</th>`).join("")}<th scope="col" class="is-verdict">vs Parquet</th></tr>`;
+  const body = panels
+    .map((p) => {
+      const row = resultsRow(p, systems);
+      const cells = row.cells.map((c) => `<td${cls(c.ours && "is-ours", c.best && "is-best", c.state !== "measured" && "is-missing")} title="${esc(c.system)}: ${esc(c.exact)}">${esc(c.label)}</td>`).join("");
+      const src = row.source ? ` title="${esc(row.source.note)}"` : "";
+      const srText = row.source ? `<span class="vx-sr-only">, ${esc(row.source.note)}</span>` : "";
+      return `<tr><th scope="row"${src}>${esc(row.name)}${srText}</th>${cells}<td class="is-verdict">${esc(row.verdict)}</td></tr>`;
+    })
+    .join("");
+  const foot = `<p class="vx-results-foot"><span>Underlined: the best in each row</span><a class="vx-source vx-nav-link" href="https://bench.vortex.dev">bench.vortex.dev${icon}</a></p>`;
+  return `<section class="vx-frame vx-results" aria-label="Benchmark results">${head}<div class="vx-results-wrap"><table class="vx-results-table"><thead>${cols}</thead><tbody>${body}</tbody></table></div>${foot}</section>`;
+}

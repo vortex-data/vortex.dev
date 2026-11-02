@@ -138,7 +138,7 @@ describe('vortex-skin.css', () => {
   it('sets the title and toolbar buttons as mono labels, mutes ranks, and squares the badges', () => {
     for (const sel of ['.site-title', '.control-btn']) {
       expect(valueOf(sel, 'font-family'), sel).toMatch(/Geist Mono/);
-      expect(valueOf(sel, 'text-transform'), sel).toBe('uppercase');
+      expect(valueOf(sel, 'text-transform'), sel).toBeUndefined();
     }
     expect(valueOf('.score-rank', 'color')).toBe('var(--muted)');
     expect(valueOf('.site-title', 'color')).toBe('var(--muted)');

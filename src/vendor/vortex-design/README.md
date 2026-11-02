@@ -17,7 +17,7 @@ and `three` are the site's own, so they are not listed.
 | `ascii-mark.js` | The AsciiMark card's renderer: `mountAsciiMark(host, options)`, in Dark or Light |
 | `ascii-core.js` | Its DOM-free rules: the luminance ramp, the brush, the hex flicker, each theme's palette (`markPalette`) and the readback (`frameReader`), and the LogoBanner's `copiesNeeded` |
 | `vortex-mark-geometry.js` | The mark's mesh, generated from the 3D model |
-| `benchmark-card.js` | The BenchmarkCard's DOM-free rules: `formatScore`, `exactValue`, `pickSystems`, `panelRows`, `valueWidth`, `versusParquet`, `formatFactor`, `panelFactor`, `panelNote`, `barClass` and `renderPanel` |
+| `benchmark-card.js` | The BenchmarkCard's DOM-free rules: `formatScore`, `exactValue`, `pickSystems`, `panelRows`, `valueWidth`, `versusParquet`, `formatFactor`, `panelFactor`, `panelNote`, `barClass`, `renderPanel`, and the results table's `panelVerdict`, `resultsSystems`, `resultsRow` and `renderResults` |
 | `benchmark-card.d.ts` | Its types, which the system ships beside it |
 | `theme.js` | The ThemeSwitch's rules: the first-paint script for the blog's paths (`themeBootstrap`), `isThemeable`, `themeFor`, `readChoice` and `saveChoice` |
 | `callout.js` | The Callout card's Markdown rule: `calloutOf` turns a GitHub alert or an emoji-led blockquote into an aside |

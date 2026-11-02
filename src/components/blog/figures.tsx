@@ -48,7 +48,7 @@ export function Bars({
           {unit && (
             <>
               {" · "}
-              <span className="vx-keep-case">{unit}</span>
+              {unit}
             </>
           )}
           {better && ` ${better}`}

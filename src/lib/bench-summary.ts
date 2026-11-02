@@ -27,6 +27,8 @@ export type Row = {
 /** One panel of the BenchmarkCard, as `benchmark-card.js` reads it. */
 export type Panel = {
   title: string;
+  /** The panel's name as a row of the homepage's results table: "Scan". */
+  short?: string;
   unit: string;
   kind: "speed" | "size";
   better: "higher" | "lower";
@@ -66,6 +68,7 @@ type Ranking = Record<string, unknown>;
 
 type Source = {
   title: string;
+  short: string;
   /** What the scores are measured against. */
   unit: string;
   kind: Panel["kind"];
@@ -99,6 +102,7 @@ type Source = {
 const SOURCES: (Source | Panel)[] = [
   {
     title: "Scan throughput",
+    short: "Scan",
     unit: "× Parquet",
     kind: "speed",
     better: "higher",
@@ -111,6 +115,7 @@ const SOURCES: (Source | Panel)[] = [
   },
   {
     title: "Write throughput",
+    short: "Write",
     unit: "× Parquet",
     kind: "speed",
     better: "higher",
@@ -123,6 +128,7 @@ const SOURCES: (Source | Panel)[] = [
   },
   {
     title: "ClickBench on DataFusion",
+    short: "ClickBench",
     unit: "ms",
     kind: "speed",
     better: "lower",
@@ -136,6 +142,7 @@ const SOURCES: (Source | Panel)[] = [
   GPU_PANEL,
   {
     title: "Random access, NVMe, hot",
+    short: "Random access",
     unit: "ms",
     kind: "speed",
     better: "lower",
@@ -153,6 +160,7 @@ const SOURCES: (Source | Panel)[] = [
   },
   {
     title: "Size vs Parquet+Zstd",
+    short: "File size",
     unit: "×",
     kind: "size",
     better: "lower",
@@ -347,10 +355,10 @@ export function panelsFrom(
       if (timed && has("Vortex") && has("Parquet")) rows = timed;
       else unit = "× fastest";
     }
-    const { title, kind, better, systems } = source;
+    const { title, short, kind, better, systems } = source;
     const shown = rows.filter((r) => systems.includes(r.system));
     if (shown.every((r) => !measured(r))) return null;
-    panels.push({ title, unit, kind, better, rows, systems });
+    panels.push({ title, short, unit, kind, better, rows, systems });
   }
   return panels;
 }
