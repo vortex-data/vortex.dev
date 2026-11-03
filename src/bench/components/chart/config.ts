@@ -42,7 +42,8 @@ const crosshairPlugin: Plugin<'line'> = {
     // `--muted` from the page theme, read lazily so dark mode picks up the
     // right color.
     const muted =
-      getComputedStyle(document.documentElement).getPropertyValue('--muted').trim() || '#9ca3af';
+      getComputedStyle(document.documentElement).getPropertyValue('--ink-muted').trim() ||
+      '#9ca3af';
     ctx.strokeStyle = muted;
     ctx.lineWidth = 1;
     ctx.setLineDash([4, 4]);

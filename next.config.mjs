@@ -30,31 +30,22 @@ const SITE_HOSTS = [{ type: "host", value: "^(www\\.)?vortex\\.dev$" }];
 // prod attack surface — and a single static CSP is simpler than swapping
 // headers per environment.
 //
-// bench's pages load the design system's web fonts from Google Fonts (see
-// src/bench/lib/fonts.ts), so bench's policy adds that stylesheet and its font
-// files. The marketing site self-hosts its fonts and keeps the narrower one.
-function contentSecurityPolicy({ styleSrc = "", fontSrc = "" } = {}) {
-  return [
-    "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' plausible.io va.vercel-scripts.com vercel.live",
-    `style-src 'self' 'unsafe-inline' vercel.live${styleSrc}`,
-    "img-src 'self' data: blob: vercel.live vercel.com",
-    `font-src 'self' data: vercel.live assets.vercel.com${fontSrc}`,
-    "connect-src 'self' plausible.io vitals.vercel-insights.com vercel.live wss://ws-us3.pusher.com",
-    "worker-src 'self' blob:",
-    "child-src 'self' blob:",
-    "frame-src 'self' vercel.live",
-    "frame-ancestors 'none'",
-    "base-uri 'self'",
-    "form-action 'self'",
-    "object-src 'none'"
-  ].join("; ");
-}
-const csp = contentSecurityPolicy();
-const benchCsp = contentSecurityPolicy({
-  styleSrc: " https://fonts.googleapis.com",
-  fontSrc: " https://fonts.gstatic.com"
-});
+// bench and the marketing site share the policy: both self-host their fonts.
+const csp = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline' plausible.io va.vercel-scripts.com vercel.live",
+  "style-src 'self' 'unsafe-inline' vercel.live",
+  "img-src 'self' data: blob: vercel.live vercel.com",
+  "font-src 'self' data: vercel.live assets.vercel.com",
+  "connect-src 'self' plausible.io vitals.vercel-insights.com vercel.live wss://ws-us3.pusher.com",
+  "worker-src 'self' blob:",
+  "child-src 'self' blob:",
+  "frame-src 'self' vercel.live",
+  "frame-ancestors 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "object-src 'none'"
+].join("; ");
 
 // Cross-Origin-Opener-Policy keeps windows from other origins from holding a
 // reference to this page. Production gets `same-origin`. Previews and local
@@ -120,19 +111,6 @@ const nextConfig = wrapWithPlausible({
           // affect. The favicon is the exception below.
           { key: "Cross-Origin-Resource-Policy", value: "same-site" }
         ]
-      },
-      // bench's policy, in both of its URL forms. Headers match the path as
-      // requested, before the rewrites, and a later rule overrides the
-      // header above.
-      {
-        source: "/bench/:path*",
-        missing: SITE_HOSTS,
-        headers: [{ key: "Content-Security-Policy", value: benchCsp }]
-      },
-      {
-        source: "/(.*)",
-        has: BENCH_HOST,
-        headers: [{ key: "Content-Security-Policy", value: benchCsp }]
       },
       {
         // The RSS feed advertises the favicon, and feed readers that run in

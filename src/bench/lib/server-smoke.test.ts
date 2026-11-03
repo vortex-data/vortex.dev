@@ -137,8 +137,9 @@ describe.skipIf(!databaseAvailable || !BUILD_PRESENT)(
       expect(finish).toBeGreaterThan(html.lastIndexOf('class="group-details"'));
       // The pre-paint theme bootstrap is inlined in <head>, and swaps the
       // root's `no-js` class, which hides the controls that need JavaScript.
+      // The root follows the OS until a reader chooses, and carries the faces.
       expect(html).toContain('localStorage.getItem("bench-theme")');
-      expect(html).toContain('<html lang="en" class="no-js"');
+      expect(html).toContain('<html lang="en" data-theme="system" class="no-js ');
       expect(html).toContain('data-role="theme-toggle" data-requires-js="true"');
     });
 

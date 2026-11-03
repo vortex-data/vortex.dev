@@ -6,13 +6,13 @@ import type { ReactNode } from 'react';
 
 import { BenchBaseProvider } from '@/bench/components/BenchBase';
 import { benchPath } from '@/bench/lib/base-path';
-import { FONTS_CSS } from '@/bench/lib/fonts';
 import { requestBenchBase } from '@/bench/lib/request-base';
 import { BENCH_DESCRIPTION, BENCH_URL, openGraph } from '@/bench/lib/site-files';
+import { FONT_CLASSES } from '@/lib/fonts';
 
+// The Vortex design system's colour roles and scales, which globals.css reads.
+import '@/styles/vortex-tokens.css';
 import '@/bench/styles/globals.css';
-// The Vortex design system's skin: colours, corners and Geist over globals.css.
-import '@/bench/styles/vortex-skin.css';
 
 export async function generateMetadata(): Promise<Metadata> {
   const base = await requestBenchBase();
@@ -62,33 +62,24 @@ const THEME_BOOTSTRAP =
   'try{var t=localStorage.getItem("bench-theme");if(t==="light"||t==="dark"){document.documentElement.dataset.theme=t;}}catch(e){}' +
   '})();';
 
-// This is a hack to load the web fonts without blocking page paint. The URL is
-// written out here rather than interpolated from FONTS_CSS, so the inline
-// script is a constant and never builds code from a value. lib/fonts.test.ts
-// fails if the two drift apart.
-const FONT_BOOTSTRAP =
-  '(function(){var l=document.createElement("link");l.rel="stylesheet";' +
-  'l.href="https://fonts.googleapis.com/css2?family=Funnel+Display:wght@400;500;600;700&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap";' +
-  'document.head.appendChild(l);})();';
-
 /**
  * Root layout: the `<html>`/`<body>` shell plus the global stylesheet, the
- * pre-paint theme bootstrap, and the web fonts. It also hands the client
+ * pre-paint theme bootstrap, and the design system's faces, self-hosted as the
+ * site's are (`lib/fonts.ts`). It also hands the client
  * components the base of bench's paths for the request's host
  * ([`BenchBaseProvider`], `lib/base-path.ts`).
  */
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const base = await requestBenchBase();
   return (
-    <html lang="en" className="no-js" suppressHydrationWarning>
+    <html
+      lang="en"
+      data-theme="system"
+      className={`no-js ${FONT_CLASSES}`}
+      suppressHydrationWarning
+    >
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        <script dangerouslySetInnerHTML={{ __html: FONT_BOOTSTRAP }} />
-        <noscript>
-          <link rel="stylesheet" href={FONTS_CSS} />
-        </noscript>
       </head>
       <body>
         <BenchBaseProvider base={base}>{children}</BenchBaseProvider>

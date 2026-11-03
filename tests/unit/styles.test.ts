@@ -24,10 +24,20 @@ describe("the site's copy of the design system styles", () => {
     }
   });
 
-  it("gets each --vx-face-* variable from next/font in the root layout", () => {
-    const layout = read("src/app/(site)/layout.tsx");
+  it("gets each --vx-face-* variable from next/font, on both root layouts", () => {
+    const fonts = read("src/lib/fonts.ts");
     for (const face of ["display", "sans", "mono"]) {
-      assert.match(layout, new RegExp(`variable: "--vx-face-${face}"`), face);
+      assert.match(fonts, new RegExp(`variable: "--vx-face-${face}"`), face);
+    }
+    for (const layout of [
+      "src/app/(site)/layout.tsx",
+      "src/app/(bench)/bench/layout.tsx"
+    ]) {
+      assert.match(
+        read(layout),
+        /className=\{`no-js \$\{FONT_CLASSES\}`\}/,
+        layout
+      );
     }
   });
 
