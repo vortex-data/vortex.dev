@@ -219,7 +219,9 @@ describe.skipIf(!databaseAvailable || !BUILD_PRESENT)(
 
     it("links under /bench away from bench's own host", async () => {
       const html = await (await fetch(BASE)).text();
-      expect(html).toMatch(/<a [^>]*class="logo-link"[^>]*href="\/bench"/);
+      // The logo links to vortex.dev on every host; a group's permalink is bench's own link.
+      expect(html).toMatch(/<a [^>]*class="logo-link"[^>]*href="https:\/\/vortex\.dev"/);
+      expect(html).toMatch(/<a [^>]*class="group-permalink"[^>]*href="\/bench#/);
       expect(html).toContain('src="/bench/Vortex_Black_NoBG.svg"');
       expect(html).toContain('href="/bench/icon-dark.png"');
     });
@@ -229,7 +231,8 @@ describe.skipIf(!databaseAvailable || !BUILD_PRESENT)(
       const landing = await getOnBenchHost('/');
       expect(landing.status).toBe(200);
       expect(landing.body).toContain('class="group-details"');
-      expect(landing.body).toMatch(/<a [^>]*class="logo-link"[^>]*href="\/"/);
+      expect(landing.body).toMatch(/<a [^>]*class="logo-link"[^>]*href="https:\/\/vortex\.dev"/);
+      expect(landing.body).toMatch(/<a [^>]*class="group-permalink"[^>]*href="\/#/);
       expect(landing.body).toContain('src="/Vortex_Black_NoBG.svg"');
       expect(landing.body).toContain('href="/icon-dark.png"');
       expect(landing.body).not.toMatch(/(href|src)="\/bench/);
