@@ -84,7 +84,10 @@ export default async function RootLayout({
         ) : (
           content
         )}
-        <Analytics />
+        {/* Vercel serves the Analytics script only on its own deployments.
+            Elsewhere, such as the local build that Lighthouse audits, the
+            script is a 404 and logs a console error. */}
+        {process.env.VERCEL && <Analytics />}
       </body>
     </html>
   );

@@ -50,35 +50,35 @@ const baseUrls = ["http://localhost:3000/", "http://localhost:3000/blog"];
 const seed = pickSeedSlug();
 if (seed) baseUrls.push(`http://localhost:3000/blog/${seed}`);
 
-// Assertion thresholds. The first calibration (local `bun run start`,
-// 2026-05-04) had every URL at perf 1.00 and set a flat 0.9 floor on every
-// category. CI runners don't reproduce that for `/`. Across the 95 archived
-// CI runs from 2026-08-04 to 2026-10-28:
+// Assertion thresholds, from the reports of the 62 CI runs from 2026-10-30
+// to 2026-11-03. LHCI asserts on the best of the three runs for each value
+// (its default `aggregationMethod: "optimistic"`), so these are the worst
+// best-of-three values seen. The homepage changed on 2026-11-03 (the mark
+// first, one results table); 10 of the runs have the new one.
 //
-//   /                  perf 0.69–1.00, median 0.90 · 45 of 95 below 0.9
-//   /blog              perf never below 0.95
-//   /blog/<seed>       perf never below 0.95
-//   a11y · bp · seo    never below 0.9 on any URL
+//            perf   FCP     LCP     Speed Index   TBT      CLS
+//   /        1.00   252 ms  602 ms  576 ms        0 ms     0
+//   /blog    1.00   256 ms  646 ms  256 ms        0.5 ms   0.00001
+//   post     0.74   275 ms  660 ms  275 ms        736 ms   0.00001
 //
-// All of the swing on `/` is Total Blocking Time. FCP, LCP and CLS scored
-// 0.98 or better in every run, while TBT ranged from 0 to 2382 ms. The page's
-// startup JS (React hydration plus the WebGL hero, which runs on the CPU
-// because runners have no GPU) stretches into long tasks whenever the shared
-// runner is busy. More runs don't fix it: the 0.9 floor sits on the median,
-// so the median of 3 or 5 runs fails about as often as a single run.
+// The post's 0.74 is one run, on 2026-10-30, slow in all three passes; in
+// every other run it scored 1.00. The old homepage swung with the shared
+// runner's load (perf down to 0.70, TBT up to 983 ms), because the WebGL
+// mark runs on the CPU there, so its category score was only a warning. The
+// new one has not swung in 30 passes.
 //
-// So on `/` the category score is advisory (`warn` still prints it in the
-// log and the PR comment) and the metrics that hold steady on CI hard-fail
-// instead: FCP, LCP and CLS at a 0.9 audit score. Speed Index follows TBT
-// (correlation 0.89) and peaked at 1286 ms, just inside its 0.9 line at
-// 1311 ms, so it gets a 2000 ms cap instead, about the same headroom over
-// the worst run that LCP has under its 0.9 line. TBT gets a 1000 ms cap as a
-// backstop against a large JS regression, not as a target: the median run
-// was 264 ms, but the two slowest runners went past it (1755 and 2382 ms), so
-// expect an occasional re-run. Every other URL keeps the 0.9 performance
-// floor; its pattern matches any non-root path, so a new URL gets the floor
-// by default. Don't relax a threshold to mask a regression without a separate
-// PR.
+// Accessibility and SEO were 1.00 in every run since the contrast fixes of
+// 2026-10-30. Best practices was 0.96 in every run, from one audit only: off
+// Vercel, the Vercel Analytics script is a 404 and logs a console error. The
+// site's layout now leaves the script out there.
+//
+// So every URL gets one bar: performance at 0.9; accessibility, best
+// practices and SEO at 1.00, since their audits don't depend on timing and
+// any new failing audit should fail the check; and metric caps about 1.5 to
+// 2 times the worst value above, to catch a real regression but not a slow
+// runner. If `/` starts to swing again, read the archived runs before
+// relaxing anything, and don't relax a threshold to mask a regression
+// without a separate PR.
 module.exports = {
   ci: {
     collect: {
@@ -88,9 +88,9 @@ module.exports = {
       // "Lighthouse audit" is a required check, so one slow shared runner
       // must not fail it. With several runs, LHCI asserts on the best one
       // (its default `aggregationMethod: "optimistic"`): a real regression
-      // shows in every run and still fails, an outlier run does not. One
-      // blog-post run fell to 0.74 performance on 2026-10-30 against a usual
-      // 1.00.
+      // shows in every run and still fails, an outlier run does not. It
+      // can't cover a runner that is slow for the whole job: on 2026-10-30
+      // all three passes of the blog post scored 0.74.
       numberOfRuns: 3,
       settings: {
         preset: "desktop",
@@ -99,34 +99,17 @@ module.exports = {
       }
     },
     assert: {
-      // LHCI applies every entry whose pattern matches a URL's finalUrl.
-      assertMatrix: [
-        {
-          matchingUrlPattern: ".*",
-          assertions: {
-            "categories:accessibility": ["error", { minScore: 0.9 }],
-            "categories:best-practices": ["error", { minScore: 0.9 }],
-            "categories:seo": ["error", { minScore: 0.9 }]
-          }
-        },
-        {
-          matchingUrlPattern: "^https?://[^/]+/$",
-          assertions: {
-            "categories:performance": ["warn", { minScore: 0.9 }],
-            "first-contentful-paint": ["error", { minScore: 0.9 }],
-            "largest-contentful-paint": ["error", { minScore: 0.9 }],
-            "cumulative-layout-shift": ["error", { minScore: 0.9 }],
-            "speed-index": ["error", { maxNumericValue: 2000 }],
-            "total-blocking-time": ["error", { maxNumericValue: 1000 }]
-          }
-        },
-        {
-          matchingUrlPattern: "^https?://[^/]+/.",
-          assertions: {
-            "categories:performance": ["error", { minScore: 0.9 }]
-          }
-        }
-      ]
+      assertions: {
+        "categories:performance": ["error", { minScore: 0.9 }],
+        "categories:accessibility": ["error", { minScore: 1 }],
+        "categories:best-practices": ["error", { minScore: 1 }],
+        "categories:seo": ["error", { minScore: 1 }],
+        "first-contentful-paint": ["error", { maxNumericValue: 500 }],
+        "largest-contentful-paint": ["error", { maxNumericValue: 1000 }],
+        "speed-index": ["error", { maxNumericValue: 1000 }],
+        "total-blocking-time": ["error", { maxNumericValue: 300 }],
+        "cumulative-layout-shift": ["error", { maxNumericValue: 0.01 }]
+      }
     },
     upload: {
       target: "temporary-public-storage"
