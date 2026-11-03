@@ -54,11 +54,13 @@ runs:
               # bench's own files: its routes, code, public files, schema,
               # infrastructure, docs, scripts and workflows.
               "src/app/(bench)/"* | src/bench/* | public/bench/* | db/* | infra/* | docs/bench/* \
-                | scripts/parity/* | scripts/verify-web-deploy* | vitest.config.ts \
-                | .github/workflows/bench-*) bench=true ;;
-              # Shared by both sites: these actions, the workflow that checks
-              # both, and the Node pin that every workflow reads.
-              .github/actions/* | .github/workflows/ci.yml | .nvmrc) site=true; bench=true ;;
+                | scripts/parity/* | scripts/verify-web-deploy* | scripts/preview-proxy.mjs \
+                | vitest.config.ts | lighthouserc.bench.cjs | .github/workflows/bench-*) bench=true ;;
+              # Shared by both sites: these actions, the workflows and the
+              # accessibility spec that check both, and the Node pin that
+              # every workflow reads.
+              .github/actions/* | .github/workflows/ci.yml | .github/workflows/lighthouse.yml \
+                | tests/a11y.spec.ts | .nvmrc) site=true; bench=true ;;
               # The root files that both sites install and build from.
               package.json | bun.lock | bunfig.toml | biome.json | tsconfig.json \
                 | next.config.mjs | vercel.json | src/css.d.ts) site=true; bench=true ;;

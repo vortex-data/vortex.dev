@@ -1,10 +1,10 @@
 name: Lighthouse
 
 on:
-  # Every pull request starts this workflow, and the `changes` job skips the
-  # audit when only bench's own files changed. A skipped job reports success, so "Lighthouse
-  # audit" can be a required check; a workflow filtered out by `paths` would
-  # never report and would block the merge.
+  # Every pull request starts this workflow, and the `changes` job skips each
+  # site's audit when the change can't affect that site. A skipped job reports
+  # success, so "Lighthouse audit" can be a required check; a workflow
+  # filtered out by `paths` would never report and would block the merge.
   pull_request:
   workflow_dispatch:
 
@@ -25,6 +25,7 @@ jobs:
     timeout-minutes: 5
     outputs:
       site: ${{ steps.paths.outputs.site }}
+      bench: ${{ steps.paths.outputs.bench }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
@@ -97,13 +98,6 @@ jobs:
           uploadArtifacts: true
           temporaryPublicStorage: true
 
-      # Build a markdown table from the .lighthouseci/lhr-*.json reports.
-      # lighthouserc.cjs collects three runs per URL and asserts on the best
-      # one, so the table shows each URL's best run by performance, the run
-      # the check is judged by. `group_by(.url)` also keeps row order
-      # deterministic. The linked report is the one the action uploads for
-      # that URL and may be a different run.
-      #
       # Fork PRs, and Dependabot's PRs from this repository, get a read-only
       # GITHUB_TOKEN that can't post comments. A failed comment must not fail
       # this required check, so only same-repository, non-Dependabot PRs get
@@ -111,11 +105,6 @@ jobs:
       # `if: always()` so the PR comment still posts when assertions fail —
       # reviewers can see *which* category regressed without digging through
       # the workflow log.
-      #
-      # Per-cell emoji follows Lighthouse's own scoring buckets: 🟢 ≥90,
-      # 🟡 50–89, 🔴 <50. Floor thresholds in lighthouserc.cjs are below
-      # the 🟢 cutoff, so a cell can pass assertions and still show 🟡 — the
-      # visual signals "we locked this in but it's improvable."
       - name: Format PR comment
         if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' && steps.lighthouse.outputs.links != ''
         id: lh-comment
@@ -125,34 +114,7 @@ jobs:
         run: |
           {
             echo 'body<<COMMENT_EOF'
-            echo '## 🔦 Lighthouse audit'
-            echo ''
-            echo '| URL | Perf | A11y | Best practices | SEO | Report |'
-            echo '|---|:---:|:---:|:---:|:---:|---|'
-            jq -s --argjson links "$LINKS_JSON" -r '
-              def emo(s): if s >= 90 then "🟢" elif s >= 50 then "🟡" else "🔴" end;
-              def cell(s): emo(s) + " " + (s | tostring);
-              map({
-                url: .finalUrl,
-                perf: (.categories.performance.score * 100 | floor),
-                a11y: (.categories.accessibility.score * 100 | floor),
-                bp: (.categories["best-practices"].score * 100 | floor),
-                seo: (.categories.seo.score * 100 | floor)
-              })
-              | group_by(.url)
-              | map(max_by(.perf))
-              | map(
-                  "| `" + (.url | sub("^https?://[^/]+"; "")) + "`"
-                  + " | " + cell(.perf)
-                  + " | " + cell(.a11y)
-                  + " | " + cell(.bp)
-                  + " | " + cell(.seo)
-                  + " | [report](" + ($links[.url] // "#") + ") |"
-                )
-              | join("\n")
-            ' .lighthouseci/lhr-*.json
-            echo ''
-            echo "_Run [\`${GITHUB_RUN_ID}\`](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}) · $(date -u +'%Y-%m-%d %H:%M UTC')_"
+            scripts/lighthouse-comment.sh 'Lighthouse audit'
             echo 'COMMENT_EOF'
           } >> "$GITHUB_OUTPUT"
 
@@ -163,3 +125,173 @@ jobs:
         with:
           header: lighthouse
           message: ${{ steps.lh-comment.outputs.body }}
+
+  bench:
+    name: "Bench: Lighthouse and axe (preview)"
+    needs: changes
+    # bench needs its database to render, so this job audits the pull
+    # request's Vercel preview instead of a local build. It reaches the
+    # preview through scripts/preview-proxy.mjs, which holds the bypass
+    # secret. Skipped, which counts as passing, when the change can't affect
+    # bench, and on PRs from forks and Dependabot, which get no secrets.
+    if: ${{ !cancelled() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' && (needs.changes.result != 'success' || needs.changes.outputs.bench == 'true') }}
+    runs-on: ubuntu-26.04
+    timeout-minutes: 40
+    permissions:
+      contents: read
+      deployments: read
+      pull-requests: write
+    env:
+      PROXY: http://127.0.0.1:3201
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6  # v2.2.0
+        with:
+          bun-version: 1.4.3
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
+        with:
+          node-version-file: .nvmrc
+
+      - name: Cache Bun install cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
+      - name: Install
+        run: bun install --frozen-lockfile
+
+      # Vercel's git integration records the preview of each commit as a
+      # GitHub deployment in the "Preview" environment, and its success status
+      # holds the preview's URL. A build takes a few minutes.
+      - name: Wait for the Vercel preview
+        id: preview
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          deployments="repos/${GITHUB_REPOSITORY}/deployments"
+          for _ in $(seq 1 80); do
+            id="$(gh api "${deployments}?sha=${SHA}&environment=Preview" \
+              --jq 'map(select(.creator.login == "vercel[bot]"))[0].id // empty')"
+            if [ -n "${id}" ]; then
+              read -r state url < <(gh api "${deployments}/${id}/statuses" \
+                --jq '.[0] | "\(.state) \(.environment_url // "")"')
+              case "${state}" in
+                success)
+                  echo "Preview: ${url}"
+                  echo "url=${url}" >> "$GITHUB_OUTPUT"
+                  exit 0 ;;
+                failure | error)
+                  echo "::error::The Vercel preview of ${SHA} failed."
+                  exit 1 ;;
+              esac
+            fi
+            sleep 15
+          done
+          echo "::error::No Vercel preview of ${SHA} after 20 minutes."
+          exit 1
+
+      - name: Start the preview proxy
+        env:
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+          PREVIEW_URL: ${{ steps.preview.outputs.url }}
+        run: |
+          node scripts/preview-proxy.mjs "${PROXY##*:}" "${PREVIEW_URL}" &
+          for _ in $(seq 1 30); do
+            if curl -sf -o /dev/null "${PROXY}/bench/api/health"; then exit 0; fi
+            sleep 1
+          done
+          echo "::error::bench's health check failed through the proxy."
+          curl -s "${PROXY}/bench/api/health" | head -c 500
+          exit 1
+
+      - name: Pick a chart page
+        id: chart
+        run: |
+          slug="$(curl -sf "${PROXY}/bench/api/groups" \
+            | jq -r '[.groups[] | select(.charts | length > 0)][0].charts[0].slug // empty')"
+          if [ -n "${slug}" ]; then echo "path=/chart/${slug}" >> "$GITHUB_OUTPUT"; fi
+
+      - name: Lighthouse CI
+        id: lighthouse
+        uses: treosh/lighthouse-ci-action@3e7e23fb74242897f95c0ba9cabad3d0227b9b18  # v12
+        env:
+          BENCH_URL: ${{ env.PROXY }}/bench
+          BENCH_CHART_PATH: ${{ steps.chart.outputs.path }}
+        with:
+          configPath: ./lighthouserc.bench.cjs
+          uploadArtifacts: true
+          artifactName: lighthouse-results-bench
+          temporaryPublicStorage: true
+
+      - name: Format PR comment
+        if: always() && steps.lighthouse.outputs.links != ''
+        id: lh-comment
+        continue-on-error: true
+        env:
+          LINKS_JSON: ${{ steps.lighthouse.outputs.links }}
+        run: |
+          {
+            echo 'body<<COMMENT_EOF'
+            scripts/lighthouse-comment.sh 'Lighthouse audit: bench (preview)'
+            echo 'COMMENT_EOF'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Post or update PR comment
+        if: always() && steps.lh-comment.outputs.body != ''
+        continue-on-error: true
+        uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88  # v3.0.5
+        with:
+          header: lighthouse-bench
+          message: ${{ steps.lh-comment.outputs.body }}
+
+      # The same browsers as the site's smoke tests in ci.yml, from the same
+      # cache.
+      - name: Get Playwright version
+        if: always() && steps.chart.outcome == 'success'
+        id: playwright-version
+        run: |
+          VERSION=$(node -p "require('@playwright/test/package.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "image=${ImageOS:-unknown}" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright browsers
+        if: always() && steps.chart.outcome == 'success'
+        id: playwright-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-${{ steps.playwright-version.outputs.image }}-playwright-${{ steps.playwright-version.outputs.version }}
+
+      - name: Install Playwright browsers
+        if: always() && steps.chart.outcome == 'success'
+        env:
+          CACHE_HIT: ${{ steps.playwright-cache.outputs.cache-hit }}
+        run: |
+          if [ "${CACHE_HIT}" = "true" ]; then
+            bunx playwright install-deps chromium webkit
+          else
+            bunx playwright install --with-deps chromium webkit
+          fi
+
+      # `if: always()` so axe still runs when a Lighthouse assertion fails.
+      - name: axe
+        if: always() && steps.chart.outcome == 'success'
+        env:
+          BENCH_URL: ${{ env.PROXY }}/bench
+        run: bunx playwright test tests/a11y.spec.ts --grep @bench
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: playwright-report-bench
+          path: playwright-report/
+          retention-days: 7
