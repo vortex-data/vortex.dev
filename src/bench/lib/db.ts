@@ -128,13 +128,40 @@ export function resolveStatementTimeoutMillis(): number {
  * get and fail at the connection timeout.
  */
 export function resolvePoolMax(): number {
-  return Math.max(2, Number(process.env.BENCH_DB_POOL_MAX ?? '8'));
+  return Math.max(2, resolvePositiveInteger('BENCH_DB_POOL_MAX', 8, 'connections'));
+}
+
+/** The server's port, from `BENCH_DB_PORT` (default 5432). */
+export function resolvePort(): number {
+  const port = resolvePositiveInteger('BENCH_DB_PORT', 5432, 'port');
+  if (port > 65_535) {
+    throw new Error(`Invalid \`BENCH_DB_PORT\` \`${port}\`; expected a port from 1 to 65535.`);
+  }
+  return port;
+}
+
+/**
+ * Read a positive integer, or `fallback` when unset or blank. A bad value
+ * throws, as the timeouts do: pg-pool would quietly replace a `NaN` pool size
+ * with its own default, and a `NaN` port fails every connection with an error
+ * that does not name the variable.
+ */
+function resolvePositiveInteger(name: string, fallback: number, what: string): number {
+  const raw = process.env[name];
+  if (raw === undefined || raw.trim() === '') {
+    return fallback;
+  }
+  const value = Number(raw);
+  if (!Number.isInteger(value) || value <= 0) {
+    throw new Error(`Invalid \`${name}\` \`${raw}\`; expected a positive whole number of ${what}.`);
+  }
+  return value;
 }
 
 function readConfig(): DbConfig {
   return {
     host: requireEnv('BENCH_DB_HOST'),
-    port: Number(process.env.BENCH_DB_PORT ?? '5432'),
+    port: resolvePort(),
     database: requireEnv('BENCH_DB_NAME'),
     user: requireEnv('BENCH_DB_USER'),
     password: requireEnv('BENCH_DB_PASSWORD'),
