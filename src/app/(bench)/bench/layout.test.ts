@@ -13,7 +13,9 @@ import RootLayout, { generateMetadata } from '@/app/(bench)/bench/layout';
 // The stylesheets are Next.js's to build; loading them here would run bench's
 // PostCSS config through Vite.
 vi.mock('@/bench/styles/globals.css', () => ({}));
-vi.mock('@/bench/styles/vortex-skin.css', () => ({}));
+vi.mock('@/styles/vortex-tokens.css', () => ({}));
+// next/font is a build step; its classes set the design system's --vx-face-* variables.
+vi.mock('@/lib/fonts', () => ({ FONT_CLASSES: 'face-sans face-mono face-display' }));
 
 // The layout reads the request's host for the base of bench's paths.
 const requestHeaders = vi.hoisted(() => new Headers({ host: 'bench.vortex.dev' }));
@@ -36,15 +38,26 @@ function load(runScripts: boolean, theme?: string): Document {
 
 describe('RootLayout', () => {
   it('renders the root as no-js, which only a script swaps for js', () => {
-    expect(html).toMatch(/^<html lang="en" class="no-js">/);
-    expect(load(false).documentElement.className).toBe('no-js');
-    expect(load(true).documentElement.className).toBe('js');
+    expect(html).toMatch(/^<html lang="en" data-theme="system" class="no-js /);
+    expect(load(false).documentElement.classList.contains('no-js')).toBe(true);
+    expect(load(true).documentElement.classList.contains('js')).toBe(true);
+    expect(load(true).documentElement.classList.contains('no-js')).toBe(false);
   });
 
   it('still applies a stored theme before first paint', () => {
     const doc = load(true, 'dark');
-    expect(doc.documentElement.className).toBe('js');
+    expect(doc.documentElement.classList.contains('js')).toBe(true);
     expect(doc.documentElement.dataset.theme).toBe('dark');
+  });
+
+  it("self-hosts the system's faces, as the site does, with no request to Google Fonts", () => {
+    expect(load(false).documentElement.className).toBe('no-js face-sans face-mono face-display');
+    expect(html).not.toMatch(/googleapis|gstatic/);
+  });
+
+  it('follows the OS until a reader chooses a theme', () => {
+    expect(load(true).documentElement.dataset.theme).toBe('system');
+    expect(load(false).documentElement.dataset.theme).toBe('system');
   });
 });
 

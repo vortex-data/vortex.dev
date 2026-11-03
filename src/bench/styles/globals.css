@@ -1,84 +1,38 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: Copyright the Vortex contributors */
 
+/* The colours come from the Vortex design system's tokens (src/styles/vortex-tokens.css), which
+ * the root layout loads first: ground, surface, raised, line, ink, ink-muted, accent-ink for words,
+ * and accent with on-accent for fills. The root renders data-theme="system", so the tokens follow
+ * the OS until a reader picks a theme with the header's toggle. These are bench's own values, which
+ * the system has no role for, in the same three theme states. */
 :root {
-  color-scheme: light;
   --header-height: 72px;
-  --bg: #ffffff;
-  --page-bg: #f5f6f7;
-  --fg: #101828;
-  --muted: #4a5565;
-  --accent: #0e7490;
-  --accent-fg: #ffffff;
-  --border: #e5e7eb;
-  --card-bg: #ffffff;
-  --code-bg: #f5f6f7;
-  --tooltip-bg: #101828;
-  --tooltip-fg: #f5f6f7;
+  --tooltip-bg: var(--primary);
+  --tooltip-fg: var(--grey-50);
   --good: #16a34a;
   --bad: #a40e26;
+  --on-bad: var(--white);
   --shadow-md: 0 4px 8px rgba(16, 24, 40, 0.08);
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
-    color-scheme: dark;
-    /* Elevation hierarchy mirrors v2: page background sits at the
-     * deeper colour, cards / dropdowns / toolbars rise to the lighter
-     * grey. The previous assignment had cards darker than the page,
-     * which read as overly contrasty dark voids on the landing grid. */
-    --bg: #1a1a1a;
-    --page-bg: #101010;
-    --fg: #ececec;
-    --muted: #99a1af;
-    --accent: #2cb9d1;
-    --accent-fg: #101010;
-    --border: #272727;
-    --card-bg: #1a1a1a;
-    --code-bg: #101010;
-    --tooltip-bg: #272727;
-    --tooltip-fg: #ececec;
+  :root:not([data-theme='light']) {
+    --tooltip-bg: var(--raised);
+    --tooltip-fg: var(--ink);
     --good: #4ade80;
     --bad: #ff8182;
+    --on-bad: var(--black);
     --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.7);
   }
 }
 
-:root[data-theme='light'] {
-  color-scheme: light;
-  --bg: #ffffff;
-  --page-bg: #f5f6f7;
-  --fg: #101828;
-  --muted: #4a5565;
-  --accent: #0e7490;
-  --accent-fg: #ffffff;
-  --border: #e5e7eb;
-  --card-bg: #ffffff;
-  --code-bg: #f5f6f7;
-  --tooltip-bg: #101828;
-  --tooltip-fg: #f5f6f7;
-  --good: #16a34a;
-  --bad: #a40e26;
-  --shadow-md: 0 4px 8px rgba(16, 24, 40, 0.08);
-}
-
 :root[data-theme='dark'] {
-  color-scheme: dark;
-  /* See the matching `@media (prefers-color-scheme: dark)` block above
-   * for the rationale on the --bg / --page-bg / --card-bg assignment. */
-  --bg: #1a1a1a;
-  --page-bg: #101010;
-  --fg: #ececec;
-  --muted: #99a1af;
-  --accent: #2cb9d1;
-  --accent-fg: #101010;
-  --border: #272727;
-  --card-bg: #1a1a1a;
-  --code-bg: #101010;
-  --tooltip-bg: #272727;
-  --tooltip-fg: #ececec;
+  --tooltip-bg: var(--raised);
+  --tooltip-fg: var(--ink);
   --good: #4ade80;
   --bad: #ff8182;
+  --on-bad: var(--black);
   --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.7);
 }
 
@@ -93,36 +47,31 @@ body {
   width: 100%;
   min-width: 0;
   overflow-x: hidden;
-  background: var(--page-bg);
-  color: var(--fg);
-  /* Geist is loaded from unpkg by `html::render::web_font_links`; the
-   * fallback stack matches v2's `src/styles/index.css` so the site
-   * remains legible if the CDN is blocked. */
-  font-family:
-    'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'SF Pro Display', Roboto, sans-serif;
+  background: var(--ground);
+  color: var(--ink);
+  /* The system's faces, self-hosted by next/font (src/lib/fonts.ts). Each
+   * --font-* token carries its face's metric-matched fallback. */
+  font-family: var(--font-sans);
   font-size: 16px;
   line-height: 1.6;
 }
 
 /* All headings use Funnel Display, mirroring v2's
- * `h1, h2, h3, h4, h5, h6` rule. Loaded from Google Fonts by
- * `html::render::web_font_links`. */
+ * `h1, h2, h3, h4, h5, h6` rule. */
 h1,
 h2,
 h3,
 h4,
 h5,
 h6 {
-  font-family: 'Funnel Display', sans-serif;
+  font-family: var(--font-display);
   letter-spacing: -0.02em;
 }
 
-/* Code blocks use Geist Mono, mirroring v2's `code, pre` rule. The
- * fallback stack matches what the explicit-mono usages further down
- * declare so a CDN-blocked client still gets a monospace font. */
+/* Code blocks use Geist Mono, mirroring v2's `code, pre` rule. */
 code,
 pre {
-  font-family: 'Geist Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-family: var(--font-mono);
 }
 
 body {
@@ -130,7 +79,7 @@ body {
 }
 
 a {
-  color: var(--accent);
+  color: var(--accent-ink);
   text-decoration: none;
 }
 a:hover {
@@ -154,7 +103,7 @@ a:hover {
   right: 0;
   z-index: 1000;
   height: var(--header-height);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--line);
   background: rgba(245, 246, 247, 0.95);
   box-shadow: 0 1px 3px rgba(16, 24, 40, 0.08);
   backdrop-filter: blur(10px);
@@ -183,7 +132,7 @@ a:hover {
    * the elevated grey in dark mode (`#1a1a1a`); v3's `--bg` resolves
    * to the same colour. Using `--code-bg` here flattened the header
    * against the page in dark mode. */
-  background: var(--bg);
+  background: var(--surface);
   position: relative;
   display: flex;
   align-items: center;
@@ -287,7 +236,7 @@ a:hover {
 .site-title {
   display: none;
   margin: 0 0 0 1.5rem;
-  color: var(--fg);
+  color: var(--ink);
   font-size: 1.5rem;
   font-weight: 500;
   line-height: 1.2;
@@ -307,10 +256,10 @@ a:hover {
   justify-content: center;
   gap: 0.45rem;
   min-height: 36px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--line);
   border-radius: 8px;
-  background: var(--bg);
-  color: var(--fg);
+  background: var(--surface);
+  color: var(--ink);
   font: inherit;
   font-size: 0.875rem;
   font-weight: 500;
@@ -331,9 +280,9 @@ a:hover {
 
 .control-btn:hover,
 .repo-link:hover {
-  border-color: var(--accent);
-  background: var(--code-bg);
-  color: var(--accent);
+  border-color: var(--accent-ink);
+  background: var(--ground);
+  color: var(--accent-ink);
   box-shadow: 0 1px 3px rgba(16, 16, 16, 0.08);
   text-decoration: none;
   transform: translateY(-1px);
@@ -377,8 +326,8 @@ a:hover {
 }
 
 .page-header {
-  border-bottom: 1px solid var(--border);
-  background: var(--code-bg);
+  border-bottom: 1px solid var(--line);
+  background: var(--ground);
   padding: 1rem 2rem;
   width: 100%;
 }
@@ -388,11 +337,11 @@ a:hover {
   font-weight: 600;
 }
 .page-header h1 a {
-  color: var(--fg);
+  color: var(--ink);
 }
 .page-header .subtitle {
   margin: 0.25rem 0 0;
-  color: var(--muted);
+  color: var(--ink-muted);
   font-size: 0.875rem;
 }
 
@@ -416,7 +365,7 @@ main {
 }
 
 .empty {
-  color: var(--muted);
+  color: var(--ink-muted);
   font-style: italic;
 }
 
@@ -431,9 +380,9 @@ main {
 .summary-loading-panel {
   width: min(28rem, 100%);
   padding: 2.5rem;
-  border: 1px solid var(--border);
+  border: 1px solid var(--line);
   border-radius: 12px;
-  background: var(--card-bg);
+  background: var(--surface);
   box-shadow: var(--shadow-md);
   text-align: center;
 }
@@ -445,7 +394,7 @@ main {
 
 .summary-loading-panel p {
   margin: 0;
-  color: var(--muted);
+  color: var(--ink-muted);
   font-size: 0.875rem;
 }
 
@@ -463,9 +412,9 @@ main {
   width: 100%;
   max-width: none;
   margin-bottom: 3rem;
-  border: 1px solid var(--border);
+  border: 1px solid var(--line);
   border-radius: 12px;
-  background: var(--bg);
+  background: var(--surface);
   overflow: hidden;
   /* Offset jump targets (GroupNav) so a jumped-to group title clears the sticky header. */
   scroll-margin-top: calc(var(--header-height) + 0.75rem);
@@ -484,7 +433,7 @@ main {
    * (`#1a1a1a` in dark mode); `--card-bg` is the v3 alias for that
    * elevated colour. Using `--code-bg` here flattened the disclosure
    * bar against the page in dark mode. */
-  background: var(--card-bg);
+  background: var(--surface);
   border-radius: 12px 12px 0 0;
   user-select: none;
 }
@@ -494,7 +443,7 @@ main {
   align-items: center;
   gap: 0.75rem;
   padding: 1rem 2rem;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--line);
   transition: background-color 0.2s ease;
 }
 .group-summary::-webkit-details-marker {
@@ -508,28 +457,28 @@ main {
   font-size: 0.9rem;
   line-height: 1;
   text-align: center;
-  color: var(--muted);
+  color: var(--ink-muted);
   transition: transform 120ms ease;
 }
 .group-disclosure[open] > .group-summary .group-summary-row::before {
   transform: rotate(90deg);
 }
 .group-summary:hover .group-summary-row {
-  background: var(--bg);
+  background: var(--surface);
 }
 .group-name {
   /* `.group-name` is a `<span>` in `landing.rs`, so it doesn't inherit
    * from the `h1, h2, ..., h6` rule. v2's `.benchmark-title` applies
    * Funnel Display explicitly; mirror that here. */
-  font-family: 'Funnel Display', sans-serif;
+  font-family: var(--font-display);
   font-weight: 600;
   font-size: 1.35rem;
   line-height: 1.2;
   letter-spacing: -0.02em;
 }
 .group-count {
-  color: var(--muted);
-  font-family: 'Geist Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
   font-size: 0.7rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -546,7 +495,7 @@ main {
  */
 .group-headline {
   margin-left: auto;
-  color: var(--muted);
+  color: var(--ink-muted);
   font-size: 0.85rem;
   font-variant-numeric: tabular-nums;
 }
@@ -565,7 +514,7 @@ main {
   border: none;
   border-radius: 6px;
   background: transparent;
-  color: var(--muted);
+  color: var(--ink-muted);
   text-decoration: none;
   cursor: pointer;
   flex-shrink: 0;
@@ -575,14 +524,14 @@ main {
 }
 .group-permalink:hover,
 .group-permalink:focus-visible {
-  color: var(--fg);
-  background: var(--border);
+  color: var(--ink);
+  background: var(--line);
   text-decoration: none;
 }
 .group-permalink--copied,
 .group-permalink--copied:hover,
 .group-permalink--copied:focus-visible {
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 /*
  * The docs link next to a group title (GroupDocsLink), pointing at the
@@ -598,7 +547,7 @@ main {
   height: 1.5rem;
   padding: 0;
   border-radius: 6px;
-  color: var(--muted);
+  color: var(--ink-muted);
   text-decoration: none;
   flex-shrink: 0;
   transition:
@@ -607,8 +556,8 @@ main {
 }
 .group-docs-link:hover,
 .group-docs-link:focus-visible {
-  color: var(--fg);
-  background: var(--border);
+  color: var(--ink);
+  background: var(--line);
 }
 /* Screen-reader-only text (the permalink's copied announcement). */
 .visually-hidden {
@@ -641,7 +590,7 @@ main {
   border-radius: 50%;
   font-size: 0.95rem;
   line-height: 1;
-  color: var(--muted);
+  color: var(--ink-muted);
   cursor: help;
   user-select: none;
   flex-shrink: 0;
@@ -649,7 +598,7 @@ main {
 }
 .group-info-icon:hover,
 .group-info-icon:focus-visible {
-  color: var(--fg);
+  color: var(--ink);
   outline: none;
 }
 /*
@@ -702,14 +651,14 @@ main {
    * uses `--bg-color` (`#101010` in dark mode); `--page-bg` is the v3
    * alias for the page colour. Using `--bg` here made the grid behind
    * cards appear lighter than the body, inverting v2's elevation. */
-  background: var(--page-bg);
+  background: var(--ground);
 }
 
 .benchmark-scores-summary {
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--line);
   /* Elevated surface, same role as v2's `.benchmark-scores-summary`
    * which uses `--bg-secondary`. */
-  background: var(--card-bg);
+  background: var(--surface);
   padding: 0.75rem 2rem;
   margin: 0;
 }
@@ -750,14 +699,14 @@ main {
 }
 
 .chart-meta + .benchmark-scores-summary {
-  border: 1px solid var(--border);
+  border: 1px solid var(--line);
   border-radius: 8px;
   margin-bottom: 1rem;
 }
 
 .scores-title {
   margin: 0 0 0.5rem;
-  color: var(--muted);
+  color: var(--ink-muted);
   font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -784,7 +733,7 @@ main {
 }
 
 .compression-scores-panel + .compression-scores-panel {
-  border-left: 1px solid var(--border);
+  border-left: 1px solid var(--line);
   padding-left: 1.25rem;
   margin-left: 1.25rem;
 }
@@ -808,7 +757,7 @@ main {
 }
 
 .random-access-scores-panel + .random-access-scores-panel {
-  border-left: 1px solid var(--border);
+  border-left: 1px solid var(--line);
   padding-left: 1.25rem;
   margin-left: 1.25rem;
 }
@@ -828,7 +777,7 @@ main {
 }
 
 .compression-size-parquet-panel {
-  border-left: 1px solid var(--border);
+  border-left: 1px solid var(--line);
   padding-left: 1.25rem;
   margin-left: 1.25rem;
 }
@@ -892,7 +841,7 @@ main {
 }
 
 .compression-size-group {
-  color: var(--muted);
+  color: var(--ink-muted);
   font-size: 0.68rem;
   font-weight: 600;
   letter-spacing: 0.04em;
@@ -901,7 +850,7 @@ main {
 }
 
 .compression-size-heading {
-  color: var(--muted);
+  color: var(--ink-muted);
   font-size: 0.72rem;
   font-weight: 600;
   text-align: center;
@@ -922,7 +871,7 @@ main {
 
 .score-rank {
   min-width: 2.25rem;
-  color: var(--accent);
+  color: var(--accent-ink);
   font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -933,7 +882,7 @@ main {
   min-width: 0;
   flex: 1;
   overflow: hidden;
-  color: var(--fg);
+  color: var(--ink);
   font-weight: 500;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -949,21 +898,21 @@ main {
 
 .score-value,
 .score-runtime {
-  font-family: 'Geist Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: 0.8rem;
   font-weight: 600;
 }
 
 .score-value {
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 .score-runtime {
-  color: var(--muted);
+  color: var(--ink-muted);
 }
 
 .scores-explanation {
   margin-top: 0.45rem;
-  color: var(--muted);
+  color: var(--ink-muted);
   font-size: 0.72rem;
   font-style: italic;
   text-align: center;
@@ -998,7 +947,7 @@ main {
   padding: 0 0.4rem;
   border-radius: 999px;
   background: var(--accent);
-  color: var(--accent-fg);
+  color: var(--on-accent);
   font-size: 0.7rem;
   font-weight: 600;
   line-height: 1;
@@ -1015,9 +964,9 @@ main {
   min-width: 22rem;
   max-width: min(90vw, 36rem);
   padding: 0.75rem 0.85rem;
-  border: 1px solid var(--border);
+  border: 1px solid var(--line);
   border-radius: 8px;
-  background: var(--card-bg);
+  background: var(--surface);
   box-shadow: var(--shadow-md);
 }
 .filter-panel[hidden] {
@@ -1032,7 +981,7 @@ main {
 .global-filter-label {
   flex: 0 0 auto;
   min-width: 4rem;
-  color: var(--muted);
+  color: var(--ink-muted);
   font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -1043,21 +992,22 @@ main {
   justify-content: center;
   min-height: 24px;
   padding: 0.1rem 0.6rem;
-  border: 1px solid var(--border);
+  border: 1px solid var(--line);
   border-radius: 999px;
-  background: var(--bg);
-  color: var(--fg);
+  background: var(--surface);
+  color: var(--ink);
   font-size: 0.78rem;
   font-family: inherit;
   cursor: pointer;
 }
 .filter-chip:hover {
-  border-color: var(--accent);
+  border-color: var(--accent-ink);
 }
-.filter-chip--active {
+.filter-chip--active,
+.filter-chip--active:hover {
   background: var(--accent);
   border-color: var(--accent);
-  color: var(--accent-fg);
+  color: var(--on-accent);
 }
 .filter-chip--all {
   font-weight: 500;
@@ -1073,9 +1023,9 @@ main {
   align-items: center;
   padding: 0.4rem 0.5rem;
   margin-bottom: 0.5rem;
-  border: 1px solid var(--border);
+  border: 1px solid var(--line);
   border-radius: 4px;
-  background: var(--bg);
+  background: var(--surface);
   font-size: 0.78rem;
 }
 .toolbar-group {
@@ -1085,7 +1035,7 @@ main {
   gap: 0.25rem;
 }
 .toolbar-label {
-  color: var(--muted);
+  color: var(--ink-muted);
   font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -1097,25 +1047,26 @@ main {
   justify-content: center;
   min-height: 24px;
   padding: 0.1rem 0.5rem;
-  border: 1px solid var(--border);
+  border: 1px solid var(--raised);
   border-radius: 3px;
-  background: var(--bg);
-  color: var(--fg);
+  background: var(--raised);
+  color: var(--ink-muted);
   font-size: 0.78rem;
   font-family: inherit;
   cursor: pointer;
   text-decoration: none;
 }
+/* The linear and log toggles are a switch, which the system draws with no Blue: the options are
+ * raised in muted text, and the pressed one sits on the surface in ink. */
 .toolbar-btn:hover {
-  border-color: var(--accent);
+  border-color: var(--raised);
+  color: var(--ink);
 }
-.toolbar-btn--active {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--accent-fg);
-}
+.toolbar-btn--active,
 .toolbar-btn--active:hover {
-  color: var(--accent-fg);
+  background: var(--surface);
+  border-color: var(--line);
+  color: var(--ink);
 }
 .toolbar-slider {
   width: 12rem;
@@ -1136,8 +1087,8 @@ main {
   align-items: center;
   gap: 0.35rem 0.75rem;
   padding: 0.4rem 1.25rem;
-  border-bottom: 1px solid var(--border);
-  background: var(--bg);
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
   font-size: 0.78rem;
 }
 .group-toolbar-y {
@@ -1167,9 +1118,9 @@ main {
   min-width: 24rem;
   max-width: min(90vw, 42rem);
   padding: 0.75rem 0.85rem;
-  border: 1px solid var(--border);
+  border: 1px solid var(--line);
   border-radius: 8px;
-  background: var(--card-bg);
+  background: var(--surface);
   box-shadow: var(--shadow-md);
 }
 .group-filter-panel[hidden] {
@@ -1193,35 +1144,35 @@ main {
   align-items: center;
   min-height: 24px;
   padding: 0.1rem 0.6rem;
-  border: 1px solid var(--border);
+  border: 1px solid var(--line);
   border-radius: 3px;
-  background: var(--bg);
-  color: var(--muted);
+  background: var(--surface);
+  color: var(--ink-muted);
   font: inherit;
   font-size: 0.78rem;
   cursor: pointer;
 }
 .group-toolbar-reset:hover,
 .group-toolbar-empty-toggle:hover {
-  border-color: var(--accent);
-  color: var(--accent);
+  border-color: var(--accent-ink);
+  color: var(--accent-ink);
 }
 /* While the empty charts are revealed the toggle reads as engaged. */
 .group-toolbar-empty-toggle[aria-pressed='true'] {
-  border-color: var(--accent);
-  color: var(--accent);
+  border-color: var(--accent-ink);
+  color: var(--accent-ink);
 }
 
 /* ----------------------------------------------------------------------
  * Single-chart + group-page chart card
  * ---------------------------------------------------------------------- */
 .chart-meta {
-  color: var(--muted);
+  color: var(--ink-muted);
   font-size: 0.875rem;
   margin: 0 0 0.75rem;
 }
 .chart-meta code {
-  background: var(--code-bg);
+  background: var(--ground);
   padding: 0.1rem 0.35rem;
   border-radius: 3px;
   font-size: 0.85em;
@@ -1232,9 +1183,9 @@ main {
   width: 100%;
   max-width: none;
   position: relative;
-  border: 1px solid var(--border);
+  border: 1px solid var(--line);
   border-radius: 8px;
-  background: var(--card-bg);
+  background: var(--surface);
   padding: 1.25rem;
   margin-bottom: 1rem;
   transition: box-shadow 0.2s ease;
@@ -1259,10 +1210,10 @@ main {
   flex-wrap: wrap;
 }
 .chart-card-title a {
-  color: var(--fg);
+  color: var(--ink);
 }
 .chart-card-title a:hover {
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 
 /* Downsampled-payload badge. Rendered both server-side (when the inline
@@ -1275,9 +1226,9 @@ main {
   letter-spacing: 0.02em;
   padding: 0.1rem 0.45rem;
   border-radius: 999px;
-  background: var(--code-bg);
-  color: var(--muted);
-  border: 1px solid var(--border);
+  background: var(--ground);
+  color: var(--ink-muted);
+  border: 1px solid var(--line);
   white-space: nowrap;
   cursor: help;
 }
@@ -1285,9 +1236,9 @@ main {
   display: none;
 }
 .chart-badge--downsampled {
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
-  color: var(--accent);
-  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+  background: color-mix(in srgb, var(--accent-ink) 12%, transparent);
+  color: var(--accent-ink);
+  border-color: color-mix(in srgb, var(--accent-ink) 35%, transparent);
 }
 
 .chart-window-chip {
@@ -1298,9 +1249,9 @@ main {
   line-height: 1.4;
   padding: 0.1rem 0.45rem;
   border-radius: 999px;
-  background: var(--code-bg);
-  color: var(--muted);
-  border: 1px solid var(--border);
+  background: var(--ground);
+  color: var(--ink-muted);
+  border: 1px solid var(--line);
   white-space: nowrap;
   cursor: pointer;
 }
@@ -1315,9 +1266,9 @@ main {
 .chart-card:hover .chart-window-chip[data-state='windowed']:not(:disabled),
 .chart-window-chip[data-state='windowed']:not(:disabled):hover,
 .chart-window-chip[data-state='windowed']:not(:disabled):focus-visible {
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
-  color: var(--accent);
-  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+  background: color-mix(in srgb, var(--accent-ink) 12%, transparent);
+  color: var(--accent-ink);
+  border-color: color-mix(in srgb, var(--accent-ink) 35%, transparent);
 }
 .chart-window-chip[data-state='loading'] {
   cursor: progress;
@@ -1383,8 +1334,8 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
 .chart-range-strip-track {
   position: absolute;
   inset: 0;
-  background: var(--code-bg);
-  border: 1px solid var(--border);
+  background: var(--ground);
+  border: 1px solid var(--line);
   border-radius: 3px;
   overflow: hidden;
 }
@@ -1394,9 +1345,9 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
   bottom: 0;
   left: 0;
   width: 100%;
-  background: color-mix(in srgb, var(--accent) 28%, transparent);
-  border-left: 1px solid var(--accent);
-  border-right: 1px solid var(--accent);
+  background: color-mix(in srgb, var(--accent-ink) 28%, transparent);
+  border-left: 1px solid var(--accent-ink);
+  border-right: 1px solid var(--accent-ink);
   cursor: grab;
   box-sizing: border-box;
 }
@@ -1441,10 +1392,10 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
 .no-script {
   margin-top: 1rem;
   padding: 0.75rem 1rem;
-  border: 1px solid var(--border);
+  border: 1px solid var(--line);
   border-radius: 4px;
-  background: var(--code-bg);
-  color: var(--muted);
+  background: var(--ground);
+  color: var(--ink-muted);
   font-size: 0.875rem;
 }
 /* The landing page's note opens `<main>`, above the first group. */
@@ -1465,9 +1416,9 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
   z-index: 5;
 }
 .chart-loading {
-  background: var(--code-bg);
-  color: var(--muted);
-  border: 1px solid var(--border);
+  background: var(--ground);
+  color: var(--ink-muted);
+  border: 1px solid var(--line);
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
@@ -1483,8 +1434,8 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  color: var(--muted);
-  background: color-mix(in srgb, var(--code-bg) 60%, transparent);
+  color: var(--ink-muted);
+  background: color-mix(in srgb, var(--ground) 60%, transparent);
   font-size: 0.8rem;
   z-index: 1;
 }
@@ -1496,14 +1447,14 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
 /* The placeholder's "loading…" label, sized to match the chip/loading text. */
 .chart-placeholder-text {
   font-size: 0.75rem;
-  color: var(--muted);
+  color: var(--ink-muted);
 }
 .chart-spinner {
   display: inline-block;
   width: 0.7rem;
   height: 0.7rem;
-  border: 2px solid color-mix(in srgb, var(--muted) 35%, transparent);
-  border-top-color: var(--accent);
+  border: 2px solid color-mix(in srgb, var(--ink-muted) 35%, transparent);
+  border-top-color: var(--accent-ink);
   border-radius: 50%;
   animation: chart-spin 0.7s linear infinite;
 }
@@ -1520,8 +1471,8 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
   height: 0.6rem;
   margin-right: 0.3rem;
   vertical-align: -0.05rem;
-  border: 2px solid color-mix(in srgb, var(--muted) 35%, transparent);
-  border-top-color: var(--accent);
+  border: 2px solid color-mix(in srgb, var(--ink-muted) 35%, transparent);
+  border-top-color: var(--accent-ink);
   border-radius: 50%;
   animation: chart-spin 0.7s linear infinite;
 }
@@ -1534,7 +1485,7 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
 }
 .chart-error {
   background: var(--bad);
-  color: var(--accent-fg);
+  color: var(--on-bad);
   max-width: 18rem;
   white-space: normal;
 }
@@ -1544,7 +1495,7 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
   cursor: pointer;
   font: inherit;
   font-size: 0.7rem;
-  color: var(--accent-fg);
+  color: var(--on-bad);
   background: transparent;
   border: 1px solid currentColor;
   border-radius: 4px;
@@ -1693,8 +1644,8 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
     left: 0;
     right: 0;
     padding: 0.75rem 1rem;
-    border-bottom: 1px solid var(--border);
-    background: var(--card-bg);
+    border-bottom: 1px solid var(--line);
+    background: var(--surface);
     box-shadow: var(--shadow-md);
     z-index: 1100;
   }
@@ -1811,7 +1762,7 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
     grid-template-columns: 1fr;
   }
   .compression-scores-panel + .compression-scores-panel {
-    border-top: 1px solid var(--border);
+    border-top: 1px solid var(--line);
     border-left: 0;
     padding-top: 0.75rem;
     padding-left: 0;
@@ -1822,7 +1773,7 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
     grid-template-columns: 1fr;
   }
   .random-access-scores-panel + .random-access-scores-panel {
-    border-top: 1px solid var(--border);
+    border-top: 1px solid var(--line);
     border-left: 0;
     padding-top: 0.75rem;
     padding-left: 0;
@@ -1877,30 +1828,30 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
 .site-footer {
   padding: 1.5rem 2rem 2rem;
   text-align: center;
-  color: var(--muted);
+  color: var(--ink-muted);
   font-size: 0.75rem;
   line-height: 1.4;
 }
 
 .site-footer-label {
-  color: var(--muted);
+  color: var(--ink-muted);
 }
 
 .site-footer-sha code {
-  font-family: 'Geist Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
-  color: var(--muted);
+  font-family: var(--font-mono);
+  color: var(--ink-muted);
   font-size: 0.75rem;
 }
 
 a.site-footer-sha {
-  color: var(--muted);
+  color: var(--ink-muted);
   text-decoration: none;
   transition: color 0.2s ease;
 }
 
 a.site-footer-sha:hover,
 a.site-footer-sha:hover code {
-  color: var(--accent);
+  color: var(--accent-ink);
   text-decoration: none;
 }
 
@@ -1930,9 +1881,9 @@ a.site-footer-sha:hover code {
   max-height: calc(100vh - var(--header-height) - 5rem);
   padding: 0.75rem;
   overflow-y: auto;
-  border: 1px solid var(--border);
+  border: 1px solid var(--line);
   border-radius: 10px;
-  background: var(--card-bg);
+  background: var(--surface);
   box-shadow: var(--shadow-md);
   /* Hidden until toggled; fade + slide up from the bottom-left toggle. */
   visibility: hidden;
@@ -1953,7 +1904,7 @@ a.site-footer-sha:hover code {
 .group-nav-heading {
   margin: 0 0 0.4rem;
   padding: 0 0.5rem;
-  color: var(--muted);
+  color: var(--ink-muted);
   font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -1976,7 +1927,7 @@ a.site-footer-sha:hover code {
   border: 0;
   border-radius: 6px;
   background: transparent;
-  color: var(--fg);
+  color: var(--ink);
   font: inherit;
   font-size: 0.875rem;
   text-align: left;
@@ -1991,12 +1942,59 @@ a.site-footer-sha:hover code {
 
 .group-nav-link:hover,
 .group-nav-link:focus-visible {
-  background: var(--code-bg);
-  color: var(--accent);
+  background: var(--ground);
+  color: var(--accent-ink);
 }
 
 @media (prefers-reduced-motion: reduce) {
   .group-nav-panel {
     transition: none;
   }
+}
+
+/* The system's corners and label voice. Cards take 6px corners and controls 4px; circles
+ * (the info icon, spinners, swatches) keep their 50%. The page title and the toolbar buttons read
+ * as mono labels in sentence case, ranks are muted so Blue marks only ratios, and the count badges
+ * are square. */
+.group-details,
+.summary-loading-panel,
+.chart-card {
+  border-radius: 6px;
+}
+.group-summary {
+  border-radius: 6px 6px 0 0;
+}
+.control-btn,
+.repo-link,
+.toolbar-btn,
+.group-toolbar-reset,
+.group-toolbar-empty-toggle,
+.group-filter-trigger,
+.filter-panel,
+.group-filter-panel,
+.group-nav-panel,
+.group-nav-link,
+.group-permalink,
+.group-docs-link,
+.filter-chip {
+  border-radius: 4px;
+}
+.site-title,
+.control-btn {
+  font-family: var(--font-mono);
+  font-weight: 500;
+}
+.site-title {
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+.control-btn {
+  font-size: 11px;
+}
+.score-rank {
+  color: var(--ink-muted);
+}
+.filter-badge,
+.group-count {
+  border-radius: 2px;
 }
