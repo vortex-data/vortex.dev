@@ -64,13 +64,15 @@ async function redirectToCanonical(slug: string, sp: Awaited<SearchParams>): Pro
   }
   const window = parseCommitWindow(search.get('n'));
   const isDefault = window.kind === 'last' && window.n === DEFAULT_COMMIT_WINDOW;
-  // Without the universe the filters stay as sent: cutting them to nothing
-  // would hide every series.
   const universe = isDefault ? undefined : await cachedFilterUniverse().catch(() => undefined);
   let filtersChanged = false;
   const canonical = canonicalWindowQuery(search, CHART_PAGE_PARAMS, (name, value) => {
+    // Without the universe the filters cannot be checked, and kept as sent
+    // each new value would be a new direct query, so they are dropped: the
+    // page shows every series.
     if (universe === undefined) {
-      return value;
+      filtersChanged = true;
+      return null;
     }
     const filter = canonicalFilterCsv(
       value,

@@ -98,9 +98,19 @@ describe('canonicalWindowQuery', () => {
     expect(query('n=all&n=5')).toBe('n=all');
   });
 
-  it('keeps the allowed parameters in the request order', () => {
+  it('drops a parameter that normalize maps to null', () => {
+    const drop = () => null;
+    expect(canonicalWindowQuery(new URLSearchParams('n=all&engine=a'), ['n', 'engine'], drop)).toBe(
+      'n=all',
+    );
+  });
+
+  it('puts the allowed parameters in the order of allowed', () => {
     const page = ['n', 'engine', 'format'];
-    expect(query('engine=duckdb&n=all&format=vortex', page)).toBeNull();
-    expect(query('engine=duckdb&utm_source=x&n=all', page)).toBe('engine=duckdb&n=all');
+    expect(query('n=all&engine=duckdb&format=vortex', page)).toBeNull();
+    expect(query('engine=duckdb&n=all&format=vortex', page)).toBe(
+      'n=all&engine=duckdb&format=vortex',
+    );
+    expect(query('engine=duckdb&utm_source=x&n=all', page)).toBe('n=all&engine=duckdb');
   });
 });

@@ -79,27 +79,34 @@ export function windowParam(window: CommitWindow): string {
  * send each request to the database. Redirecting to one URL per window and
  * page keeps those requests on the CDN.
  *
- * The canonical form keeps the `allowed` parameters in the request's order,
+ * The canonical form keeps the `allowed` parameters in the order of `allowed`,
  * the first value of each, with `n` spelled by [`windowParam`] and every other
- * value passed through `normalize`; it drops every other parameter. A request
- * with the default window returns `null`, whatever else its query holds: it
- * costs no direct query.
+ * value passed through `normalize`, which drops the parameter by returning
+ * `null`; it drops every other parameter. The order is fixed because the CDN's
+ * key depends on it: on 2026-11-03, `?n=654&engine=a` and `?engine=a&n=654`
+ * were two entries. The key does not depend on empty separators or on
+ * percent-encoding (`?n=184&&`, `?&n=184` and `?n=%3184` hit the entry for
+ * `?n=184`), so comparing parsed queries is enough. A request with the default
+ * window returns `null`, whatever else its query holds: it costs no direct
+ * query.
  */
 export function canonicalWindowQuery(
   search: URLSearchParams,
   allowed: readonly string[],
-  normalize: (name: string, value: string) => string = (_name, value) => value,
+  normalize: (name: string, value: string) => string | null = (_name, value) => value,
 ): string | null {
   const window = parseCommitWindow(search.get('n'));
   if (window.kind === 'last' && window.n === DEFAULT_COMMIT_WINDOW) {
     return null;
   }
   const canonical = new URLSearchParams();
-  for (const [name, value] of search) {
-    if (!allowed.includes(name) || canonical.has(name)) {
-      continue;
+  for (const name of allowed) {
+    const value = search.get(name);
+    const kept =
+      value === null ? null : name === 'n' ? windowParam(window) : normalize(name, value);
+    if (kept !== null) {
+      canonical.set(name, kept);
     }
-    canonical.set(name, name === 'n' ? windowParam(window) : normalize(name, value));
   }
   const query = canonical.toString();
   return query === search.toString() ? null : query;
