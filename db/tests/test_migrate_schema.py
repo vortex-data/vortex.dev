@@ -133,6 +133,18 @@ class MigrationTests(unittest.TestCase):
         with psycopg.connect(make_conninfo(self.target, user="bench_ci_read")) as conn:
             self.assertEqual(conn.execute("SHOW default_transaction_read_only").fetchone()[0], "on")
             self.assertEqual(conn.execute("SHOW statement_timeout").fetchone()[0], "1min")
+        with psycopg.connect(make_conninfo(self.target, user="bench_read")) as conn:
+            self.assertEqual(conn.execute("SHOW default_transaction_read_only").fetchone()[0], "on")
+            self.assertEqual(conn.execute("SHOW statement_timeout").fetchone()[0], "30s")
+            self.assertEqual(conn.execute("SHOW idle_in_transaction_session_timeout").fetchone()[0], "1min")
+            # The read service's cache fill takes a session advisory lock.
+            self.assertTrue(conn.execute("SELECT pg_try_advisory_lock(1, 2)").fetchone()[0])
+            with self.assertRaises(psycopg.errors.ReadOnlySqlTransaction):
+                conn.execute("CREATE TEMP TABLE scratch (id int)")
+            conn.rollback()
+        with psycopg.connect(self.target) as conn:
+            self.assertEqual(conn.execute("SELECT rolconnlimit FROM pg_roles WHERE rolname = 'bench_read'")
+                             .fetchone()[0], 200)
         with psycopg.connect(self.target) as conn:
             conn.execute("INSERT INTO commits (commit_sha, timestamp, tree_sha, url) "
                          "VALUES ('a', now(), 't', 'u')")

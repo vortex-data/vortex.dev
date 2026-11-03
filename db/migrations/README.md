@@ -80,6 +80,10 @@ lexicographic order, which equals numeric order under this convention.
 - `012_commit_branch.sql` — adds `commits.branch` (`NOT NULL DEFAULT 'develop'`; every earlier
   row came from `develop`) and the `(branch, timestamp DESC, commit_sha DESC)` index the read
   service's branch-filtered commit window uses. `migrator` applies it.
+- `013_read_role_limits.sql` — caps `bench_read` (005) as 011 caps `bench_ci_read`: 200
+  connections at most, and by default read-only transactions, a 30 s statement timeout and a
+  60 s idle-in-transaction timeout. Only the connection limit is enforced; a session can change
+  the defaults. Apply it as the RDS master.
 
 This README + the runner ship in PR-1.2; `001`/`002` land in PR-1.3, `003` in
 PR-1.4, `004` in PR-2.1, `005` in the Phase-4 operator-gate work (the v4
@@ -111,7 +115,7 @@ query_measurements` — the 006 prod backfill showed the planner needs it.)
 ## Bootstrap ordering — `requires-superuser` migrations
 
 Migrations whose header carries a `-- migrate-schema: requires-superuser`
-marker comment (currently `002`, `004`, `005`, `006`, `007`, `008`, and `011`; the marker in
+marker comment (currently `002`, `004`, `005`, `006`, `007`, `008`, `011`, and `013`; the marker in
 the file is authoritative, not this list) must be applied by a master-capable
 role. Before applying a marked file, the runner
 ([`db/migrate-schema.py`](../migrate-schema.py)) asserts the
