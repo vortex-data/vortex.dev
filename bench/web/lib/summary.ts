@@ -616,8 +616,9 @@ function compressionRankings(rows: readonly CompressionTimeSample[]): Compressio
  * Each independently benchmarked format uses its own newest complete snapshot.
  * Every sample uses Parquet timing from the same commit. Aggregate throughput uses the newest
  * available decoded Arrow memory size for each dataset. The size commit does not need to match.
- * The synthetic `wide table` and `sparse-wide` datasets are left out: they still chart in the
- * group, but not in its summary.
+ * The `wide table` and `sparse-wide` datasets are left out. They are pathological cases with many
+ * variants each, so in a geomean over all datasets they would be heavily over-represented. They
+ * still chart in the group.
  * The JSON field lookup returns `NULL` before migration 009 adds the column, so web deployment
  * does not depend on migration deployment order.
  */
@@ -784,8 +785,9 @@ function compressionSizeRankings(rows: readonly CompressionSizeSample[]): Compre
  * and compares it with Parquet from the same commit. Arrow IPC uses its newest value for each
  * dataset and Parquet from the same commit. Compression ratios use the newest available decoded
  * Arrow memory size for each dataset. The size commit does not need to match.
- * The synthetic `wide table` and `sparse-wide` datasets are left out: they still chart in the
- * group, but not in its summary.
+ * The `wide table` and `sparse-wide` datasets are left out. They are pathological cases with many
+ * variants each, so in a geomean over all datasets they would be heavily over-represented. They
+ * still chart in the group.
  * `uncompressed_bytes` is read as a plain column, so migration 009 must be applied before a web
  * deploy that includes this query. A JSON field lookup would tolerate an older schema, but it
  * serializes whole rows and timed out in production, so it was dropped once 009 was applied there.
