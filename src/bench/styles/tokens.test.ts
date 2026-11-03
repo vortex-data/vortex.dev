@@ -156,6 +156,13 @@ describe("bench's stylesheet on the system's tokens", () => {
 
   it('sticks the toolbar at the top, on the ground, padded like the header', () => {
     expect(valueOf('.bench-toolbar', 'position')).toBe('sticky');
+    // `hidden` on the root would make body a scroll container that never scrolls, and the
+    // toolbar would stick to it, not to the window; `clip` clips without one.
+    expect(valueOf('body', 'overflow-x')).toBe('clip');
+    // The fixed Groups button needs room under the footer, or it covers the footer's mark.
+    expect(valueOf('.bench-frame:has(.group-nav-toggle)', 'padding-bottom')).toBe('3.5rem');
+    // On a phone the buttons' words hide, but the Filters count stays in view.
+    expect(css).toMatch(/\.bench-toolbar-controls \.control-btn > span:not\(\.filter-badge\),/);
     expect(valueOf('.bench-toolbar', 'top')).toBe('0');
     expect(valueOf('.bench-toolbar', 'background')).toBe('var(--ground)');
     expect(valueOf('.bench-toolbar', 'padding')).toBe('0 var(--page-pad)');

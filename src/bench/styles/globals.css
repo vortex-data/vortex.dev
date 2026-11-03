@@ -43,7 +43,7 @@ body {
   padding: 0;
   width: 100%;
   min-width: 0;
-  overflow-x: hidden;
+  overflow-x: clip;
   background: var(--ground);
   color: var(--ink);
   /* The system's faces, self-hosted by next/font (src/lib/fonts.ts). Each
@@ -100,6 +100,11 @@ a:hover {
 
 .bench-frame > main {
   flex: 1 0 auto;
+}
+
+/* Room under the footer for the fixed Groups button (GroupNav), which would cover its mark. */
+.bench-frame:has(.group-nav-toggle) {
+  padding-bottom: 3.5rem;
 }
 
 .bench-toolbar {
@@ -1428,7 +1433,7 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
  * ---------------------------------------------------------------------- */
 /* On a phone the toolbar's buttons keep their icons, and their words stay as their names. */
 @media (max-width: 480px) {
-  .bench-toolbar-controls .control-btn > span,
+  .bench-toolbar-controls .control-btn > span:not(.filter-badge),
   .theme-toggle-label {
     position: absolute;
     width: 1px;
