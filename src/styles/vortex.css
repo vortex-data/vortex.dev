@@ -1,7 +1,7 @@
 /* Vortex design system components (sections: base, brand, site, docs, blog, focus), copied by tools/site-styles.mjs.
    Edit the system, then run tools/site-styles.mjs; do not edit here.
    Made by: node tools/site-styles.mjs <site> --sections base,brand,site,docs,blog,focus --faces --vx-face --base
-   sha256 d01b9f6b392ab1d6753f955d8e4aff8cf1e113537a99faac4daf964d0a07a55c */
+   sha256 5130c175e87bd6573c902fea6df7c6ae8c31472f05602491b77df211d76996d3 */
 
 /* ------------------------------------------------------------------ base */
 /* Every component sizes with border-box, so it draws the same under a site's reset or none. */
@@ -522,6 +522,10 @@
    Menu button, so the controls have the room. The label can be the page's h1. */
 .vx-header-label { margin: 0; }
 .vx-header.has-tools { position: sticky; top: 0; z-index: 1000; }
+/* No vertical rules: the tools sit between the groups, so rules closing off the wordmark and the
+   end group would only fence the controls in, and the label reads as part of the wordmark. */
+.vx-header.has-tools .vx-header-start, .vx-header.has-tools .vx-header-end { background: none; }
+.vx-header.has-tools .vx-header-label { border-left: 0; padding-left: 0; }
 .vx-header.has-tools .vx-header-nav { display: none; }
 .vx-header.has-tools .vx-header-menu { display: block; }
 .vx-header-tools { display: flex; align-items: center; gap: var(--space-12); margin-left: auto; min-width: 0; }
