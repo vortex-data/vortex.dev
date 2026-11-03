@@ -14,7 +14,8 @@ const classes = (...names: (string | false)[]) =>
  * The design system's results table, drawn in JSX from the system's own
  * rules (benchmark-card.js): a row per panel and a column per system, Vortex
  * first in Blue, the best figure in each row underlined, and how Vortex does
- * against Parquet last. Its markup is the same as the system's
+ * against the best other system last, whose figure is dotted. On a phone,
+ * where only Vortex's column shows, the verdict names that system. Its markup is the same as the system's
  * `renderResults`, and tests/unit/results-table.test.tsx holds it there. A
  * row whose figures are not bench's names their source in its head's hover
  * title and screen-reader text. The page leaves the table out when the
@@ -49,7 +50,7 @@ export function ResultsTable({
                 </th>
               ))}
               <th scope="col" className="is-verdict">
-                vs Parquet
+                vs best other
               </th>
             </tr>
           </thead>
@@ -70,6 +71,7 @@ export function ResultsTable({
                       className={classes(
                         c.ours && "is-ours",
                         c.best && "is-best",
+                        c.versus && "is-versus",
                         c.state !== "measured" && "is-missing"
                       )}
                       title={`${c.system}: ${c.exact}`}
@@ -77,7 +79,15 @@ export function ResultsTable({
                       {c.label}
                     </td>
                   ))}
-                  <td className="is-verdict">{row.verdict}</td>
+                  <td className="is-verdict">
+                    {row.verdict}
+                    {row.versus && (
+                      <span className="vx-results-than">
+                        {" "}
+                        than {row.versus}
+                      </span>
+                    )}
+                  </td>
                 </tr>
               );
             })}
@@ -85,7 +95,12 @@ export function ResultsTable({
         </table>
       </div>
       <p className="vx-results-foot">
-        <span>Underlined: the best in each row</span>
+        <span>
+          Underlined: the best in each row
+          <span className="vx-results-key-versus">
+            . Dotted: the best other
+          </span>
+        </span>
         <a className="vx-source vx-nav-link" href={SOURCE_URL}>
           bench.vortex.dev
           <OpenInNewIcon />

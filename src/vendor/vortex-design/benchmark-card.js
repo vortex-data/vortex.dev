@@ -119,6 +119,24 @@ export function versusParquet(rows, better) {
   return { factor: Math.max(v.score / p.score, p.score / v.score), vortexWins, tie: v.score === p.score, missing: null };
 }
 
+/**
+ * Vortex against the best other measured system the panel shows: {system, factor, vortexWins, tie,
+ * missing}, as `versusParquet` gives for Parquet, with `system` the one compared. Systems that are
+ * N/A or not measured never count, and a tie for best goes to the first in the panel's order. When
+ * Vortex is not measured `missing` is "Vortex"; when no other system is, it is "others".
+ */
+export function versusBestOther(rows, better, systems) {
+  const shown = pickSystems(rows, systems);
+  const v = find(shown, "vortex");
+  const none = (missing) => ({ system: null, factor: null, vortexWins: null, tie: null, missing });
+  if (!isMeasured(v)) return none("Vortex");
+  const others = shown.filter((r) => !isOurs(r.system) && !r.unavailable && isMeasured(r));
+  if (!others.length) return none("others");
+  const o = others.reduce((a, b) => ((better === "higher" ? b.score > a.score : b.score < a.score) ? b : a));
+  const vortexWins = better === "higher" ? v.score > o.score : v.score < o.score;
+  return { system: o.system, factor: Math.max(v.score / o.score, o.score / v.score), vortexWins, tie: v.score === o.score, missing: null };
+}
+
 /** A factor in ×: 32× from 10 up, 5.1× from 1.1 up, 1.07× below, — for none. The card uses it from 2× up (`panelFactor`). */
 export function formatFactor(f) {
   if (!Number.isFinite(f)) return "—";
@@ -257,10 +275,12 @@ export function resultsSystems(panels) {
 }
 
 /**
- * One panel as a row of the results table: {name, cells, verdict}. `name` is the panel's `short`
- * name, or its title. There is a cell per name in `systems`, with the label and exact value a bar
- * shows (`panelRows`); a system the panel does not show was not run, and reads "—". `best` marks
- * the measured cells with the panel's best score, every one of them when they tie.
+ * One panel as a row of the results table: {name, cells, verdict, versus, source}. `name` is the
+ * panel's `short` name, or its title. There is a cell per name in `systems`, with the label and exact
+ * value a bar shows (`panelRows`); a system the panel does not show was not run, and reads "—".
+ * `best` marks the measured cells with the panel's best score, every one of them when they tie.
+ * `verdict` is how Vortex does against the best other system (`versusBestOther`), `versus` names
+ * that system, and its cell is marked `versus`.
  */
 export function resultsRow(panel, systems) {
   const { title, short, unit, kind, better, rows } = panel;
@@ -268,15 +288,20 @@ export function resultsRow(panel, systems) {
   const top = shown[0]?.state === "measured" ? shown[0].score : null;
   const cells = systems.map((system) => {
     const r = shown.find((x) => String(x.system).toLowerCase() === String(system).toLowerCase());
-    if (!r) return { system, label: "—", exact: "not run in this benchmark", state: "not-run", ours: isOurs(system), best: false };
+    if (!r) return { system, label: "—", exact: "not run in this benchmark", state: "not-run", ours: isOurs(system), best: false, versus: false };
     return { system, label: r.label, exact: r.exact, state: r.state, ours: r.ours, best: top !== null && r.state === "measured" && r.score === top };
   });
-  return { name: short ?? title, cells, verdict: panelVerdict(kind, versusParquet(rows, better)), source: panel.source ?? null };
+  const vs = versusBestOther(rows, better, panel.systems);
+  const versus = vs.system;
+  for (const c of cells) c.versus = versus !== null && String(c.system).toLowerCase() === String(versus).toLowerCase();
+  const verdict = vs.missing === "others" ? "no other system measured" : panelVerdict(kind, vs);
+  return { name: short ?? title, cells, verdict, versus, source: panel.source ?? null };
 }
 
 /**
  * The results table: one row per panel and a column per system, Vortex first in Blue, the best
- * figure in each row underlined, and the verdict against Parquet last. `read` is the date the
+ * figure in each row underlined, and the verdict against the best other system last. That system's
+ * figure is dotted; on a phone, where only Vortex's column shows, the verdict names it. `read` is the date the
  * figures were read ("2 Nov 2026"), for the head; the foot keys the underline and links bench.
  * `icon` is the markup of the open_in_new icon that ends the source link, as every source line does.
  */
@@ -284,16 +309,16 @@ export function renderResults(panels, { read, icon = "" } = {}) {
   const systems = resultsSystems(panels);
   const cls = (...c) => (c.filter(Boolean).length ? ` class="${c.filter(Boolean).join(" ")}"` : "");
   const head = `<p class="vx-results-head"><span>Against other file formats</span>${read ? `<span class="vx-results-read">read ${esc(read)}</span>` : ""}</p>`;
-  const cols = `<tr><th scope="col">Benchmark</th>${systems.map((s) => `<th scope="col"${cls(isOurs(s) && "is-ours")}>${esc(s)}</th>`).join("")}<th scope="col" class="is-verdict">vs Parquet</th></tr>`;
+  const cols = `<tr><th scope="col">Benchmark</th>${systems.map((s) => `<th scope="col"${cls(isOurs(s) && "is-ours")}>${esc(s)}</th>`).join("")}<th scope="col" class="is-verdict">vs best other</th></tr>`;
   const body = panels
     .map((p) => {
       const row = resultsRow(p, systems);
-      const cells = row.cells.map((c) => `<td${cls(c.ours && "is-ours", c.best && "is-best", c.state !== "measured" && "is-missing")} title="${esc(c.system)}: ${esc(c.exact)}">${esc(c.label)}</td>`).join("");
+      const cells = row.cells.map((c) => `<td${cls(c.ours && "is-ours", c.best && "is-best", c.versus && "is-versus", c.state !== "measured" && "is-missing")} title="${esc(c.system)}: ${esc(c.exact)}">${esc(c.label)}</td>`).join("");
       const src = row.source ? ` title="${esc(row.source.note)}"` : "";
       const srText = row.source ? `<span class="vx-sr-only">, ${esc(row.source.note)}</span>` : "";
-      return `<tr><th scope="row"${src}>${esc(row.name)}${srText}</th>${cells}<td class="is-verdict">${esc(row.verdict)}</td></tr>`;
+      return `<tr><th scope="row"${src}>${esc(row.name)}${srText}</th>${cells}<td class="is-verdict">${esc(row.verdict)}${row.versus ? `<span class="vx-results-than"> than ${esc(row.versus)}</span>` : ""}</td></tr>`;
     })
     .join("");
-  const foot = `<p class="vx-results-foot"><span>Underlined: the best in each row</span><a class="vx-source vx-nav-link" href="https://bench.vortex.dev">bench.vortex.dev${icon}</a></p>`;
+  const foot = `<p class="vx-results-foot"><span>Underlined: the best in each row<span class="vx-results-key-versus">. Dotted: the best other</span></span><a class="vx-source vx-nav-link" href="https://bench.vortex.dev">bench.vortex.dev${icon}</a></p>`;
   return `<section class="vx-frame vx-results" aria-label="Benchmark results">${head}<div class="vx-results-wrap"><table class="vx-results-table"><thead>${cols}</thead><tbody>${body}</tbody></table></div>${foot}</section>`;
 }
