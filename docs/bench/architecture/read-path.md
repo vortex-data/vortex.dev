@@ -93,9 +93,10 @@ constant-time.
 | `GET /api/health` | database liveness via `SELECT 1`, build SHA, and schema version (200/503, never cached) |
 
 The `?n=` query parameter selects the commit window: `?n=all` is uncapped;
-numeric values are floored to 1 and clamped to `MAX_NUMERIC_COMMIT_WINDOW = 1000`
-(a DoS floor against `?n=99999999`); absent/malformed falls back to the default
-100. **Only the default last-100 window uses the Data Cache** — every other window
+a numeric value snaps up to the next rung of `COMMIT_WINDOW_RUNGS` (25, 50, 100,
+200, 500, 1000; the top rung, `MAX_NUMERIC_COMMIT_WINDOW`, is a DoS floor against
+`?n=99999999`, and the rungs keep each slug to seven window URLs); absent/malformed
+falls back to the default 100. **Only the default last-100 window uses the Data Cache** — every other window
 runs a direct query and rides the per-URL CDN cache, so cache keys don't explode.
 Visual downsampling of wide windows is done client-side, not by capping the
 server window.

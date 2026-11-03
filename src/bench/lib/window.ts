@@ -19,6 +19,24 @@ export const DEFAULT_COMMIT_WINDOW = 100;
 export const MAX_NUMERIC_COMMIT_WINDOW = 1000;
 
 /**
+ * The numeric windows the read paths serve, smallest first. A numeric `?n=`
+ * snaps up to the first rung that holds it, so a chart gets at least the
+ * commits asked for. Only the default window is read through the Data Cache;
+ * every other window is a direct database query that the CDN caches per URL,
+ * so without the rungs a client walking `?n=1`, `?n=2`, … `?n=1000` would send
+ * a thousand direct queries per chart or group. With them, each has seven
+ * window URLs: these six and `all`. Add a rung only with that cost in mind.
+ */
+export const COMMIT_WINDOW_RUNGS: readonly number[] = [
+  25,
+  50,
+  DEFAULT_COMMIT_WINDOW,
+  200,
+  500,
+  MAX_NUMERIC_COMMIT_WINDOW,
+];
+
+/**
  * Resolved commit window. `Last(n)` keeps the most recent `n` commits; `All`
  * returns every commit ever ingested.
  */
@@ -27,10 +45,11 @@ export type CommitWindow = { kind: 'all' } | { kind: 'last'; n: number };
 /**
  * Parse the `?n=...` query parameter. `null`/`undefined` and malformed values
  * fall back to the default window. `"all"` (any case, surrounding whitespace
- * trimmed) means unbounded. Numeric values are floored to `1` (so `?n=0`
- * becomes `?n=1`) and clamped down to [`MAX_NUMERIC_COMMIT_WINDOW`]. A value
- * that overflows `u32` (the Rust parse type) is treated as malformed and falls
- * back to the default, matching `window.rs`.
+ * trimmed) means unbounded. A numeric value snaps up to the first rung of
+ * [`COMMIT_WINDOW_RUNGS`] that holds it (so `?n=0` and `?n=1` become `?n=25`,
+ * and `?n=150` becomes `?n=200`), and down to [`MAX_NUMERIC_COMMIT_WINDOW`].
+ * A value that overflows `u32` (the Rust parse type) is treated as malformed
+ * and falls back to the default, matching `window.rs`.
  */
 export function parseCommitWindow(raw: string | null | undefined): CommitWindow {
   if (raw === null || raw === undefined) {
@@ -51,8 +70,8 @@ export function parseCommitWindow(raw: string | null | undefined): CommitWindow 
   if (value > U32_MAX) {
     return { kind: 'last', n: DEFAULT_COMMIT_WINDOW };
   }
-  const clamped = Math.min(Math.max(value, 1), MAX_NUMERIC_COMMIT_WINDOW);
-  return { kind: 'last', n: clamped };
+  const rung = COMMIT_WINDOW_RUNGS.find((r) => r >= value) ?? MAX_NUMERIC_COMMIT_WINDOW;
+  return { kind: 'last', n: rung };
 }
 
 /**
@@ -63,7 +82,7 @@ export function commitWindowLimit(window: CommitWindow): number | null {
   return window.kind === 'all' ? null : window.n;
 }
 
-/** The canonical `?n=` spelling of a window: `all`, or the clamped count. */
+/** The canonical `?n=` spelling of a window: `all`, or the rung it snapped to. */
 export function windowParam(window: CommitWindow): string {
   return window.kind === 'all' ? 'all' : String(window.n);
 }

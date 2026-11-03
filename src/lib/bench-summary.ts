@@ -4,9 +4,10 @@ import { GPU_PANEL } from "./gpu-result";
 
 const GROUPS_URL = "https://bench.vortex.dev/api/groups";
 const GROUP_URL = "https://bench.vortex.dev/api/group/";
-// The commits a group's charts load. Each system's latest time per query is
-// in the last few commits, and a short window keeps the payload small.
-const WINDOW = 20;
+// The commits a group's charts load: bench's smallest window (its
+// `COMMIT_WINDOW_RUNGS`), so the request is not redirected. Each system's
+// latest time per query is in the last few commits.
+const WINDOW = 25;
 const DAY_SECONDS = 86400;
 const TIMEOUT_MS = 5000;
 

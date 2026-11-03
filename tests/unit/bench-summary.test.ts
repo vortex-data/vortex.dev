@@ -28,7 +28,7 @@ const fixture = (name: string) =>
 const PAYLOAD = fixture("bench-groups.json") as {
   groups: Record<string, unknown>[];
 };
-// bench.vortex.dev/api/group/{slug}?n=20 for the two time panels' groups, read
+// bench.vortex.dev/api/group/{slug}?n=25 for the two time panels' groups, read
 // at the same time, cut down to the series the card reads (and one it does
 // not) and their last five commits. Random access's hot series were read on
 // 30 Oct 2026, from the same two commits as the rest.
@@ -457,7 +457,7 @@ const bench =
     if (url === "https://bench.vortex.dev/api/groups")
       return json(groupsBody, 200, headers);
     for (const name of ["Clickbench", "Random Access (NVMe)"] as const)
-      if (url === `https://bench.vortex.dev/api/group/${slugOf(name)}?n=20`)
+      if (url === `https://bench.vortex.dev/api/group/${slugOf(name)}?n=25`)
         return json(CHARTS[name]);
     return json({ error: "not_found" }, 404);
   };
@@ -474,8 +474,8 @@ describe("getBenchSummary", () => {
       calls.map((c) => c.url),
       [
         "https://bench.vortex.dev/api/groups",
-        `https://bench.vortex.dev/api/group/${slugOf("Clickbench")}?n=20`,
-        `https://bench.vortex.dev/api/group/${slugOf("Random Access (NVMe)")}?n=20`
+        `https://bench.vortex.dev/api/group/${slugOf("Clickbench")}?n=25`,
+        `https://bench.vortex.dev/api/group/${slugOf("Random Access (NVMe)")}?n=25`
       ]
     );
     for (const call of calls) {
