@@ -1,0 +1,126 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: Copyright the Vortex contributors
+
+import { unstable_cache } from 'next/cache';
+
+import { retryGroupCacheFill, withGroupCacheFillLock } from '@/bench/lib/cache-fill';
+import type { FilterUniverse } from '@/bench/lib/chart-format';
+import {
+  chartPayload,
+  collectFilterUniverse,
+  collectGroupCharts,
+  collectGroups,
+  type ChartResponse,
+  type Group,
+  type GroupChartsResponse,
+} from '@/bench/lib/queries';
+import {
+  chartKeyFromSlug,
+  chartKeyToSlug,
+  groupKeyFromSlug,
+  groupKeyToSlug,
+} from '@/bench/lib/slug';
+import { DEFAULT_COMMIT_WINDOW } from '@/bench/lib/window';
+
+/**
+ * The single revalidation tag shared by every cached read below. A successful
+ * ingest marks the whole layer stale with one [`revalidateTag`] call from
+ * `POST /api/revalidate`: the next read of each entry serves the previous data
+ * once and refreshes it in the background, so newly ingested data shows up on
+ * the read after that rather than waiting out a TTL.
+ */
+export const BENCH_DATA_TAG = 'bench-data';
+
+/**
+ * Backstop revalidation interval (seconds) for every cached read. The
+ * post-ingest revalidate hook is the primary freshness mechanism; this bound
+ * caps staleness at twenty-four hours if that hook ever fails to fire, so the
+ * layer degrades to bounded staleness rather than serving stale data forever.
+ *
+ * The window is one day rather than one hour because this is a low-traffic
+ * site: a longer backstop keeps the default last-100 window warm across
+ * overnight idle gaps, so a CDN miss reads this Data Cache instead of paying
+ * the multi-second cold database fill. The freshness cost is bounded by the
+ * revalidate hook, which marks the tag stale on every ingest once its env is
+ * set.
+ */
+export const DATA_CACHE_BACKSTOP_SECONDS = 86400;
+
+const CACHE_OPTIONS = { tags: [BENCH_DATA_TAG], revalidate: DATA_CACHE_BACKSTOP_SECONDS };
+
+/**
+ * Version of cached group payloads, including their embedded summary wire shape.
+ * This value must change when a deployment cannot read the preceding shape, and
+ * when the same data would give a different payload, as after a change to a
+ * summary query. The Data Cache outlives a deploy, so without a new key the new
+ * code can serve payloads the old code computed until the next ingest.
+ * It is independent of the producer-facing benchmark schema version.
+ */
+const GROUP_PAYLOAD_CACHE_VERSION = 'v10';
+
+// The default last-100 group bundle, keyed by group slug. The slug is the cache
+// key (an `unstable_cache` argument), so one wrapper covers every group. A
+// `null` result (the group has no data) is cached too, which is correct: a
+// missing group stays a 404 until the next ingest revalidates the tag. Each
+// group fills under its own lock, so different groups fill at once. Callers
+// pass the canonical slug (`cachedDefaultGroupCharts`), so every spelling of a
+// group shares one entry and one lock.
+const groupChartsCached = unstable_cache(
+  async (slug: string): Promise<GroupChartsResponse | null> =>
+    withGroupCacheFillLock(`group-charts:${slug}`, () =>
+      collectGroupCharts(groupKeyFromSlug(slug), { kind: 'last', n: DEFAULT_COMMIT_WINDOW }),
+    ),
+  [`data-cache:group-charts:${GROUP_PAYLOAD_CACHE_VERSION}:n100`],
+  CACHE_OPTIONS,
+);
+
+const chartPayloadCached = unstable_cache(
+  async (slug: string): Promise<ChartResponse | null> =>
+    chartPayload(chartKeyFromSlug(slug), { kind: 'last', n: DEFAULT_COMMIT_WINDOW }),
+  ['data-cache:chart-payload:n100'],
+  CACHE_OPTIONS,
+);
+
+// The group list runs every group's summary at once, so it takes every fill
+// slot in its process (see `cacheFillSlots`).
+const groupsCached = unstable_cache(
+  async (): Promise<Group[]> =>
+    withGroupCacheFillLock('groups', collectGroups, { exclusive: true }),
+  [`data-cache:groups:${GROUP_PAYLOAD_CACHE_VERSION}`],
+  CACHE_OPTIONS,
+);
+
+const filterUniverseCached = unstable_cache(
+  async (): Promise<FilterUniverse> => collectFilterUniverse(),
+  ['data-cache:filter-universe'],
+  CACHE_OPTIONS,
+);
+
+/**
+ * The default last-100 bundle for one group, served from the Data Cache. A slug
+ * decodes leniently (the prefix, field order and unknown fields are ignored), so
+ * many slugs name one group; the entry and its fill lock use the canonical one.
+ * Rejects like `groupKeyFromSlug` on a malformed slug.
+ */
+export async function cachedDefaultGroupCharts(slug: string): Promise<GroupChartsResponse | null> {
+  const canonical = groupKeyToSlug(groupKeyFromSlug(slug));
+  return retryGroupCacheFill(() => groupChartsCached(canonical));
+}
+
+/**
+ * The default last-100 payload for one chart, served from the Data Cache under
+ * the chart's canonical slug, like [`cachedDefaultGroupCharts`].
+ */
+export async function cachedDefaultChartPayload(slug: string): Promise<ChartResponse | null> {
+  return chartPayloadCached(chartKeyToSlug(chartKeyFromSlug(slug)));
+}
+
+/** Every group + chart link, served from the Data Cache. */
+export function cachedGroups(): Promise<Group[]> {
+  return retryGroupCacheFill(groupsCached);
+}
+
+/** The filter chip universe, served from the Data Cache. */
+export function cachedFilterUniverse(): Promise<FilterUniverse> {
+  return filterUniverseCached();
+}

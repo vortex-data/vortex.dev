@@ -19,15 +19,17 @@ permissions:
   contents: read
 
 jobs:
-  # Which app a change touches. The marketing-site jobs below skip on changes
-  # that only touch bench/, which has its own CI in bench-ci.yml. The
-  # repository-wide checks (dependency review, secret scan, REUSE) always run.
+  # Which site a change touches (see .github/actions/changed-paths). The
+  # marketing site's jobs skip on changes to bench's own files, and bench's
+  # job skips on changes to the site's. The repository-wide checks (dependency
+  # review, secret scan, REUSE) always run.
   changes:
     name: Detect changed paths
     runs-on: ubuntu-26.04
     timeout-minutes: 5
     outputs:
       site: ${{ steps.paths.outputs.site }}
+      bench: ${{ steps.paths.outputs.bench }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
@@ -40,8 +42,8 @@ jobs:
     name: Lint, build, verify
     needs: changes
     # Skipped, which counts as passing for this required check, when only
-    # bench/ changed. If the path check itself fails, run anyway rather than
-    # skip a required check.
+    # bench's own files changed. If the path check itself fails, run anyway
+    # rather than skip a required check.
     if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.site == 'true') }}
     runs-on: ubuntu-26.04
     timeout-minutes: 10
@@ -173,6 +175,27 @@ jobs:
       - name: Server logs (on failure)
         if: failure()
         run: cat /tmp/server.log || true
+
+  # bench's checks (.github/actions/bench-checks): its infrastructure tests,
+  # format and lint, the app's build, the migration-runner and deploy-check
+  # tests, and its Vitest suite with the Postgres integration tests. The name
+  # is a required check on main; keep it.
+  bench:
+    name: "Bench: format, lint, build, test"
+    needs: changes
+    # Skipped, which counts as passing, when nothing bench builds from
+    # changed. If the path check itself fails, run anyway rather than skip.
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.bench == 'true') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Bench checks
+        uses: ./.github/actions/bench-checks
 
   # Reports dependency advisories WITHOUT gating merges. A new advisory can
   # surface at any time from an upstream publish, with no change on our

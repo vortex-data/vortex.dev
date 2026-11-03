@@ -1,11 +1,11 @@
 # Bun configuration. Project-scoped — Bun merges this with $HOME/.bunfig.toml.
 
 [install]
-# Link only the dependencies each package declares, as pnpm did for bench,
-# instead of hoisting every package to the top of node_modules: no code can
-# load a transitive dependency that its own package does not declare. This is
-# also Bun's default for a workspace; it is set here so that the install
-# layout does not change with that default.
+# Link only the dependencies each package declares, instead of hoisting every
+# package to the top of node_modules: no code can load a transitive
+# dependency that its own package does not declare. bench was installed this
+# way before it joined the root package; Bun's default for a single package
+# is to hoist, so the setting keeps the layout.
 linker = "isolated"
 
 # Refuse to install package versions younger than 7 days. Mirrors the

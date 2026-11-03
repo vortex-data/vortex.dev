@@ -2,7 +2,7 @@ import LFMark from "@/assets/lf_white.svg";
 import { REPO_URL } from "@/lib/github";
 
 // No project code of conduct exists, so the LF Projects one applies
-// (charter section 6.b). The charter is a route (src/app/charter.pdf), so it
+// (charter section 6.b). The charter is a route (src/app/(site)/charter.pdf), so it
 // takes a plain link like the rest.
 const LINKS = [
   { href: "/charter.pdf", label: "Charter" },

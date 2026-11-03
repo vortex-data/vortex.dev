@@ -18,9 +18,7 @@
       "!out",
       "!build",
       "!next-env.d.ts",
-      "!bench/web/.next",
-      "!bench/web/next-env.d.ts",
-      "!src/app/globals.css",
+      "!src/app/(site)/globals.css",
       "!src/styles/vortex-tokens.css",
       "!src/styles/vortex.css",
       "!src/styles/vortex-base.css",
@@ -101,7 +99,15 @@
   },
   "overrides": [
     {
-      "includes": ["bench/**"],
+      "includes": [
+        "src/bench/**",
+        "src/app/(bench)/**",
+        "src/css.d.ts",
+        "scripts/parity/**",
+        "scripts/verify-web-deploy.mjs",
+        "scripts/verify-web-deploy.test.mjs",
+        "vitest.config.ts"
+      ],
       "formatter": {
         "lineWidth": 100
       },

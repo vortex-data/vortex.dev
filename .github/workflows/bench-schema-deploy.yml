@@ -1,19 +1,19 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: Copyright the Vortex contributors
 #
-# Apply Postgres schema migrations from `bench/migrations/*.sql` to the bench RDS
-# instance via `bench/scripts/migrate-schema.py`. Connects to the public RDS
+# Apply Postgres schema migrations from `db/migrations/*.sql` to the bench RDS
+# instance via `db/migrate-schema.py`. Connects to the public RDS
 # instance endpoint as the `migrator` IAM-auth role using a short-lived token
 # generated client-side from the OIDC-assumed schema role.
 #
 # Trigger is `workflow_dispatch` ONLY: an operator runs it manually from main
 # (optionally `dry_run` for a status-only preview). The AWS role trusts exactly
-# `repo:vortex-data/vortex.dev:ref:refs/heads/main` (see bench/infra/provision.sh
+# `repo:vortex-data/vortex.dev:ref:refs/heads/main` (see infra/provision.sh
 # and its test), so a run from any other ref fails at the credentials step.
 #
 # Bootstrap: CI can only IAM-auth as `migrator`; the FIRST apply must be run once by
 # the RDS master user out-of-band to create the `migrator` role + grant ledger access.
-# Every subsequent apply runs here as `migrator`. See bench/infra/README.md.
+# Every subsequent apply runs here as `migrator`. See infra/README.md.
 
 name: Bench Schema Deploy
 
@@ -42,7 +42,7 @@ jobs:
     timeout-minutes: 15
     defaults:
       run:
-        working-directory: bench
+        working-directory: db
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
@@ -66,7 +66,7 @@ jobs:
           set -Eeuo pipefail
           export UV_EXCLUDE_NEWER="$(date -u -d '7 days ago' +%Y-%m-%dT%H:%M:%SZ)"
           uv venv "${RUNNER_TEMP}/migration-venv"
-          uv export --script scripts/migrate-schema.py --no-hashes > "${RUNNER_TEMP}/migration-requirements.txt"
+          uv export --script migrate-schema.py --no-hashes > "${RUNNER_TEMP}/migration-requirements.txt"
           uv pip install --python "${RUNNER_TEMP}/migration-venv/bin/python" -r "${RUNNER_TEMP}/migration-requirements.txt"
 
       - name: Configure AWS credentials via OIDC
@@ -112,13 +112,13 @@ jobs:
             # run reports without failing. Any other non-zero exit is an operational
             # failure (connection, permission, filesystem) and fails the step.
             status=0
-            "${RUNNER_TEMP}/migration-venv/bin/python" scripts/migrate-schema.py status || status=$?
+            "${RUNNER_TEMP}/migration-venv/bin/python" migrate-schema.py status || status=$?
             case "$status" in
               0) echo "dry_run: migration set matches the ledger." ;;
               1) echo "dry_run: pending or orphaned migrations detected." ;;
               *) echo "::error::Migration status failed (exit $status)."; exit "$status" ;;
             esac
           else
-            "${RUNNER_TEMP}/migration-venv/bin/python" scripts/migrate-schema.py apply
-            "${RUNNER_TEMP}/migration-venv/bin/python" scripts/migrate-schema.py status
+            "${RUNNER_TEMP}/migration-venv/bin/python" migrate-schema.py apply
+            "${RUNNER_TEMP}/migration-venv/bin/python" migrate-schema.py status
           fi

@@ -2,7 +2,7 @@ name: Lighthouse
 
 on:
   # Every pull request starts this workflow, and the `changes` job skips the
-  # audit when only bench changed. A skipped job reports success, so "Lighthouse
+  # audit when only bench's own files changed. A skipped job reports success, so "Lighthouse
   # audit" can be a required check; a workflow filtered out by `paths` would
   # never report and would block the merge.
   pull_request:
@@ -37,7 +37,7 @@ jobs:
     name: Lighthouse audit
     needs: changes
     # Lighthouse audits the marketing site only. Skipped, which counts as
-    # passing, when nothing outside bench/ changed. If the path check itself
+    # passing, when only bench's own files changed. If the path check itself
     # fails, run anyway rather than skip.
     if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.site == 'true') }}
     runs-on: ubuntu-26.04
