@@ -1,8 +1,13 @@
 name: Lighthouse
 
 # Lighthouse and axe for both sites, on each pull request's Vercel preview.
-# bench renders from its database, which only a deployment has, so one job
-# audits the site and bench together there, instead of a local build.
+# bench renders from its database, which only a deployment has, so the jobs
+# audit the site and bench together there, instead of a local build.
+#
+# Each page gets its own Lighthouse job, and axe runs in another, all at the
+# same time. They can't share a runner: a second audit or browser on the same
+# CPU would skew Lighthouse's timings. The `report` job, the required check
+# "Lighthouse and axe", collects their results.
 on:
   pull_request:
 
@@ -15,25 +20,109 @@ concurrency:
   group: lighthouse-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  PROXY: http://127.0.0.1:3201
+
 jobs:
-  audit:
-    name: Lighthouse and axe
+  lighthouse:
+    name: Lighthouse (${{ matrix.page }})
     # Fork PRs and Dependabot's PRs get no secrets, so they can't reach the
-    # protected preview. The job is skipped for them, which counts as passing
-    # for this required check.
+    # protected preview. The jobs are skipped for them, which counts as
+    # passing for the required check.
     if: github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
     runs-on: ubuntu-26.04
-    timeout-minutes: 40
+    timeout-minutes: 30
     permissions:
       contents: read
       deployments: read
-      pull-requests: write
-    env:
-      PROXY: http://127.0.0.1:3201
+    strategy:
+      fail-fast: false
+      # The keys of `pages` in lighthouserc.cjs.
+      matrix:
+        page: [home, blog, post, bench, chart]
     steps:
       # The PR's head commit, which Vercel built the preview from, not the
-      # merge commit a pull_request checkout defaults to: the config and specs
-      # must describe the app they audit (a post only on main would be a 404).
+      # merge commit a pull_request checkout defaults to: the config must
+      # describe the app it audits (a post only on main would be a 404).
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+
+      # The proxy and lighthouserc.cjs use only Node's built-in modules, so
+      # this job needs no `bun install`.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
+        with:
+          node-version-file: .nvmrc
+
+      - uses: ./.github/actions/preview-proxy
+        with:
+          sha: ${{ github.event.pull_request.head.sha }}
+          bypass-secret: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+
+      # Request the page once, so no Lighthouse run measures a cold start.
+      # The chart job audits the first chart bench lists, and finds none on
+      # a database with no charts.
+      - name: Pick the page and warm it
+        id: page
+        env:
+          PAGE: ${{ matrix.page }}
+        run: |
+          path="$(node -p "require('./lighthouserc.cjs').pages['${PAGE}'] ?? ''")"
+          if [ "${PAGE}" = chart ]; then
+            slug="$(curl -sf "${PROXY}/bench/api/groups" \
+              | jq -r '[.groups[] | select(.charts | length > 0)][0].charts[0].slug // empty')"
+            if [ -z "${slug}" ]; then
+              echo "::notice::bench lists no charts, so there is no chart page to audit."
+              exit 0
+            fi
+            echo "chart=/chart/${slug}" >> "$GITHUB_OUTPUT"
+            path="/bench/chart/${slug}"
+          fi
+          if [ -z "${path}" ]; then
+            echo "::notice::There is no ${PAGE} page to audit."
+            exit 0
+          fi
+          echo "path=${path}" >> "$GITHUB_OUTPUT"
+          curl -s -o /dev/null -w "%{http_code} %{time_total}s ${path}\n" "${PROXY}${path}"
+
+      # The action runs Lighthouse against the page, asserts the thresholds
+      # and uploads the reports to temporary public storage. Threshold
+      # rationale lives in lighthouserc.cjs.
+      - name: Lighthouse CI
+        if: steps.page.outputs.path != ''
+        uses: treosh/lighthouse-ci-action@3e7e23fb74242897f95c0ba9cabad3d0227b9b18  # v12
+        env:
+          BASE_URL: ${{ env.PROXY }}
+          LHCI_PAGE: ${{ matrix.page }}
+          BENCH_CHART_PATH: ${{ steps.page.outputs.chart }}
+        with:
+          configPath: ./lighthouserc.cjs
+          uploadArtifacts: false
+          temporaryPublicStorage: true
+
+      # The reports and the action's links.json, for the report job's
+      # comment, and for anyone who wants the full reports. Uploaded when the
+      # assertions fail too.
+      - name: Upload the reports
+        if: always() && steps.page.outputs.path != ''
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: lighthouse-${{ matrix.page }}
+          path: .lighthouseci/
+          include-hidden-files: true
+          if-no-files-found: ignore
+          retention-days: 7
+
+  axe:
+    name: axe
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      deployments: read
+    steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           ref: ${{ github.event.pull_request.head.sha }}
@@ -43,7 +132,7 @@ jobs:
         with:
           bun-version: 1.4.3
 
-      # Bun is the package manager and script runner; the proxy, lhci and
+      # Bun is the package manager and script runner; the proxy and
       # Playwright run on Node, pinned by .nvmrc.
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
         with:
@@ -60,106 +149,14 @@ jobs:
       - name: Install
         run: bun install --frozen-lockfile
 
-      # Vercel's git integration records the preview of each commit as a
-      # GitHub deployment in the "Preview" environment, and its success status
-      # holds the preview's URL. A build takes a few minutes.
-      - name: Wait for the Vercel preview
-        id: preview
-        env:
-          GH_TOKEN: ${{ github.token }}
-          SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          deployments="repos/${GITHUB_REPOSITORY}/deployments"
-          for _ in $(seq 1 80); do
-            id="$(gh api "${deployments}?sha=${SHA}&environment=Preview" \
-              --jq 'map(select(.creator.login == "vercel[bot]"))[0].id // empty')"
-            if [ -n "${id}" ]; then
-              read -r state url < <(gh api "${deployments}/${id}/statuses" \
-                --jq '.[0] | "\(.state) \(.environment_url // "")"')
-              case "${state}" in
-                success)
-                  echo "Preview: ${url}"
-                  echo "url=${url}" >> "$GITHUB_OUTPUT"
-                  exit 0 ;;
-                failure | error)
-                  echo "::error::The Vercel preview of ${SHA} failed."
-                  exit 1 ;;
-              esac
-            fi
-            sleep 15
-          done
-          echo "::error::No Vercel preview of ${SHA} after 20 minutes."
-          exit 1
-
-      # The proxy holds the bypass secret and adds it only to requests for the
-      # preview; see scripts/preview-proxy.mjs.
-      - name: Start the preview proxy
-        env:
-          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
-          PREVIEW_URL: ${{ steps.preview.outputs.url }}
-        run: |
-          node scripts/preview-proxy.mjs "${PROXY##*:}" "${PREVIEW_URL}" &
-          for _ in $(seq 1 30); do
-            if curl -sf -o /dev/null "${PROXY}/bench/api/health"; then exit 0; fi
-            sleep 1
-          done
-          echo "::error::bench's health check failed through the proxy."
-          curl -s "${PROXY}/bench/api/health" | head -c 500
-          exit 1
-
-      # Request each page once, so no Lighthouse run measures a cold start.
-      - name: Pick a chart page and warm the preview
-        id: chart
-        run: |
-          slug="$(curl -sf "${PROXY}/bench/api/groups" \
-            | jq -r '[.groups[] | select(.charts | length > 0)][0].charts[0].slug // empty')"
-          if [ -n "${slug}" ]; then echo "path=/chart/${slug}" >> "$GITHUB_OUTPUT"; fi
-          for path in / /blog /bench ${slug:+/bench/chart/${slug}}; do
-            curl -s -o /dev/null -w "%{http_code} %{time_total}s ${path}\n" "${PROXY}${path}"
-          done
-
-      # The action runs Lighthouse against each URL in lighthouserc.cjs,
-      # asserts the thresholds and uploads the reports to temporary public
-      # storage. Threshold rationale lives in lighthouserc.cjs.
-      - name: Lighthouse CI
-        id: lighthouse
-        uses: treosh/lighthouse-ci-action@3e7e23fb74242897f95c0ba9cabad3d0227b9b18  # v12
-        env:
-          BASE_URL: ${{ env.PROXY }}
-          BENCH_CHART_PATH: ${{ steps.chart.outputs.path }}
+      - uses: ./.github/actions/preview-proxy
         with:
-          configPath: ./lighthouserc.cjs
-          uploadArtifacts: true
-          temporaryPublicStorage: true
-
-      # A failed comment must not fail this required check, so both comment
-      # steps are non-fatal. `if: always()` so the comment still posts when
-      # assertions fail, and reviewers can see which category regressed.
-      - name: Format PR comment
-        if: always() && steps.lighthouse.outputs.links != ''
-        id: lh-comment
-        continue-on-error: true
-        env:
-          LINKS_JSON: ${{ steps.lighthouse.outputs.links }}
-        run: |
-          {
-            echo 'body<<COMMENT_EOF'
-            scripts/lighthouse-comment.sh 'Lighthouse audit'
-            echo 'COMMENT_EOF'
-          } >> "$GITHUB_OUTPUT"
-
-      - name: Post or update PR comment
-        if: always() && steps.lh-comment.outputs.body != ''
-        continue-on-error: true
-        uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88  # v3.0.5
-        with:
-          header: lighthouse
-          message: ${{ steps.lh-comment.outputs.body }}
+          sha: ${{ github.event.pull_request.head.sha }}
+          bypass-secret: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
 
       # The same browsers as the smoke tests in ci.yml, from the same cache,
       # keyed on the installed Playwright version and the runner image.
       - name: Get Playwright version
-        if: always() && steps.chart.outcome == 'success'
         id: playwright-version
         run: |
           VERSION=$(node -p "require('@playwright/test/package.json').version")
@@ -167,7 +164,6 @@ jobs:
           echo "image=${ImageOS:-unknown}" >> "$GITHUB_OUTPUT"
 
       - name: Cache Playwright browsers
-        if: always() && steps.chart.outcome == 'success'
         id: playwright-cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
         with:
@@ -175,7 +171,6 @@ jobs:
           key: ${{ runner.os }}-${{ steps.playwright-version.outputs.image }}-playwright-${{ steps.playwright-version.outputs.version }}
 
       - name: Install Playwright browsers
-        if: always() && steps.chart.outcome == 'success'
         env:
           CACHE_HIT: ${{ steps.playwright-cache.outputs.cache-hit }}
         run: |
@@ -185,13 +180,14 @@ jobs:
             bunx playwright install --with-deps chromium webkit
           fi
 
-      # `if: always()` so axe still runs when a Lighthouse assertion fails.
+      # playwright.config.ts runs one test at a time, for the smoke tests
+      # against the local server in ci.yml. The preview has no such limit, so
+      # axe uses the runner's four CPUs.
       - name: axe
-        if: always() && steps.chart.outcome == 'success'
         env:
           BASE_URL: ${{ env.PROXY }}
           BENCH_URL: ${{ env.PROXY }}/bench
-        run: bunx playwright test --grep @axe
+        run: bunx playwright test --grep @axe --workers=4
 
       # In CI, playwright.config.ts uses only the `github` reporter, so there
       # is no HTML report; a failed test keeps its trace in test-results/.
@@ -202,3 +198,63 @@ jobs:
           name: playwright-traces
           path: test-results/
           retention-days: 7
+
+  # The required check. It runs when a job above fails, so the comment still
+  # shows which page regressed, and it fails unless every job above passed.
+  # It is skipped with them for fork and Dependabot PRs.
+  report:
+    name: Lighthouse and axe
+    needs: [lighthouse, axe]
+    if: ${{ !cancelled() && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' }}
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+          sparse-checkout: scripts/lighthouse-comment.sh
+          sparse-checkout-cone-mode: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
+        with:
+          pattern: lighthouse-*
+          path: reports
+
+      # A failed comment must not fail this required check, so both comment
+      # steps are non-fatal.
+      - name: Format PR comment
+        id: lh-comment
+        continue-on-error: true
+        run: |
+          shopt -s nullglob
+          reports=(reports/*/lhr-*.json)
+          if [ "${#reports[@]}" -eq 0 ]; then exit 0; fi
+          links=(reports/*/links.json)
+          LINKS_JSON='{}'
+          if [ "${#links[@]}" -gt 0 ]; then LINKS_JSON="$(jq -s 'add' "${links[@]}")"; fi
+          export LINKS_JSON
+          {
+            echo 'body<<COMMENT_EOF'
+            scripts/lighthouse-comment.sh 'Lighthouse audit' "${reports[@]}"
+            echo 'COMMENT_EOF'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Post or update PR comment
+        if: steps.lh-comment.outputs.body != ''
+        continue-on-error: true
+        uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88  # v3.0.5
+        with:
+          header: lighthouse
+          message: ${{ steps.lh-comment.outputs.body }}
+
+      - name: Require every job to pass
+        env:
+          LIGHTHOUSE: ${{ needs.lighthouse.result }}
+          AXE: ${{ needs.axe.result }}
+        run: |
+          echo "Lighthouse: ${LIGHTHOUSE}, axe: ${AXE}"
+          [ "${LIGHTHOUSE}" = success ] && [ "${AXE}" = success ]
