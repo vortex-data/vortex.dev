@@ -1036,6 +1036,19 @@ export function parseFilterCsv(raw: string | null | undefined): string[] | null 
 }
 
 /**
+ * The one spelling of a `?engine=` / `?format=` allowlist: the values in `known`,
+ * deduplicated and sorted. A value bench does not know selects no series, so
+ * dropping it leaves the same series visible, and an allowlist of only unknown
+ * values becomes the empty one, which hides every series too.
+ */
+export function canonicalFilterCsv(raw: string, known: readonly string[]): string {
+  return (parseFilterCsv(raw) ?? [])
+    .filter((value) => known.includes(value))
+    .sort()
+    .join(',');
+}
+
+/**
  * Translate a URL allowlist into the active chip set. A null allowlist uses
  * the defaults, with every engine active. An explicit allowlist
  * is taken verbatim, even if a chip has since been added or removed from the

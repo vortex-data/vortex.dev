@@ -72,6 +72,16 @@ describe('canonicalWindowQuery', () => {
     expect(query('n=1000')).toBeNull();
   });
 
+  it('passes each kept value other than n through normalize', () => {
+    const upper = (_name: string, value: string) => value.toUpperCase();
+    expect(
+      canonicalWindowQuery(new URLSearchParams('n=all&engine=a'), ['n', 'engine'], upper),
+    ).toBe('n=all&engine=A');
+    expect(
+      canonicalWindowQuery(new URLSearchParams('n=all&engine=A'), ['n', 'engine'], upper),
+    ).toBeNull();
+  });
+
   it('drops parameters that are not allowed', () => {
     expect(query('n=all&x=1')).toBe('n=all');
     expect(query('x=1&n=50')).toBe('n=50');

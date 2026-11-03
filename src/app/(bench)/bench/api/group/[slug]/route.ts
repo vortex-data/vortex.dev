@@ -6,7 +6,7 @@ import { NextResponse } from 'next/server';
 import { READ_API_CACHE_CONTROL } from '@/bench/lib/cache';
 import { cachedDefaultGroupCharts } from '@/bench/lib/data-cache';
 import { collectGroupCharts } from '@/bench/lib/queries';
-import { groupKeyFromSlug, type GroupKey } from '@/bench/lib/slug';
+import { groupKeyFromSlug, groupKeyToSlug, type GroupKey } from '@/bench/lib/slug';
 import { benchPath } from '@/bench/lib/base-path';
 import { requestBenchBase } from '@/bench/lib/request-base';
 import { canonicalWindowQuery, DEFAULT_COMMIT_WINDOW, parseCommitWindow } from '@/bench/lib/window';
@@ -39,12 +39,20 @@ export async function GET(
     );
   }
   const search = new URL(request.url).searchParams;
-  // A non-default window is a direct query, so it gets one URL: see
-  // `canonicalWindowQuery`.
+  // A group has one URL, as a chart does: the canonical slug, and for a
+  // non-default window the canonical query (see the chart route).
+  const canonicalSlug = groupKeyToSlug(key);
   const canonical = canonicalWindowQuery(search, ['n']);
-  if (canonical !== null) {
-    const path = benchPath(await requestBenchBase(), `/api/group/${encodeURIComponent(slug)}`);
-    return new NextResponse(null, { status: 308, headers: { location: `${path}?${canonical}` } });
+  if (canonical !== null || canonicalSlug !== slug) {
+    const path = benchPath(
+      await requestBenchBase(),
+      `/api/group/${encodeURIComponent(canonicalSlug)}`,
+    );
+    const query = canonical ?? search.toString();
+    return new NextResponse(null, {
+      status: 308,
+      headers: { location: query === '' ? path : `${path}?${query}` },
+    });
   }
   const window = parseCommitWindow(search.get('n'));
   // The default last-100 window is served from the Data Cache (warm across

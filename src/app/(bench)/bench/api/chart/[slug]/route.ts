@@ -6,7 +6,7 @@ import { NextResponse } from 'next/server';
 import { READ_API_CACHE_CONTROL } from '@/bench/lib/cache';
 import { cachedDefaultChartPayload } from '@/bench/lib/data-cache';
 import { chartPayload } from '@/bench/lib/queries';
-import { chartKeyFromSlug, type ChartKey } from '@/bench/lib/slug';
+import { chartKeyFromSlug, chartKeyToSlug, type ChartKey } from '@/bench/lib/slug';
 import { benchPath } from '@/bench/lib/base-path';
 import { requestBenchBase } from '@/bench/lib/request-base';
 import { canonicalWindowQuery, DEFAULT_COMMIT_WINDOW, parseCommitWindow } from '@/bench/lib/window';
@@ -36,12 +36,23 @@ export async function GET(
     );
   }
   const search = new URL(request.url).searchParams;
-  // A non-default window is a direct query, so it gets one URL: see
-  // `canonicalWindowQuery`.
+  // A chart has one URL. A slug decodes from many spellings (any prefix, any
+  // field order), and the CDN keys on the spelling, so with a non-default
+  // window each spelling would be a new direct query: every other spelling
+  // redirects to the canonical slug, and the query is made canonical as well
+  // (see `canonicalWindowQuery`).
+  const canonicalSlug = chartKeyToSlug(key);
   const canonical = canonicalWindowQuery(search, ['n']);
-  if (canonical !== null) {
-    const path = benchPath(await requestBenchBase(), `/api/chart/${encodeURIComponent(slug)}`);
-    return new NextResponse(null, { status: 308, headers: { location: `${path}?${canonical}` } });
+  if (canonical !== null || canonicalSlug !== slug) {
+    const path = benchPath(
+      await requestBenchBase(),
+      `/api/chart/${encodeURIComponent(canonicalSlug)}`,
+    );
+    const query = canonical ?? search.toString();
+    return new NextResponse(null, {
+      status: 308,
+      headers: { location: query === '' ? path : `${path}?${query}` },
+    });
   }
   const window = parseCommitWindow(search.get('n'));
   // The default last-100 window is served from the Data Cache (warm across

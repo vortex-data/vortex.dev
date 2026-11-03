@@ -8,9 +8,14 @@ import { cache } from 'react';
 import { Chart } from '@/bench/components/Chart';
 import { Footer } from '@/bench/components/Footer';
 import { Header } from '@/bench/components/Header';
-import { parseFilterCsv, singleSearchParam, unitKindLabel } from '@/bench/lib/chart-format';
-import { cachedDefaultChartPayload } from '@/bench/lib/data-cache';
-import { chartPayload, collectFilterUniverse, type ChartResponse } from '@/bench/lib/queries';
+import {
+  canonicalFilterCsv,
+  parseFilterCsv,
+  singleSearchParam,
+  unitKindLabel,
+} from '@/bench/lib/chart-format';
+import { cachedDefaultChartPayload, cachedFilterUniverse } from '@/bench/lib/data-cache';
+import { chartPayload, type ChartResponse } from '@/bench/lib/queries';
 import { chartDescription, chartUrl, openGraph } from '@/bench/lib/site-files';
 import { chartKeyFromSlug, chartKeyToSlug, type ChartKey } from '@/bench/lib/slug';
 import { benchPath } from '@/bench/lib/base-path';
@@ -31,21 +36,41 @@ type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 const CHART_PAGE_PARAMS = ['n', 'engine', 'format'] as const;
 
 /**
- * Redirect a request for a non-default window to that window's one URL (see
- * `canonicalWindowQuery`). Both `generateMetadata` and the page call it before
- * `getChart`, because either one alone would already run the direct query.
+ * Redirect a request to the chart's one URL: the canonical slug (see the chart
+ * API route), and for a non-default window the canonical query (see
+ * `canonicalWindowQuery`), with `engine` and `format` cut to the values bench
+ * knows. Both `generateMetadata` and the page call it before `getChart`,
+ * because either one alone would already run the query. A malformed slug is
+ * left to the page's 404.
  */
-async function redirectToCanonicalWindow(slug: string, sp: Awaited<SearchParams>): Promise<void> {
+async function redirectToCanonical(slug: string, sp: Awaited<SearchParams>): Promise<void> {
+  let canonicalSlug: string;
+  try {
+    canonicalSlug = chartKeyToSlug(chartKeyFromSlug(slug));
+  } catch {
+    return;
+  }
   const search = new URLSearchParams();
   for (const [name, value] of Object.entries(sp)) {
     for (const v of Array.isArray(value) ? value : value === undefined ? [] : [value]) {
       search.append(name, v);
     }
   }
-  const canonical = canonicalWindowQuery(search, CHART_PAGE_PARAMS);
-  if (canonical !== null) {
-    const base = await requestBenchBase();
-    permanentRedirect(benchPath(base, `/chart/${encodeURIComponent(slug)}?${canonical}`));
+  const window = parseCommitWindow(search.get('n'));
+  const isDefault = window.kind === 'last' && window.n === DEFAULT_COMMIT_WINDOW;
+  // Without the universe the filters stay as sent: cutting them to nothing
+  // would hide every series behind a permanent redirect.
+  const universe = isDefault ? undefined : await cachedFilterUniverse().catch(() => undefined);
+  const canonical = canonicalWindowQuery(search, CHART_PAGE_PARAMS, (name, value) => {
+    if (universe === undefined) {
+      return value;
+    }
+    return canonicalFilterCsv(value, name === 'engine' ? universe.engines : universe.formats);
+  });
+  if (canonical !== null || canonicalSlug !== slug) {
+    const path = benchPath(await requestBenchBase(), `/chart/${encodeURIComponent(canonicalSlug)}`);
+    const query = canonical ?? search.toString();
+    permanentRedirect(query === '' ? path : `${path}?${query}`);
   }
 }
 
@@ -85,7 +110,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const sp = await searchParams;
-  await redirectToCanonicalWindow(slug, sp);
+  await redirectToCanonical(slug, sp);
   const chart = await getChart(slug, singleSearchParam(sp.n));
   if (chart === null) {
     return {};
@@ -136,13 +161,13 @@ export default async function ChartPage({
   } catch {
     notFound();
   }
-  await redirectToCanonicalWindow(slug, sp);
+  await redirectToCanonical(slug, sp);
   // The filter universe is OPTIONAL chrome, matching v3's `.ok()` on
   // `cached_filter_universe`: a failed universe query renders the page without
   // the filter dropdown rather than failing an otherwise renderable chart.
   const [chart, universe] = await Promise.all([
     getChart(slug, singleSearchParam(sp.n)),
-    collectFilterUniverse().catch(() => undefined),
+    cachedFilterUniverse().catch(() => undefined),
   ]);
   if (chart === null) {
     notFound();

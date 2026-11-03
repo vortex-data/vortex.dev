@@ -29,6 +29,7 @@ import {
   magnitudeReference,
   MAX_VISIBLE_POINTS,
   normalizeChartPayload,
+  canonicalFilterCsv,
   parseFilterCsv,
   parsePrNumber,
   pickDisplayUnit,
@@ -1059,5 +1060,19 @@ describe('commitLinkUrl', () => {
     expect(commitLinkUrl('No PR', 'https://github.com.example.com/x')).toBeNull();
     expect(commitLinkUrl('No PR', 'http://github.com/x')).toBeNull();
     expect(commitLinkUrl('No PR', null)).toBeNull();
+  });
+});
+
+describe('canonicalFilterCsv', () => {
+  const known = ['datafusion', 'duckdb', 'vortex'];
+
+  it('keeps known values, deduplicated and sorted', () => {
+    expect(canonicalFilterCsv('vortex, duckdb,vortex,,', known)).toBe('duckdb,vortex');
+  });
+
+  it('drops values bench does not know', () => {
+    expect(canonicalFilterCsv('duckdb,nonce-1', known)).toBe('duckdb');
+    expect(canonicalFilterCsv('nonce-1', known)).toBe('');
+    expect(canonicalFilterCsv('', known)).toBe('');
   });
 });

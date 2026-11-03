@@ -80,13 +80,15 @@ export function windowParam(window: CommitWindow): string {
  * page keeps those requests on the CDN.
  *
  * The canonical form keeps the `allowed` parameters in the request's order,
- * the first value of each, with `n` spelled by [`windowParam`]; it drops
- * every other parameter. A request with the default window returns `null`,
- * whatever else its query holds: it costs no direct query.
+ * the first value of each, with `n` spelled by [`windowParam`] and every other
+ * value passed through `normalize`; it drops every other parameter. A request
+ * with the default window returns `null`, whatever else its query holds: it
+ * costs no direct query.
  */
 export function canonicalWindowQuery(
   search: URLSearchParams,
   allowed: readonly string[],
+  normalize: (name: string, value: string) => string = (_name, value) => value,
 ): string | null {
   const window = parseCommitWindow(search.get('n'));
   if (window.kind === 'last' && window.n === DEFAULT_COMMIT_WINDOW) {
@@ -97,7 +99,7 @@ export function canonicalWindowQuery(
     if (!allowed.includes(name) || canonical.has(name)) {
       continue;
     }
-    canonical.set(name, name === 'n' ? windowParam(window) : value);
+    canonical.set(name, name === 'n' ? windowParam(window) : normalize(name, value));
   }
   const query = canonical.toString();
   return query === search.toString() ? null : query;
