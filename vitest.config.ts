@@ -31,7 +31,8 @@ export default defineConfig({
       'src/bench/lib/**/*.test.ts',
       'src/bench/components/**/*.test.tsx',
       'src/bench/styles/**/*.test.ts',
-      'src/app/(bench)/**/*.test.ts',
+      // Escaped: unescaped, the parentheses are a glob group and match nothing.
+      'src/app/\\(bench\\)/**/*.test.ts',
     ],
     // Pulling and starting the Postgres testcontainer can take tens of seconds
     // on a cold image cache, so the hook + test budgets are generous.
