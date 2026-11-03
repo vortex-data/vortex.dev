@@ -30,5 +30,6 @@ not part of the system. The site bundles three.js from npm (`three`,
 pinned in `package.json`) and passes it as the `three` option, because its Content Security
 Policy blocks the CDN copy the module loads by default.
 
-The site draws the BenchmarkCard's panels in JSX from `benchmark-card.js`'s rules, and
-`tests/unit/benchmark-card.test.tsx` checks that its markup equals `renderPanel`'s.
+The site draws the homepage's ResultsTable in JSX (`src/components/results-table`) from
+`benchmark-card.js`'s rules, and `tests/unit/results-table.test.tsx` checks its markup against
+`renderResults`'.
