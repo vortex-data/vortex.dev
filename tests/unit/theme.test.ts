@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { runInNewContext } from "node:vm";
-import { THEME_BOOTSTRAP, THEMEABLE, themeFor } from "@/lib/theme";
+import { probeWebgl, THEME_BOOTSTRAP, THEMEABLE, themeFor } from "@/lib/theme";
 
 // Runs the inline first-paint script against a fake page and returns what it set on <html>.
 function boot(
@@ -86,7 +86,7 @@ describe("THEME_BOOTSTRAP", () => {
 
   it("first swaps the root's no-js class for js, keeping its other classes", () => {
     assert.equal(
-      boot("/", null, false).className,
+      boot("/blog", null, false).className,
       "js __variable_a __variable_b"
     );
     assert.ok(
@@ -102,6 +102,38 @@ describe("THEME_BOOTSTRAP", () => {
       boot("/blog", null, false, false, false).className,
       /no-webgl/
     );
+  });
+
+  it("marks the homepage webgl when the browser has WebGL, so a later probe skips", () => {
+    assert.match(boot("/", null, false).className, / webgl$/);
+  });
+
+  it("probes once when a link renders the homepage in place", () => {
+    const fake = (webgl: boolean, classes: string[] = []) => {
+      const list = new Set(classes);
+      let made = 0;
+      const doc = {
+        documentElement: {
+          classList: {
+            contains: (c: string) => list.has(c),
+            add: (c: string) => list.add(c)
+          }
+        },
+        createElement: () => {
+          made++;
+          return {
+            getContext: () =>
+              webgl ? { getExtension: () => ({ loseContext() {} }) } : null
+          };
+        }
+      };
+      probeWebgl(doc as unknown as Document);
+      return { list, made };
+    };
+    assert.ok(fake(false).list.has("no-webgl"));
+    assert.ok(fake(true).list.has("webgl"));
+    assert.equal(fake(false, ["webgl"]).made, 0);
+    assert.equal(fake(true, ["no-webgl"]).list.has("webgl"), false);
   });
 
   it("is a constant that builds no code from values", () => {

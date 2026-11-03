@@ -878,6 +878,43 @@ test.describe("home without WebGL", () => {
     );
     expect(shift).toBeLessThan(0.01);
   });
+
+  test("lays out without the mark when a link from another page opens it", async ({
+    page
+  }) => {
+    // The first-paint script ran on /blog, so it did not probe; the link
+    // renders the homepage in place, with no new document.
+    await page.addInitScript(() => {
+      const real = HTMLCanvasElement.prototype.getContext;
+      HTMLCanvasElement.prototype.getContext = function (
+        this: HTMLCanvasElement,
+        kind: string,
+        ...rest: unknown[]
+      ) {
+        if (/webgl/.test(kind)) return null;
+        return (real as (...a: unknown[]) => unknown).call(this, kind, ...rest);
+      } as typeof real;
+      // The mark's band's display when the homepage's DOM first goes in,
+      // after React's layout effects and before the frame is painted.
+      const w = window as unknown as { firstMark?: string };
+      new MutationObserver((_, obs) => {
+        const host = document.querySelector('main [class*="_markHost"]');
+        if (!host?.parentElement) return;
+        w.firstMark = getComputedStyle(host.parentElement).display;
+        obs.disconnect();
+      }).observe(document, { childList: true, subtree: true });
+    });
+    await page.setViewportSize({ width: 1512, height: 860 });
+    await page.goto("/blog");
+    await page.getByRole("link", { name: "Vortex home" }).click();
+    await page.waitForURL("/");
+    await expect(page.locator("html")).toHaveClass(/\bno-webgl\b/);
+    expect(
+      await page.evaluate(
+        () => (window as unknown as { firstMark?: string }).firstMark
+      )
+    ).toBe("none");
+  });
 });
 
 test.describe("narrowest phones", () => {

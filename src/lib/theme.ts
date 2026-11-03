@@ -62,13 +62,36 @@ const NO_JS_SWAP =
 
 /**
  * On the homepage only, before first paint: whether the browser can give the
- * ASCII mark a WebGL context. If not, `no-webgl` on the root lays the page
- * out without the mark from the first frame (src/app/page.module.css), so
- * the page does not jump when the mark later reports that it cannot draw.
- * The probe's context is released at once, so the mark can make its own.
+ * ASCII mark a WebGL context. The root gets `webgl` or `no-webgl`, and with
+ * `no-webgl` the page lays out without the mark from the first frame
+ * (src/app/page.module.css), so it does not jump when the mark later reports
+ * that it cannot draw. The probe's context is released at once, so the mark
+ * can make its own. A link from another page renders the homepage with no
+ * new document, so `probeWebgl` does the same then.
  */
 const WEBGL_PROBE =
-  'if(location.pathname==="/"){var w=false;try{var g=document.createElement("canvas").getContext("webgl2")||document.createElement("canvas").getContext("webgl");if(g){w=true;var x=g.getExtension("WEBGL_lose_context");x&&x.loseContext()}}catch(e){}w||(document.documentElement.className+=" no-webgl")}';
+  'if(location.pathname==="/"){var w=false;try{var g=document.createElement("canvas").getContext("webgl2")||document.createElement("canvas").getContext("webgl");if(g){w=true;var x=g.getExtension("WEBGL_lose_context");x&&x.loseContext()}}catch(e){}document.documentElement.className+=w?" webgl":" no-webgl"}';
+
+/**
+ * The first-paint script's WebGL probe, for a homepage that a link renders in
+ * place. The ASCII mark runs it in a layout effect, so the class is on the
+ * root before the frame is painted. It probes once per document.
+ */
+export function probeWebgl(doc: Document = document): void {
+  const root = doc.documentElement;
+  if (root.classList.contains("webgl") || root.classList.contains("no-webgl"))
+    return;
+  let ok = false;
+  try {
+    const canvas = doc.createElement("canvas");
+    const gl = canvas.getContext("webgl2") ?? canvas.getContext("webgl");
+    if (gl) {
+      ok = true;
+      gl.getExtension("WEBGL_lose_context")?.loseContext();
+    }
+  } catch {}
+  root.classList.add(ok ? "webgl" : "no-webgl");
+}
 
 /**
  * The first-paint script for this site's paths: the `no-js` swap, the
