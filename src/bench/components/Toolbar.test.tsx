@@ -13,8 +13,12 @@ describe('Toolbar (server-rendered)', () => {
     <Toolbar universe={UNIVERSE} initialEngines={[]} initialFormats={[]} />,
   );
 
-  it("titles the page, under the site's header", () => {
-    expect(html).toMatch(/^<div class="bench-toolbar"><h1 class="bench-title">Benchmarks<\/h1>/);
+  // The site's header holds the page's title, the theme toggle and the GitHub button.
+  it("is only the controls, for the site header's row", () => {
+    expect(html).toMatch(
+      /^<div class="bench-toolbar-controls" aria-label="Benchmark group controls">/,
+    );
+    expect(html).not.toMatch(/<h1|theme-toggle/);
   });
 
   it('renders expand/collapse-all controls in sentence case', () => {
@@ -24,15 +28,8 @@ describe('Toolbar (server-rendered)', () => {
     expect(html).toContain('<span>Collapse all</span>');
   });
 
-  // The site's header holds the wordmark and the GitHub button.
   it('holds no logo and no link', () => {
     expect(html).not.toMatch(/<a |<img /);
-  });
-
-  it('renders the theme toggle with the v3 server-default label', () => {
-    expect(html).toContain('data-role="theme-toggle"');
-    expect(html).toContain('data-next-theme="light"');
-    expect(html).toContain('theme-toggle-label');
   });
 
   it('renders the global filter dropdown with one chip per universe value', () => {
@@ -52,11 +49,10 @@ describe('Toolbar (server-rendered)', () => {
       'data-action="expand-all"',
       'data-action="collapse-all"',
       'data-role="global-filter-bar"',
-      'data-role="theme-toggle"',
     ]) {
       expect(html).toContain(`${control} data-requires-js="true"`);
     }
-    expect(html.match(/data-requires-js/g)).toHaveLength(4);
+    expect(html.match(/data-requires-js/g)).toHaveLength(3);
   });
 
   it('omits the filter dropdown when the universe is empty', () => {

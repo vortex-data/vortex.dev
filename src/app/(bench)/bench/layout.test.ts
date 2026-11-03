@@ -15,11 +15,8 @@ import RootLayout, { generateMetadata } from '@/app/(bench)/bench/layout';
 vi.mock('@/bench/styles/globals.css', () => ({}));
 vi.mock('@/styles/vortex-tokens.css', () => ({}));
 vi.mock('@/styles/vortex.css', () => ({}));
-// The site's header and footer, as stand-ins that show the props bench gives them.
-vi.mock('@/components/layout/header', () => ({
-  Header: ({ bench }: { bench: { home: string } }) =>
-    createElement('header', { 'data-home': bench.home }),
-}));
+// The site's footer, as a stand-in that shows the props bench gives it. Each page renders the
+// header (BenchHeader), because the filter dropdown takes the page's data.
 vi.mock('@/components/layout/footer', () => ({
   Footer: ({ origin, solid }: { origin: string; solid: boolean }) =>
     createElement('footer', { 'data-origin': origin, 'data-solid': String(solid) }),
@@ -72,9 +69,9 @@ describe('RootLayout', () => {
 });
 
 describe("the layout's frame", () => {
-  it("wraps every page in the site's header and footer, pointed at bench and the site, with solid rules", () => {
+  it("puts every page above the site's footer, pointed at the site, with a solid rule", () => {
     expect(html).toMatch(
-      /<div class="bench-frame"><header data-home="\/"><\/header><main><\/main><footer data-origin="https:\/\/vortex.dev" data-solid="true"><\/footer><\/div>/,
+      /<div class="bench-frame"><main><\/main><footer data-origin="https:\/\/vortex.dev" data-solid="true"><\/footer><\/div>/,
     );
   });
 });

@@ -7,7 +7,7 @@ import { cache } from 'react';
 
 import { Chart } from '@/bench/components/Chart';
 import { Footer } from '@/bench/components/Footer';
-import { Toolbar } from '@/bench/components/Toolbar';
+import { BenchHeader } from '@/bench/components/BenchHeader';
 import { parseFilterCsv, singleSearchParam, unitKindLabel } from '@/bench/lib/chart-format';
 import { cachedDefaultChartPayload } from '@/bench/lib/data-cache';
 import { chartPayload, collectFilterUniverse, type ChartResponse } from '@/bench/lib/queries';
@@ -128,7 +128,7 @@ export default async function ChartPage({
   const commitCount = chart.commits.length;
   return (
     <>
-      <Toolbar
+      <BenchHeader
         universe={universe}
         initialEngines={initialEngines}
         initialFormats={initialFormats}

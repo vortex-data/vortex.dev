@@ -4,7 +4,7 @@
 import type { Metadata } from 'next';
 
 import { Footer } from '@/bench/components/Footer';
-import { Toolbar } from '@/bench/components/Toolbar';
+import { BenchHeader } from '@/bench/components/BenchHeader';
 import { METHODOLOGY } from '@/bench/lib/methodology';
 import { BENCH_URL, openGraph } from '@/bench/lib/site-files';
 
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
 export default function MethodologyPage() {
   return (
     <>
-      <Toolbar />
+      <BenchHeader />
       <main>
         <article className="methodology">
           <h2>Methodology</h2>

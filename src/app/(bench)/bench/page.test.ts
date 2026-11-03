@@ -50,6 +50,10 @@ const { GROUPS, UNIVERSE, READ } = vi.hoisted(() => {
   };
 });
 
+// The header reads the request's host, which a render outside Next.js has not got; the server
+// smoke test checks the real one.
+vi.mock('@/bench/components/BenchHeader', () => ({ BenchHeader: () => null }));
+
 vi.mock('@/bench/lib/data-cache', () => ({
   cachedGroups: () => new Promise((resolve) => setTimeout(() => resolve(GROUPS), READ.ms)),
   cachedFilterUniverse: async () => UNIVERSE,

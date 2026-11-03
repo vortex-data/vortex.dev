@@ -2,7 +2,7 @@
 
 import NextLink from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef } from "react";
+import { type ReactNode, useEffect, useRef } from "react";
 import { CloseIcon, MenuIcon } from "@/components/icons";
 import { navLinks } from "@/lib/nav";
 
@@ -53,9 +53,14 @@ export function HeaderNav({ bench }: HeaderPlace) {
  * The same links behind the Menu button, for narrow screens (the design
  * system's CSS shows one or the other). It is a <details>, so it opens
  * without scripts. With them it closes when a link changes the page, on
- * Escape, and on a click outside it.
+ * Escape, and on a click outside it. `spill` holds the rows of the end
+ * group's items that move into the panel on a phone (bench's GitHub button
+ * and theme toggle), after the links.
  */
-export function HeaderMenu({ bench }: HeaderPlace) {
+export function HeaderMenu({
+  bench,
+  spill
+}: HeaderPlace & { spill?: ReactNode }) {
   const menu = useRef<HTMLDetailsElement>(null);
   const pathname = usePathname();
 
@@ -92,6 +97,7 @@ export function HeaderMenu({ bench }: HeaderPlace) {
       </summary>
       <nav className="vx-header-menu-panel" aria-label="Primary">
         <NavLinks bench={bench} />
+        {spill}
       </nav>
     </details>
   );

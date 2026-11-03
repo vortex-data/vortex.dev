@@ -7,7 +7,7 @@ import { Suspense } from 'react';
 import { Footer } from '@/bench/components/Footer';
 import { GroupNav } from '@/bench/components/GroupNav';
 import { GroupSection } from '@/bench/components/GroupSection';
-import { Toolbar } from '@/bench/components/Toolbar';
+import { BenchHeader } from '@/bench/components/BenchHeader';
 import { HomeLoading } from '@/bench/components/HomeLoading';
 import { LandingState } from '@/bench/components/LandingState';
 import { OpenGroupsScript } from '@/bench/components/OpenGroupsScript';
@@ -125,7 +125,7 @@ function HomeContent({ data: [params, groups, universe] }: { data: LandingData }
   let nextIndex = 0;
   return (
     <>
-      <Toolbar
+      <BenchHeader
         universe={universe}
         initialEngines={initialEngines}
         initialFormats={initialFormats}

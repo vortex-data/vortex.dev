@@ -6,6 +6,19 @@ import { formatCompressionSizeRatio, formatThroughput, formatTimeNs } from '@/be
 import type { SeriesRanking, Summary } from '@/bench/lib/summary';
 
 /**
+ * Whether a ranked series is Vortex's, the only rows drawn in Blue: its
+ * format, after any `engine:`, is one of Vortex's.
+ */
+function isOurs(name: string): boolean {
+  return displayFormat(name.slice(name.lastIndexOf(':') + 1)).startsWith('vortex');
+}
+
+/** A score row's class, with `is-ours` on Vortex's rows. */
+function rowClass(base: string, name: string): string {
+  return isOurs(name) ? `${base} is-ours` : base;
+}
+
+/**
  * Hover text for a ranked series: its full label plus, when the series was not
  * measured everywhere, how much of its score came from the missing-bucket
  * penalty. A partially measured series is ranked, not hidden, so the coverage
@@ -64,7 +77,7 @@ export function SummaryCard({ summary }: { summary?: Summary | undefined }) {
                     {rankings.map((item, idx) => {
                       const label = displayFormat(item.name);
                       return (
-                        <div className="score-item" key={item.name}>
+                        <div className={rowClass('score-item', item.name)} key={item.name}>
                           <span className="score-rank">#{idx + 1}</span>
                           <span className="score-series" title={label}>
                             {label}
@@ -104,7 +117,10 @@ export function SummaryCard({ summary }: { summary?: Summary | undefined }) {
                 {summary.rankings.map((item, idx) => {
                   const label = displayFormat(item.name);
                   return (
-                    <div className="score-item compression-size-arrow-row" key={item.name}>
+                    <div
+                      className={rowClass('score-item compression-size-arrow-row', item.name)}
+                      key={item.name}
+                    >
                       <span className="score-rank">#{idx + 1}</span>
                       <span className="score-series" title={label}>
                         {label}
@@ -132,7 +148,10 @@ export function SummaryCard({ summary }: { summary?: Summary | undefined }) {
                   const meanRatio = formatCompressionSizeRatio(item.ratio);
                   const maxRatio = formatCompressionSizeRatio(item.maxRatio);
                   return (
-                    <div className="compression-size-parquet-row" key={item.name}>
+                    <div
+                      className={rowClass('compression-size-parquet-row', item.name)}
+                      key={item.name}
+                    >
                       <span className="visually-hidden">
                         {`${displayFormat(item.name)}: minimum ${minRatio}, mean ${meanRatio}, maximum ${maxRatio}`}
                       </span>
@@ -195,7 +214,7 @@ export function SummaryCard({ summary }: { summary?: Summary | undefined }) {
                 </h3>
                 <div className="scores-list random-access-scores-list">
                   {panel.rankings.map((item, idx) => (
-                    <div className="score-item" key={item.name}>
+                    <div className={rowClass('score-item', item.name)} key={item.name}>
                       <span className="score-rank">#{idx + 1}</span>
                       <span className="score-series" title={seriesTitle(item, 'datasets')}>
                         {displaySeriesLabel(item.name)}
@@ -231,7 +250,7 @@ export function SummaryCard({ summary }: { summary?: Summary | undefined }) {
             }
           >
             {summary.rankings.map((item, idx) => (
-              <div className="score-item" key={item.name}>
+              <div className={rowClass('score-item', item.name)} key={item.name}>
                 <span className="score-rank">#{idx + 1}</span>
                 <span className="score-series" title={seriesTitle(item, coverageUnit)}>
                   {displaySeriesLabel(item.name)}

@@ -99,17 +99,22 @@ describe.skipIf(!databaseAvailable || !BUILD_PRESENT)(
       await container.stop();
     });
 
-    it("serves the landing page in the site's header, with the toolbar and collapsed groups, and no chart islands", async () => {
+    it("serves the landing page in the site's header, with the controls on its row and collapsed groups, and no chart islands", async () => {
       // The first request may miss the Data Cache, read slowly and stream the
       // loading view first (app/page.tsx); either way it fills the cache, so
       // the second takes the plain-HTML path asserted below.
       const first = await (await fetch(BASE)).text();
       expect(first).toContain('class="group-details"');
       const html = await (await fetch(BASE)).text();
-      // The site's header and footer, with solid rules, then bench's toolbar (server-rendered islands).
-      expect(html).toContain('<header class="vx-header has-nav is-solid">');
+      // The site's header and footer, with solid rules, and bench's title, controls and theme
+      // toggle on the header's row (server-rendered islands).
+      expect(html).toContain('<header class="vx-header has-nav has-tools is-solid">');
       expect(html).toContain('<footer class="vx-footer is-solid">');
-      expect(html).toContain('<div class="bench-toolbar"><h1 class="bench-title">Benchmarks</h1>');
+      expect(html).toContain('<h1 class="vx-label vx-header-label">Benchmarks</h1>');
+      expect(html).toContain(
+        '<div class="vx-header-tools"><div class="bench-toolbar-controls" aria-label="Benchmark group controls">',
+      );
+      expect(html).toContain('class="vx-label vx-nav-link vx-header-menu-spill theme-toggle"');
       expect(html).toContain('data-role="theme-toggle"');
       expect(html).toContain('data-action="expand-all"');
       expect(html).toContain('data-role="global-filter-bar"');

@@ -50,11 +50,44 @@ describe("Header on bench", () => {
   it("draws solid rules on bench, and the frame's dashed ones on the site", async () => {
     assert.match(
       renderToStaticMarkup(await Header({ bench: { home: "/" } })),
-      /^<header class="vx-header has-nav is-solid">/
+      /^<header class="vx-header has-nav has-tools is-solid">/
     );
     assert.match(
       renderToStaticMarkup(await Header()),
       /^<header class="vx-header has-nav">/
+    );
+  });
+
+  // The system's tools variant: one row with bench's title, its controls and its toggle, and on
+  // a phone the GitHub button and the toggle as rows in the Menu's panel.
+  it("puts bench's title, controls and toggle on the row, with their Menu rows", async () => {
+    const html = renderToStaticMarkup(
+      await Header({
+        bench: { home: "/" },
+        tools: <button type="button">Expand all</button>,
+        theme: <button type="button">Dark</button>,
+        themeRow: <button type="button">Dark theme</button>
+      })
+    );
+    assert.match(
+      html,
+      /<\/a><h1 class="vx-label vx-header-label">Benchmarks<\/h1><\/div>/
+    );
+    assert.match(
+      html,
+      /<div class="vx-header-tools"><button type="button">Expand all<\/button><\/div><div class="vx-header-end"><button type="button">Dark<\/button><a class="vx-btn vx-btn-secondary is-mono vx-header-spill"/
+    );
+    assert.match(
+      html,
+      />Slack<\/a><a class="vx-label vx-nav-link vx-header-menu-spill" href="https:\/\/github.com\/vortex-data\/vortex"><svg[^<]*<path[^>]*><\/path><\/svg>GitHub<\/a><button type="button">Dark theme<\/button><\/nav><\/details>/
+    );
+  });
+
+  it("gives the site's header none of bench's slots", async () => {
+    const html = renderToStaticMarkup(await Header());
+    assert.doesNotMatch(
+      html,
+      /<h1|vx-header-tools|vx-header-spill|vx-header-menu-spill/
     );
   });
 });

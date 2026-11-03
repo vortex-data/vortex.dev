@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
 import { Footer } from '@/bench/components/Footer';
-import { Toolbar } from '@/bench/components/Toolbar';
+import { BenchHeader } from '@/bench/components/BenchHeader';
 
 /**
  * The landing page's loading view, streamed at once when its data is slow to
@@ -14,7 +14,7 @@ import { Toolbar } from '@/bench/components/Toolbar';
 export function HomeLoading() {
   return (
     <>
-      <Toolbar />
+      <BenchHeader />
       <main className="summary-loading" aria-busy="true">
         <div className="summary-loading-panel" role="status" aria-live="polite">
           <span className="chart-spinner summary-loading-spinner" aria-hidden="true" />

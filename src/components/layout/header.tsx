@@ -1,4 +1,5 @@
 import NextLink from "next/link";
+import type { ReactNode } from "react";
 import WordmarkLight from "@/assets/vortex_wordmark.svg";
 import WordmarkDark from "@/assets/vortex_wordmark_dark_theme.svg";
 import { StarIcon } from "@/components/icons";
@@ -16,12 +17,24 @@ import { HeaderMenu, HeaderNav, type HeaderPlace } from "./header-nav";
  * visible text, as Lighthouse's label-content-name-mismatch requires.
  *
  * On bench, which is served from its own host, the wordmark and the site's
- * links point back to vortex.dev, Bench is the current section, and there is
- * no ThemeSwitch: bench's theme toggle is in its toolbar. bench takes the
- * card's solid variant (`is-solid`), whose rules suit a tool's toolbar and
- * tables better than the frame's dashes.
+ * links point back to vortex.dev, and Bench is the current section. bench
+ * takes the card's solid variant (`is-solid`), whose rules suit a tool's
+ * tables better than the frame's dashes, and its tools variant (`has-tools`):
+ * one sticky row with the page's h1, "Benchmarks", bench's controls (`tools`)
+ * and its theme toggle (`theme`) in place of the ThemeSwitch, with the links
+ * always behind the Menu button. On a phone the GitHub button and the toggle
+ * move into the Menu's panel, the toggle as `themeRow`.
  */
-export async function Header({ bench }: HeaderPlace = {}) {
+export async function Header({
+  bench,
+  tools,
+  theme,
+  themeRow
+}: HeaderPlace & {
+  tools?: ReactNode;
+  theme?: ReactNode;
+  themeRow?: ReactNode;
+} = {}) {
   const stars = await getStarCount();
   const marks = (
     <>
@@ -45,13 +58,18 @@ export async function Header({ bench }: HeaderPlace = {}) {
   );
   return (
     <header
-      className={bench ? "vx-header has-nav is-solid" : "vx-header has-nav"}
+      className={
+        bench ? "vx-header has-nav has-tools is-solid" : "vx-header has-nav"
+      }
     >
       <div className="vx-header-start">
         {bench ? (
-          <a href="https://vortex.dev" aria-label="Vortex home">
-            {marks}
-          </a>
+          <>
+            <a href="https://vortex.dev" aria-label="Vortex home">
+              {marks}
+            </a>
+            <h1 className="vx-label vx-header-label">Benchmarks</h1>
+          </>
         ) : (
           <NextLink href="/" aria-label="Vortex home">
             {marks}
@@ -59,9 +77,15 @@ export async function Header({ bench }: HeaderPlace = {}) {
         )}
       </div>
       <HeaderNav bench={bench} />
+      {bench && <div className="vx-header-tools">{tools}</div>}
       <div className="vx-header-end">
+        {bench && theme}
         <a
-          className="vx-btn vx-btn-secondary is-mono"
+          className={
+            bench
+              ? "vx-btn vx-btn-secondary is-mono vx-header-spill"
+              : "vx-btn vx-btn-secondary is-mono"
+          }
           href={REPO_URL}
           aria-label={
             stars === null
@@ -79,7 +103,23 @@ export async function Header({ bench }: HeaderPlace = {}) {
           )}
         </a>
         {!bench && <ThemeSwitch />}
-        <HeaderMenu bench={bench} />
+        <HeaderMenu
+          bench={bench}
+          spill={
+            bench && (
+              <>
+                <a
+                  className="vx-label vx-nav-link vx-header-menu-spill"
+                  href={REPO_URL}
+                >
+                  <MarkGithub />
+                  GitHub
+                </a>
+                {themeRow}
+              </>
+            )
+          }
+        />
       </div>
     </header>
   );

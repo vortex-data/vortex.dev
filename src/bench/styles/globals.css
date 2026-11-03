@@ -4,10 +4,10 @@
 /* The colours come from the Vortex design system's tokens (src/styles/vortex-tokens.css), which
  * the root layout loads first: ground, surface, raised, line, ink, ink-muted, accent-ink for words,
  * and accent with on-accent for fills. The root renders data-theme="system", so the tokens follow
- * the OS until a reader picks a theme with the toolbar's toggle. These are bench's own values, which
+ * the OS until a reader picks a theme with the header's toggle. These are bench's own values, which
  * the system has no role for, in the same three theme states. */
 :root {
-  --toolbar-height: 56px;
+  --toolbar-height: 64px;
   --tooltip-bg: var(--primary);
   --tooltip-fg: var(--grey-50);
   --good: #16a34a;
@@ -89,9 +89,9 @@ a:hover {
   display: none !important;
 }
 
-/* The toolbar: sticky at the top once the site's header scrolls away, on the ground with a rule
- * under it, padded like the header. The frame lets bench's pages span the window, as the header
- * and footer do, so every edge lines up at page-pad. */
+/* The frame lets bench's pages span the window, as the header and footer do, so every edge lines
+ * up at page-pad. The header is sticky, with bench's controls on its row (the system's has-tools),
+ * and --toolbar-height is its height. */
 .bench-frame {
   display: flex;
   flex-direction: column;
@@ -107,34 +107,29 @@ a:hover {
   padding-bottom: 3.5rem;
 }
 
-.bench-toolbar {
-  position: sticky;
-  top: 0;
-  z-index: 1000;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  height: var(--toolbar-height);
-  padding: 0 var(--page-pad);
-  border-bottom: 1px solid var(--line);
-  background: var(--ground);
-}
-
-.bench-title {
-  margin: 0 auto 0 0;
-  color: var(--ink-muted);
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 0;
-  white-space: nowrap;
-}
-
 .bench-toolbar-controls {
   display: flex;
   align-items: center;
   gap: 0.75rem;
   min-width: 0;
+}
+
+@media (max-width: 960px) {
+  .bench-toolbar-controls {
+    gap: 0.5rem;
+  }
+}
+
+/* On the header's row the buttons are as tall as its GitHub and Menu buttons. */
+.vx-header .control-btn {
+  min-height: var(--control-md);
+}
+
+/* At 320px the controls need a little more room before the Menu button. */
+@media (max-width: 400px) {
+  .vx-header-tools .control-btn {
+    padding-inline: 0.4rem;
+  }
 }
 
 .control-btn {
@@ -323,15 +318,13 @@ main {
 .group-summary:hover .group-summary-row {
   background: var(--surface);
 }
+/* The groups speak in the system's mono voice, as the header's label does. */
 .group-name {
-  /* `.group-name` is a `<span>` in `landing.rs`, so it doesn't inherit
-   * from the `h1, h2, ..., h6` rule. v2's `.benchmark-title` applies
-   * Funnel Display explicitly; mirror that here. */
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 1.35rem;
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: 15px;
   line-height: 1.2;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
 }
 .group-count {
   color: var(--ink-muted);
@@ -562,8 +555,9 @@ main {
 .scores-title {
   margin: 0 0 0.5rem;
   color: var(--ink-muted);
-  font-size: 0.75rem;
-  font-weight: 600;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
 }
 
 .scores-list {
@@ -716,7 +710,8 @@ main {
   align-items: center;
   gap: 0.5rem;
   padding: 0.25rem 0;
-  font-size: 0.875rem;
+  font-family: var(--font-mono);
+  font-size: 13px;
   break-inside: avoid;
 }
 
@@ -733,7 +728,7 @@ main {
   flex: 1;
   overflow: hidden;
   color: var(--ink);
-  font-weight: 500;
+  font-weight: 400;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -753,7 +748,12 @@ main {
   font-weight: 600;
 }
 
+/* Blue marks Vortex's rows only (SummaryCard's `is-ours`). */
 .score-value {
+  color: var(--ink-body);
+}
+.is-ours .score-series,
+.is-ours .score-value {
   color: var(--accent-ink);
 }
 .score-runtime {
@@ -1431,8 +1431,9 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
 /* ----------------------------------------------------------------------
  * Mobile
  * ---------------------------------------------------------------------- */
-/* On a phone the toolbar's buttons keep their icons, and their words stay as their names. */
-@media (max-width: 480px) {
+/* Below 1260px the header's buttons keep their icons, and their words stay as their names, so
+ * the controls fit on the header's row; the Filters count stays in view. */
+@media (max-width: 1260px) {
   .bench-toolbar-controls .control-btn > span:not(.filter-badge),
   .theme-toggle-label {
     position: absolute;
@@ -1445,20 +1446,11 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
 }
 
 @media (max-width: 768px) {
-  .bench-toolbar,
-  .bench-toolbar-controls {
-    gap: 0.5rem;
-  }
-  .bench-title {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  /* The filter panel spans the toolbar, under it, rather than centre on its button. */
-  .bench-toolbar .filter-dropdown {
+  /* The filter panel spans the header, under it, rather than centre on its button. */
+  .vx-header-tools .filter-dropdown {
     position: static;
   }
-  .bench-toolbar .filter-panel {
+  .vx-header-tools .filter-panel {
     top: 100%;
     left: var(--page-pad);
     right: var(--page-pad);
@@ -1492,7 +1484,6 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
   .group-name {
     flex: 1 1 auto;
     min-width: 0;
-    font-size: 1.1rem;
     word-break: break-word;
   }
   .group-count {

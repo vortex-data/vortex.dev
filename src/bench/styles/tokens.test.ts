@@ -35,7 +35,7 @@ const ROLES = new Set([...tokens.matchAll(/^\s*--([a-z0-9-]+):/gm)].map((m) => m
 
 // bench's own values, which the system has no role for: the tooltip (black in Light, raised in
 // Dark), the green and red of a better or worse result with the text on that red, and the height
-// of the sticky toolbar.
+// of the sticky header.
 const OWN = new Set([
   '--tooltip-bg',
   '--tooltip-fg',
@@ -126,12 +126,9 @@ describe("bench's stylesheet on the system's tokens", () => {
     }
   });
 
-  it('sets the title and toolbar buttons as mono labels, mutes ranks, and squares the badges', () => {
-    for (const sel of ['.bench-title', '.control-btn']) {
-      expect(valueOf(sel, 'font-family'), sel).toBe('var(--font-mono)');
-    }
+  it('sets the header buttons as mono labels, mutes ranks, and squares the badges', () => {
+    expect(valueOf('.control-btn', 'font-family')).toBe('var(--font-mono)');
     expect(valueOf('.score-rank', 'color')).toBe('var(--ink-muted)');
-    expect(valueOf('.bench-title', 'color')).toBe('var(--ink-muted)');
     for (const sel of ['.filter-badge', '.group-count']) {
       expect(valueOf(sel, 'border-radius'), sel).toBe('2px');
     }
@@ -167,19 +164,51 @@ describe("bench's stylesheet on the system's tokens", () => {
     ]);
   });
 
-  it('sticks the toolbar at the top, on the ground, padded like the header', () => {
-    expect(valueOf('.bench-toolbar', 'position')).toBe('sticky');
+  // The system's header (has-tools) sticks and holds the controls, so bench draws no toolbar.
+  it("puts the controls on the system's sticky header, and draws no toolbar of its own", () => {
+    expect(css).not.toMatch(/\.bench-toolbar[\s,{]|\.bench-title/);
+    expect(valueOf(':root', '--toolbar-height')).toBe('64px');
     // `hidden` on the root would make body a scroll container that never scrolls, and the
-    // toolbar would stick to it, not to the window; `clip` clips without one.
+    // header would stick to it, not to the window; `clip` clips without one.
     expect(valueOf('body', 'overflow-x')).toBe('clip');
     // The fixed Groups button needs room under the footer, or it covers the footer's mark.
     expect(valueOf('.bench-frame:has(.group-nav-toggle)', 'padding-bottom')).toBe('3.5rem');
-    // On a phone the buttons' words hide, but the Filters count stays in view.
-    expect(css).toMatch(/\.bench-toolbar-controls \.control-btn > span:not\(\.filter-badge\),/);
-    expect(valueOf('.bench-toolbar', 'top')).toBe('0');
-    expect(valueOf('.bench-toolbar', 'background')).toBe('var(--ground)');
-    expect(valueOf('.bench-toolbar', 'padding')).toBe('0 var(--page-pad)');
+    // Below 1260px the buttons' words hide, but the Filters count stays in view.
+    expect(css).toMatch(
+      /@media \(max-width: 1260px\) \{\s*\.bench-toolbar-controls \.control-btn > span:not\(\.filter-badge\),/,
+    );
+    expect(valueOf('.vx-header .control-btn', 'min-height')).toBe('var(--control-md)');
+    // At 320px the controls keep room before the Menu button.
+    expect(css).toMatch(
+      /@media \(max-width: 400px\) \{\s*\.vx-header-tools \.control-btn \{\s*padding-inline: 0\.4rem;/,
+    );
     expect(valueOf('main', 'padding')).toBe('1rem var(--page-pad)');
     expect(css).not.toMatch(/sticky-header|site-title|repo-link|nav-controls|logo-link/);
+  });
+
+  // The groups speak in the system's mono voice, as the header's label does, and Blue marks
+  // Vortex's rows only: the other formats' scores are in ink-body.
+  it('sets group names and scores in mono, with Blue only on Vortex', () => {
+    for (const sel of ['.group-name', '.scores-title', '.score-item']) {
+      expect(valueOf(sel, 'font-family'), sel).toBe('var(--font-mono)');
+    }
+    expect(valueOf('.group-name', 'font-size')).toBe('15px');
+    expect(valueOf('.group-name', 'font-weight')).toBe('500');
+    expect(valueOf('.scores-title', 'font-size')).toBe('12px');
+    expect(valueOf('.score-item', 'font-size')).toBe('13px');
+    expect(valueOf('.score-series', 'font-weight')).toBe('400');
+    expect(valueOf('.score-value', 'color')).toBe('var(--ink-body)');
+    expect(
+      decls.some(
+        (d) =>
+          d.sel.includes('.is-ours') &&
+          d.sel.includes('.score-value') &&
+          d.value === 'var(--accent-ink)',
+      ),
+    ).toBe(true);
+    // One size at every width: the phone rule no longer shrinks it.
+    expect(
+      decls.filter((d) => selectorsOf(d).includes('.group-name') && d.prop === 'font-size'),
+    ).toHaveLength(1);
   });
 });

@@ -219,6 +219,38 @@ describe('SummaryCard', () => {
     expect(html).toContain('5.00 s');
   });
 
+  // Blue is for Vortex only: a row is Vortex's when its format, after any `engine:`, is one of
+  // Vortex's, so DuckDB on Vortex counts and Vortex's engine on Parquet would not.
+  it("marks Vortex's rows, and only them, as ours", () => {
+    const timing = render({
+      type: 'queryBenchmark',
+      title: 'Performance Summary',
+      rankings: [
+        { name: 'duckdb:vortex-file-compressed', score: 1, totalRuntime: 1, measured: 1, total: 1 },
+        { name: 'datafusion:vortex-compact', score: 1.1, totalRuntime: 1, measured: 1, total: 1 },
+        { name: 'duckdb:parquet', score: 2, totalRuntime: 2, measured: 1, total: 1 },
+        { name: 'vortex:parquet', score: 3, totalRuntime: 3, measured: 1, total: 1 },
+      ],
+      explanation: 'lower is better',
+    });
+    expect(timing.match(/class="score-item is-ours"/g)).toHaveLength(2);
+    expect(timing.match(/class="score-item"/g)).toHaveLength(2);
+    expect(timing.indexOf('is-ours')).toBeLessThan(timing.indexOf('duckdb:parquet'));
+
+    const size = render({
+      type: 'compressionSize',
+      title: 'Compression Size Summary',
+      rankings: [
+        { name: 'vortex-file-compressed', minRatio: 1, ratio: 1, maxRatio: 1, compressionRatio: 8 },
+        { name: 'lance', minRatio: 1, ratio: 1, maxRatio: 1, compressionRatio: 2 },
+      ],
+      explanation: 'e',
+    });
+    expect(size).toContain('class="score-item compression-size-arrow-row is-ours"');
+    expect(size).toContain('class="compression-size-parquet-row is-ours"');
+    expect(size.match(/is-ours/g)).toHaveLength(2);
+  });
+
   it('renders a vectorSearch card through the shared timing arm', () => {
     const html = render({
       type: 'vectorSearch',
