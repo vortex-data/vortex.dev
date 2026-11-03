@@ -1,0 +1,75 @@
+name: Preview proxy
+description: >
+  Wait for the Vercel preview of a commit, then serve it on 127.0.0.1
+  through scripts/preview-proxy.mjs, which adds the deployment-protection
+  bypass header only to requests for the preview. The proxy runs in the
+  background until the job ends. The job needs `deployments: read` and a
+  checkout of the repository.
+
+inputs:
+  sha:
+    description: The commit whose preview to wait for.
+    required: true
+  bypass-secret:
+    description: The Vercel automation bypass secret.
+    required: true
+  port:
+    description: The local port for the proxy.
+    required: false
+    default: "3201"
+
+outputs:
+  url:
+    description: The preview's own URL.
+    value: ${{ steps.preview.outputs.url }}
+
+runs:
+  using: composite
+  steps:
+    # Vercel's git integration records the preview of each commit as a
+    # GitHub deployment in the "Preview" environment, and its success status
+    # holds the preview's URL. A build takes a few minutes.
+    - name: Wait for the Vercel preview
+      id: preview
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        SHA: ${{ inputs.sha }}
+      run: |
+        deployments="repos/${GITHUB_REPOSITORY}/deployments"
+        for _ in $(seq 1 80); do
+          id="$(gh api "${deployments}?sha=${SHA}&environment=Preview" \
+            --jq 'map(select(.creator.login == "vercel[bot]"))[0].id // empty')"
+          if [ -n "${id}" ]; then
+            read -r state url < <(gh api "${deployments}/${id}/statuses" \
+              --jq '.[0] | "\(.state) \(.environment_url // "")"')
+            case "${state}" in
+              success)
+                echo "Preview: ${url}"
+                echo "url=${url}" >> "$GITHUB_OUTPUT"
+                exit 0 ;;
+              failure | error)
+                echo "::error::The Vercel preview of ${SHA} failed."
+                exit 1 ;;
+            esac
+          fi
+          sleep 15
+        done
+        echo "::error::No Vercel preview of ${SHA} after 20 minutes."
+        exit 1
+
+    - name: Start the preview proxy
+      shell: bash
+      env:
+        VERCEL_AUTOMATION_BYPASS_SECRET: ${{ inputs.bypass-secret }}
+        PREVIEW_URL: ${{ steps.preview.outputs.url }}
+        PORT: ${{ inputs.port }}
+      run: |
+        node scripts/preview-proxy.mjs "${PORT}" "${PREVIEW_URL}" &
+        for _ in $(seq 1 30); do
+          if curl -sf -o /dev/null "http://127.0.0.1:${PORT}/bench/api/health"; then exit 0; fi
+          sleep 1
+        done
+        echo "::error::bench's health check failed through the proxy."
+        curl -s "http://127.0.0.1:${PORT}/bench/api/health" | head -c 500
+        exit 1

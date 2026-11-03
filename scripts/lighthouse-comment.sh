@@ -1,22 +1,27 @@
 #!/usr/bin/env bash
-# Print a pull request comment, in Markdown, from the Lighthouse reports in
-# .lighthouseci/lhr-*.json:
+# Print a pull request comment, in Markdown, from Lighthouse reports:
 #
-#   LINKS_JSON='{"<url>": "<report url>", …}' scripts/lighthouse-comment.sh "<title>"
+#   LINKS_JSON='{"<url>": "<report url>", …}' \
+#     scripts/lighthouse-comment.sh "<title>" [lhr-*.json …]
 #
-# LINKS_JSON is the treosh/lighthouse-ci-action's `links` output. Each
-# config collects three runs per URL and asserts on the best one, so the
-# table shows each URL's best run by performance, the run the check is
-# judged by. `group_by(.url)` also keeps row order deterministic. The linked
-# report is the one the action uploads for that URL and may be a different
-# run.
+# The reports default to .lighthouseci/lhr-*.json. LINKS_JSON is the
+# treosh/lighthouse-ci-action's `links` output (links.json), merged across
+# CI's Lighthouse jobs. The config collects three runs per URL and asserts
+# on the best one, so the table shows each URL's best run by performance,
+# the run the check is judged by. `group_by(.url)` also keeps row order
+# deterministic. The linked report is the one the action uploads for that
+# URL and may be a different run.
 #
 # Each cell follows Lighthouse's own scoring buckets: 🟢 ≥90, 🟡 50–89,
 # 🔴 <50. A threshold below the 🟢 cutoff lets a cell pass and still show 🟡,
 # which says "locked in, but improvable".
 set -euo pipefail
 
-echo "## 🔦 $1"
+title="$1"
+shift
+if [ "$#" -eq 0 ]; then set -- .lighthouseci/lhr-*.json; fi
+
+echo "## 🔦 ${title}"
 echo ''
 echo '| URL | Perf | A11y | Best practices | SEO | Report |'
 echo '|---|:---:|:---:|:---:|:---:|---|'
@@ -41,6 +46,6 @@ jq -s --argjson links "${LINKS_JSON}" -r '
       + " | [report](" + ($links[.url] // "#") + ") |"
     )
   | join("\n")
-' .lighthouseci/lhr-*.json
+' "$@"
 echo ''
 echo "_Run [\`${GITHUB_RUN_ID}\`](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}) · $(date -u +'%Y-%m-%d %H:%M UTC')_"
