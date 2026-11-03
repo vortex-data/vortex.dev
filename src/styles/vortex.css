@@ -1,7 +1,7 @@
 /* Vortex design system components (sections: base, brand, site, docs, blog, focus), copied by tools/site-styles.mjs.
    Edit the system, then run tools/site-styles.mjs; do not edit here.
    Made by: node tools/site-styles.mjs <site> --sections base,brand,site,docs,blog,focus --faces --vx-face --base
-   sha256 94f322542404269bdeb8a54031b69839a9cfcd385720a2eedb2f5baf494dd024 */
+   sha256 295e6424f50ea72839511e03413398a086abae62eb9f45a14b37b9921ce9a8e0 */
 
 /* ------------------------------------------------------------------ base */
 /* Every component sizes with border-box, so it draws the same under a site's reset or none. */
@@ -413,30 +413,58 @@
   .vx-search { flex: 0 0 auto; width: var(--control-md); justify-content: center; margin: 0 0 0 auto; padding: 0; }
   .vx-search-text, .vx-search-keys { display: none; }
 }
+/* The menu: on a narrow screen the site's links go behind a Menu button at the end of the row, a
+   <details>, so it opens without scripts. Its panel drops below the header, framed, over the page. */
+.vx-header { position: relative; }
+.vx-header-menu { display: none; }
+.vx-header-menu > summary { list-style: none; }
+.vx-header-menu > summary::-webkit-details-marker { display: none; }
+.vx-header-menu > summary .is-close, .vx-header-menu[open] > summary .is-open { display: none; }
+.vx-header-menu[open] > summary .is-close { display: block; }
+.vx-header-menu[open] > summary { border-color: var(--ink); }
+.vx-header-menu-panel {
+  position: absolute;
+  z-index: 10;
+  top: calc(100% + var(--space-8));
+  right: var(--page-pad);
+  left: var(--page-pad);
+  display: grid;
+  padding: var(--space-8) 0;
+}
+.vx-header-menu-panel .vx-nav-link { display: flex; min-height: 44px; padding: 0 var(--space-16); }
+.vx-header-menu-panel .vx-nav-link:hover { background: var(--wash); }
 /* The site header needs about 790px on one row: the wordmark, five links and the GitHub button
-   with its count. Below 800px the nav takes a second row, and the end group stays on the right. */
+   with its count. Below 800px the links go into the menu. With the ThemeSwitch in its end group the
+   row needs about 900px, so they go below 920px. */
 @media (max-width: 800px) {
-  .vx-header.has-nav { flex-wrap: wrap; height: auto; padding-block: var(--space-12); row-gap: var(--space-12); }
-  .vx-header.has-nav .vx-header-nav { order: 3; width: 100%; margin-left: 0; gap: var(--space-20); overflow-x: auto; }
+  .vx-header.has-nav .vx-header-nav { display: none; }
+  .vx-header.has-nav .vx-header-menu { display: block; }
   .vx-header.has-nav .vx-header-end { margin-left: auto; }
 }
-/* With the ThemeSwitch in its end group the site header needs about 900px, so it takes two rows
-   below 920px. */
 @media (max-width: 920px) {
-  .vx-header.has-nav:has(.vx-theme-switch) { flex-wrap: wrap; height: auto; padding-block: var(--space-12); row-gap: var(--space-12); }
-  .vx-header.has-nav:has(.vx-theme-switch) .vx-header-nav { order: 3; width: 100%; margin-left: 0; gap: var(--space-20); overflow-x: auto; }
+  .vx-header.has-nav:has(.vx-theme-switch) .vx-header-nav { display: none; }
+  .vx-header.has-nav:has(.vx-theme-switch) .vx-header-menu { display: block; }
   .vx-header.has-nav:has(.vx-theme-switch) .vx-header-end { margin-left: auto; }
+}
+/* On a phone the row is the wordmark, the GitHub mark, the switch and the menu, closer together.
+   With the switch the Menu button keeps its icon and drops its word below 480px. */
+@media (max-width: 480px) {
+  .vx-header { gap: var(--space-16); }
+  .vx-header-end { gap: var(--space-8); }
+  .vx-header-end:has(.vx-theme-switch) .vx-header-menu-text {
+    position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+  }
 }
 @media (max-width: 640px) {
   .vx-header-label, .vx-header-end .is-wide { display: none; }
 }
-/* The wordmark, the GitHub button and the switch need about 430px on one row, so below 480px the
-   button keeps its mark and count and drops the repository name. Without the switch the row needs
-   about 330px, so the name goes below 360px. The button's aria-label still names the repository. */
-@media (max-width: 480px) {
+/* With the Menu button, the wordmark, the GitHub button with the repository's name and the button
+   need about 390px on one row, and about 500px with the switch. So the button drops the name and
+   keeps its mark below 480px, or 560px with the switch. Its aria-label still names the repository. */
+@media (max-width: 560px) {
   .vx-header-end:has(.vx-theme-switch) .vx-header-repo { display: none; }
 }
-@media (max-width: 360px) {
+@media (max-width: 480px) {
   .vx-header-repo { display: none; }
 }
 /* The homepage headline, "Fast, small, open: pick three.", takes one line (822px) in the hero's 840px column. Where

@@ -50,7 +50,12 @@ export default async function Home() {
           Apache-2.0, a Linux Foundation project
         </span>
         <div className={styles.head}>
-          <h1 className="vx-display-mono">Fast, small, open: pick three.</h1>
+          <h1 className="vx-display-mono">
+            {/* "pick three." is the second line, in every browser: Safari's
+                text-wrap: pretty would otherwise rebalance it. */}
+            Fast, small, open:{" "}
+            <span className={styles.second}>pick three.</span>
+          </h1>
           <p>
             Vortex is an open-source columnar file format for fast scans, random
             access, and compression.

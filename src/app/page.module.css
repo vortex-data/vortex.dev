@@ -32,6 +32,10 @@
   margin: 0;
 }
 
+.second {
+  display: block;
+}
+
 /* The standfirst in the terminal voice: vx-body's size and leading, in mono. */
 .head p {
   margin: 0;
@@ -97,10 +101,12 @@
     right: var(--page-pad);
   }
 
+  /* 440px: the headline's first line, "Fast, small, open:", at 40px, so
+     the standfirst ends before the mark. */
   .head {
     top: var(--space-48);
     left: var(--page-pad);
-    max-width: 520px;
+    max-width: 440px;
   }
 
   .install {
@@ -120,8 +126,19 @@
     height: auto;
   }
 
+  /* The mark grows with the hero up to the Home card's 820px, so on a tall
+     screen it stays clear of the words in the corners. */
   .markHost {
-    height: 100%;
+    height: min(100%, 820px);
+  }
+}
+
+/* On a tall screen (a large monitor) the logos and the footer fit on the
+   first screen too: the hero takes what they leave. */
+@media (min-width: 1240px) and (min-height: 1000px) {
+  .hero {
+    flex: 1 0 auto;
+    height: auto;
   }
 }
 

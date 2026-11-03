@@ -43,7 +43,7 @@ test.describe("home", () => {
   });
 
   // Note 81: the hero says what Vortex is, above the fold. Home E2 sets it in
-  // mono in the headline's 520px column, so it takes two lines.
+  // mono in the headline's 440px column, so it takes three lines.
   test("the standfirst says what Vortex is", async ({ page }) => {
     await page.setViewportSize({ width: 1512, height: 860 });
     await page.goto("/");
@@ -52,9 +52,31 @@ test.describe("home", () => {
     );
     await expect(standfirst).toBeVisible();
     const box = await standfirst.boundingBox();
-    expect(box?.height ?? 99).toBeLessThan(60);
+    expect(box?.height ?? 99).toBeLessThan(90);
     expect((box?.y ?? 999) + (box?.height ?? 0)).toBeLessThan(430);
   });
+
+  // "pick three." takes the headline's second line whole, on a laptop and on
+  // a large monitor alike.
+  for (const [width, height] of [
+    [1512, 860],
+    [2560, 1400]
+  ] as const) {
+    test(`the headline breaks before "pick three." at ${width} × ${height}`, async ({
+      page
+    }) => {
+      await page.setViewportSize({ width, height });
+      await page.goto("/");
+      const lines = await page.locator("h1").evaluate((h) => {
+        const s = getComputedStyle(h);
+        return Math.round(h.clientHeight / Number.parseFloat(s.lineHeight));
+      });
+      expect(lines).toBe(2);
+      const h1 = await page.locator("h1").boundingBox();
+      const keep = await page.locator("h1 span").boundingBox();
+      expect(Math.round(keep?.x ?? 0)).toBe(Math.round(h1?.x ?? -1));
+    });
+  }
 
   test("title is correct", async ({ page }) => {
     await page.goto("/");
@@ -504,6 +526,9 @@ test.describe("blog post", () => {
 test.describe("header", () => {
   test("shows the five nav links and the GitHub button", async ({ page }) => {
     await page.goto("/");
+    // On a phone the links are behind the Menu button.
+    const menu = page.locator(".vx-header-menu > summary");
+    if (await menu.isVisible()) await menu.click();
     const nav = page.getByRole("navigation", { name: "Primary" });
     for (const [name, href] of [
       ["Docs", "https://docs.vortex.dev"],
@@ -522,7 +547,77 @@ test.describe("header", () => {
       'header a[href="https://github.com/vortex-data/vortex"]'
     );
     await expect(github).toBeVisible();
-    await expect(github).toContainText("vortex-data/vortex");
+    await expect(github).toHaveAccessibleName(/^vortex-data\/vortex/);
+  });
+});
+
+test.describe("header menu on a phone", () => {
+  test.use({ viewport: { width: 375, height: 812 } });
+
+  test("the links are behind the Menu button, which opens and closes", async ({
+    page
+  }) => {
+    await page.goto("/");
+    const menu = page.locator(".vx-header-menu");
+    const button = menu.locator("summary");
+    await expect(page.locator(".vx-header-nav")).toBeHidden();
+    await expect(button).toBeVisible();
+    await expect(button).toHaveAccessibleName("Menu");
+    const panel = menu.getByRole("navigation", { name: "Primary" });
+    await expect(panel).toBeHidden();
+    await button.click();
+    await expect(panel.getByRole("link", { name: "Docs" })).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(panel).toBeHidden();
+    await expect(button).toBeFocused();
+    await button.click();
+    await page.mouse.click(180, 600);
+    await expect(panel).toBeHidden();
+  });
+
+  test("a link in the menu closes it on the new page", async ({ page }) => {
+    await page.goto("/");
+    await page.locator(".vx-header-menu > summary").click();
+    await page
+      .locator(".vx-header-menu")
+      .getByRole("link", { name: "Blog" })
+      .click();
+    await page.waitForURL("/blog");
+    await expect(page.locator(".vx-header-menu")).not.toHaveAttribute(
+      "open",
+      ""
+    );
+  });
+
+  for (const [width, path] of [
+    [320, "/"],
+    [320, "/blog"],
+    [375, "/blog"]
+  ] as const) {
+    test(`the header keeps one row at ${width}px on ${path}`, async ({
+      page
+    }) => {
+      await page.setViewportSize({ width, height: 640 });
+      await page.goto(path);
+      const header = await page.locator(".vx-header").boundingBox();
+      expect(header?.height).toBe(64);
+      const end = await page.locator(".vx-header-end").boundingBox();
+      expect((end?.x ?? 0) + (end?.width ?? 999)).toBeLessThanOrEqual(
+        width - 16
+      );
+    });
+  }
+});
+
+test.describe("header menu without scripts", () => {
+  test.use({ viewport: { width: 375, height: 812 }, javaScriptEnabled: false });
+
+  test("opens, as a <details>", async ({ page }) => {
+    await page.goto("/");
+    await page.locator(".vx-header-menu > summary").click();
+    await expect(
+      page.locator(".vx-header-menu").getByRole("link", { name: "Bench" })
+    ).toBeVisible();
   });
 });
 
@@ -796,6 +891,31 @@ test.describe("home fills the first screen", () => {
       }
       // The LogoBanner is below the fold.
       expect(logos.top).toBeGreaterThanOrEqual(height);
+    });
+  }
+});
+
+// On a large monitor the logos and the footer fit on the first screen too,
+// and the mark stops growing at 820px, so it stays clear of the words.
+test.describe("home on a tall screen", () => {
+  for (const [width, height] of [
+    [1920, 1100],
+    [2560, 1400]
+  ] as const) {
+    test(`fits the whole page at ${width} × ${height}`, async ({ page }) => {
+      await page.setViewportSize({ width, height });
+      await page.goto("/");
+      const m = await page.evaluate(() => ({
+        scroll: document.documentElement.scrollHeight - window.innerHeight,
+        footer: document.querySelector("footer")?.getBoundingClientRect()
+          .bottom,
+        mark: document
+          .querySelector('main [class*="_markHost"]')
+          ?.getBoundingClientRect().height
+      }));
+      expect(m.scroll).toBeLessThanOrEqual(0);
+      expect(m.footer).toBeLessThanOrEqual(height);
+      expect(m.mark).toBeLessThanOrEqual(820);
     });
   }
 });
@@ -1139,23 +1259,22 @@ test.describe("design system rules on the blog", () => {
     ).toHaveAccessibleName(/^vortex-data\/vortex( [\d.]+k? stars)? on GitHub$/);
   });
 
-  for (const [width, rows] of [
-    [1000, 1],
-    [900, 2]
+  for (const [width, menu] of [
+    [1000, false],
+    [900, true]
   ] as const) {
-    test(`the blog header takes ${rows} row${rows > 1 ? "s" : ""} at ${width}px, and nothing overflows`, async ({
+    test(`the blog header ${menu ? "puts its links behind the menu" : "shows its links"} at ${width}px, and nothing overflows`, async ({
       page
     }) => {
       await page.setViewportSize({ width, height: 800 });
       await page.goto("/blog");
-      const box = async (selector: string) => {
-        const b = await page.locator(selector).first().boundingBox();
-        if (!b) throw new Error(`${selector} has no box`);
-        return b;
-      };
-      const nav = await box(".vx-header-nav");
-      const end = await box(".vx-header-end");
-      expect(nav.y >= end.y + end.height).toBe(rows === 2);
+      await expect(page.locator(".vx-header-nav")).toBeVisible({
+        visible: !menu
+      });
+      await expect(page.locator(".vx-header-menu")).toBeVisible({
+        visible: menu
+      });
+      expect((await page.locator(".vx-header").boundingBox())?.height).toBe(64);
       const header = page.locator(".vx-header");
       const fits = await header.evaluate((e) => e.scrollWidth <= e.clientWidth);
       expect(fits).toBe(true);

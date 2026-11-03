@@ -167,3 +167,25 @@ export function PauseFillIcon({ className }: IconProps) {
     />
   );
 }
+
+/** `menu`: the header's Menu button, closed. */
+export function MenuIcon({ className }: IconProps) {
+  return (
+    <MaterialSymbol
+      className={className}
+      d={"M120-240v-80h720v80H120Zm0-200v-80h720v80H120Zm0-200v-80h720v80H120Z"}
+    />
+  );
+}
+
+/** `close`: the header's Menu button, open. */
+export function CloseIcon({ className }: IconProps) {
+  return (
+    <MaterialSymbol
+      className={className}
+      d={
+        "m256-200-56-56 224-224-224-224 56-56 224 224 224-224 56 56-224 224 224 224-56 56-224-224-224 224Z"
+      }
+    />
+  );
+}
