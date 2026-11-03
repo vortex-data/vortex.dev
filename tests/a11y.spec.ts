@@ -100,7 +100,7 @@ test.describe("site @axe", () => {
  * them out of the row, which changes its layout, so it waits for its own PR.
  */
 const BENCH_KNOWN: Known[] = [
-  { id: "nested-interactive", target: /(^|[ >])summary$/ }
+  { id: "nested-interactive", target: /(^|[ >])summary(\.group-summary)?$/ }
 ];
 
 test.describe("bench @axe", () => {
