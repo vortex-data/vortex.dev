@@ -83,7 +83,7 @@ retired or being decommissioned, and everything about them lives in
 | understand the whole system | [`docs/bench/architecture/`](architecture/README.md) |
 | know the emitter ↔ ingest wire format | [`docs/bench/CONTRACT.md`](CONTRACT.md) |
 | work in this tree (env vars, conventions, footguns) | [`CLAUDE.md`](../../CLAUDE.md), section "bench" |
-| deploy, set up secrets, or run a data refresh | [`docs/bench/runbooks/`](runbooks/) |
+| deploy, migrate the schema, or provision AWS | [`docs/bench/architecture/deploy-and-infra.md`](architecture/deploy-and-infra.md) |
 | read about the previous generations (v2, v3) | [`docs/bench/legacy.md`](legacy.md) |
 | dig into one component | the per-directory READMEs in the layout below |
 
@@ -99,7 +99,7 @@ All paths are from the repository root.
 | `db/` | The Postgres schema (`db/migrations/`, SQL migrations + the `_applied_migrations` ledger) and its runner, `db/migrate-schema.py`. |
 | `infra/` | AWS provisioning for the hosted Postgres + IAM ([README](../../infra/README.md)). |
 | `scripts/parity/`, `scripts/verify-web-deploy.mjs` | The parity check and the post-deploy check. |
-| `docs/bench/` | Architecture docs, operational runbooks, the contract and the legacy-generations doc. |
+| `docs/bench/` | Architecture docs, the contract, the legacy-generations doc, and one historical runbook. |
 
 ## Quick start
 
@@ -121,4 +121,4 @@ is in [`docs/bench/legacy.md`](legacy.md).
 
 ## License
 
-Apache-2.0. See the SPDX headers in each file.
+Code is Apache-2.0 and documentation is CC-BY-4.0, per the Vortex Technical Charter. See the SPDX headers in each file.

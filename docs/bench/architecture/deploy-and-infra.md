@@ -56,10 +56,15 @@ key. Migrations are plain `*.sql`, applied in lexicographic order and tracked in
 | `005_read_role.sql` ✱ | Create `bench_read`, **revoke** `rds_iam`, grant `SELECT`-only. |
 | `006_read_path_perf.sql` ✱ | Denormalize `commit_timestamp` onto `query_measurements` + backfill; add read-path / low-cardinality indexes. |
 | `007_summary_covering_index.sql` ✱ | Rebuild the summary index with `INCLUDE (value_ns)` for index-only scans. |
+| `008_migrator_ownership.sql` ✱ | Transfer the bootstrap objects to `migrator`. The last master-run bootstrap migration. |
+| `009_compression_uncompressed_size.sql` | Record each source dataset's Arrow memory size on new compression rows. |
+| `010_random_access_open_mode.sql` | Add `open_mode` (`cached` or `reopen`) to `random_access_times`. |
+| `011_ci_read_role.sql` ✱ | Create `bench_ci_read` for the monorepo's CI, with a connection limit, timeouts, and read-only transactions. |
+| `012_commit_branch.sql` | Record the branch each commit was measured on, on `commits`. |
 
-✱ = marked `requires-superuser`. These are applied **once, by the RDS master**,
-during bootstrap (the role-management and ownership DDL the `migrator` role
-deliberately can't run). Steady-state CI then runs as `migrator` against
+✱ = marked `requires-superuser`. These are applied **once, by the RDS master**
+(the role-management and ownership DDL the `migrator` role deliberately can't
+run): 002 to 008 during bootstrap, and 011 when the monorepo's CI got its role. Steady-state CI then runs as `migrator` against
 already-applied files (no-ops per the ledger).
 
 ## Schema deploy (`.github/workflows/bench-schema-deploy.yml`)

@@ -2,7 +2,10 @@ import { Feed } from "feed";
 import { getAllPosts } from "@/lib/blog";
 import { baseUrl } from "@/lib/constants";
 
-export async function GET(request: Request) {
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ type: string }> }
+) {
   // The site's own posts only. The blog index also lists posts on other
   // sites (`src/content/links.ts`), but those are not ours to syndicate. Only
   // JSON Feed marks a link item (`external_url`). In RSS and Atom a link item
@@ -38,7 +41,9 @@ export async function GET(request: Request) {
     });
   }
 
-  const type = request.url.split("/").pop();
+  // The route parameter, not the URL's last segment, which would carry any
+  // query string (`feed.xml?utm_source=x`) and miss every case below.
+  const { type } = await params;
   let content: string;
   let contentType: string;
 
