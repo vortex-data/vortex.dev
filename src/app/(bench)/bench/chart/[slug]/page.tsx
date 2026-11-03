@@ -50,8 +50,14 @@ async function redirectToCanonical(slug: string, sp: Awaited<SearchParams>): Pro
   } catch {
     return;
   }
+  // The page reads its parameters with `singleSearchParam`, which treats a
+  // repeated one as absent, so the redirect leaves it out too: otherwise
+  // `?n=all&n=100` would send the default view to `?n=all`.
   const search = new URLSearchParams();
   for (const [name, value] of Object.entries(sp)) {
+    if (Array.isArray(value) && (CHART_PAGE_PARAMS as readonly string[]).includes(name)) {
+      continue;
+    }
     for (const v of Array.isArray(value) ? value : value === undefined ? [] : [value]) {
       search.append(name, v);
     }
