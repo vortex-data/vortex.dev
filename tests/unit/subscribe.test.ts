@@ -130,11 +130,16 @@ describe("POST /api/subscribe", () => {
   });
 
   it("refuses a body over 1 KiB, declared or not", async () => {
+    // A declared size over the limit fails before the body is read, so a
+    // small body with a large Content-Length is refused too.
+    const declared = post(email("ada@example.com"), {
+      headers: { "content-length": "2048" }
+    });
+    assert.equal((await POST(declared)).status, 413);
+    // NextRequest sets no Content-Length for a string body, so this request
+    // reaches the read that counts the bytes.
     const big = email(`${"a".repeat(1100)}@example.com`);
     assert.equal((await POST(post(big))).status, 413);
-    const undeclared = post(big);
-    undeclared.headers.delete("content-length");
-    assert.equal((await POST(undeclared)).status, 413);
   });
 
   it("is unavailable without a Resend key", async () => {
