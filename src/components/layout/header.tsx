@@ -1,5 +1,5 @@
 import NextLink from "next/link";
-import type { ReactNode } from "react";
+import { type ReactNode, Suspense } from "react";
 import WordmarkLight from "@/assets/vortex_wordmark.svg";
 import WordmarkDark from "@/assets/vortex_wordmark_dark_theme.svg";
 import { StarIcon } from "@/components/icons";
@@ -24,6 +24,10 @@ import { HeaderMenu, HeaderNav, type HeaderPlace } from "./header-nav";
  * and its theme toggle (`theme`) in place of the ThemeSwitch, with the links
  * always behind the Menu button. On a phone the GitHub button and the toggle
  * move into the Menu's panel, the toggle as `themeRow`.
+ *
+ * bench renders on request, so its GitHub button waits for the star count
+ * behind a Suspense boundary: a slow GitHub API delays only the count, never
+ * the page. The site is static and reads the count at build time.
  */
 export async function Header({
   bench,
@@ -35,7 +39,6 @@ export async function Header({
   theme?: ReactNode;
   themeRow?: ReactNode;
 } = {}) {
-  const stars = await getStarCount();
   const marks = (
     <>
       <img
@@ -80,28 +83,13 @@ export async function Header({
       {bench && <div className="vx-header-tools">{tools}</div>}
       <div className="vx-header-end">
         {bench && theme}
-        <a
-          className={
-            bench
-              ? "vx-btn vx-btn-secondary is-mono vx-header-spill"
-              : "vx-btn vx-btn-secondary is-mono"
-          }
-          href={REPO_URL}
-          aria-label={
-            stars === null
-              ? `${REPO} on GitHub`
-              : `${REPO} ${formatStars(stars)} stars on GitHub`
-          }
-        >
-          <MarkGithub />
-          <span className="vx-header-repo">{REPO}</span>{" "}
-          {stars !== null && (
-            <span className="vx-btn-count">
-              <StarIcon />
-              {formatStars(stars)}
-            </span>
-          )}
-        </a>
+        {bench ? (
+          <Suspense fallback={<GithubButton bench stars={null} />}>
+            <BenchGithubButton />
+          </Suspense>
+        ) : (
+          <GithubButton stars={await getStarCount()} />
+        )}
         {!bench && <ThemeSwitch />}
         <HeaderMenu
           bench={bench}
@@ -123,4 +111,43 @@ export async function Header({
       </div>
     </header>
   );
+}
+
+/** The GitHub button, with the repository's star count once it is known. */
+function GithubButton({
+  bench,
+  stars
+}: {
+  bench?: boolean;
+  stars: number | null;
+}) {
+  return (
+    <a
+      className={
+        bench
+          ? "vx-btn vx-btn-secondary is-mono vx-header-spill"
+          : "vx-btn vx-btn-secondary is-mono"
+      }
+      href={REPO_URL}
+      aria-label={
+        stars === null
+          ? `${REPO} on GitHub`
+          : `${REPO} ${formatStars(stars)} stars on GitHub`
+      }
+    >
+      <MarkGithub />
+      <span className="vx-header-repo">{REPO}</span>{" "}
+      {stars !== null && (
+        <span className="vx-btn-count">
+          <StarIcon />
+          {formatStars(stars)}
+        </span>
+      )}
+    </a>
+  );
+}
+
+/** bench's GitHub button, once the star count is read: the Suspense boundary's content. */
+async function BenchGithubButton() {
+  return <GithubButton bench stars={await getStarCount()} />;
 }

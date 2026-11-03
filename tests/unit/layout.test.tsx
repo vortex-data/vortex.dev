@@ -47,6 +47,28 @@ describe("Header on bench", () => {
     assert.match(html, /aria-label="vortex-data\/vortex on GitHub"/);
   });
 
+  it("does not wait for GitHub's star count before it renders on bench", async () => {
+    const realFetch = globalThis.fetch;
+    // A GitHub API that never answers: the bench header must still render, without a count.
+    globalThis.fetch = (() => new Promise(() => {})) as typeof fetch;
+    try {
+      const header = await Promise.race([
+        Header({ bench: { home: "/" } }),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 500))
+      ]);
+      assert.notEqual(
+        header,
+        null,
+        "the bench header waited for the star count"
+      );
+      const html = renderToStaticMarkup(header);
+      assert.match(html, /aria-label="vortex-data\/vortex on GitHub"/);
+      assert.doesNotMatch(html, /vx-btn-count/);
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+  });
+
   it("draws solid rules on bench, and the frame's dashed ones on the site", async () => {
     assert.match(
       renderToStaticMarkup(await Header({ bench: { home: "/" } })),
