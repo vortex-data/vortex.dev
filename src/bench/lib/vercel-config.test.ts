@@ -29,11 +29,12 @@ function hostName(pattern: string): string {
   if (!match) {
     throw new Error(`host condition ${pattern} is not anchored`);
   }
-  const host = match[1]!.replace(/\\\./g, '.');
-  if (host.replace(/\./g, '\\.') !== match[1]) {
-    throw new Error(`host condition ${pattern} has an unescaped dot`);
+  // Labels joined by escaped dots, and nothing else: an unescaped dot or any
+  // other regular-expression character fails.
+  if (!/^[a-z0-9-]+(?:\\\.[a-z0-9-]+)+$/.test(match[1]!)) {
+    throw new Error(`host condition ${pattern} is not an escaped host name`);
   }
-  return host;
+  return match[1]!.replaceAll('\\.', '.');
 }
 
 /** The paths (with any host condition) that get bench's page CDN rule. */
