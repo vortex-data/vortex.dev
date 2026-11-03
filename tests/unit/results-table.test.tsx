@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { OpenInNewIcon } from "@/components/icons";
 import { ResultsTable } from "@/components/results-table";
 import { formatReadDate, panelsFrom } from "@/lib/bench-summary";
-import { renderResults } from "@/vendor/vortex-design/benchmark-card.js";
+import { renderResults } from "@/vendor/vortex-design/results.js";
 
 const fixture = (name: string) =>
   JSON.parse(

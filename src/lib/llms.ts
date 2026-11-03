@@ -2,10 +2,7 @@ import { formatReadDate, type Panel } from "@/lib/bench-summary";
 import type { BlogPostMeta } from "@/lib/blog";
 import { baseUrl } from "@/lib/constants";
 import { copyText, installTabs } from "@/lib/install";
-import {
-  resultsRow,
-  resultsSystems
-} from "@/vendor/vortex-design/benchmark-card.js";
+import { resultsRow, resultsSystems } from "@/vendor/vortex-design/results.js";
 
 // What the homepage says Vortex is, for llms.txt and the structured data.
 export const SUMMARY =
@@ -48,7 +45,7 @@ function about(panel: Panel): string {
 /**
  * The homepage's results table as sentences, one per row: what the row
  * measures, each format's figure, and how Vortex does against Parquet. The
- * figures are the table's own labels (benchmark-card.js).
+ * figures are the table's own labels (results.js).
  */
 export function resultsSentences(panels: readonly Panel[]): string[] {
   const systems = resultsSystems(panels);
