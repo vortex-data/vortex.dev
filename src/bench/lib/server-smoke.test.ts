@@ -99,15 +99,17 @@ describe.skipIf(!databaseAvailable || !BUILD_PRESENT)(
       await container.stop();
     });
 
-    it('serves the landing page with header chrome and collapsed groups, and no chart islands', async () => {
+    it("serves the landing page in the site's header, with the toolbar and collapsed groups, and no chart islands", async () => {
       // The first request may miss the Data Cache, read slowly and stream the
       // loading view first (app/page.tsx); either way it fills the cache, so
       // the second takes the plain-HTML path asserted below.
       const first = await (await fetch(BASE)).text();
       expect(first).toContain('class="group-details"');
       const html = await (await fetch(BASE)).text();
-      // Header chrome (PR-4.4.b islands, server-rendered).
-      expect(html).toContain('data-role="nav-mobile-toggle"');
+      // The site's header and footer, then bench's toolbar (server-rendered islands).
+      expect(html).toContain('<header class="vx-header has-nav">');
+      expect(html).toContain('<footer class="vx-footer">');
+      expect(html).toContain('<div class="bench-toolbar"><h1 class="bench-title">Benchmarks</h1>');
       expect(html).toContain('data-role="theme-toggle"');
       expect(html).toContain('data-action="expand-all"');
       expect(html).toContain('data-role="global-filter-bar"');
