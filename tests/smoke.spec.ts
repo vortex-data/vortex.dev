@@ -42,7 +42,8 @@ test.describe("home", () => {
     ).toBeVisible();
   });
 
-  // Note 81: the hero says what Vortex is, above the fold, in one line.
+  // Note 81: the hero says what Vortex is, above the fold. Home E2 sets it in
+  // mono in the headline's 440px column, so it takes three lines.
   test("the standfirst says what Vortex is", async ({ page }) => {
     await page.setViewportSize({ width: 1512, height: 860 });
     await page.goto("/");
@@ -51,9 +52,31 @@ test.describe("home", () => {
     );
     await expect(standfirst).toBeVisible();
     const box = await standfirst.boundingBox();
-    expect(box?.height ?? 99).toBeLessThan(36);
+    expect(box?.height ?? 99).toBeLessThan(90);
     expect((box?.y ?? 999) + (box?.height ?? 0)).toBeLessThan(430);
   });
+
+  // "pick three." takes the headline's second line whole, on a laptop and on
+  // a large monitor alike.
+  for (const [width, height] of [
+    [1512, 860],
+    [2560, 1400]
+  ] as const) {
+    test(`the headline breaks before "pick three." at ${width} × ${height}`, async ({
+      page
+    }) => {
+      await page.setViewportSize({ width, height });
+      await page.goto("/");
+      const lines = await page.locator("h1").evaluate((h) => {
+        const s = getComputedStyle(h);
+        return Math.round(h.clientHeight / Number.parseFloat(s.lineHeight));
+      });
+      expect(lines).toBe(2);
+      const h1 = await page.locator("h1").boundingBox();
+      const keep = await page.locator("h1 span").boundingBox();
+      expect(Math.round(keep?.x ?? 0)).toBe(Math.round(h1?.x ?? -1));
+    });
+  }
 
   test("title is correct", async ({ page }) => {
     await page.goto("/");
@@ -159,89 +182,68 @@ test.describe("home", () => {
 });
 
 test.describe("home bands", () => {
-  test("the benchmark card shows six panels with a source link, or is absent", async ({
+  test("the results table shows six benchmarks with a source link, or is absent", async ({
     page
   }) => {
     await page.goto("/");
     // The figures are read from bench.vortex.dev at build time. When that
-    // read fails the page leaves the whole card out, never part of it.
-    const card = page.getByRole("region", { name: "Benchmark summary" });
-    if ((await card.count()) === 0) {
-      await expect(page.locator(".vx-bench-panel")).toHaveCount(0);
+    // read fails the page leaves the whole table out, never part of it.
+    const table = page.getByRole("region", { name: "Benchmark results" });
+    if ((await table.count()) === 0) {
+      await expect(page.locator(".vx-results-table")).toHaveCount(0);
       return;
     }
-    await expect(card).toBeVisible();
-    await expect(card.locator(".vx-bench-panel")).toHaveCount(6);
-    await expect(card.locator(".vx-bench-big")).toHaveCount(6);
-    const source = card.locator('a[href="https://bench.vortex.dev"]');
+    await expect(table).toBeVisible();
+    await expect(table.locator("tbody tr")).toHaveCount(6);
+    await expect(table.locator("tbody td.is-ours")).toHaveCount(6);
+    await expect(table).toContainText(/read \d+ \w{3} \d{4}/);
+    const source = table.locator('a[href="https://bench.vortex.dev"]');
     await expect(source).toBeVisible();
-    await expect(source).toContainText(
-      /bench\.vortex\.dev · read \d+ \w{3} \d{4}/i
-    );
-    await expect(card.locator(".vx-bar.is-ours")).toHaveCount(6);
+    await expect(source).toHaveText("bench.vortex.dev");
   });
 
-  // Note 62: each bar ends in its score, with the unit for screen readers
-  // and as its hover title. Note 63: the value carries a short unit, ms for
-  // a time and × for a ratio. Lance cannot run in cuDF, so it is N/A there,
-  // and the hand-kept GPU panel's source is named under the panels.
-  test("each bar ends in its value and unit, keeps its full unit for screen readers, and the GPU panel names its source", async ({
+  // Home E2: the model card's motif. Each row underlines its best figure,
+  // which is mostly Vortex's, and says how Vortex does against Parquet.
+  // Every cell keeps its full unit as its hover title. Lance cannot run in
+  // cuDF, so it is N/A there, and the hand-kept GPU row names its source.
+  test("each row marks its best figure, and every cell names its system and full unit", async ({
     page
   }) => {
     await page.goto("/");
-    const card = page.getByRole("region", { name: "Benchmark summary" });
-    test.skip((await card.count()) === 0, "bench was not read at build");
-    const bars = await card.locator(".vx-bar").evaluateAll((rows) =>
-      rows.map((r) => ({
-        title: r.getAttribute("title") ?? "",
-        value: r.querySelector(".vx-bar-value")?.textContent ?? null,
-        sr: r.querySelector(".vx-sr-only")?.textContent ?? null,
-        missing: r.querySelector(".vx-bar-missing") !== null
+    const table = page.getByRole("region", { name: "Benchmark results" });
+    test.skip((await table.count()) === 0, "bench was not read at build");
+    const rows = await table.locator("tbody tr").evaluateAll((trs) =>
+      trs.map((tr) => ({
+        name: tr.querySelector("th")?.firstChild?.textContent ?? "",
+        best: tr.querySelectorAll("td.is-best").length,
+        verdict: tr.querySelector("td.is-verdict")?.textContent ?? "",
+        titles: [...tr.querySelectorAll("td:not(.is-verdict)")].map(
+          (td) => td.getAttribute("title") ?? ""
+        )
       }))
     );
-    expect(bars.length).toBeGreaterThanOrEqual(19);
-    for (const b of bars) {
-      if (b.missing) {
-        expect(b.title).toMatch(/: Not measured$/);
-        continue;
-      }
-      expect(b.value).toMatch(/^(\d[\d.]*(×| ms)|N\/A)$/);
-      expect(b.title.endsWith(`: ${b.sr}`)).toBe(true);
-    }
-    // The value column is one width in every row of a panel, so its bars
-    // share a scale.
-    const widths = await card
-      .locator(".vx-bars")
-      .evaluateAll((panels) =>
-        panels.map(
-          (p) =>
-            new Set(
-              [...p.querySelectorAll(".vx-bar-track")].map((t) =>
-                Math.round(t.getBoundingClientRect().width)
-              )
-            ).size
-        )
+    expect(rows.map((r) => r.name)).toEqual([
+      "Scan",
+      "Write",
+      "ClickBench",
+      "GPU, cuDF",
+      "Random access",
+      "File size"
+    ]);
+    for (const r of rows) {
+      expect(r.best, r.name).toBeGreaterThanOrEqual(1);
+      expect(r.verdict, r.name).toMatch(
+        /^(\d[\d.]*(×|%) (faster|slower|smaller|larger)|as fast|the same size|\w+ not measured)$/
       );
-    expect(widths).toEqual([1, 1, 1, 1, 1, 1]);
-    // Note 81: a short caption, with the method as its title and for
-    // screen readers.
-    const sub = card.locator(".vx-bench-sub");
-    await expect(sub).toHaveText(
-      /^· times in ms, ratios to Parquet, best first\. A time is the geomean/
-    );
-    await expect(sub).toHaveAttribute(
-      "title",
-      /A ratio is against Parquet = 1\.$/
-    );
+      for (const t of r.titles)
+        expect(t, r.name).toMatch(/^(Vortex|Parquet|Lance|Arrow): \S/);
+    }
     await expect(
-      card.locator(
-        '.vx-bar.is-na[title="Lance: not available, no cuDF integration"]'
-      )
-    ).toHaveCount(1);
-    await expect(card.locator(".vx-bench-foot")).toHaveCount(0);
+      table.locator('td[title="Lance: not available, no cuDF integration"]')
+    ).toHaveText("N/A");
     await expect(
-      card.locator(".vx-bench-title", { hasText: "GPU analytics with cuDF" })
-    ).toHaveAttribute("title", /^end to end, hot, .*UW–Madison talk$/);
+      table.locator('tbody th[title^="end to end, hot, "]')
+    ).toContainText("GPU, cuDF");
   });
 
   // The exact list and order are logo-banner.test.tsx's; here the page shows
@@ -524,6 +526,9 @@ test.describe("blog post", () => {
 test.describe("header", () => {
   test("shows the five nav links and the GitHub button", async ({ page }) => {
     await page.goto("/");
+    // On a phone the links are behind the Menu button.
+    const menu = page.locator(".vx-header-menu > summary");
+    if (await menu.isVisible()) await menu.click();
     const nav = page.getByRole("navigation", { name: "Primary" });
     for (const [name, href] of [
       ["Docs", "https://docs.vortex.dev"],
@@ -542,7 +547,83 @@ test.describe("header", () => {
       'header a[href="https://github.com/vortex-data/vortex"]'
     );
     await expect(github).toBeVisible();
-    await expect(github).toContainText("vortex-data/vortex");
+    await expect(github).toHaveAccessibleName(/^vortex-data\/vortex/);
+  });
+});
+
+test.describe("header menu on a phone", () => {
+  test.use({ viewport: { width: 375, height: 812 } });
+
+  test("the links are behind the Menu button, which opens and closes", async ({
+    page
+  }) => {
+    await page.goto("/");
+    const menu = page.locator(".vx-header-menu");
+    const button = menu.locator("summary");
+    await expect(page.locator(".vx-header-nav")).toBeHidden();
+    await expect(button).toBeVisible();
+    await expect(button).toHaveAccessibleName("Menu");
+    const panel = menu.getByRole("navigation", { name: "Primary" });
+    await expect(panel).toBeHidden();
+    await button.click();
+    await expect(panel.getByRole("link", { name: "Docs" })).toBeVisible();
+    // The panel is on the page's ground, not a grey of its own.
+    const [panelBg, pageBg] = await panel.evaluate((el) => [
+      getComputedStyle(el).backgroundColor,
+      getComputedStyle(document.body).backgroundColor
+    ]);
+    expect(panelBg).toBe(pageBg);
+    await page.keyboard.press("Escape");
+    await expect(panel).toBeHidden();
+    await expect(button).toBeFocused();
+    await button.click();
+    await page.mouse.click(180, 600);
+    await expect(panel).toBeHidden();
+  });
+
+  test("a link in the menu closes it on the new page", async ({ page }) => {
+    await page.goto("/");
+    await page.locator(".vx-header-menu > summary").click();
+    await page
+      .locator(".vx-header-menu")
+      .getByRole("link", { name: "Blog" })
+      .click();
+    await page.waitForURL("/blog");
+    await expect(page.locator(".vx-header-menu")).not.toHaveAttribute(
+      "open",
+      ""
+    );
+  });
+
+  for (const [width, path] of [
+    [320, "/"],
+    [320, "/blog"],
+    [375, "/blog"]
+  ] as const) {
+    test(`the header keeps one row at ${width}px on ${path}`, async ({
+      page
+    }) => {
+      await page.setViewportSize({ width, height: 640 });
+      await page.goto(path);
+      const header = await page.locator(".vx-header").boundingBox();
+      expect(header?.height).toBe(64);
+      const end = await page.locator(".vx-header-end").boundingBox();
+      expect((end?.x ?? 0) + (end?.width ?? 999)).toBeLessThanOrEqual(
+        width - 16
+      );
+    });
+  }
+});
+
+test.describe("header menu without scripts", () => {
+  test.use({ viewport: { width: 375, height: 812 }, javaScriptEnabled: false });
+
+  test("opens, as a <details>", async ({ page }) => {
+    await page.goto("/");
+    await page.locator(".vx-header-menu > summary").click();
+    await expect(
+      page.locator(".vx-header-menu").getByRole("link", { name: "Bench" })
+    ).toBeVisible();
   });
 });
 
@@ -742,92 +823,40 @@ test.describe("mobile layout", () => {
   });
 });
 
-// On a phone the BenchmarkCard sets its panels two to a row, each bar under
-// its name. Beside them, a bar was 15 to 50px wide at 375px.
-test.describe("benchmark card on phones", () => {
+// Home E2: on a phone the results table keeps Vortex's column and the
+// verdict, and fits the screen down to 320px.
+test.describe("results table on phones", () => {
   for (const width of [320, 375]) {
     test.describe(`at ${width}px`, () => {
       test.use({ viewport: { width, height: 812 } });
 
-      test("bars are readable, rows are ruled, and figures line up", async ({
+      test("shows Vortex and the verdict, inside the screen", async ({
         page
       }) => {
         await page.goto("/");
-        const card = page.getByRole("region", { name: "Benchmark summary" });
-        test.skip((await card.count()) === 0, "bench was not read at build");
-        const m = await card.evaluate((el) => {
-          const top = (e: Element | null) =>
-            Math.round(e?.getBoundingClientRect().top ?? 0);
-          const panels = [...el.querySelectorAll(".vx-bench-panel")];
-          const rows = new Map<number, Element[]>();
-          for (const p of panels)
-            rows.set(top(p), [...(rows.get(top(p)) ?? []), p]);
-          const tracks = [...el.querySelectorAll(".vx-bar-track")];
-          return {
-            columns: Math.max(...[...rows.values()].map((r) => r.length)),
-            narrowest: Math.min(
-              ...tracks.map((t) => t.getBoundingClientRect().width)
-            ),
-            misaligned: [...rows.values()].filter(
-              (r) =>
-                new Set(r.map((p) => top(p.querySelector(".vx-bench-big"))))
-                  .size > 1
-            ).length,
-            ruled: panels
-              .filter((p) => top(p) !== top(panels[0] ?? null))
-              .every((p) => getComputedStyle(p).borderTopWidth === "1px")
-          };
-        });
-        expect(m.columns).toBe(2);
-        expect(m.narrowest).toBeGreaterThanOrEqual(100);
-        expect(m.misaligned).toBe(0);
-        expect(m.ruled).toBe(true);
+        const table = page.getByRole("region", { name: "Benchmark results" });
+        test.skip((await table.count()) === 0, "bench was not read at build");
+        await expect(
+          table.locator(".vx-results-head > span").first()
+        ).toHaveText("File format benchmarks");
+        const m = await table.evaluate((el) => ({
+          right: el.getBoundingClientRect().right,
+          heads: [...el.querySelectorAll("thead th")]
+            .filter((th) => getComputedStyle(th).display !== "none")
+            .map((th) => th.textContent)
+        }));
+        expect(m.heads).toEqual(["Benchmark", "Vortex", "vs Parquet"]);
+        expect(m.right).toBeLessThanOrEqual(width);
       });
     });
   }
 });
 
-// Note 60: the card sets 2, 3 or 6 columns by its own width, so between
-// phones and 1440px a bar is never squeezed to 26 or 30px.
-test.describe("benchmark card columns", () => {
-  for (const [width, columns] of [
-    [640, 2],
-    [1024, 3],
-    [1440, 6]
-  ] as const) {
-    test.describe(`at ${width}px`, () => {
-      test.use({ viewport: { width, height: 900 } });
-
-      test(`${columns} columns, with bars of 60px or more`, async ({
-        page
-      }) => {
-        await page.goto("/");
-        const card = page.getByRole("region", { name: "Benchmark summary" });
-        test.skip((await card.count()) === 0, "bench was not read at build");
-        const m = await card.evaluate((el) => {
-          const tops = [...el.querySelectorAll(".vx-bench-panel")].map((p) =>
-            Math.round(p.getBoundingClientRect().top)
-          );
-          const first = tops.filter((t) => t === tops[0]).length;
-          const tracks = [...el.querySelectorAll(".vx-bar-track")];
-          return {
-            first,
-            narrowest: Math.min(
-              ...tracks.map((t) => t.getBoundingClientRect().width)
-            )
-          };
-        });
-        expect(m.first).toBe(columns);
-        expect(m.narrowest).toBeGreaterThanOrEqual(60);
-      });
-    });
-  }
-});
-
-// Note 62: the homepage fits one screen on a 14-inch laptop's browser and at
-// 1440 × 900, with the footer in view and nothing to scroll.
-test.describe("home fits one screen", () => {
+// Home E2: from 1240px the mark fills the first screen, the hero ends at the
+// screen's foot, and its four parts sit in its corners without touching.
+test.describe("home fills the first screen", () => {
   for (const [width, height] of [
+    [1280, 800],
     [1440, 900],
     [1512, 860]
   ] as const) {
@@ -835,71 +864,186 @@ test.describe("home fits one screen", () => {
       await page.setViewportSize({ width, height });
       await page.goto("/");
       const m = await page.evaluate(() => {
-        const foot = document.querySelector("footer")?.getBoundingClientRect();
+        const box = (s: string) => {
+          const r = document.querySelector(s)?.getBoundingClientRect();
+          return r
+            ? { top: r.top, right: r.right, bottom: r.bottom, left: r.left }
+            : null;
+        };
         return {
-          scroll: document.documentElement.scrollHeight - window.innerHeight,
-          footTop: foot?.top ?? Number.POSITIVE_INFINITY,
-          footBottom: foot?.bottom ?? Number.POSITIVE_INFINITY
+          hero: box('main [class*="_hero"]'),
+          mark: box('main [class*="_markHost"]'),
+          head: box('main [class*="_head"]'),
+          eyebrow: box(".vx-eyebrow"),
+          install: box(".vx-tabs"),
+          results: box(".vx-results"),
+          logos: box(".vx-logos")
         };
       });
-      expect(m.scroll).toBeLessThanOrEqual(0);
-      expect(m.footTop).toBeLessThan(height);
-      expect(m.footBottom).toBeLessThanOrEqual(height);
-    });
-  }
-
-  // Note 81: the standfirst fits in the text's free height, so the mark's
-  // host keeps the size it had before (472px wide, as tall as the hero).
-  for (const [width, height, side] of [
-    [1512, 860, 383],
-    [1440, 900, 423],
-    [1512, 982, 472]
-  ] as const) {
-    test(`the mark keeps its size at ${width} × ${height}`, async ({
-      page
-    }) => {
-      await page.setViewportSize({ width, height });
-      await page.goto("/");
-      const box = await page.locator('[class*="markHost"]').boundingBox();
-      expect(Math.round(box?.width ?? 0)).toBe(472);
-      expect(Math.round(box?.height ?? 0)).toBeGreaterThanOrEqual(side);
+      const { hero, mark, head, eyebrow, install, results, logos } = m;
+      if (!hero || !mark || !head || !eyebrow || !install || !logos)
+        throw new Error("a part of the hero is missing");
+      expect(Math.abs(hero.bottom - height)).toBeLessThanOrEqual(1);
+      // The mark's host is the whole hero.
+      expect(mark.top).toBe(hero.top);
+      expect(mark.bottom).toBe(hero.bottom);
+      expect(mark.right - mark.left).toBe(hero.right - hero.left);
+      // The corners.
+      expect(head.left).toBeLessThan(eyebrow.left);
+      expect(head.right).toBeLessThan(eyebrow.left);
+      expect(install.top).toBeGreaterThan(head.bottom);
+      expect(install.bottom).toBeLessThanOrEqual(height);
+      if (results) {
+        expect(results.left).toBeGreaterThan(install.right);
+        expect(results.top).toBeGreaterThan(eyebrow.bottom);
+        expect(results.bottom).toBeLessThanOrEqual(height);
+      }
+      // The LogoBanner is below the fold.
+      expect(logos.top).toBeGreaterThanOrEqual(height);
     });
   }
 });
 
-// Note 81, fix 6: without scripts the static symbol stands in for the mark,
-// so the hero takes its content's height plus the scripts-on page's
-// breathing room, instead of stretching to fill a tall window.
+// On a large monitor the logos and the footer fit on the first screen too,
+// and the mark stops growing at 820px, so it stays clear of the words.
+test.describe("home on a tall screen", () => {
+  for (const [width, height] of [
+    [1920, 1100],
+    [2560, 1400]
+  ] as const) {
+    test(`fits the whole page at ${width} × ${height}`, async ({ page }) => {
+      await page.setViewportSize({ width, height });
+      await page.goto("/");
+      const m = await page.evaluate(() => ({
+        scroll: document.documentElement.scrollHeight - window.innerHeight,
+        footer: document.querySelector("footer")?.getBoundingClientRect()
+          .bottom,
+        mark: document
+          .querySelector('main [class*="_markHost"]')
+          ?.getBoundingClientRect().height
+      }));
+      expect(m.scroll).toBeLessThanOrEqual(0);
+      expect(m.footer).toBeLessThanOrEqual(height);
+      expect(m.mark).toBeLessThanOrEqual(820);
+    });
+  }
+});
+
+// Home E2: without scripts, or without WebGL, there is no mark to look at.
+// The words and the table share one compact screen, side by side, with the
+// footer in view.
+const compactHome = async (page: Page, width: number, height: number) => {
+  await page.setViewportSize({ width, height });
+  await page.goto("/");
+  return page.evaluate(() => {
+    const box = (s: string) =>
+      document.querySelector(s)?.getBoundingClientRect() ?? null;
+    return {
+      scroll: document.documentElement.scrollHeight - window.innerHeight,
+      mark: getComputedStyle(
+        document.querySelector('main [class*="_markHost"]')?.parentElement ??
+          document.body
+      ).display,
+      install: box(".vx-tabs"),
+      results: box(".vx-results"),
+      footer: box("footer")
+    };
+  });
+};
+
 test.describe("home without scripts", () => {
   test.use({ javaScriptEnabled: false });
 
-  for (const height of [860, 1400]) {
-    test(`the hero hugs its content at 1512 × ${height}`, async ({ page }) => {
-      await page.setViewportSize({ width: 1512, height });
-      await page.goto("/");
-      const m = await page.evaluate(() => {
-        const box = (s: string) =>
-          document.querySelector(s)?.getBoundingClientRect() ?? null;
-        return {
-          header: box("header")?.bottom ?? 0,
-          eyebrow: box(".vx-eyebrow")?.top ?? 0,
-          tabs: box(".vx-tabs")?.bottom ?? 0,
-          bench: box(".vx-bench")?.top ?? 0,
-          still: box(".ascii-mark-still")
-        };
-      });
-      expect(m.eyebrow - m.header).toBeGreaterThanOrEqual(64);
-      expect(m.eyebrow - m.header).toBeLessThanOrEqual(80);
-      expect(m.bench - m.tabs).toBeGreaterThanOrEqual(56);
-      expect(m.bench - m.tabs).toBeLessThanOrEqual(72);
-      // The symbol is a little larger than the mark's own 40% fallback, and
-      // sits beside the stacked install block.
-      expect(m.still?.width ?? 0).toBeGreaterThanOrEqual(240);
-      const mid = ((m.still?.top ?? 0) + (m.still?.bottom ?? 0)) / 2;
-      expect(mid).toBeGreaterThan(m.eyebrow);
-      expect(mid).toBeLessThan(m.tabs);
+  // Every install command shows, stacked under its tab's name, so this page
+  // is taller than one screen. It still drops the mark and sets the table
+  // beside the words.
+  for (const [width, height] of [
+    [1512, 860],
+    [1280, 800]
+  ] as const) {
+    test(`drops the mark, with the table beside the words, at ${width} × ${height}`, async ({
+      page
+    }) => {
+      const m = await compactHome(page, width, height);
+      expect(m.mark).toBe("none");
+      if (m.results)
+        expect(m.results.left).toBeGreaterThan(m.install?.right ?? 9999);
     });
   }
+});
+
+test.describe("home without WebGL", () => {
+  test("lays out without the mark from the first frame, so nothing moves", async ({
+    page
+  }) => {
+    // A browser that cannot make a WebGL context, as with WebGL turned off.
+    await page.addInitScript(() => {
+      const real = HTMLCanvasElement.prototype.getContext;
+      HTMLCanvasElement.prototype.getContext = function (
+        this: HTMLCanvasElement,
+        kind: string,
+        ...rest: unknown[]
+      ) {
+        if (/webgl/.test(kind)) return null;
+        return (real as (...a: unknown[]) => unknown).call(this, kind, ...rest);
+      } as typeof real;
+      const w = window as unknown as { shift: number };
+      w.shift = 0;
+      new PerformanceObserver((list) => {
+        for (const e of list.getEntries())
+          w.shift += (e as unknown as { value: number }).value;
+      }).observe({ type: "layout-shift", buffered: true });
+    });
+    const m = await compactHome(page, 1512, 860);
+    await expect(page.locator("html")).toHaveClass(/\bno-webgl\b/);
+    await expect(page.locator("[data-mark-mode]")).toHaveAttribute(
+      "data-mark-mode",
+      /static|error/
+    );
+    expect(m.mark).toBe("none");
+    expect(m.scroll).toBeLessThanOrEqual(0);
+    const shift = await page.evaluate(
+      () => (window as unknown as { shift: number }).shift
+    );
+    expect(shift).toBeLessThan(0.01);
+  });
+
+  test("lays out without the mark when a link from another page opens it", async ({
+    page
+  }) => {
+    // The first-paint script ran on /blog, so it did not probe; the link
+    // renders the homepage in place, with no new document.
+    await page.addInitScript(() => {
+      const real = HTMLCanvasElement.prototype.getContext;
+      HTMLCanvasElement.prototype.getContext = function (
+        this: HTMLCanvasElement,
+        kind: string,
+        ...rest: unknown[]
+      ) {
+        if (/webgl/.test(kind)) return null;
+        return (real as (...a: unknown[]) => unknown).call(this, kind, ...rest);
+      } as typeof real;
+      // The mark's band's display when the homepage's DOM first goes in,
+      // after React's layout effects and before the frame is painted.
+      const w = window as unknown as { firstMark?: string };
+      new MutationObserver((_, obs) => {
+        const host = document.querySelector('main [class*="_markHost"]');
+        if (!host?.parentElement) return;
+        w.firstMark = getComputedStyle(host.parentElement).display;
+        obs.disconnect();
+      }).observe(document, { childList: true, subtree: true });
+    });
+    await page.setViewportSize({ width: 1512, height: 860 });
+    await page.goto("/blog");
+    await page.getByRole("link", { name: "Vortex home" }).click();
+    await page.waitForURL("/");
+    await expect(page.locator("html")).toHaveClass(/\bno-webgl\b/);
+    expect(
+      await page.evaluate(
+        () => (window as unknown as { firstMark?: string }).firstMark
+      )
+    ).toBe("none");
+  });
 });
 
 test.describe("narrowest phones", () => {
@@ -915,6 +1059,24 @@ test.describe("narrowest phones", () => {
       expect(scrollWidth).toBeLessThanOrEqual(clientWidth);
     });
   }
+
+  // The page can have a few pixels of slack where the frame does not, so
+  // a table wider than its frame would pass the scroll test on one font
+  // renderer and fail on another.
+  test("the results table fits inside its frame at 320px", async ({ page }) => {
+    await page.goto("/");
+    const frame = page.locator(".vx-results");
+    test.skip((await frame.count()) === 0, "no benchmark figures");
+    const { frameRight, tableRight } = await frame.evaluate((el) => {
+      const table = el.querySelector(".vx-results-table");
+      const padding = Number.parseFloat(getComputedStyle(el).paddingRight);
+      return {
+        frameRight: el.getBoundingClientRect().right - padding,
+        tableRight: table?.getBoundingClientRect().right ?? 0
+      };
+    });
+    expect(tableRight).toBeLessThanOrEqual(frameRight);
+  });
 
   test("the GitHub button shares the wordmark's row at 320px", async ({
     page
@@ -950,14 +1112,14 @@ test.describe("theme on client navigation", () => {
     await page.evaluate(() => {
       const w = window as unknown as { themeAtCommit?: string };
       new MutationObserver((_, observer) => {
-        if (document.querySelector("h1.vx-display")) {
+        if (document.querySelector("h1.vx-display-mono")) {
           w.themeAtCommit = document.documentElement.dataset.theme ?? "";
           observer.disconnect();
         }
       }).observe(document.body, { childList: true, subtree: true });
     });
     await page.locator('header a[href="/"]').first().click();
-    await expect(page.locator("h1.vx-display")).toBeVisible();
+    await expect(page.locator("h1.vx-display-mono")).toBeVisible();
     const theme = await page.evaluate(
       () => (window as unknown as { themeAtCommit?: string }).themeAtCommit
     );
@@ -1124,23 +1286,22 @@ test.describe("design system rules on the blog", () => {
     ).toHaveAccessibleName(/^vortex-data\/vortex( [\d.]+k? stars)? on GitHub$/);
   });
 
-  for (const [width, rows] of [
-    [1000, 1],
-    [900, 2]
+  for (const [width, menu] of [
+    [1000, false],
+    [900, true]
   ] as const) {
-    test(`the blog header takes ${rows} row${rows > 1 ? "s" : ""} at ${width}px, and nothing overflows`, async ({
+    test(`the blog header ${menu ? "puts its links behind the menu" : "shows its links"} at ${width}px, and nothing overflows`, async ({
       page
     }) => {
       await page.setViewportSize({ width, height: 800 });
       await page.goto("/blog");
-      const box = async (selector: string) => {
-        const b = await page.locator(selector).first().boundingBox();
-        if (!b) throw new Error(`${selector} has no box`);
-        return b;
-      };
-      const nav = await box(".vx-header-nav");
-      const end = await box(".vx-header-end");
-      expect(nav.y >= end.y + end.height).toBe(rows === 2);
+      await expect(page.locator(".vx-header-nav")).toBeVisible({
+        visible: !menu
+      });
+      await expect(page.locator(".vx-header-menu")).toBeVisible({
+        visible: menu
+      });
+      expect((await page.locator(".vx-header").boundingBox())?.height).toBe(64);
       const header = page.locator(".vx-header");
       const fits = await header.evaluate((e) => e.scrollWidth <= e.clientWidth);
       expect(fits).toBe(true);

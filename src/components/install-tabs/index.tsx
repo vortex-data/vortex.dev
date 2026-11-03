@@ -54,7 +54,7 @@ export function InstallTabs({ sparkVersion }: { sparkVersion: string | null }) {
   };
 
   return (
-    <div className="vx-card vx-tabs">
+    <div className="vx-frame vx-tabs">
       <div
         className="vx-tabs-list"
         role="tablist"

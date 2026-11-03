@@ -1,7 +1,10 @@
-/* The homepage's grid, from the design system's Home card: the hero, then the
-   benchmark and logo bands, between the root layout's header and footer. At
-   1440 × 900 it fills one screen, and the hero takes the height the bands
-   leave. Below that height, and on phones, the page scrolls. */
+/* The homepage, from the design system's Home card. On a wide screen the
+   ASCII mark fills the first screen and the words sit in its corners: the
+   headline top left, the eyebrow top right, the install box bottom left and
+   the results table bottom right. The LogoBanner is below the fold. Narrower,
+   the parts stack, with the mark last. Without WebGL or scripts there is no
+   mark to look at, so the page drops it and the words and the table share one
+   compact screen. */
 
 .home {
   flex: 1 0 auto;
@@ -9,116 +12,172 @@
   flex-direction: column;
 }
 
+/* Stacked: the eyebrow, the words, the install box, the table, then the
+   mark in its own band. */
 .hero {
   position: relative;
-  flex: 1 0 auto;
   display: grid;
-  /* 840px holds the headline (822px at 64px) on one line. The 32px gap
-     keeps the mark's column 472px wide at 1440, so the mark still takes
-     the hero's full height. */
-  grid-template-columns: minmax(0, 840px) minmax(320px, 1fr);
-  gap: var(--space-32);
-  /* The card pads the foot by 24px and clips 3px of it at 1440 × 900. 20px
-     draws the same page with nothing clipped. */
-  padding: var(--space-32) var(--page-pad) var(--space-20);
-}
-
-/* The text sits in the middle of the hero's height, beside the mark, which
-   fills that height. */
-.text {
-  display: grid;
-  align-content: center;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-24);
+  padding: var(--space-48) var(--page-pad) var(--space-24);
 }
 
-/* The headline and the standfirst under it, which says what Vortex is. They
-   sit closer to each other than to the eyebrow and the install box. */
 .head {
   display: grid;
-  gap: var(--space-12);
+  gap: var(--space-16);
+  max-width: 560px;
 }
 
-.text h1 {
+.head h1 {
   margin: 0;
-  color: var(--ink);
 }
 
+.second {
+  display: block;
+}
+
+/* The standfirst in the terminal voice: vx-body's size and leading, in mono. */
 .head p {
   margin: 0;
+  font: 400 16px / 1.6 var(--font-mono);
   color: var(--ink-body);
 }
 
-/* The mark's cell spans the hero's full height, over its padding, as in the
-   card. It is out of flow, so only the text sets the hero's height. */
+.install {
+  max-width: 560px;
+}
+
 .mark {
-  position: absolute;
-  grid-area: 1 / 2 / 2 / 3;
-  inset: calc(-1 * var(--space-32)) 0 calc(-1 * var(--space-20));
+  position: relative;
+  height: 320px;
   container-type: size;
 }
 
-/* The mark scales with its host's height. In a host taller than it is wide
-   the mark shrinks to keep its sides (fitFov), so the host is at most square,
-   and sits in the cell's middle. Square keeps the mark at the size it had
-   when the text column was narrower. */
+/* The mark scales with its host. In a host taller than it is wide the mark
+   shrinks to keep its sides (fitFov), so the host is at most square. */
 .markHost {
   position: absolute;
   inset: 0;
   height: min(100cqh, 100cqw);
-  margin: auto 0;
+  margin: auto;
 }
 
-/* Without scripts the static symbol stands in for the mark, so the hero does
-   not stretch to fill a tall window: it takes its content's height. Its
-   padding gives the scripts-on page's breathing room at 1512 × 860 (about
-   72px from the header to the eyebrow, and 64px from the install block to
-   the benchmark card), and the mark's cell keeps spanning that padding. The
-   symbol is larger than the mark's own 40% fallback (AsciiMark's
-   --mark-still-width),
-   so it balances the stacked install commands. A stacked hero, below
-   1100px, keeps its own rules. */
-@media (min-width: 1100px) {
-  :global(.no-js) .hero {
-    flex: 0 0 auto;
-    padding-top: calc(var(--space-64) + var(--space-8));
-    padding-bottom: var(--space-64);
-  }
-
-  :global(.no-js) .mark {
-    inset: calc(-1 * (var(--space-64) + var(--space-8))) 0
-      calc(-1 * var(--space-64));
-  }
-
-  :global(.no-js) .markHost {
-    --mark-still-width: 56%;
-  }
-}
-
-/* The BenchmarkCard's and the LogoBanner's bands, padded as in the Home card
-   so the cards share the headline's left edge. */
+/* The LogoBanner's band, padded so it shares the headline's left edge. */
 .band {
-  padding: 0 var(--page-pad) var(--space-24);
-}
-
-/* Below 1100px the text column would drop under about 640px and the mark
-   under 320px, so the hero stacks: the text, then the mark in its own band. */
-@media (max-width: 1099px) {
-  .hero {
-    grid-template-columns: minmax(0, 1fr);
-    gap: var(--space-24);
-    padding-bottom: var(--space-24);
-  }
-
-  .mark {
-    position: relative;
-    grid-area: auto;
-    inset: auto;
-    height: 320px;
-  }
+  padding: var(--space-48) var(--page-pad) var(--space-24);
 }
 
 @media (max-width: 640px) {
+  .hero {
+    padding-top: var(--space-24);
+  }
+
   .mark {
     height: 240px;
+  }
+}
+
+/* Corners: from 1240px the install box (480px) and the table (about 620px)
+   fit side by side under the mark. The hero takes the screen the header
+   (64px and its 16px margin) leaves, and the mark fills all of it. */
+@media (min-width: 1240px) {
+  .hero {
+    display: block;
+    height: calc(100dvh - 80px);
+    min-height: 680px;
+    padding: 0;
+  }
+
+  .eyebrow,
+  .head,
+  .install,
+  .results {
+    position: absolute;
+    z-index: 1;
+  }
+
+  .eyebrow {
+    top: var(--space-48);
+    right: var(--page-pad);
+  }
+
+  /* 440px: the headline's first line, "Fast, small, open:", at 40px, so
+     the standfirst ends before the mark. */
+  .head {
+    top: var(--space-48);
+    left: var(--page-pad);
+    max-width: 440px;
+  }
+
+  .install {
+    bottom: var(--space-32);
+    left: var(--page-pad);
+    width: 480px;
+  }
+
+  .results {
+    right: var(--page-pad);
+    bottom: var(--space-32);
+  }
+
+  .mark {
+    position: absolute;
+    inset: 0;
+    height: auto;
+  }
+
+  /* The mark grows with the hero up to the Home card's 820px, so on a tall
+     screen it stays clear of the words in the corners. */
+  .markHost {
+    height: min(100%, 820px);
+  }
+}
+
+/* On a tall screen (a large monitor) the logos and the footer fit on the
+   first screen too: the hero takes what they leave. */
+@media (min-width: 1240px) and (min-height: 1000px) {
+  .hero {
+    flex: 1 0 auto;
+    height: auto;
+  }
+}
+
+/* Without WebGL (the first-paint probe's `no-webgl`, or the mark's own
+   report), or without scripts: no mark, and the words and the table on one
+   screen, side by side from 1240px. */
+:global(.no-webgl) .mark,
+:global(.no-js) .mark,
+.hero:has([data-mark-mode="static"], [data-mark-mode="error"]) .mark {
+  display: none;
+}
+
+@media (min-width: 1240px) {
+  :global(.no-webgl) .hero,
+  :global(.no-js) .hero,
+  .hero:has([data-mark-mode="static"], [data-mark-mode="error"]) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto auto 1fr;
+    column-gap: var(--space-64);
+    row-gap: var(--space-24);
+    align-content: center;
+    height: auto;
+    min-height: 0;
+    padding: var(--space-64) var(--page-pad);
+  }
+
+  :global(.no-webgl) .hero > *,
+  :global(.no-js) .hero > *,
+  .hero:has([data-mark-mode="static"], [data-mark-mode="error"]) > * {
+    position: static;
+    grid-column: 1;
+  }
+
+  :global(.no-webgl) .results,
+  :global(.no-js) .results,
+  .hero:has([data-mark-mode="static"], [data-mark-mode="error"]) .results {
+    grid-column: 2;
+    grid-row: 1 / span 3;
+    align-self: center;
   }
 }

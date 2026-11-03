@@ -50,10 +50,13 @@ const CACHE_OPTIONS = { tags: [BENCH_DATA_TAG], revalidate: DATA_CACHE_BACKSTOP_
 
 /**
  * Version of cached group payloads, including their embedded summary wire shape.
- * This value must change when a deployment cannot read the preceding shape.
+ * This value must change when a deployment cannot read the preceding shape, and
+ * when the same data would give a different payload, as after a change to a
+ * summary query. The Data Cache outlives a deploy, so without a new key the new
+ * code can serve payloads the old code computed until the next ingest.
  * It is independent of the producer-facing benchmark schema version.
  */
-const GROUP_PAYLOAD_CACHE_VERSION = 'v9';
+const GROUP_PAYLOAD_CACHE_VERSION = 'v10';
 
 // The default last-100 group bundle, keyed by group slug. The slug is the cache
 // key (an `unstable_cache` argument), so one wrapper covers every group. A

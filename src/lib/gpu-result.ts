@@ -62,6 +62,7 @@ const times = gpuTimes(GPU_QUERIES);
 
 export const GPU_PANEL: Panel = {
   title: "GPU analytics with cuDF",
+  short: "GPU, cuDF",
   unit: "ms",
   kind: "speed",
   better: "lower",

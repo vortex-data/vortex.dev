@@ -332,15 +332,15 @@ Tear-down does NOT delete the Secrets-Manager-managed master password — that's
 
 ## Cost
 
-Monthly bill, on demand, from the September 2026 invoice plus estimates for what
-was added in October 2026. NOTE: prod `vortex-bench-prod` was upsized to
+Monthly bill from the September 2026 invoice plus estimates for what was added
+in October 2026, with the instance at its reserved rate since 2026-11-02. NOTE: prod `vortex-bench-prod` was upsized to
 `db.r7g.large` (16 GiB) on 2026-06-16 so the load-all `?n=all` working set stays resident in cache
 (see `.big-plans/ct__bench-v4-loadall-scope.md`); the `provision.sh` bootstrap default remains
 `db.t4g.micro`.
 
 | Item | Cost |
 |---|---|
-| RDS `db.r7g.large` at $0.239/hr (bootstrap default `db.t4g.micro` ~$13) | ~$172 |
+| RDS `db.r7g.large`, 1-year reserved instance: $1,529 all upfront (on demand: $0.239/hr, ~$172; bootstrap default `db.t4g.micro` ~$13) | ~$127 |
 | 20 GiB gp3 storage | ~$2.30 |
 | Backup storage in us-east-1 beyond the free 20 GiB (35-day window, ~140 GB-month in total) | ~$11 |
 | Backup replica in us-west-2 (14-day window: ~66 GB-month at $0.095, plus ~120 GB a month of transfer at $0.02) | ~$9, estimate |
@@ -348,15 +348,20 @@ was added in October 2026. NOTE: prod `vortex-bench-prod` was upsized to
 | CloudWatch Logs (Postgres log, 30 days) | <$1, estimate |
 | Secrets Manager (1 secret) | ~$0.40 |
 | Data transfer (CI ingests + reader fetches) | <$1 |
-| **Total** | **~$196/month** |
+| **Total** | **~$151/month** |
 
 Most of the backup cost is WAL: RDS switches WAL segments at least every 5
 minutes, so an idle database still writes about 225 KB/s. Check the replica's
 real cost (`USW2-RDS:ChargedBackupUsage` and the `USE1-USW2-AWS-Out-Bytes`
 transfer) on the first full bill after 2026-10-28.
 
-A 1-year reserved instance for `db.r7g.large` costs $1,529 all upfront
-(~$127/month) or $0.1841/hr with no upfront (~$134/month).
+The instance runs on a 1-year reserved instance, `vortex-bench-prod-r7g-large-1y`
+(PostgreSQL, single-AZ, us-east-1, all upfront, $1,529), bought on 2026-11-02
+and active until 2027-11-02. A reservation is only a billing discount: it
+applies to any running `db.r7g.large` PostgreSQL single-AZ instance in
+us-east-1, so it does not tie to this instance's identity, and a resize to
+another `r7g` size keeps part of the discount (size flexibility). Renew it, or
+choose a new class, before it ends.
 
 The RDS Proxy `vortex-bench-proxy` ($21.60/month) was deleted on 2026-10-28. It
 was VPC-internal, so neither Vercel nor the GitHub runners could reach it, and

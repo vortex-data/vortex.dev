@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { AsciiMark } from "@/components/ascii-mark";
-import { BenchmarkCard } from "@/components/benchmark-card";
 import { InstallTabs } from "@/components/install-tabs";
 import { LogoBanner } from "@/components/logo-banner";
+import { ResultsTable } from "@/components/results-table";
 import { getBenchSummary } from "@/lib/bench-summary";
 import { getSparkVersion } from "@/lib/maven";
 import styles from "./page.module.css";
@@ -29,12 +29,14 @@ export const metadata: Metadata = {
 };
 
 /**
- * The design system's Home card: the hero (Eyebrow, headline, standfirst,
- * InstallTabs
- * and the AsciiMark), then the BenchmarkCard and the LogoBanner. The Spark
- * version and the benchmark figures are read at build time and again at most
- * once a day, so the page stays static. Without the figures the page leaves
- * the BenchmarkCard out.
+ * The design system's Home card: the ASCII mark fills the first screen, with
+ * the headline and its standfirst top left, the Eyebrow top right, the
+ * InstallTabs bottom left and the results table bottom right. The LogoBanner
+ * sits below the fold. Without WebGL or scripts the mark goes, and the words
+ * and the table share one compact screen (page.module.css). The Spark version
+ * and the benchmark figures are read at build time and again at most once a
+ * day, so the page stays static. Without the figures the page leaves the
+ * table out.
  */
 export default async function Home() {
   const [sparkVersion, bench] = await Promise.all([
@@ -44,28 +46,33 @@ export default async function Home() {
   return (
     <div className={styles.home}>
       <section className={styles.hero}>
-        <div className={styles.text}>
-          <span className="vx-label vx-eyebrow">
-            Apache-2.0 · A Linux Foundation project
-          </span>
-          <div className={styles.head}>
-            <h1 className="vx-display">Fast, small, open: pick three.</h1>
-            <p className="vx-lede">
-              Vortex is an open-source columnar file format for fast scans,
-              random access, and compression.
-            </p>
-          </div>
+        <span className={`vx-label vx-eyebrow ${styles.eyebrow}`}>
+          Apache-2.0, a Linux Foundation project
+        </span>
+        <div className={styles.head}>
+          <h1 className="vx-display-mono">
+            {/* "pick three." is the second line, in every browser: Safari's
+                text-wrap: pretty would otherwise rebalance it. */}
+            Fast, small, open:{" "}
+            <span className={styles.second}>pick three.</span>
+          </h1>
+          <p>
+            Vortex is an open-source columnar file format for fast scans, random
+            access, and compression.
+          </p>
+        </div>
+        <div className={styles.install}>
           <InstallTabs sparkVersion={sparkVersion} />
         </div>
+        {bench && (
+          <div className={styles.results}>
+            <ResultsTable panels={bench.panels} readAt={bench.readAt} />
+          </div>
+        )}
         <div className={styles.mark}>
           <AsciiMark className={styles.markHost} />
         </div>
       </section>
-      {bench && (
-        <div className={styles.band}>
-          <BenchmarkCard panels={bench.panels} readAt={bench.readAt} />
-        </div>
-      )}
       <LogoBanner className={styles.band} />
     </div>
   );
