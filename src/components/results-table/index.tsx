@@ -31,7 +31,7 @@ export function ResultsTable({
   return (
     <section className="vx-frame vx-results" aria-label="Benchmark results">
       <p className="vx-results-head">
-        <span>Against Apache Parquet</span>
+        <span>Against other file formats</span>
         <span className="vx-results-read">read {formatReadDate(readAt)}</span>
       </p>
       <div className="vx-results-wrap">

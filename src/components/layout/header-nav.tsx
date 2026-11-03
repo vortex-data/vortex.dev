@@ -91,7 +91,7 @@ export function HeaderMenu() {
         <CloseIcon className="is-close" />
         <span className="vx-header-menu-text">Menu</span>
       </summary>
-      <nav className="vx-frame vx-header-menu-panel" aria-label="Primary">
+      <nav className="vx-header-menu-panel" aria-label="Primary">
         <NavLinks />
       </nav>
     </details>

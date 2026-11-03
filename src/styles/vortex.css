@@ -1,7 +1,7 @@
 /* Vortex design system components (sections: base, brand, site, docs, blog, focus), copied by tools/site-styles.mjs.
    Edit the system, then run tools/site-styles.mjs; do not edit here.
    Made by: node tools/site-styles.mjs <site> --sections base,brand,site,docs,blog,focus --faces --vx-face --base
-   sha256 295e6424f50ea72839511e03413398a086abae62eb9f45a14b37b9921ce9a8e0 */
+   sha256 2a835960c9d9e45605787aa30c196637a6d01996e8121851a6be19ad462dff19 */
 
 /* ------------------------------------------------------------------ base */
 /* Every component sizes with border-box, so it draws the same under a site's reset or none. */
@@ -414,7 +414,8 @@
   .vx-search-text, .vx-search-keys { display: none; }
 }
 /* The menu: on a narrow screen the site's links go behind a Menu button at the end of the row, a
-   <details>, so it opens without scripts. Its panel drops below the header, framed, over the page. */
+   <details>, so it opens without scripts. Its panel is a popover under the button, on raised with a
+   solid edge, so it never reads as one of the page's dashed frames. */
 .vx-header { position: relative; }
 .vx-header-menu { display: none; }
 .vx-header-menu > summary { list-style: none; }
@@ -427,9 +428,12 @@
   z-index: 10;
   top: calc(100% + var(--space-8));
   right: var(--page-pad);
-  left: var(--page-pad);
   display: grid;
-  padding: var(--space-8) 0;
+  width: 200px;
+  padding: var(--space-4) 0;
+  background: var(--raised);
+  border: 1px solid var(--edge);
+  border-radius: var(--radius-card);
 }
 .vx-header-menu-panel .vx-nav-link { display: flex; min-height: 44px; padding: 0 var(--space-16); }
 .vx-header-menu-panel .vx-nav-link:hover { background: var(--wash); }
