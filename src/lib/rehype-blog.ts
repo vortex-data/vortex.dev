@@ -128,9 +128,10 @@ const NUMBER = /^[−-]?\d/;
 
 /**
  * Fits a post's tables to the system's prose table rules: each one sits in
- * a `vx-table-wrap`, which scrolls a wide table on its own; a column whose
- * every body cell starts with a number is `is-num` (right-aligned, mono);
- * and a body row that starts with "Total" is `is-total`.
+ * a `vx-table-wrap`, which scrolls a wide table on its own and is a named,
+ * focusable region, so a keyboard can scroll it too; a column whose every
+ * body cell starts with a number is `is-num` (right-aligned, mono); and a
+ * body row that starts with "Total" is `is-total`.
  */
 export function rehypeTables() {
   return (tree: HastRoot) => {
@@ -143,7 +144,12 @@ export function rehypeTables() {
       parent.children[i] = {
         type: "element",
         tagName: "div",
-        properties: { className: ["vx-table-wrap"] },
+        properties: {
+          className: ["vx-table-wrap"],
+          tabIndex: 0,
+          role: "region",
+          ariaLabel: "Table"
+        },
         children: [table]
       };
     }
