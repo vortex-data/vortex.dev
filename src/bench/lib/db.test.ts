@@ -13,6 +13,7 @@ import {
   requireEnv,
   resetPool,
   resolvePoolMax,
+  resolvePort,
   resolveIdleTimeoutMillis,
   resolveConnectionTimeoutMillis,
   resolveStatementTimeoutMillis,
@@ -135,6 +136,42 @@ describe('resolvePoolMax', () => {
   it('raises 1 to 2, so a cache fill has a connection for its queries beside its lock', () => {
     vi.stubEnv('BENCH_DB_POOL_MAX', '1');
     expect(resolvePoolMax()).toBe(2);
+  });
+
+  it('defaults to 8 when blank', () => {
+    vi.stubEnv('BENCH_DB_POOL_MAX', ' ');
+    expect(resolvePoolMax()).toBe(8);
+  });
+
+  it.each(['eight', '0', '-4', '2.5'])(
+    'rejects %s instead of letting pg-pool replace it with its own default',
+    (value) => {
+      vi.stubEnv('BENCH_DB_POOL_MAX', value);
+      expect(resolvePoolMax).toThrow('BENCH_DB_POOL_MAX');
+    },
+  );
+});
+
+describe('resolvePort', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('defaults to 5432 when unset or blank', () => {
+    for (const value of [undefined, '']) {
+      vi.stubEnv('BENCH_DB_PORT', value);
+      expect(resolvePort()).toBe(5432);
+    }
+  });
+
+  it('honors an override', () => {
+    vi.stubEnv('BENCH_DB_PORT', '6432');
+    expect(resolvePort()).toBe(6432);
+  });
+
+  it.each(['postgres', '0', '65536', '5432.5'])('rejects %s', (value) => {
+    vi.stubEnv('BENCH_DB_PORT', value);
+    expect(resolvePort).toThrow('BENCH_DB_PORT');
   });
 });
 
