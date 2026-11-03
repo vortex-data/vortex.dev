@@ -3,8 +3,8 @@ import { AsciiMark } from "@/components/ascii-mark";
 import { InstallTabs } from "@/components/install-tabs";
 import { LogoBanner } from "@/components/logo-banner";
 import { ResultsTable } from "@/components/results-table";
-import { formatReadDate, getBenchSummary } from "@/lib/bench-summary";
-import { homeJsonLd, resultsSentences } from "@/lib/llms";
+import { getBenchSummary } from "@/lib/bench-summary";
+import { homeJsonLd } from "@/lib/llms";
 import { getSparkVersion } from "@/lib/maven";
 import styles from "./page.module.css";
 
@@ -72,13 +72,6 @@ export default async function Home() {
         {bench && (
           <div className={styles.results}>
             <ResultsTable panels={bench.panels} readAt={bench.readAt} />
-            {/* What each row measures, in words, for screen readers and
-                text-only readers. The table's markup is the design
-                system's (renderResults), so this sits beside it. */}
-            <p className="vx-sr-only">
-              {`The table's rows, read from bench.vortex.dev on ${formatReadDate(bench.readAt)}: `}
-              {resultsSentences(bench.panels).join(" ")}
-            </p>
           </div>
         )}
         <div className={styles.mark}>

@@ -8,7 +8,7 @@ import { BenchBaseProvider } from '@/bench/components/BenchBase';
 import { benchPath } from '@/bench/lib/base-path';
 import { FONTS_CSS } from '@/bench/lib/fonts';
 import { requestBenchBase } from '@/bench/lib/request-base';
-import { BENCH_DESCRIPTION, BENCH_URL } from '@/bench/lib/site-files';
+import { BENCH_DESCRIPTION, BENCH_URL, openGraph } from '@/bench/lib/site-files';
 
 import '@/bench/styles/globals.css';
 // The Vortex design system's skin: colours, corners and Geist over globals.css.
@@ -19,15 +19,10 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: 'Vortex Benchmarks',
     description: BENCH_DESCRIPTION,
-    // Absolute URLs in the metadata (canonical links, Open Graph) are bench's
-    // public ones, whichever host serves the page.
-    metadataBase: new URL(BENCH_URL),
-    openGraph: {
-      title: 'Vortex Benchmarks',
-      description: BENCH_DESCRIPTION,
-      siteName: 'Vortex Benchmarks',
-      type: 'website',
-    },
+    // The canonical and Open Graph URLs are bench's public ones, written out
+    // in full. No `metadataBase`: it would also resolve the icons' paths, which
+    // belong to the host serving the page, against bench.vortex.dev.
+    openGraph: openGraph('Vortex Benchmarks', BENCH_DESCRIPTION, `${BENCH_URL}/`),
     // Theme-aware favicons, ported from `render.rs::favicon_links`: the black
     // sigil on light-mode tabs, the white sigil on dark-mode tabs, with the dark
     // sigil as the unmediated fallback (and the apple-touch icon). The files are

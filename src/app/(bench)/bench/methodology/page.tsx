@@ -6,16 +6,18 @@ import type { Metadata } from 'next';
 import { Footer } from '@/bench/components/Footer';
 import { Header } from '@/bench/components/Header';
 import { METHODOLOGY } from '@/bench/lib/methodology';
-import { BENCH_URL } from '@/bench/lib/site-files';
+import { BENCH_URL, openGraph } from '@/bench/lib/site-files';
 
+const TITLE = 'Methodology - Vortex Benchmarks';
 const DESCRIPTION =
   'How the Vortex benchmarks run: the machines, storage, engines, and formats, how each ' +
   'result is measured, and how the summaries are scored.';
 
 export const metadata: Metadata = {
-  title: 'Methodology - Vortex Benchmarks',
+  title: TITLE,
   description: DESCRIPTION,
   alternates: { canonical: `${BENCH_URL}/methodology` },
+  openGraph: openGraph(TITLE, DESCRIPTION, `${BENCH_URL}/methodology`),
 };
 
 /**

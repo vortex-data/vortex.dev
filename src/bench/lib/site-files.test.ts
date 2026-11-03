@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 import type { ChartResponse, Group } from '@/bench/lib/queries';
 import {
   chartDescription,
+  chartSeriesLabel,
   datasetJsonLd,
   jsonLdScript,
   llmsText,
@@ -81,6 +82,17 @@ describe('seriesLabel', () => {
     expect(seriesLabel('duckdb:duckdb')).toBe("DuckDB on DuckDB's own format");
     expect(seriesLabel('arrow-ipc')).toBe('Arrow IPC');
     expect(seriesLabel('onpair-12')).toBe('onpair-12');
+  });
+});
+
+describe('chartSeriesLabel', () => {
+  it("reads each chart kind's series keys", () => {
+    expect(chartSeriesLabel('QueryMeasurement', `duckdb:${VX}`)).toBe('DuckDB on Vortex');
+    expect(chartSeriesLabel('CompressionTime', `${VX}:encode`)).toBe('Vortex write');
+    expect(chartSeriesLabel('CompressionTime', 'parquet:decode')).toBe('Parquet scan');
+    expect(chartSeriesLabel('RandomAccess', 'parquet:hot')).toBe('Parquet (hot)');
+    expect(chartSeriesLabel('CompressionSize', 'lance')).toBe('Lance');
+    expect(chartSeriesLabel('VectorSearch', 'flat')).toBe('flat');
   });
 });
 
@@ -170,14 +182,14 @@ describe('chartDescription', () => {
   });
 
   it("gives each series' newest value, best first, and the newest commit's date", () => {
-    expect(chartDescription(chart('time_ns'))).toBe(
+    expect(chartDescription(chart('time_ns'), 'QueryMeasurement')).toBe(
       "clickbench Q0, the newest result of each series on Vortex's develop branch as of " +
         '2026-11-02: DataFusion on Vortex 1.00 ms, DataFusion on Parquet 2.00 ms.',
     );
   });
 
   it('puts the highest throughput first', () => {
-    expect(chartDescription(chart('throughput_mb_s'))).toContain(
+    expect(chartDescription(chart('throughput_mb_s'), 'QueryMeasurement')).toContain(
       'DataFusion on Parquet 2000000 MB/s, DataFusion on Vortex 1000000 MB/s.',
     );
   });

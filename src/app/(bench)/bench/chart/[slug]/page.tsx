@@ -11,7 +11,7 @@ import { Header } from '@/bench/components/Header';
 import { parseFilterCsv, singleSearchParam, unitKindLabel } from '@/bench/lib/chart-format';
 import { cachedDefaultChartPayload } from '@/bench/lib/data-cache';
 import { chartPayload, collectFilterUniverse, type ChartResponse } from '@/bench/lib/queries';
-import { chartDescription, chartUrl } from '@/bench/lib/site-files';
+import { chartDescription, chartUrl, openGraph } from '@/bench/lib/site-files';
 import { chartKeyFromSlug, chartKeyToSlug, type ChartKey } from '@/bench/lib/slug';
 import { DEFAULT_COMMIT_WINDOW, parseCommitWindow } from '@/bench/lib/window';
 
@@ -65,10 +65,15 @@ export async function generateMetadata({
   if (chart === null) {
     return {};
   }
+  const key = chartKeyFromSlug(slug);
+  const title = `${chart.display_name} - Vortex Benchmarks`;
+  const description = chartDescription(chart, key.k);
+  const url = chartUrl(chartKeyToSlug(key));
   return {
-    title: `${chart.display_name} - Vortex Benchmarks`,
-    description: chartDescription(chart),
-    alternates: { canonical: chartUrl(chartKeyToSlug(chartKeyFromSlug(slug))) },
+    title,
+    description,
+    alternates: { canonical: url },
+    openGraph: openGraph(title, description, url),
   };
 }
 

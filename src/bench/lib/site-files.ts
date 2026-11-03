@@ -18,6 +18,7 @@ import { groupDocUrl } from '@/bench/lib/benchmark-docs';
 import { formatCompressionSizeRatio, formatThroughput, formatTimeNs } from '@/bench/lib/format';
 import { groupHeadline, headlineText } from '@/bench/lib/headline';
 import { METHODOLOGY, SCORES } from '@/bench/lib/methodology';
+import type { ChartKind } from '@/bench/lib/families';
 import type { ChartResponse, Group, UnitKind } from '@/bench/lib/queries';
 import type { SeriesRanking, Summary } from '@/bench/lib/summary';
 
@@ -33,6 +34,14 @@ export const BENCH_DESCRIPTION =
 /** The landing page's sections link to their group by its readable anchor. */
 function groupUrl(anchor: string): string {
   return `${BENCH_URL}/#${anchor}`;
+}
+
+/**
+ * A page's Open Graph fields. Next.js replaces the layout's `openGraph` with a
+ * page's rather than merging them, so each page gives every field.
+ */
+export function openGraph(title: string, description: string, url: string) {
+  return { title, description, url, siteName: 'Vortex Benchmarks', type: 'website' } as const;
 }
 
 /** A chart page's public URL. */
@@ -63,9 +72,10 @@ export function formatValue(value: number, unitKind: UnitKind): string {
 /**
  * A chart page's description: each series' newest value, best first, and the
  * newest commit the chart holds. Throughput is best high; every other unit
- * this site charts is best low.
+ * this site charts is best low. `kind` says how the chart's series keys are
+ * built (`seriesFor` in `queries.ts`).
  */
-export function chartDescription(chart: ChartResponse): string {
+export function chartDescription(chart: ChartResponse, kind: ChartKind): string {
   const latest = Object.entries(chart.series).flatMap(([name, values]) => {
     const value = values.findLast((v): v is number => v !== null && Number.isFinite(v));
     return value === undefined ? [] : [{ name, value }];
@@ -74,7 +84,9 @@ export function chartDescription(chart: ChartResponse): string {
   latest.sort((a, b) => sign * (a.value - b.value));
   const commit = chart.commits.at(-1);
   const values = latest
-    .map(({ name, value }) => `${seriesLabel(name)} ${formatValue(value, chart.unit_kind)}`)
+    .map(
+      ({ name, value }) => `${chartSeriesLabel(kind, name)} ${formatValue(value, chart.unit_kind)}`,
+    )
     .join(', ');
   return (
     `${chart.display_name}, the newest result of each series on Vortex's develop branch` +
@@ -198,6 +210,31 @@ export function seriesLabel(name: string): string {
     return FORMATS.get(first) ?? first;
   }
   return `${ENGINES.get(first) ?? first} on ${FORMATS.get(second) ?? second}`;
+}
+
+const OPERATIONS: ReadonlyMap<string, string> = new Map([
+  ['encode', 'write'],
+  ['decode', 'scan'],
+]);
+
+/**
+ * A chart's series in words. Query series are `engine:format`, compression
+ * time series `format:operation`, random access series `format:mode`, and the
+ * others one name (`seriesFor` in `queries.ts`).
+ */
+export function chartSeriesLabel(kind: ChartKind, name: string): string {
+  const [format = '', detail = ''] = name.split(':');
+  switch (kind) {
+    case 'QueryMeasurement':
+      return seriesLabel(name);
+    case 'CompressionTime':
+      return `${FORMATS.get(format) ?? format} ${OPERATIONS.get(detail) ?? detail}`;
+    case 'RandomAccess':
+      return `${FORMATS.get(format) ?? format} (${detail})`;
+    case 'CompressionSize':
+    case 'VectorSearch':
+      return FORMATS.get(name) ?? name;
+  }
 }
 
 function coverage(item: SeriesRanking, unit: string): string {
