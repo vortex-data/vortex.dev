@@ -49,34 +49,29 @@ body {
   overflow-x: hidden;
   background: var(--ground);
   color: var(--ink);
-  /* Geist is loaded from unpkg by `html::render::web_font_links`; the
-   * fallback stack matches v2's `src/styles/index.css` so the site
-   * remains legible if the CDN is blocked. */
-  font-family:
-    'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'SF Pro Display', Roboto, sans-serif;
+  /* The system's faces, self-hosted by next/font (src/lib/fonts.ts). Each
+   * --font-* token carries its face's metric-matched fallback. */
+  font-family: var(--font-sans);
   font-size: 16px;
   line-height: 1.6;
 }
 
 /* All headings use Funnel Display, mirroring v2's
- * `h1, h2, h3, h4, h5, h6` rule. Loaded from Google Fonts by
- * `html::render::web_font_links`. */
+ * `h1, h2, h3, h4, h5, h6` rule. */
 h1,
 h2,
 h3,
 h4,
 h5,
 h6 {
-  font-family: 'Funnel Display', sans-serif;
+  font-family: var(--font-display);
   letter-spacing: -0.02em;
 }
 
-/* Code blocks use Geist Mono, mirroring v2's `code, pre` rule. The
- * fallback stack matches what the explicit-mono usages further down
- * declare so a CDN-blocked client still gets a monospace font. */
+/* Code blocks use Geist Mono, mirroring v2's `code, pre` rule. */
 code,
 pre {
-  font-family: 'Geist Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-family: var(--font-mono);
 }
 
 body {
@@ -475,7 +470,7 @@ main {
   /* `.group-name` is a `<span>` in `landing.rs`, so it doesn't inherit
    * from the `h1, h2, ..., h6` rule. v2's `.benchmark-title` applies
    * Funnel Display explicitly; mirror that here. */
-  font-family: 'Funnel Display', sans-serif;
+  font-family: var(--font-display);
   font-weight: 600;
   font-size: 1.35rem;
   line-height: 1.2;
@@ -483,7 +478,7 @@ main {
 }
 .group-count {
   color: var(--ink-muted);
-  font-family: 'Geist Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: 0.7rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -903,7 +898,7 @@ main {
 
 .score-value,
 .score-runtime {
-  font-family: 'Geist Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: 0.8rem;
   font-weight: 600;
 }
@@ -1843,7 +1838,7 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
 }
 
 .site-footer-sha code {
-  font-family: 'Geist Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-family: var(--font-mono);
   color: var(--ink-muted);
   font-size: 0.75rem;
 }
@@ -1957,13 +1952,10 @@ a.site-footer-sha:hover code {
   }
 }
 
-/* The system's corners, faces and label voice. Cards take 6px corners and controls 4px; circles
+/* The system's corners and label voice. Cards take 6px corners and controls 4px; circles
  * (the info icon, spinners, swatches) keep their 50%. The page title and the toolbar buttons read
  * as mono labels in sentence case, ranks are muted so Blue marks only ratios, and the count badges
  * are square. */
-body {
-  font-family: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-}
 .group-details,
 .summary-loading-panel,
 .chart-card {
@@ -1989,7 +1981,7 @@ body {
 }
 .site-title,
 .control-btn {
-  font-family: 'Geist Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-family: var(--font-mono);
   font-weight: 500;
 }
 .site-title {

@@ -1,11 +1,11 @@
 import { Analytics } from "@vercel/analytics/react";
 import type { Metadata } from "next";
-import { Funnel_Display, Geist, Geist_Mono } from "next/font/google";
 import PlausibleProvider from "next-plausible";
 import { Footer } from "@/components/layout/footer";
 import { Header } from "@/components/layout/header";
 import { RouteTheme } from "@/components/route-theme";
 import { baseUrl } from "@/lib/constants";
+import { FONT_CLASSES } from "@/lib/fonts";
 import { THEME_BOOTSTRAP } from "@/lib/theme";
 import "./globals.css";
 
@@ -28,25 +28,6 @@ export const metadata: Metadata = {
     }
   }
 };
-
-// The design system's three faces, self-hosted by next/font. Its tokens read
-// them through these variables (src/styles/vortex-tokens.css), which carry
-// next/font's metrics-matched fallback faces as well as the fonts.
-const geistSans = Geist({
-  variable: "--vx-face-sans",
-  subsets: ["latin"]
-});
-
-const geistMono = Geist_Mono({
-  variable: "--vx-face-mono",
-  subsets: ["latin"]
-});
-
-const funnelDisplay = Funnel_Display({
-  weight: ["500", "600"],
-  variable: "--vx-face-display",
-  subsets: ["latin"]
-});
 
 export default async function RootLayout({
   children
@@ -72,7 +53,7 @@ export default async function RootLayout({
       lang="en"
       data-theme="dark"
       suppressHydrationWarning
-      className={`no-js ${geistSans.variable} ${geistMono.variable} ${funnelDisplay.variable}`}
+      className={`no-js ${FONT_CLASSES}`}
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />

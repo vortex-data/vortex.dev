@@ -72,6 +72,16 @@ describe("bench's stylesheet on the system's tokens", () => {
     }
   });
 
+  // next/font names the faces and their metric-matched fallbacks (src/lib/fonts.ts), and the
+  // tokens carry them, so bench names no face itself.
+  it("draws text in the system's faces, through the --font-* tokens", () => {
+    const families = decls.filter((d) => d.prop === 'font-family').map((d) => d.value);
+    expect(families.length).toBeGreaterThan(3);
+    for (const value of families) {
+      expect(value, value).toMatch(/^(var\(--font-(sans|mono|display)\)|inherit)$/);
+    }
+  });
+
   it('writes its own colours only into its own variables', () => {
     const HEX = /#[0-9a-f]{3,8}\b/i;
     for (const d of decls.filter((x) => HEX.test(x.value))) {
@@ -112,7 +122,7 @@ describe("bench's stylesheet on the system's tokens", () => {
 
   it('sets the title and toolbar buttons as mono labels, mutes ranks, and squares the badges', () => {
     for (const sel of ['.site-title', '.control-btn']) {
-      expect(valueOf(sel, 'font-family'), sel).toMatch(/Geist Mono/);
+      expect(valueOf(sel, 'font-family'), sel).toBe('var(--font-mono)');
     }
     expect(valueOf('.score-rank', 'color')).toBe('var(--ink-muted)');
     expect(valueOf('.site-title', 'color')).toBe('var(--ink-muted)');
