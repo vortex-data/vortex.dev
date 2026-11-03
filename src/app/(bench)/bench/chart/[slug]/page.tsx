@@ -9,8 +9,8 @@ import { Chart } from '@/bench/components/Chart';
 import { Footer } from '@/bench/components/Footer';
 import { BenchHeader } from '@/bench/components/BenchHeader';
 import { parseFilterCsv, singleSearchParam, unitKindLabel } from '@/bench/lib/chart-format';
-import { cachedDefaultChartPayload } from '@/bench/lib/data-cache';
-import { chartPayload, collectFilterUniverse, type ChartResponse } from '@/bench/lib/queries';
+import { cachedDefaultChartPayload, cachedFilterUniverse } from '@/bench/lib/data-cache';
+import { chartPayload, type ChartResponse } from '@/bench/lib/queries';
 import { chartDescription, chartUrl, openGraph } from '@/bench/lib/site-files';
 import { chartKeyFromSlug, chartKeyToSlug, type ChartKey } from '@/bench/lib/slug';
 import { DEFAULT_COMMIT_WINDOW, parseCommitWindow } from '@/bench/lib/window';
@@ -116,7 +116,7 @@ export default async function ChartPage({
   // the filter dropdown rather than failing an otherwise renderable chart.
   const [chart, universe] = await Promise.all([
     getChart(slug, singleSearchParam(sp.n)),
-    collectFilterUniverse().catch(() => undefined),
+    cachedFilterUniverse().catch(() => undefined),
   ]);
   if (chart === null) {
     notFound();
