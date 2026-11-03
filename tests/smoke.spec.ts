@@ -567,6 +567,12 @@ test.describe("header menu on a phone", () => {
     await expect(panel).toBeHidden();
     await button.click();
     await expect(panel.getByRole("link", { name: "Docs" })).toBeVisible();
+    // The panel is on the page's ground, not a grey of its own.
+    const [panelBg, pageBg] = await panel.evaluate((el) => [
+      getComputedStyle(el).backgroundColor,
+      getComputedStyle(document.body).backgroundColor
+    ]);
+    expect(panelBg).toBe(pageBg);
     await page.keyboard.press("Escape");
     await expect(panel).toBeHidden();
     await expect(button).toBeFocused();
@@ -830,6 +836,9 @@ test.describe("results table on phones", () => {
         await page.goto("/");
         const table = page.getByRole("region", { name: "Benchmark results" });
         test.skip((await table.count()) === 0, "bench was not read at build");
+        await expect(
+          table.locator(".vx-results-head > span").first()
+        ).toHaveText("File format benchmarks");
         const m = await table.evaluate((el) => ({
           right: el.getBoundingClientRect().right,
           heads: [...el.querySelectorAll("thead th")]

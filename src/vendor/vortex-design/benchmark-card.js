@@ -283,7 +283,7 @@ export function resultsRow(panel, systems) {
 export function renderResults(panels, { read, icon = "" } = {}) {
   const systems = resultsSystems(panels);
   const cls = (...c) => (c.filter(Boolean).length ? ` class="${c.filter(Boolean).join(" ")}"` : "");
-  const head = `<p class="vx-results-head"><span>Against other file formats</span>${read ? `<span class="vx-results-read">read ${esc(read)}</span>` : ""}</p>`;
+  const head = `<p class="vx-results-head"><span>File format benchmarks</span>${read ? `<span class="vx-results-read">read ${esc(read)}</span>` : ""}</p>`;
   const cols = `<tr><th scope="col">Benchmark</th>${systems.map((s) => `<th scope="col"${cls(isOurs(s) && "is-ours")}>${esc(s)}</th>`).join("")}<th scope="col" class="is-verdict">vs Parquet</th></tr>`;
   const body = panels
     .map((p) => {

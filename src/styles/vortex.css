@@ -1,7 +1,7 @@
 /* Vortex design system components (sections: base, brand, site, docs, blog, focus), copied by tools/site-styles.mjs.
    Edit the system, then run tools/site-styles.mjs; do not edit here.
    Made by: node tools/site-styles.mjs <site> --sections base,brand,site,docs,blog,focus --faces --vx-face --base
-   sha256 9ae2901d31170aa63936ba544b57869151eb269b71ea689860b9510575c49f20 */
+   sha256 049fe9805a6dcf07f63ac508924e4789da6e38ebcb87e1bbecbdb46db6083bbc */
 
 /* ------------------------------------------------------------------ base */
 /* Every component sizes with border-box, so it draws the same under a site's reset or none. */
@@ -414,8 +414,9 @@
   .vx-search-text, .vx-search-keys { display: none; }
 }
 /* The menu: on a narrow screen the site's links go behind a Menu button at the end of the row, a
-   <details>, so it opens without scripts. Its panel is a popover under the button, on raised with a
-   solid edge, so it never reads as one of the page's dashed frames. */
+   <details>, so it opens without scripts. Its panel is a popover under the button, on the ground with
+   the buttons' solid edge: it covers what is under it, and never reads as one of the page's dashed
+   frames. */
 .vx-header { position: relative; }
 .vx-header-menu { display: none; }
 .vx-header-menu > summary { list-style: none; }
@@ -431,7 +432,7 @@
   display: grid;
   width: 200px;
   padding: var(--space-4) 0;
-  background: var(--raised);
+  background: var(--ground);
   border: 1px solid var(--edge);
   border-radius: var(--radius-card);
 }
