@@ -80,7 +80,7 @@ lexicographic order, which equals numeric order under this convention.
 - `012_commit_branch.sql` — adds `commits.branch` (`NOT NULL DEFAULT 'develop'`; every earlier
   row came from `develop`) and the `(branch, timestamp DESC, commit_sha DESC)` index the read
   service's branch-filtered commit window uses. `migrator` applies it.
-- `013_read_role_limits.sql` — caps `bench_read` (005) as 011 caps `bench_ci_read`: 200
+- `013_read_role_limits.sql` — caps `bench_read` (005) as 011 caps `bench_ci_read`: 400
   connections at most, and by default read-only transactions, a 30 s statement timeout and a
   60 s idle-in-transaction timeout. Only the connection limit is enforced; a session can change
   the defaults. Apply it as the RDS master.

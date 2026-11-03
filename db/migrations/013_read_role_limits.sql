@@ -15,11 +15,14 @@
 -- defaults, which a session can change with `SET`; they bound a plain client
 -- that connects with the password, not one that overrides them.
 --
--- The limit: `DatabaseConnections` peaked at 93 for all roles together in
--- October 2026, and the `connections-high` alarm fires above 300
--- (`infra/README.md`). Each Vercel instance opens at most `BENCH_DB_POOL_MAX`
--- (default 8) connections, so 200 holds 25 busy instances and leaves room
--- under the alarm for ingest, CI (16) and the operators.
+-- The limit: `DatabaseConnections` peaked at 180 on 2026-10-28, during a burst
+-- of cache fills after an ingest, and the connection log shows that nearly
+-- every new connection then was `bench_read`'s. Each Vercel instance opens at
+-- most `BENCH_DB_POOL_MAX` (default 8) connections, so 400 holds 50 busy
+-- instances, over twice that peak. The `connections-high` alarm (`infra/README.md`)
+-- fires above 300, before the limit. `max_connections` is 1,702, so a leaked
+-- password still leaves most of the instance to ingest, CI (16) and the
+-- operators.
 --
 -- The read service sets its own `statement_timeout` (`BENCH_DB_STATEMENT_TIMEOUT_MS`,
 -- default 30 s), which wins over this default. Its reads are SELECTs and
@@ -27,7 +30,7 @@
 -- works in a read-only session.
 --
 -- Idempotent: `ALTER ROLE` sets the same values on every apply.
-ALTER ROLE bench_read CONNECTION LIMIT 200;
+ALTER ROLE bench_read CONNECTION LIMIT 400;
 ALTER ROLE bench_read SET statement_timeout = '30s';
 ALTER ROLE bench_read SET idle_in_transaction_session_timeout = '60s';
 ALTER ROLE bench_read SET default_transaction_read_only = on;
