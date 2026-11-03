@@ -90,11 +90,12 @@ describe("the CDN rule for bench's /bench form", () => {
     expect(benchPrefixCdnRules('production')).toEqual([]);
   });
 
-  it("covers the landing and chart pages elsewhere, but not on the sites' own hosts", () => {
+  it("covers the landing, methodology and chart pages elsewhere, but not on the sites' own hosts", () => {
     for (const env of ['preview', 'development', undefined]) {
       const rules = benchPrefixCdnRules(env);
       expect(rules.map((rule: { source: string }) => rule.source)).toEqual([
         '/bench',
+        '/bench/methodology',
         '/bench/chart/:slug',
       ]);
       for (const rule of rules) {

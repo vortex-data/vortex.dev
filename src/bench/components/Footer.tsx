@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
+import { MethodologyLink } from '@/bench/components/MethodologyLink';
+
 /**
  * The build-SHA footer, the server-component port of
  * `server/src/html/render.rs::site_footer`.
@@ -9,7 +11,7 @@
  * reports as `build_sha`), so the footer and the health probe stay in lockstep
  * with the deployed commit. When the SHA is the literal `"unknown"` (a build
  * outside a git checkout, e.g. local dev), the short SHA renders without a
- * commit link, matching v3.
+ * commit link, matching v3. It opens with the link to the methodology page.
  */
 export function Footer() {
   const fullSha = process.env.VERCEL_GIT_COMMIT_SHA ?? 'unknown';
@@ -17,6 +19,8 @@ export function Footer() {
   const commitUrl = `https://github.com/vortex-data/vortex.dev/commit/${fullSha}`;
   return (
     <footer className="site-footer">
+      <MethodologyLink />
+      <span aria-hidden="true"> · </span>
       <span className="site-footer-label">build </span>
       {fullSha === 'unknown' ? (
         <code className="site-footer-sha">{shortSha}</code>

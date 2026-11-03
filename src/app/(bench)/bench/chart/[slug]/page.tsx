@@ -11,7 +11,8 @@ import { Toolbar } from '@/bench/components/Toolbar';
 import { parseFilterCsv, singleSearchParam, unitKindLabel } from '@/bench/lib/chart-format';
 import { cachedDefaultChartPayload } from '@/bench/lib/data-cache';
 import { chartPayload, collectFilterUniverse, type ChartResponse } from '@/bench/lib/queries';
-import { chartKeyFromSlug, type ChartKey } from '@/bench/lib/slug';
+import { chartDescription, chartUrl, openGraph } from '@/bench/lib/site-files';
+import { chartKeyFromSlug, chartKeyToSlug, type ChartKey } from '@/bench/lib/slug';
 import { DEFAULT_COMMIT_WINDOW, parseCommitWindow } from '@/bench/lib/window';
 
 // Rendered per request, like the landing page: the payload comes from Postgres
@@ -46,7 +47,11 @@ const getChart = cache(async (slug: string, n: string | null): Promise<ChartResp
     : chartPayload(key, window);
 });
 
-/** The browser-tab title mirrors v3: `{display_name} - Vortex Benchmarks`. */
+/**
+ * The browser-tab title mirrors v3: `{display_name} - Vortex Benchmarks`. The
+ * description gives each series' newest value, and the canonical URL is the
+ * chart's canonical slug without a window.
+ */
 export async function generateMetadata({
   params,
   searchParams,
@@ -60,7 +65,16 @@ export async function generateMetadata({
   if (chart === null) {
     return {};
   }
-  return { title: `${chart.display_name} - Vortex Benchmarks` };
+  const key = chartKeyFromSlug(slug);
+  const title = `${chart.display_name} - Vortex Benchmarks`;
+  const description = chartDescription(chart, key.k);
+  const url = chartUrl(chartKeyToSlug(key));
+  return {
+    title,
+    description,
+    alternates: { canonical: url },
+    openGraph: openGraph(title, description, url),
+  };
 }
 
 /**

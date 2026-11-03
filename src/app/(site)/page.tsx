@@ -4,6 +4,7 @@ import { InstallTabs } from "@/components/install-tabs";
 import { LogoBanner } from "@/components/logo-banner";
 import { ResultsTable } from "@/components/results-table";
 import { getBenchSummary } from "@/lib/bench-summary";
+import { homeJsonLd } from "@/lib/llms";
 import { getSparkVersion } from "@/lib/maven";
 import styles from "./page.module.css";
 
@@ -36,7 +37,7 @@ export const metadata: Metadata = {
  * and the table share one compact screen (page.module.css). The Spark version
  * and the benchmark figures are read at build time and again at most once a
  * day, so the page stays static. Without the figures the page leaves the
- * table out.
+ * table out. The page carries the project's structured data (`homeJsonLd`).
  */
 export default async function Home() {
   const [sparkVersion, bench] = await Promise.all([
@@ -45,6 +46,10 @@ export default async function Home() {
   ]);
   return (
     <div className={styles.home}>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(homeJsonLd()) }}
+      />
       <section className={styles.hero}>
         <span className={`vx-label vx-eyebrow ${styles.eyebrow}`}>
           Apache-2.0, a Linux Foundation project
