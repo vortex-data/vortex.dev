@@ -21,6 +21,18 @@ describe('Toolbar (server-rendered)', () => {
     expect(html).not.toMatch(/<h1|theme-toggle/);
   });
 
+  // The system's secondary mono buttons, as GitHub and Menu are on the same row.
+  it("draws its buttons as the header's other buttons", () => {
+    expect(html).toContain(
+      'class="vx-btn vx-btn-secondary is-mono" type="button" data-action="expand-all"',
+    );
+    expect(html).toContain(
+      'class="vx-btn vx-btn-secondary is-mono" type="button" data-action="collapse-all"',
+    );
+    expect(html).toContain('class="vx-btn vx-btn-secondary is-mono filter-trigger"');
+    expect(html).not.toContain('control-btn');
+  });
+
   it('renders expand/collapse-all controls in sentence case', () => {
     expect(html).toContain('data-action="expand-all"');
     expect(html).toContain('data-action="collapse-all"');

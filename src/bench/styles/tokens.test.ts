@@ -175,12 +175,15 @@ describe("bench's stylesheet on the system's tokens", () => {
     expect(valueOf('.bench-frame:has(.group-nav-toggle)', 'padding-bottom')).toBe('3.5rem');
     // Below 1260px the buttons' words hide, but the Filters count stays in view.
     expect(css).toMatch(
-      /@media \(max-width: 1260px\) \{\s*\.bench-toolbar-controls \.control-btn > span:not\(\.filter-badge\),/,
+      /@media \(max-width: 1260px\) \{\s*\.bench-toolbar-controls \.vx-btn > span:not\(\.filter-badge\),/,
     );
-    expect(valueOf('.vx-header .control-btn', 'min-height')).toBe('var(--control-md)');
+    // The header's buttons are the system's (vx-btn), and bench restyles none of them.
+    expect(css).not.toMatch(
+      /\.vx-header[^{}]*\.(control-btn|vx-btn)\b[^{}]*\{[^}]*(background|border|font|height)/,
+    );
     // At 320px the controls keep room before the Menu button.
     expect(css).toMatch(
-      /@media \(max-width: 400px\) \{\s*\.vx-header-tools \.control-btn \{\s*padding-inline: 0\.4rem;/,
+      /@media \(max-width: 400px\) \{\s*\.vx-header-tools \.vx-btn \{\s*padding-inline: 0\.4rem;/,
     );
     expect(valueOf('main', 'padding')).toBe('1rem var(--page-pad)');
     expect(css).not.toMatch(/sticky-header|site-title|repo-link|nav-controls|logo-link/);

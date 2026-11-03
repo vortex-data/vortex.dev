@@ -21,7 +21,7 @@ describe('ThemeToggle', () => {
 
   it("renders the end group's button with the v3 server-default label", () => {
     const html = renderToStaticMarkup(<ThemeToggle />);
-    expect(html).toContain('class="control-btn theme-toggle vx-header-spill"');
+    expect(html).toContain('class="vx-btn vx-btn-secondary is-mono theme-toggle vx-header-spill"');
     expect(html).toContain('data-role="theme-toggle" data-requires-js="true"');
     expect(html).toContain('data-next-theme="light"');
     expect(html).toContain('aria-label="Switch to light mode"');

@@ -70,7 +70,7 @@ export function ThemeToggle({ row = false }: { row?: boolean }) {
   }
   return (
     <button
-      className="control-btn theme-toggle vx-header-spill"
+      className="vx-btn vx-btn-secondary is-mono theme-toggle vx-header-spill"
       type="button"
       data-role="theme-toggle"
       data-requires-js

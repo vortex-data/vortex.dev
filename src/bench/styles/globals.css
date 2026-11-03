@@ -120,14 +120,9 @@ a:hover {
   }
 }
 
-/* On the header's row the buttons are as tall as its GitHub and Menu buttons. */
-.vx-header .control-btn {
-  min-height: var(--control-md);
-}
-
 /* At 320px the controls need a little more room before the Menu button. */
 @media (max-width: 400px) {
-  .vx-header-tools .control-btn {
+  .vx-header-tools .vx-btn {
     padding-inline: 0.4rem;
   }
 }
@@ -164,8 +159,11 @@ a:hover {
   color: var(--accent-ink);
 }
 
-.theme-toggle {
-  min-width: 4.25rem;
+/* While it shows its word, the toggle keeps one width for "Light" and "Dark". */
+@media (min-width: 1261px) {
+  .vx-header-end > .theme-toggle {
+    min-width: 5.5rem;
+  }
 }
 
 .btn-icon {
@@ -770,7 +768,7 @@ main {
 
 /* ----------------------------------------------------------------------
  * Global filter dropdown - lives inside the sticky header. The trigger is
- * a `.control-btn` styled like the expand/collapse buttons; the panel is
+ * the system's secondary mono button, like expand/collapse all; the panel is
  * absolutely positioned beneath it and shows two rows of `.filter-chip`
  * buttons that toggle whole engines / formats across every chart at once.
  *
@@ -1434,7 +1432,7 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
 /* Below 1260px the header's buttons keep their icons, and their words stay as their names, so
  * the controls fit on the header's row; the Filters count stays in view. */
 @media (max-width: 1260px) {
-  .bench-toolbar-controls .control-btn > span:not(.filter-badge),
+  .bench-toolbar-controls .vx-btn > span:not(.filter-badge),
   .theme-toggle-label {
     position: absolute;
     width: 1px;
@@ -1462,9 +1460,6 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
     min-height: 32px;
     padding: 0.4rem 0.55rem;
     font-size: 0.75rem;
-  }
-  .theme-toggle {
-    min-width: 3.25rem;
   }
   main {
     padding: 1rem var(--page-pad);

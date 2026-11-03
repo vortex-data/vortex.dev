@@ -20,7 +20,8 @@ export type ToolbarProps = {
 /**
  * bench's controls, on the site header's row ([`BenchHeader`]): those of
  * section 18 of v3's `chart-init.js` (expand and collapse all, and the global
- * filter dropdown). The header holds the wordmark, the page's title, the theme
+ * filter dropdown), drawn as the system's secondary mono buttons, as the
+ * header's GitHub and Menu buttons are. The header holds the wordmark, the page's title, the theme
  * toggle ([`ThemeToggle`]), the GitHub button and the Menu.
  *
  * Expand/Collapse All writes `details.open` on every group disclosure
@@ -56,7 +57,7 @@ export function Toolbar({ universe, initialEngines, initialFormats }: ToolbarPro
     // biome-ignore lint/a11y/useAriaPropsSupportedByRole: deliberate markup, as bench has always rendered the group controls.
     <div className="bench-toolbar-controls" aria-label="Benchmark group controls">
       <button
-        className="control-btn"
+        className="vx-btn vx-btn-secondary is-mono"
         type="button"
         data-action="expand-all"
         data-requires-js
@@ -66,7 +67,7 @@ export function Toolbar({ universe, initialEngines, initialFormats }: ToolbarPro
         <span>Expand all</span>
       </button>
       <button
-        className="control-btn"
+        className="vx-btn vx-btn-secondary is-mono"
         type="button"
         data-action="collapse-all"
         data-requires-js
