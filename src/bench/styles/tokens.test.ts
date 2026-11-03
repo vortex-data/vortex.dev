@@ -34,8 +34,16 @@ const valueOf = (selector: string, prop: string) =>
 const ROLES = new Set([...tokens.matchAll(/^\s*--([a-z0-9-]+):/gm)].map((m) => m[1]));
 
 // bench's own values, which the system has no role for: the tooltip (black in Light, raised in
-// Dark), the green and red of a better or worse result with the text on that red, and the shadow.
-const OWN = new Set(['--tooltip-bg', '--tooltip-fg', '--good', '--bad', '--on-bad', '--shadow-md']);
+// Dark), the green and red of a better or worse result with the text on that red, and the height
+// of the sticky toolbar.
+const OWN = new Set([
+  '--tooltip-bg',
+  '--tooltip-fg',
+  '--good',
+  '--bad',
+  '--on-bad',
+  '--toolbar-height',
+]);
 
 describe("bench's stylesheet on the system's tokens", () => {
   it('loads the tokens before globals.css, and has no skin layer', () => {
@@ -59,16 +67,14 @@ describe("bench's stylesheet on the system's tokens", () => {
     expect(defined.length).toBeGreaterThan(0);
     for (const name of defined) {
       expect(ROLES.has(name.slice(2)), `${name} redefines a token`).toBe(false);
-      expect(OWN.has(name) || name === '--header-height', `${name} is not one of bench's own`).toBe(
-        true,
-      );
+      expect(OWN.has(name), `${name} is not one of bench's own`).toBe(true);
     }
   });
 
   it('reads every variable it uses from the tokens or from its own', () => {
     const used = new Set([...css.matchAll(/var\(--([a-z0-9-]+)/g)].map((m) => m[1]));
     for (const name of used) {
-      expect(ROLES.has(name) || OWN.has(`--${name}`) || name === 'header-height', name).toBe(true);
+      expect(ROLES.has(name) || OWN.has(`--${name}`), name).toBe(true);
     }
   });
 
@@ -121,13 +127,39 @@ describe("bench's stylesheet on the system's tokens", () => {
   });
 
   it('sets the title and toolbar buttons as mono labels, mutes ranks, and squares the badges', () => {
-    for (const sel of ['.site-title', '.control-btn']) {
+    for (const sel of ['.bench-title', '.control-btn']) {
       expect(valueOf(sel, 'font-family'), sel).toBe('var(--font-mono)');
     }
     expect(valueOf('.score-rank', 'color')).toBe('var(--ink-muted)');
-    expect(valueOf('.site-title', 'color')).toBe('var(--ink-muted)');
+    expect(valueOf('.bench-title', 'color')).toBe('var(--ink-muted)');
     for (const sel of ['.filter-badge', '.group-count']) {
       expect(valueOf(sel, 'border-radius'), sel).toBe('2px');
     }
+  });
+
+  // The system's label voice has no capitals and no tracking.
+  it('writes every label in sentence case, untracked', () => {
+    expect(decls.filter((d) => d.prop === 'text-transform').map((d) => d.sel)).toEqual([]);
+    for (const d of decls.filter((x) => x.prop === 'letter-spacing')) {
+      expect(d.value, d.sel).not.toMatch(/^0\.0[0-9]+em$/);
+    }
+  });
+
+  // Cards and popovers stand on their borders, as the system's do. Only the tooltips, which sit
+  // over a chart's lines, keep a shadow.
+  it('draws no shadows but on the tooltips', () => {
+    expect(decls.filter((d) => d.prop === 'box-shadow').map((d) => d.sel)).toEqual([
+      '[data-tooltip].group-info-icon::after',
+      '.chart-tooltip-host',
+    ]);
+  });
+
+  it('sticks the toolbar at the top, on the ground, padded like the header', () => {
+    expect(valueOf('.bench-toolbar', 'position')).toBe('sticky');
+    expect(valueOf('.bench-toolbar', 'top')).toBe('0');
+    expect(valueOf('.bench-toolbar', 'background')).toBe('var(--ground)');
+    expect(valueOf('.bench-toolbar', 'padding')).toBe('0 var(--page-pad)');
+    expect(valueOf('main', 'padding')).toBe('1rem var(--page-pad)');
+    expect(css).not.toMatch(/sticky-header|site-title|repo-link|nav-controls|logo-link/);
   });
 });

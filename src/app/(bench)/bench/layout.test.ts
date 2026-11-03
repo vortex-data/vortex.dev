@@ -14,6 +14,15 @@ import RootLayout, { generateMetadata } from '@/app/(bench)/bench/layout';
 // PostCSS config through Vite.
 vi.mock('@/bench/styles/globals.css', () => ({}));
 vi.mock('@/styles/vortex-tokens.css', () => ({}));
+vi.mock('@/styles/vortex.css', () => ({}));
+// The site's header and footer, as stand-ins that show the props bench gives them.
+vi.mock('@/components/layout/header', () => ({
+  Header: ({ bench }: { bench: { home: string } }) =>
+    createElement('header', { 'data-home': bench.home }),
+}));
+vi.mock('@/components/layout/footer', () => ({
+  Footer: ({ origin }: { origin: string }) => createElement('footer', { 'data-origin': origin }),
+}));
 // next/font is a build step; its classes set the design system's --vx-face-* variables.
 vi.mock('@/lib/fonts', () => ({ FONT_CLASSES: 'face-sans face-mono face-display' }));
 
@@ -58,6 +67,14 @@ describe('RootLayout', () => {
   it('follows the OS until a reader chooses a theme', () => {
     expect(load(true).documentElement.dataset.theme).toBe('system');
     expect(load(false).documentElement.dataset.theme).toBe('system');
+  });
+});
+
+describe("the layout's frame", () => {
+  it("wraps every page in the site's header and footer, pointed at bench and the site", () => {
+    expect(html).toMatch(
+      /<div class="bench-frame"><header data-home="\/"><\/header><main><\/main><footer data-origin="https:\/\/vortex.dev"><\/footer><\/div>/,
+    );
   });
 });
 

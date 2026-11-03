@@ -108,7 +108,7 @@ export function SummaryCard({ summary }: { summary?: Summary | undefined }) {
           <div className="compression-size-scores">
             <div className="compression-size-panel compression-size-arrow-panel">
               <div className="compression-size-arrow-header">
-                <span className="compression-size-group">Vs Arrow</span>
+                <span className="compression-size-group">vs Arrow</span>
               </div>
               <div className="compression-size-arrow-list">
                 {summary.rankings.map((item, idx) => {
@@ -131,7 +131,7 @@ export function SummaryCard({ summary }: { summary?: Summary | undefined }) {
             </div>
             <div className="compression-size-panel compression-size-parquet-panel">
               <div className="compression-size-parquet-header">
-                <span className="compression-size-group">Vs {summary.baseline ?? 'Parquet'}</span>
+                <span className="compression-size-group">vs {summary.baseline ?? 'Parquet'}</span>
                 <span className="compression-size-heading">Min</span>
                 <span className="compression-size-heading">Mean</span>
                 <span className="compression-size-heading">Max</span>

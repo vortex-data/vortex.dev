@@ -4,48 +4,47 @@ import NextLink from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
 import { CloseIcon, MenuIcon } from "@/components/icons";
-import { blogCurrent } from "@/lib/nav";
+import { navLinks } from "@/lib/nav";
+
+/** Where the header is: on bench, the path of bench's landing page. */
+export type HeaderPlace = { bench?: { home: string } | undefined };
 
 /**
- * The header's links. They are a client component only to mark the current
- * place: the blog's link takes `aria-current="page"` on the index and
- * `"true"` (the current section) on a post.
+ * The header's links (`navLinks`). They are a client component only to mark
+ * the current place: the blog's link takes `aria-current="page"` on the
+ * index and `"true"` (the current section) on a post, and bench's link does
+ * the same on bench.
  */
-function NavLinks() {
-  const pathname = usePathname();
-  const current = blogCurrent(pathname);
+function NavLinks({ bench }: HeaderPlace) {
+  // Null only outside a router: a test's static render.
+  const pathname = usePathname() ?? "";
   return (
     <>
-      <a className="vx-label vx-nav-link" href="https://docs.vortex.dev">
-        Docs
-      </a>
-      <a className="vx-label vx-nav-link" href="https://bench.vortex.dev">
-        Bench
-      </a>
-      <a className="vx-label vx-nav-link" href="https://explore.vortex.dev">
-        Explorer
-      </a>
-      <NextLink
-        className="vx-label vx-nav-link"
-        href="/blog"
-        {...(current ? { "aria-current": current } : {})}
-      >
-        Blog
-      </NextLink>
-      {/* A redirect to the Slack invite (next.config.mjs). A plain link,
-          because a client-side navigation cannot follow it off the site. */}
-      <a className="vx-label vx-nav-link" href="/slack">
-        Slack
-      </a>
+      {navLinks(pathname, bench).map(({ label, href, internal, current }) => {
+        const props = {
+          className: "vx-label vx-nav-link",
+          href,
+          ...(current ? { "aria-current": current } : {})
+        };
+        return internal ? (
+          <NextLink key={label} {...props}>
+            {label}
+          </NextLink>
+        ) : (
+          <a key={label} {...props}>
+            {label}
+          </a>
+        );
+      })}
     </>
   );
 }
 
 /** The header's primary nav, on one row with the wordmark. */
-export function HeaderNav() {
+export function HeaderNav({ bench }: HeaderPlace) {
   return (
     <nav className="vx-header-nav" aria-label="Primary">
-      <NavLinks />
+      <NavLinks bench={bench} />
     </nav>
   );
 }
@@ -56,7 +55,7 @@ export function HeaderNav() {
  * without scripts. With them it closes when a link changes the page, on
  * Escape, and on a click outside it.
  */
-export function HeaderMenu() {
+export function HeaderMenu({ bench }: HeaderPlace) {
   const menu = useRef<HTMLDetailsElement>(null);
   const pathname = usePathname();
 
@@ -92,7 +91,7 @@ export function HeaderMenu() {
         <span className="vx-header-menu-text">Menu</span>
       </summary>
       <nav className="vx-header-menu-panel" aria-label="Primary">
-        <NavLinks />
+        <NavLinks bench={bench} />
       </nav>
     </details>
   );

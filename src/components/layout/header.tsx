@@ -5,7 +5,7 @@ import { StarIcon } from "@/components/icons";
 import { MarkGithub } from "@/components/mark-github";
 import { ThemeSwitch } from "@/components/theme-switch";
 import { formatStars, getStarCount, REPO, REPO_URL } from "@/lib/github";
-import { HeaderMenu, HeaderNav } from "./header-nav";
+import { HeaderMenu, HeaderNav, type HeaderPlace } from "./header-nav";
 
 /**
  * The design system's Header card, site variant: the wordmark, the nav and
@@ -14,32 +14,47 @@ import { HeaderMenu, HeaderNav } from "./header-nav";
  * suits the theme, puts the links behind the Menu button below 800px (920px
  * with the switch), and drops the repository name on narrow phones. The button's name starts with its
  * visible text, as Lighthouse's label-content-name-mismatch requires.
+ *
+ * On bench, which is served from its own host, the wordmark and the site's
+ * links point back to vortex.dev, Bench is the current section, and there is
+ * no ThemeSwitch: bench's theme toggle is in its toolbar.
  */
-export async function Header() {
+export async function Header({ bench }: HeaderPlace = {}) {
   const stars = await getStarCount();
+  const marks = (
+    <>
+      <img
+        className="vx-header-mark is-dark"
+        src={WordmarkDark.src}
+        width={WordmarkDark.width}
+        height={WordmarkDark.height}
+        alt="Vortex"
+      />
+      {/* Lazy, so Dark pages never fetch the Light mark they hide. */}
+      <img
+        className="vx-header-mark is-light"
+        src={WordmarkLight.src}
+        width={WordmarkLight.width}
+        height={WordmarkLight.height}
+        alt="Vortex"
+        loading="lazy"
+      />
+    </>
+  );
   return (
     <header className="vx-header has-nav">
       <div className="vx-header-start">
-        <NextLink href="/" aria-label="Vortex home">
-          <img
-            className="vx-header-mark is-dark"
-            src={WordmarkDark.src}
-            width={WordmarkDark.width}
-            height={WordmarkDark.height}
-            alt="Vortex"
-          />
-          {/* Lazy, so Dark pages never fetch the Light mark they hide. */}
-          <img
-            className="vx-header-mark is-light"
-            src={WordmarkLight.src}
-            width={WordmarkLight.width}
-            height={WordmarkLight.height}
-            alt="Vortex"
-            loading="lazy"
-          />
-        </NextLink>
+        {bench ? (
+          <a href="https://vortex.dev" aria-label="Vortex home">
+            {marks}
+          </a>
+        ) : (
+          <NextLink href="/" aria-label="Vortex home">
+            {marks}
+          </NextLink>
+        )}
       </div>
-      <HeaderNav />
+      <HeaderNav bench={bench} />
       <div className="vx-header-end">
         <a
           className="vx-btn vx-btn-secondary is-mono"
@@ -59,8 +74,8 @@ export async function Header() {
             </span>
           )}
         </a>
-        <ThemeSwitch />
-        <HeaderMenu />
+        {!bench && <ThemeSwitch />}
+        <HeaderMenu bench={bench} />
       </div>
     </header>
   );

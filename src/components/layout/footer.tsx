@@ -4,8 +4,8 @@ import { REPO_URL } from "@/lib/github";
 // No project code of conduct exists, so the LF Projects one applies
 // (charter section 6.b). The charter is a route (src/app/(site)/charter.pdf), so it
 // takes a plain link like the rest.
-const LINKS = [
-  { href: "/charter.pdf", label: "Charter" },
+const links = (origin: string) => [
+  { href: `${origin}/charter.pdf`, label: "Charter" },
   {
     href: "https://lfprojects.org/policies/code-of-conduct/",
     label: "Code of conduct"
@@ -15,14 +15,15 @@ const LINKS = [
     href: "https://zoom-lfx.platform.linuxfoundation.org/meetings/vortex",
     label: "Calendar"
   }
-] as const;
+];
 
 /**
  * The design system's Footer card: The Linux Foundation's logo (the system's
  * CSS inverts it in Light), the line LF Projects requires, followed by the
- * card's credit, and the project's links.
+ * card's credit, and the project's links. `origin` is the site's, for a page
+ * served from another host (bench), where the charter's path is not the site's.
  */
-export function Footer() {
+export function Footer({ origin = "" }: { origin?: string } = {}) {
   return (
     <footer className="vx-footer">
       <img
@@ -49,7 +50,7 @@ export function Footer() {
         </span>
       </p>
       <nav className="vx-footer-nav" aria-label="Project">
-        {LINKS.map(({ href, label }) => (
+        {links(origin).map(({ href, label }) => (
           <a key={href} className="vx-label-sm vx-nav-link" href={href}>
             {label}
           </a>

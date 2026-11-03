@@ -1,7 +1,7 @@
 /* Vortex design system components (sections: base, brand, site, docs, blog, focus), copied by tools/site-styles.mjs.
    Edit the system, then run tools/site-styles.mjs; do not edit here.
    Made by: node tools/site-styles.mjs <site> --sections base,brand,site,docs,blog,focus --faces --vx-face --base
-   sha256 049fe9805a6dcf07f63ac508924e4789da6e38ebcb87e1bbecbdb46db6083bbc */
+   sha256 cfa608512c82fd595227ebd78d98d311e479691a94edfb5d436ea7dfae35659c */
 
 /* ------------------------------------------------------------------ base */
 /* Every component sizes with border-box, so it draws the same under a site's reset or none. */
@@ -382,6 +382,11 @@
 .vx-header-mark { height: 24px; width: auto; display: block; }
 .vx-header-mark.is-light, [data-theme="light"] .vx-header-mark.is-dark { display: none; }
 [data-theme="light"] .vx-header-mark.is-light { display: block; }
+/* A page set to System follows the OS: under its light, the marks swap as in Light. */
+@media (prefers-color-scheme: light) {
+  [data-theme="system"] .vx-header-mark.is-dark { display: none; }
+  [data-theme="system"] .vx-header-mark.is-light { display: block; }
+}
 .vx-header-label { padding-left: var(--space-12); border-left: 1px solid var(--edge); line-height: 16px; }
 .vx-header-nav { display: flex; gap: var(--space-24); margin-left: auto; }
 .vx-header-end { display: flex; align-items: center; gap: var(--space-16); margin-left: auto; }
@@ -497,6 +502,9 @@
 }
 .vx-footer-mark { height: 12px; width: auto; opacity: 0.85; }
 [data-theme="light"] .vx-footer-mark { filter: invert(1); }
+@media (prefers-color-scheme: light) {
+  [data-theme="system"] .vx-footer-mark { filter: invert(1); }
+}
 .vx-footer-text { flex: 1 1 420px; min-width: 0; margin: 0; }
 .vx-footer-credit { white-space: nowrap; }
 .vx-footer-nav { display: flex; flex-wrap: wrap; gap: var(--space-8) var(--space-16); }

@@ -7,9 +7,9 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { Header } from '@/bench/components/Header';
+import { Toolbar } from '@/bench/components/Toolbar';
 
-describe('Header and the no-js class', () => {
+describe('Toolbar and the no-js class', () => {
   let root: Root | null = null;
   const host = document.createElement('div');
 
@@ -26,7 +26,7 @@ describe('Header and the no-js class', () => {
     document.body.appendChild(host);
     root = createRoot(host);
     act(() => {
-      root?.render(<Header />);
+      root?.render(<Toolbar />);
     });
     expect(document.documentElement.className).toBe('js');
   });

@@ -4,42 +4,29 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
-import { Header } from '@/bench/components/Header';
+import { Toolbar } from '@/bench/components/Toolbar';
 
 const UNIVERSE = { engines: ['datafusion', 'duckdb'], formats: ['parquet', 'vortex'] };
 
-describe('Header (server-rendered chrome)', () => {
+describe('Toolbar (server-rendered)', () => {
   const html = renderToStaticMarkup(
-    <Header universe={UNIVERSE} initialEngines={[]} initialFormats={[]} />,
+    <Toolbar universe={UNIVERSE} initialEngines={[]} initialFormats={[]} />,
   );
 
-  it('renders the hamburger toggle wired to the nav panel', () => {
-    expect(html).toContain('data-role="nav-mobile-toggle"');
-    expect(html).toContain('aria-controls="bench-nav-controls"');
-    expect(html).toContain('aria-expanded="false"');
-    expect(html).toContain('data-role="nav-controls"');
+  it("titles the page, under the site's header", () => {
+    expect(html).toMatch(/^<div class="bench-toolbar"><h1 class="bench-title">Benchmarks<\/h1>/);
   });
 
-  it('renders expand/collapse-all controls inside the nav panel', () => {
+  it('renders expand/collapse-all controls in sentence case', () => {
     expect(html).toContain('data-action="expand-all"');
     expect(html).toContain('data-action="collapse-all"');
-    expect(html).toContain('Expand All');
-    expect(html).toContain('Collapse All');
+    expect(html).toContain('<span>Expand all</span>');
+    expect(html).toContain('<span>Collapse all</span>');
   });
 
-  it('renders BOTH GitHub links: the desktop one and the mobile nav fallback', () => {
-    // The mobile CSS hides `.repo-link-desktop` under 768px; the
-    // `.nav-controls-github` link inside the hamburger panel covers mobile.
-    expect(html).toContain('repo-link-desktop');
-    expect(html).toContain('nav-controls-github');
-    const matches = html.match(/href="https:\/\/github\.com\/vortex-data\/vortex"/g);
-    expect(matches).toHaveLength(2);
-  });
-
-  it('links the Vortex logo to vortex.dev', () => {
-    expect(html).toContain(
-      '<a class="logo-link" href="https://vortex.dev" aria-label="vortex.dev home">',
-    );
+  // The site's header holds the wordmark and the GitHub button.
+  it('holds no logo and no link', () => {
+    expect(html).not.toMatch(/<a |<img /);
   });
 
   it('renders the theme toggle with the v3 server-default label', () => {
@@ -60,9 +47,8 @@ describe('Header (server-rendered chrome)', () => {
     expect(allChips).toHaveLength(2);
   });
 
-  it('marks every control that does nothing without JavaScript, and no link', () => {
+  it('marks every control that does nothing without JavaScript', () => {
     for (const control of [
-      'data-role="nav-mobile-toggle"',
       'data-action="expand-all"',
       'data-action="collapse-all"',
       'data-role="global-filter-bar"',
@@ -70,13 +56,12 @@ describe('Header (server-rendered chrome)', () => {
     ]) {
       expect(html).toContain(`${control} data-requires-js="true"`);
     }
-    expect(html.match(/data-requires-js/g)).toHaveLength(5);
-    expect(html).not.toMatch(/<a [^>]*data-requires-js/);
+    expect(html.match(/data-requires-js/g)).toHaveLength(4);
   });
 
   it('omits the filter dropdown when the universe is empty', () => {
     const bare = renderToStaticMarkup(
-      <Header universe={{ engines: [], formats: [] }} initialEngines={[]} initialFormats={[]} />,
+      <Toolbar universe={{ engines: [], formats: [] }} initialEngines={[]} initialFormats={[]} />,
     );
     expect(bare).not.toContain('data-role="global-filter-bar"');
   });

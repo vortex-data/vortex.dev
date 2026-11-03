@@ -175,8 +175,8 @@ describe('SummaryCard', () => {
     });
     expect(html).not.toContain('<h3 class="scores-title">Compression Size Summary</h3>');
     expect(html).toContain('class="compression-size-scores"');
-    expect(html).toContain('Vs Arrow');
-    expect(html).toContain('Vs Parquet');
+    expect(html).toContain('>vs Arrow<');
+    expect(html).toContain('>vs Parquet<');
     expect(html).not.toContain('GeoMean');
     expect(html.match(/>Mean</g)).toHaveLength(1);
     expect(html).toContain('>Min<');

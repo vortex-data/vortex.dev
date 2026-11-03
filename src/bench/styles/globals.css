@@ -4,16 +4,15 @@
 /* The colours come from the Vortex design system's tokens (src/styles/vortex-tokens.css), which
  * the root layout loads first: ground, surface, raised, line, ink, ink-muted, accent-ink for words,
  * and accent with on-accent for fills. The root renders data-theme="system", so the tokens follow
- * the OS until a reader picks a theme with the header's toggle. These are bench's own values, which
+ * the OS until a reader picks a theme with the toolbar's toggle. These are bench's own values, which
  * the system has no role for, in the same three theme states. */
 :root {
-  --header-height: 72px;
+  --toolbar-height: 56px;
   --tooltip-bg: var(--primary);
   --tooltip-fg: var(--grey-50);
   --good: #16a34a;
   --bad: #a40e26;
   --on-bad: var(--white);
-  --shadow-md: 0 4px 8px rgba(16, 24, 40, 0.08);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -23,7 +22,6 @@
     --good: #4ade80;
     --bad: #ff8182;
     --on-bad: var(--black);
-    --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.7);
   }
 }
 
@@ -33,7 +31,6 @@
   --good: #4ade80;
   --bad: #ff8182;
   --on-bad: var(--black);
-  --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.7);
 }
 
 * {
@@ -74,10 +71,6 @@ pre {
   font-family: var(--font-mono);
 }
 
-body {
-  padding-top: var(--header-height);
-}
-
 a {
   color: var(--accent-ink);
   text-decoration: none;
@@ -96,161 +89,50 @@ a:hover {
   display: none !important;
 }
 
-.sticky-header {
-  position: fixed;
+/* The toolbar: sticky at the top once the site's header scrolls away, on the ground with a rule
+ * under it, padded like the header. The frame lets bench's pages span the window, as the header
+ * and footer do, so every edge lines up at page-pad. */
+.bench-frame {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+.bench-frame > main {
+  flex: 1 0 auto;
+}
+
+.bench-toolbar {
+  position: sticky;
   top: 0;
-  left: 0;
-  right: 0;
   z-index: 1000;
-  height: var(--header-height);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  height: var(--toolbar-height);
+  padding: 0 var(--page-pad);
   border-bottom: 1px solid var(--line);
-  background: rgba(245, 246, 247, 0.95);
-  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.08);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background: var(--ground);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) .sticky-header {
-    background: rgba(26, 26, 26, 0.95);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
-  }
-}
-
-:root[data-theme='dark'] .sticky-header {
-  background: rgba(26, 26, 26, 0.95);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
-}
-
-:root[data-theme='light'] .sticky-header {
-  background: rgba(245, 246, 247, 0.95);
-  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.08);
-}
-
-.header-content {
-  /* Sticky-header inner background. v2 maps this to `--bg-secondary`,
-   * the elevated grey in dark mode (`#1a1a1a`); v3's `--bg` resolves
-   * to the same colour. Using `--code-bg` here flattened the header
-   * against the page in dark mode. */
-  background: var(--surface);
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1.5rem;
-  width: 100%;
-  height: 100%;
-  padding: 0 2rem;
-}
-
-.header-left,
-.header-center,
-.header-right,
-.nav-controls,
-.repo-link,
-.logo-link {
-  display: flex;
-  align-items: center;
-}
-
-.header-left {
-  min-width: 0;
-  gap: 0.75rem;
-}
-
-.header-center {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  flex: 0 0 auto;
-  justify-content: center;
-  min-width: 0;
-  transform: translate(-50%, -50%);
-}
-
-.header-right {
-  justify-content: flex-end;
-  gap: 0.75rem;
-  margin-left: auto;
-}
-
-.nav-controls {
-  gap: 0.75rem;
-  min-width: 0;
-}
-
-/* Hamburger button + the mobile-only GitHub link inside `.nav-controls`
- * are hidden by default; the mobile media query below flips them on. The
- * compound selector beats `.control-btn` / `.repo-link` on specificity so
- * those generic display rules don't accidentally re-show them on desktop. */
-.header-left .nav-mobile-toggle {
-  display: none;
-}
-.nav-controls .nav-controls-github {
-  display: none;
-}
-
-.logo-link {
-  flex: 0 0 auto;
-  text-decoration: none;
-  transition: opacity 0.2s ease;
-}
-
-.logo-link:hover {
-  opacity: 0.8;
-  text-decoration: none;
-}
-
-.site-logo {
-  display: block;
-  width: auto;
-  height: 24px;
-}
-
-.logo-dark {
-  display: none;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) .logo-light {
-    display: none;
-  }
-  :root:not([data-theme='light']) .logo-dark {
-    display: block;
-  }
-}
-
-:root[data-theme='dark'] .logo-light {
-  display: none;
-}
-:root[data-theme='dark'] .logo-dark {
-  display: block;
-}
-:root[data-theme='light'] .logo-light {
-  display: block;
-}
-:root[data-theme='light'] .logo-dark {
-  display: none;
-}
-
-.site-title {
-  display: none;
-  margin: 0 0 0 1.5rem;
-  color: var(--ink);
-  font-size: 1.5rem;
+.bench-title {
+  margin: 0 auto 0 0;
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
   font-weight: 500;
-  line-height: 1.2;
+  letter-spacing: 0;
   white-space: nowrap;
 }
 
-@media (min-width: 1400px) {
-  .site-title {
-    display: block;
-  }
+.bench-toolbar-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
 }
 
-.control-btn,
-.repo-link {
+.control-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -268,9 +150,7 @@ a:hover {
   transition:
     background-color 0.2s ease,
     border-color 0.2s ease,
-    box-shadow 0.2s ease,
-    color 0.2s ease,
-    transform 0.2s ease;
+    color 0.2s ease;
 }
 
 .control-btn {
@@ -278,14 +158,10 @@ a:hover {
   cursor: pointer;
 }
 
-.control-btn:hover,
-.repo-link:hover {
+.control-btn:hover {
   border-color: var(--accent-ink);
   background: var(--ground);
   color: var(--accent-ink);
-  box-shadow: 0 1px 3px rgba(16, 16, 16, 0.08);
-  text-decoration: none;
-  transform: translateY(-1px);
 }
 
 .theme-toggle {
@@ -316,15 +192,6 @@ a:hover {
   display: none;
 }
 
-.repo-link {
-  padding: 0.5rem 1rem;
-  font-weight: 500;
-}
-
-.github-logo {
-  flex: 0 0 auto;
-}
-
 .page-header {
   border-bottom: 1px solid var(--line);
   background: var(--ground);
@@ -349,19 +216,7 @@ main {
   width: 100%;
   max-width: none;
   margin: 0;
-  padding: 2rem;
-}
-
-@media (min-width: 1600px) {
-  main {
-    padding: 2.5rem 3.75rem;
-  }
-}
-
-@media (min-width: 1920px) {
-  main {
-    padding: 3rem 5rem;
-  }
+  padding: 2rem var(--page-pad);
 }
 
 .empty {
@@ -373,7 +228,7 @@ main {
  * read of the groups finishes. */
 .summary-loading {
   display: grid;
-  min-height: calc(100vh - var(--header-height) - 5rem);
+  min-height: calc(100vh - var(--toolbar-height) - 5rem);
   place-items: center;
 }
 
@@ -383,7 +238,6 @@ main {
   border: 1px solid var(--line);
   border-radius: 12px;
   background: var(--surface);
-  box-shadow: var(--shadow-md);
   text-align: center;
 }
 
@@ -417,10 +271,8 @@ main {
   background: var(--surface);
   overflow: hidden;
   /* Offset jump targets (GroupNav) so a jumped-to group title clears the sticky header. */
-  scroll-margin-top: calc(var(--header-height) + 0.75rem);
-  transition:
-    border-color 0.2s ease,
-    box-shadow 0.2s ease;
+  scroll-margin-top: calc(var(--toolbar-height) + 0.75rem);
+  transition: border-color 0.2s ease;
 }
 .group-disclosure {
   display: block;
@@ -482,9 +334,7 @@ main {
   font-size: 0.7rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  letter-spacing: 0.02em;
   line-height: 1;
-  text-transform: uppercase;
 }
 /*
  * The one-line headline at the end of a group's summary row (GroupSection,
@@ -709,8 +559,6 @@ main {
   color: var(--ink-muted);
   font-size: 0.75rem;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
 }
 
 .scores-list {
@@ -844,9 +692,7 @@ main {
   color: var(--ink-muted);
   font-size: 0.68rem;
   font-weight: 600;
-  letter-spacing: 0.04em;
   text-align: center;
-  text-transform: uppercase;
 }
 
 .compression-size-heading {
@@ -874,7 +720,6 @@ main {
   color: var(--accent-ink);
   font-size: 0.75rem;
   font-weight: 600;
-  text-transform: uppercase;
   font-variant-numeric: tabular-nums;
 }
 
@@ -964,10 +809,9 @@ main {
   min-width: 22rem;
   max-width: min(90vw, 36rem);
   padding: 0.75rem 0.85rem;
-  border: 1px solid var(--line);
+  border: 1px solid var(--edge);
   border-radius: 8px;
   background: var(--surface);
-  box-shadow: var(--shadow-md);
 }
 .filter-panel[hidden] {
   display: none;
@@ -983,8 +827,6 @@ main {
   min-width: 4rem;
   color: var(--ink-muted);
   font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
 }
 .filter-chip {
   display: inline-flex;
@@ -1037,8 +879,6 @@ main {
 .toolbar-label {
   color: var(--ink-muted);
   font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
   margin-right: 0.15rem;
 }
 .toolbar-btn {
@@ -1118,10 +958,9 @@ main {
   min-width: 24rem;
   max-width: min(90vw, 42rem);
   padding: 0.75rem 0.85rem;
-  border: 1px solid var(--line);
+  border: 1px solid var(--edge);
   border-radius: 8px;
   background: var(--surface);
-  box-shadow: var(--shadow-md);
 }
 .group-filter-panel[hidden] {
   display: none;
@@ -1188,10 +1027,6 @@ main {
   background: var(--surface);
   padding: 1.25rem;
   margin-bottom: 1rem;
-  transition: box-shadow 0.2s ease;
-}
-.chart-card:hover {
-  box-shadow: var(--shadow-md);
 }
 /* A card classified as empty in the latest-100 window hides via the `hidden`
  * attribute (the group toolbar's "show empty charts" toggle reveals it).
@@ -1223,7 +1058,6 @@ main {
 .chart-badge {
   font-size: 0.7rem;
   font-weight: 500;
-  letter-spacing: 0.02em;
   padding: 0.1rem 0.45rem;
   border-radius: 999px;
   background: var(--ground);
@@ -1245,7 +1079,6 @@ main {
   font-family: inherit;
   font-size: 0.7rem;
   font-weight: 500;
-  letter-spacing: 0.02em;
   line-height: 1.4;
   padding: 0.1rem 0.45rem;
   border-radius: 999px;
@@ -1593,111 +1426,51 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
 /* ----------------------------------------------------------------------
  * Mobile
  * ---------------------------------------------------------------------- */
-@media (max-width: 768px) {
-  :root {
-    --header-height: 56px;
-  }
-  .header-content {
-    gap: 0.5rem;
-    padding: 0 0.5rem;
-  }
-  .site-logo {
-    height: 16px;
-  }
-  .header-left {
-    gap: 0.5rem;
-  }
-  .header-center {
-    position: static;
-    flex: 0 0 auto;
-    transform: none;
-  }
-  .header-right {
-    gap: 0.35rem;
-    margin-left: auto;
-  }
-  .site-title {
-    display: none;
-  }
-  /* Mobile nav: collapse `.nav-controls` into a hamburger panel docked
-   * under the header. The hamburger toggle plants `.nav-controls--open`
-   * to surface the panel. The desktop GitHub link in `.header-right` is
-   * hidden; the panel-internal `.nav-controls-github` link takes over. */
-  .header-left .nav-mobile-toggle {
-    display: inline-flex;
-    padding: 0.4rem 0.55rem;
-    min-height: 32px;
-  }
-  .header-right .repo-link-desktop {
-    display: none;
-  }
-  .nav-controls .nav-controls-github {
-    display: inline-flex;
-  }
-  .nav-controls {
-    display: none;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.5rem;
+/* On a phone the toolbar's buttons keep their icons, and their words stay as their names. */
+@media (max-width: 480px) {
+  .bench-toolbar-controls .control-btn > span,
+  .theme-toggle-label {
     position: absolute;
-    top: var(--header-height);
-    left: 0;
-    right: 0;
-    padding: 0.75rem 1rem;
-    border-bottom: 1px solid var(--line);
-    background: var(--surface);
-    box-shadow: var(--shadow-md);
-    z-index: 1100;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
-  .nav-controls.nav-controls--open {
-    display: flex;
+}
+
+@media (max-width: 768px) {
+  .bench-toolbar,
+  .bench-toolbar-controls {
+    gap: 0.5rem;
   }
-  /* Without JavaScript the hamburger cannot open the panel, so the nav sits
-   * in the header row instead. Its only control that works without
-   * JavaScript, the GitHub link, shows; the rest are hidden. */
-  .no-js .nav-controls {
-    display: flex;
+  .bench-title {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  /* The filter panel spans the toolbar, under it, rather than centre on its button. */
+  .bench-toolbar .filter-dropdown {
     position: static;
-    flex-direction: row;
-    padding: 0;
-    border-bottom: 0;
-    background: none;
-    box-shadow: none;
   }
-  .nav-controls .filter-dropdown {
-    width: 100%;
-  }
-  .nav-controls .filter-trigger {
-    width: 100%;
-    justify-content: center;
-  }
-  .nav-controls .filter-panel {
-    left: 0;
-    right: 0;
+  .bench-toolbar .filter-panel {
+    top: 100%;
+    left: var(--page-pad);
+    right: var(--page-pad);
     transform: none;
     min-width: 0;
     max-width: none;
   }
-  .control-btn,
-  .repo-link {
-    min-height: 32px;
-    border-radius: 6px;
-    font-size: 0.75rem;
-  }
   .control-btn {
+    min-height: 32px;
     padding: 0.4rem 0.55rem;
+    font-size: 0.75rem;
   }
   .theme-toggle {
     min-width: 3.25rem;
   }
-  .repo-link {
-    padding: 0.4rem 0.55rem;
-  }
-  .repo-link span {
-    display: none;
-  }
   main {
-    padding: 1rem;
+    padding: 1rem var(--page-pad);
   }
   .group-details {
     margin-bottom: 1.5rem;
@@ -1866,7 +1639,7 @@ a.site-footer-sha:hover code {
   bottom: 1rem;
   left: 1rem;
   z-index: 902;
-  box-shadow: var(--shadow-md);
+  border-color: var(--edge);
 }
 
 .group-nav-panel {
@@ -1878,13 +1651,12 @@ a.site-footer-sha:hover code {
   display: flex;
   flex-direction: column;
   width: min(18rem, calc(100vw - 2rem));
-  max-height: calc(100vh - var(--header-height) - 5rem);
+  max-height: calc(100vh - var(--toolbar-height) - 5rem);
   padding: 0.75rem;
   overflow-y: auto;
-  border: 1px solid var(--line);
+  border: 1px solid var(--edge);
   border-radius: 10px;
   background: var(--surface);
-  box-shadow: var(--shadow-md);
   /* Hidden until toggled; fade + slide up from the bottom-left toggle. */
   visibility: hidden;
   opacity: 0;
@@ -1907,8 +1679,6 @@ a.site-footer-sha:hover code {
   color: var(--ink-muted);
   font-size: 0.75rem;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
 }
 
 .group-nav-list {
@@ -1954,7 +1724,7 @@ a.site-footer-sha:hover code {
 
 /* The system's corners and label voice. Cards take 6px corners and controls 4px; circles
  * (the info icon, spinners, swatches) keep their 50%. The page title and the toolbar buttons read
- * as mono labels in sentence case, ranks are muted so Blue marks only ratios, and the count badges
+ * as mono labels in sentence case, as every label does (no capitals, no tracking), ranks are muted so Blue marks only ratios, and the count badges
  * are square. */
 .group-details,
 .summary-loading-panel,
@@ -1965,7 +1735,6 @@ a.site-footer-sha:hover code {
   border-radius: 6px 6px 0 0;
 }
 .control-btn,
-.repo-link,
 .toolbar-btn,
 .group-toolbar-reset,
 .group-toolbar-empty-toggle,
@@ -1979,14 +1748,9 @@ a.site-footer-sha:hover code {
 .filter-chip {
   border-radius: 4px;
 }
-.site-title,
 .control-btn {
   font-family: var(--font-mono);
   font-weight: 500;
-}
-.site-title {
-  font-size: 12px;
-  color: var(--ink-muted);
 }
 .control-btn {
   font-size: 11px;
