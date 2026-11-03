@@ -31,8 +31,12 @@ jobs:
     env:
       PROXY: http://127.0.0.1:3201
     steps:
+      # The PR's head commit, which Vercel built the preview from, not the
+      # merge commit a pull_request checkout defaults to: the config and specs
+      # must describe the app they audit (a post only on main would be a 404).
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
 
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6  # v2.2.0
