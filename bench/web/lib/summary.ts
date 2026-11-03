@@ -616,6 +616,8 @@ function compressionRankings(rows: readonly CompressionTimeSample[]): Compressio
  * Each independently benchmarked format uses its own newest complete snapshot.
  * Every sample uses Parquet timing from the same commit. Aggregate throughput uses the newest
  * available decoded Arrow memory size for each dataset. The size commit does not need to match.
+ * The synthetic `wide table` and `sparse-wide` datasets are left out: they still chart in the
+ * group, but not in its summary.
  * The JSON field lookup returns `NULL` before migration 009 adds the column, so web deployment
  * does not depend on migration deployment order.
  */
@@ -643,6 +645,7 @@ async function compressionSamples(): Promise<CompressionTimeSample[]> {
          AND t.value_ns > 0
          AND p.value_ns > 0
          AND lower(t.dataset) NOT LIKE '%wide table%'
+         AND lower(t.dataset) NOT LIKE '%sparse-wide%'
     ), snapshot_policy AS (
       SELECT format,
              CASE WHEN format = ANY($2::text[]) THEN $3 ELSE format END AS anchor_format
@@ -675,6 +678,7 @@ async function compressionSamples(): Promise<CompressionTimeSample[]> {
        WHERE s.format = $4
          AND s.uncompressed_bytes::float8 > 0
          AND lower(s.dataset) NOT LIKE '%wide table%'
+         AND lower(s.dataset) NOT LIKE '%sparse-wide%'
        ORDER BY s.dataset, s.dataset_variant NULLS FIRST,
                 c.timestamp DESC, s.commit_sha DESC
     )

@@ -401,14 +401,15 @@ describe.skipIf(!databaseAvailable)('summary math fidelity (testcontainers Postg
     op: string,
     vortexNs: number,
     parquetNs: number,
+    dataset = 'tpch-lineitem',
   ): Promise<void> {
     await getPool().query(
       `INSERT INTO compression_times
            (measurement_id, commit_sha, dataset, dataset_variant, format, op,
             value_ns, all_runtimes_ns)
-         VALUES ($1, $2, 'tpch-lineitem', NULL, 'vortex-file-compressed', $4, $5, '{1}'::bigint[]),
-                ($3, $2, 'tpch-lineitem', NULL, 'parquet',                $4, $6, '{1}'::bigint[])`,
-      [nextId(), sha, nextId(), op, vortexNs, parquetNs],
+         VALUES ($1, $2, $7, NULL, 'vortex-file-compressed', $4, $5, '{1}'::bigint[]),
+                ($3, $2, $7, NULL, 'parquet',                $4, $6, '{1}'::bigint[])`,
+      [nextId(), sha, nextId(), op, vortexNs, parquetNs, dataset],
     );
   }
 
@@ -791,12 +792,30 @@ describe.skipIf(!databaseAvailable)('summary math fidelity (testcontainers Postg
     expect(size.rankings[1]!.ratio).toBeCloseTo(1.0, 6);
   });
 
-  it('leaves the wide-table and sparse-wide datasets out of the size summary', async () => {
+  it('leaves the wide-table and sparse-wide datasets out of the compression summaries', async () => {
     const sha = 'e'.repeat(40);
     await insertCommit(sha, '2026-04-23T12:00:00Z');
+    await insertCompTimePair(sha, 'encode', 1_000, 3_000);
     await insertCompSizePair(sha, 1_000, 4_000);
-    await insertCompSizePair(sha, 9_000, 1_000, 'wide table cols=1000 chunks=50 rows=1000');
-    await insertCompSizePair(sha, 9_000, 1_000, 'sparse-wide-nested-runs');
+    for (const dataset of ['wide table cols=1000 chunks=50 rows=1000', 'sparse-wide-nested-runs']) {
+      await insertCompTimePair(sha, 'encode', 9_000, 1_000, dataset);
+      await insertCompSizePair(sha, 9_000, 1_000, dataset);
+    }
+
+    const time = expectDefined(
+      await collectGroupSummary({ k: 'CompressionTimeGroup' }),
+      'compression-time summary',
+    );
+    if (time.type !== 'compression') {
+      throw new Error(`expected compression summary, got ${time.type}`);
+    }
+    const vortexTime = expectDefined(
+      time.rankings.find(
+        (ranking) => ranking.operation === 'encode' && ranking.name === 'vortex-file-compressed',
+      ),
+      'Vortex compression ranking',
+    );
+    expect(vortexTime.ratio).toBeCloseTo(3.0, 6);
 
     const size = expectDefined(
       await collectGroupSummary({ k: 'CompressionSizeGroup' }),
