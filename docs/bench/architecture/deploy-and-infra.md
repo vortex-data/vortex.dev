@@ -126,21 +126,21 @@ then a CDN HIT on bench.vortex.dev once it serves this commit (skipped until the
 
 ### Required merge check
 
-The `main` ruleset of `vortex-data/vortex.dev` requires `Bench: format, lint, build, test` from
-**GitHub Actions** (app ID `15368`), beside the marketing site's checks. The job is in `ci.yml`
-and runs the `bench-checks` composite action. The ruleset does not require branches to be up to
-date before merging, so a merged commit is never checked before it lands.
+The `main` ruleset of `vortex-data/vortex.dev` requires `Lint, build, verify` and `Lighthouse and
+axe` from **GitHub Actions** (app ID `15368`). They check both sites: the first runs bench's
+format, lint, build and tests (with the Postgres integration suite) beside the site's, and the
+second runs Lighthouse and axe on the pull request's preview. The ruleset does not require
+branches to be up to date before merging, so a merged commit is never checked before it lands.
 
-To see the check for a commit:
+To see the checks for a commit:
 
 ```bash
 checked_sha="$(git rev-parse HEAD)"
 gh api "repos/vortex-data/vortex.dev/commits/${checked_sha}/check-runs" \
-  --jq '.check_runs[] | select(.name == "Bench: format, lint, build, test") | {name, conclusion, app_id: .app.id}'
+  --jq '.check_runs[] | select(.name == "Lint, build, verify" or .name == "Lighthouse and axe") | {name, conclusion, app_id: .app.id}'
 ```
 
-A commit that changes bench must report `success` and app ID `15368`. The composite action keeps
-the check name the same when its steps change.
+Each must report `success` and app ID `15368`. Keep the job names when their steps change.
 
 ## Legacy v3 host deploy (`ops/`) — decommissioned 2026-07-08
 
