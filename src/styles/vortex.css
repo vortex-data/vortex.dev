@@ -1,7 +1,7 @@
 /* Vortex design system components (sections: base, brand, site, docs, blog, focus), copied by tools/site-styles.mjs.
    Edit the system, then run tools/site-styles.mjs; do not edit here.
    Made by: node tools/site-styles.mjs <site> --sections base,brand,site,docs,blog,focus --faces --vx-face --base
-   sha256 d2a449abff10b0868de43ea66ac2cee2de9896576a3b46fe55568e857c36810b */
+   sha256 370e0d2e5e2f599a5578eac611b85ae55f66d030cbee125c36a25aef38b34985 */
 
 /* ------------------------------------------------------------------ base */
 /* Every component sizes with border-box, so it draws the same under a site's reset or none. */
@@ -540,10 +540,11 @@
   .vx-results-key-versus { display: none; }
   .vx-results-table tbody > tr > * { vertical-align: top; }
 }
-/* The narrowest phones, 320px: the three columns fit with 12px of padding and 12px between them. */
+/* The narrowest phones, 320px: the three columns fit inside the frame with 12px of padding, 12px between them, and headings that wrap. */
 @media (max-width: 400px) {
   .vx-results { padding: var(--space-12); }
   .vx-results-table :is(th, td):not(:first-child) { padding-left: var(--space-12); }
+  .vx-results-table th { white-space: normal; }
 }
 
 .vx-eyebrow { display: inline-flex; align-items: center; gap: var(--space-8); }

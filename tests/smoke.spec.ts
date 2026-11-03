@@ -1059,6 +1059,24 @@ test.describe("narrowest phones", () => {
     });
   }
 
+  // The page can have a few pixels of slack where the frame does not, so
+  // a table wider than its frame would pass the scroll test on one font
+  // renderer and fail on another.
+  test("the results table fits inside its frame at 320px", async ({ page }) => {
+    await page.goto("/");
+    const frame = page.locator(".vx-results");
+    test.skip((await frame.count()) === 0, "no benchmark figures");
+    const { frameRight, tableRight } = await frame.evaluate((el) => {
+      const table = el.querySelector(".vx-results-table");
+      const padding = Number.parseFloat(getComputedStyle(el).paddingRight);
+      return {
+        frameRight: el.getBoundingClientRect().right - padding,
+        tableRight: table?.getBoundingClientRect().right ?? 0
+      };
+    });
+    expect(tableRight).toBeLessThanOrEqual(frameRight);
+  });
+
   test("the GitHub button shares the wordmark's row at 320px", async ({
     page
   }) => {
