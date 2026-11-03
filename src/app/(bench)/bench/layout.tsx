@@ -9,9 +9,9 @@ import { benchPath } from '@/bench/lib/base-path';
 import { FONTS_CSS } from '@/bench/lib/fonts';
 import { requestBenchBase } from '@/bench/lib/request-base';
 
+// The Vortex design system's colour roles and scales, which globals.css reads.
+import '@/styles/vortex-tokens.css';
 import '@/bench/styles/globals.css';
-// The Vortex design system's skin: colours, corners and Geist over globals.css.
-import '@/bench/styles/vortex-skin.css';
 
 export async function generateMetadata(): Promise<Metadata> {
   const base = await requestBenchBase();
@@ -75,7 +75,7 @@ const FONT_BOOTSTRAP =
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const base = await requestBenchBase();
   return (
-    <html lang="en" className="no-js" suppressHydrationWarning>
+    <html lang="en" data-theme="system" className="no-js" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
         <link rel="preconnect" href="https://fonts.googleapis.com" />

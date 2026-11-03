@@ -13,7 +13,7 @@ import RootLayout, { generateMetadata } from '@/app/(bench)/bench/layout';
 // The stylesheets are Next.js's to build; loading them here would run bench's
 // PostCSS config through Vite.
 vi.mock('@/bench/styles/globals.css', () => ({}));
-vi.mock('@/bench/styles/vortex-skin.css', () => ({}));
+vi.mock('@/styles/vortex-tokens.css', () => ({}));
 
 // The layout reads the request's host for the base of bench's paths.
 const requestHeaders = vi.hoisted(() => new Headers({ host: 'bench.vortex.dev' }));
@@ -36,7 +36,7 @@ function load(runScripts: boolean, theme?: string): Document {
 
 describe('RootLayout', () => {
   it('renders the root as no-js, which only a script swaps for js', () => {
-    expect(html).toMatch(/^<html lang="en" class="no-js">/);
+    expect(html).toMatch(/^<html lang="en" data-theme="system" class="no-js">/);
     expect(load(false).documentElement.className).toBe('no-js');
     expect(load(true).documentElement.className).toBe('js');
   });
@@ -45,6 +45,11 @@ describe('RootLayout', () => {
     const doc = load(true, 'dark');
     expect(doc.documentElement.className).toBe('js');
     expect(doc.documentElement.dataset.theme).toBe('dark');
+  });
+
+  it('follows the OS until a reader chooses a theme', () => {
+    expect(load(true).documentElement.dataset.theme).toBe('system');
+    expect(load(false).documentElement.dataset.theme).toBe('system');
   });
 });
 
