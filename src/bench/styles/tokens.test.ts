@@ -195,11 +195,12 @@ describe("bench's stylesheet on the system's tokens", () => {
     for (const sel of ['.group-name', '.scores-title', '.score-item']) {
       expect(valueOf(sel, 'font-family'), sel).toBe('var(--font-mono)');
     }
-    expect(valueOf('.group-name', 'font-size')).toBe('15px');
-    expect(valueOf('.group-name', 'font-weight')).toBe('500');
-    expect(valueOf('.scores-title', 'font-size')).toBe('12px');
-    expect(valueOf('.score-item', 'font-size')).toBe('13px');
-    expect(valueOf('.score-series', 'font-weight')).toBe('400');
+    // Will's B (2026-11-03): weight 400 at 13px read too thin, Light most of all.
+    expect(valueOf('.group-name', 'font-weight')).toBe('600');
+    expect(valueOf('.scores-title', 'font-size')).toBe('13px');
+    expect(valueOf('.scores-title', 'color')).toBe('var(--ink-body)');
+    expect(valueOf('.score-item', 'font-size')).toBe('14px');
+    expect(valueOf('.score-series', 'font-weight')).toBe('500');
     expect(valueOf('.score-value', 'color')).toBe('var(--ink-body)');
     expect(
       decls.some(
@@ -209,9 +210,12 @@ describe("bench's stylesheet on the system's tokens", () => {
           d.value === 'var(--accent-ink)',
       ),
     ).toBe(true);
-    // One size at every width: the phone rule no longer shrinks it.
+    // On a phone 20px pushes the group's icons onto lines of their own, so one rule sets 17px.
     expect(
-      decls.filter((d) => selectorsOf(d).includes('.group-name') && d.prop === 'font-size'),
-    ).toHaveLength(1);
+      decls
+        .filter((d) => selectorsOf(d).includes('.group-name') && d.prop === 'font-size')
+        .map((d) => d.value),
+    ).toEqual(['20px', '17px']);
+    expect(css).toMatch(/@media \(max-width: 640px\) \{\s*\.group-name \{\s*font-size: 17px;/);
   });
 });

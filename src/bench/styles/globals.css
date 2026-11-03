@@ -316,13 +316,19 @@ main {
 .group-summary:hover .group-summary-row {
   background: var(--surface);
 }
-/* The groups speak in the system's mono voice, as the header's label does. */
+/* The groups speak in the system's mono voice, as the header's label does, and heavy enough to
+   lead their cards: 400 at 13px read thin, Light most of all. */
 .group-name {
   font-family: var(--font-mono);
-  font-weight: 500;
-  font-size: 15px;
+  font-weight: 600;
+  font-size: 20px;
   line-height: 1.2;
   letter-spacing: 0;
+}
+@media (max-width: 640px) {
+  .group-name {
+    font-size: 17px;
+  }
 }
 .group-count {
   color: var(--ink-muted);
@@ -552,9 +558,9 @@ main {
 
 .scores-title {
   margin: 0 0 0.5rem;
-  color: var(--ink-muted);
+  color: var(--ink-body);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
 }
 
@@ -709,7 +715,7 @@ main {
   gap: 0.5rem;
   padding: 0.25rem 0;
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: 14px;
   break-inside: avoid;
 }
 
@@ -726,7 +732,7 @@ main {
   flex: 1;
   overflow: hidden;
   color: var(--ink);
-  font-weight: 400;
+  font-weight: 500;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
