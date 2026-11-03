@@ -55,13 +55,24 @@ const base = (process.env.BASE_URL ?? "http://localhost:3000").replace(
   /\/$/,
   ""
 );
-const urls = [`${base}/`, `${base}/blog`];
+// The pages to audit, by the name CI's matrix gives each one. bench is under
+// `/bench`, as a preview and `bun run start` serve it.
 const seed = pickSeedSlug();
-if (seed) urls.push(`${base}/blog/${seed}`);
-// bench under `/bench`, as a preview and `bun run start` serve it.
-urls.push(`${base}/bench`);
-if (process.env.BENCH_CHART_PATH)
-  urls.push(`${base}/bench${process.env.BENCH_CHART_PATH}`);
+const pages = {
+  home: "/",
+  blog: "/blog",
+  post: seed ? `/blog/${seed}` : undefined,
+  bench: "/bench",
+  chart: process.env.BENCH_CHART_PATH
+    ? `/bench${process.env.BENCH_CHART_PATH}`
+    : undefined
+};
+// LHCI_PAGE picks one page, as each of CI's Lighthouse jobs does; without
+// it, every page.
+const picked = process.env.LHCI_PAGE
+  ? [pages[process.env.LHCI_PAGE]]
+  : Object.values(pages);
+const urls = picked.filter(Boolean).map((p) => `${base}${p}`);
 
 // Assertion thresholds. LHCI asserts on the best of the three runs for each
 // value (its default `aggregationMethod: "optimistic"`), so these are the
@@ -100,6 +111,7 @@ if (process.env.BENCH_CHART_PATH)
 // recalibrate from the archived runs. Don't relax a threshold to mask a
 // regression without a separate PR.
 module.exports = {
+  pages,
   ci: {
     collect: {
       url: urls,
