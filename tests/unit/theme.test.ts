@@ -1,21 +1,28 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { runInNewContext } from "node:vm";
-import { THEME_BOOTSTRAP, THEMEABLE, themeFor } from "@/lib/theme";
+import { probeWebgl, THEME_BOOTSTRAP, THEMEABLE, themeFor } from "@/lib/theme";
 
 // Runs the inline first-paint script against a fake page and returns what it set on <html>.
 function boot(
   pathname: string,
   stored: string | null,
   prefersDark: boolean,
-  blocked = false
+  blocked = false,
+  webgl = true
 ) {
   const root = {
     className: "no-js __variable_a __variable_b",
     dataset: {} as Record<string, string>
   };
   runInNewContext(THEME_BOOTSTRAP, {
-    document: { documentElement: root },
+    document: {
+      documentElement: root,
+      createElement: () => ({
+        getContext: () =>
+          webgl ? { getExtension: () => ({ loseContext() {} }) } : null
+      })
+    },
     location: { pathname },
     localStorage: {
       getItem: (key: string) => {
@@ -79,12 +86,54 @@ describe("THEME_BOOTSTRAP", () => {
 
   it("first swaps the root's no-js class for js, keeping its other classes", () => {
     assert.equal(
-      boot("/", null, false).className,
+      boot("/blog", null, false).className,
       "js __variable_a __variable_b"
     );
     assert.ok(
       THEME_BOOTSTRAP.startsWith("document.documentElement.className=")
     );
+  });
+
+  it("marks the homepage no-webgl before first paint when the browser has no WebGL", () => {
+    assert.match(boot("/", null, false, false, false).className, / no-webgl$/);
+    assert.doesNotMatch(boot("/", null, false).className, /no-webgl/);
+    // Only the homepage lays itself out by it, so no other page probes.
+    assert.doesNotMatch(
+      boot("/blog", null, false, false, false).className,
+      /no-webgl/
+    );
+  });
+
+  it("marks the homepage webgl when the browser has WebGL, so a later probe skips", () => {
+    assert.match(boot("/", null, false).className, / webgl$/);
+  });
+
+  it("probes once when a link renders the homepage in place", () => {
+    const fake = (webgl: boolean, classes: string[] = []) => {
+      const list = new Set(classes);
+      let made = 0;
+      const doc = {
+        documentElement: {
+          classList: {
+            contains: (c: string) => list.has(c),
+            add: (c: string) => list.add(c)
+          }
+        },
+        createElement: () => {
+          made++;
+          return {
+            getContext: () =>
+              webgl ? { getExtension: () => ({ loseContext() {} }) } : null
+          };
+        }
+      };
+      probeWebgl(doc as unknown as Document);
+      return { list, made };
+    };
+    assert.ok(fake(false).list.has("no-webgl"));
+    assert.ok(fake(true).list.has("webgl"));
+    assert.equal(fake(false, ["webgl"]).made, 0);
+    assert.equal(fake(true, ["no-webgl"]).list.has("webgl"), false);
   });
 
   it("is a constant that builds no code from values", () => {

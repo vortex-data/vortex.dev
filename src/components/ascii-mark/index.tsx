@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import symbol from "@/assets/vortex_symbol_dark_theme.svg";
+import { probeWebgl } from "@/lib/theme";
 
 const IDLE_TIMEOUT_MS = 2000;
 
@@ -51,6 +52,10 @@ const STILL_STYLE = {
 export function AsciiMark({ className }: { className?: string | undefined }) {
   const host = useRef<HTMLDivElement>(null);
   const [drawn, setDrawn] = useState(false);
+
+  // A link from another page renders the homepage with no new document, so
+  // the first-paint script's probe has not run. This runs it before paint.
+  useLayoutEffect(() => probeWebgl(), []);
 
   useEffect(() => {
     const el = host.current;

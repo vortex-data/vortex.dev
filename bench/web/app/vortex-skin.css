@@ -150,13 +150,11 @@ body {
 }
 
 /* The chrome in the system's label voice: the page title and the toolbar buttons read as mono
-   capitals, ranks are muted so Blue marks only ratios, and the count badges are square. */
+   labels in sentence case, ranks are muted so Blue marks only ratios, and the count badges are square. */
 .site-title,
 .control-btn {
   font-family: 'Geist Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
   font-weight: 500;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
 }
 .site-title {
   font-size: 12px;

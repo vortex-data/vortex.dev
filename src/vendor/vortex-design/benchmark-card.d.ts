@@ -25,6 +25,8 @@ export type BenchPanel = {
   unit: string;
   kind: "speed" | "size";
   better: "higher" | "lower";
+  /** A short name for the panel as a row of the results table: "Scan". Omitted, the row uses `title`. */
+  short?: string;
   rows: readonly BenchRow[];
   /** The systems the panel shows, in order. It must name Vortex and Parquet. Omitted, every row shows. */
   systems?: readonly string[];
@@ -112,3 +114,38 @@ export function benchCaption(panels: readonly Pick<BenchPanel, "unit">[]): strin
 
 /** How each kind of value the panels show is made, for the caption's title and screen readers. */
 export function benchMethod(panels: readonly Pick<BenchPanel, "unit">[]): string;
+
+/** How Vortex does against Parquet in a few words: "5.1× faster", "14% larger", "as fast", "Vortex not measured". */
+export function panelVerdict(
+  kind: BenchPanel["kind"],
+  vs: Pick<Versus, "factor" | "vortexWins"> & Partial<Pick<Versus, "tie" | "missing">>
+): string;
+
+/** The results table's columns: Vortex and Parquet first, then the other systems as the panels name them. */
+export function resultsSystems(panels: readonly Pick<BenchPanel, "rows" | "systems">[]): string[];
+
+export type ResultsCell = {
+  system: string;
+  /** The value a bar prints ("42.25 ms", "5.12×"), "Not measured", "N/A", or "—" for a system the panel does not show. */
+  label: string;
+  /** The value with its full unit, for the cell's title: as `PanelRow.exact`, or "not run in this benchmark". */
+  exact: string;
+  state: PanelRow["state"] | "not-run";
+  ours: boolean;
+  /** Whether the cell holds the row's best measured score. Every cell that ties for it is best. */
+  best: boolean;
+};
+
+export type ResultsRow = {
+  name: string;
+  cells: ResultsCell[];
+  verdict: string;
+  /** Where the figures come from when they are not bench's, as the row head's hover title and screen-reader text. */
+  source: PanelSource | null;
+};
+
+/** One panel as a row of the results table, with a cell per name in `systems`. */
+export function resultsRow(panel: BenchPanel, systems: readonly string[]): ResultsRow;
+
+/** The results table as HTML. `read` is the date the figures were read, "2 Nov 2026"; `icon` is the open_in_new icon's markup, which ends the source link. */
+export function renderResults(panels: readonly BenchPanel[], options?: { read?: string; icon?: string }): string;

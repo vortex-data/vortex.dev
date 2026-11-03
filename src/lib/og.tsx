@@ -52,8 +52,7 @@ function OgCard({
           alignItems: "center",
           gap: "16px",
           fontSize: 28,
-          letterSpacing: "0.18em",
-          textTransform: "uppercase",
+
           color: "rgba(255,255,255,0.7)",
           fontFamily: "monospace"
         }}
@@ -208,8 +207,7 @@ export async function renderPostOgImage(props: {
             gap: 14,
             fontFamily: "Geist Mono",
             fontSize: 22,
-            letterSpacing: "0.08em",
-            textTransform: "uppercase",
+
             color: c.muted
           }}
         >
@@ -233,8 +231,7 @@ export async function renderPostOgImage(props: {
             style={{
               fontFamily: "Geist Mono",
               fontSize: 20,
-              letterSpacing: "0.08em",
-              textTransform: "uppercase",
+
               color: c.muted
             }}
           >
