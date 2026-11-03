@@ -15,7 +15,7 @@ import {
   panelFactor,
   panelNote,
   versusParquet
-} from "@/vendor/vortex-design/benchmark-card.js";
+} from "@/vendor/vortex-design/results.js";
 
 const fixture = (name: string) =>
   JSON.parse(

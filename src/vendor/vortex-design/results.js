@@ -1,13 +1,14 @@
-// The rules of the benchmark card, kept free of the DOM so they can be tested.
+// The rules for showing bench's figures (the ResultsTable and a Figure's bars), kept free of the
+// DOM so they can be tested.
 // A row is {system, score, measured?, total?, unavailable?}: `score` is the system's one number in the
 // panel, either a time in ms (the geomean of its per-query times over the queries bench's score
 // covers) or bench's geomean ratio to Parquet (throughput or size), and `measured` and `total` are
 // the coverage: the datasets or queries the system ran, of all of them. `unavailable` is the reason a system cannot run the benchmark at all ("no cuDF integration"):
 // that row is "N/A", where "Not measured" means it could run but has no result. The bars and the
-// big figure both read the scores, so they always agree, and the card never
+// verdict both read the scores, so they always agree, and nothing
 // claims a ratio bench does not publish. A panel whose figures come from elsewhere names its source
 // (`source`), as its title's hover title and screen-reader text.
-// Types: benchmark-card.d.ts.
+// Types: results.d.ts.
 
 const isOurs = (system) => String(system).toLowerCase() === "vortex";
 
@@ -30,7 +31,7 @@ const find = (rows, name) => rows.find((r) => String(r.system).toLowerCase() ===
 /**
  * Whether a row is measured: it has a score, and bench ran it on the whole workload. Bench scores
  * a system it ran on only part of the workload (`measured < total`) with a penalty for the rest,
- * which is not the same workload as the others', so the card shows the row as "Not measured".
+ * which is not the same workload as the others', so the row shows as "Not measured".
  */
 const isMeasured = (r) =>
   Number.isFinite(r?.score) && r.score > 0 && !(Number.isFinite(r.measured) && Number.isFinite(r.total) && r.measured < r.total);
@@ -119,7 +120,7 @@ export function versusParquet(rows, better) {
   return { factor: Math.max(v.score / p.score, p.score / v.score), vortexWins, tie: v.score === p.score, missing: null };
 }
 
-/** A factor in ×: 32× from 10 up, 5.1× from 1.1 up, 1.07× below, — for none. The card uses it from 2× up (`panelFactor`). */
+/** A factor in ×: 32× from 10 up, 5.1× from 1.1 up, 1.07× below, — for none. The verdict uses it from 2× up (`panelFactor`). */
 export function formatFactor(f) {
   if (!Number.isFinite(f)) return "—";
   if (Number(f.toFixed(1)) >= 10) return `${Math.round(f)}×`;
@@ -143,7 +144,7 @@ function share(kind, { factor, vortexWins }) {
 const level = (kind, vs) => vs.tie || (Number.isFinite(vs.factor) && Math.round(share(kind, vs) * 100) === 0);
 
 /**
- * The big figure: below 2× a whole percentage ("57%", "7%"), from 2× up a factor ("5.1×", "32×"),
+ * The verdict's figure: below 2× a whole percentage ("57%", "7%"), from 2× up a factor ("5.1×", "32×"),
  * "1×" when Vortex and Parquet are level, and — when either is not measured. `panelNote` gives the
  * words that follow it. `kind` is "speed" or "size".
  */
@@ -165,61 +166,13 @@ export function panelNote(kind, vs) {
 
 const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
 
-// The kinds of value a panel can show, by its unit, in the order the caption names them.
-const VALUE_KINDS = [
-  { units: ["ms"], caption: "times in ms", method: "A time is the geomean over the queries or datasets that bench's score covers." },
-  {
-    units: ["× fastest"],
-    caption: "scores against the fastest",
-    method: "A score is bench's score against the fastest run = 1. It stands in for times that do not cover every query.",
-  },
-  { units: ["× Parquet", "×"], caption: "ratios to Parquet", method: "A ratio is against Parquet = 1." },
-];
-const kindsShown = (panels) => {
-  const units = new Set(panels.map((p) => p.unit));
-  return VALUE_KINDS.filter((k) => k.units.some((u) => units.has(u)));
-};
-
 /**
- * The few words after the headline's dot: each kind of value the panels show, then "best first"
- * ("times in ms, ratios to Parquet, best first"). It never names a unit no panel shows.
- */
-export function benchCaption(panels) {
-  return [...kindsShown(panels).map((k) => k.caption), "best first"].join(", ");
-}
-
-/**
- * How each kind of value the panels show is made, one or two sentences each. The card puts it in
- * the caption's `title` and in screen-reader text, so the caption itself stays short.
- */
-export function benchMethod(panels) {
-  return kindsShown(panels)
-    .map((k) => k.method)
-    .join(" ");
-}
-
-/**
- * One panel's markup. A panel is {title, unit, kind, better, rows, systems?, source?}: the metric's
- * name, its unit ("ms" for a time, "× Parquet" for a throughput ratio, "×" for the file-size ratio),
- * "speed" or "size", "higher" or "lower", the rows, the systems to show (`pickSystems`) and, for
- * figures that are not bench's, {note}: the panel title's hover title and screen-reader text. The title
- * prints no unit and no direction: the card's caption says what the units are, and the bars run
- * best first. Each bar ends in its value with its unit ("42.25 ms", "5.12×") in a column as wide as
- * the panel's longest value (`valueWidth`). The value with its full unit is the bar's hover title
- * and its screen-reader text.
- */
-export function renderPanel({ title, unit, kind, better, rows, systems, source }) {
-  const vs = versusParquet(rows, better);
-  const sourceTip = source ? ` title="${esc(source.note)}"` : "";
-  const sourceText = source ? `<span class="vx-sr-only">, ${esc(source.note)}</span>` : "";
-  const head = `<div class="vx-label-sm vx-bench-title"${sourceTip}><span class="vx-bench-metric">${esc(title)}</span>${sourceText}</div>`;
-  return `<div class="vx-bench-panel">${head}<div class="vx-bench-big"><span class="vx-stat">${panelFactor(kind, vs)}</span> <span class="vx-caption vx-bench-note">${esc(panelNote(kind, vs))}</span></div>${renderBars({ unit, better, rows, systems })}</div>`;
-}
-
-/**
- * One comparison's bars on their own, for a chart outside the BenchmarkCard (a Figure, a page's
- * section): {unit, better, rows, systems?}, as for a panel. It draws the same bars renderPanel
- * draws, best first, each ending in its value, with Vortex in Blue and the other formats tinted.
+ * One comparison's bars, for a Figure or a page's section: {unit, better, rows, systems?}, as for a
+ * panel. A panel is {title, short?, unit, kind, better, rows, systems?, source?}: the metric's name,
+ * its unit ("ms", "× Parquet", or "×" for the file-size ratio), "speed" or "size", "higher" or
+ * "lower", the rows, the systems to show (`pickSystems`), and for figures that are not bench's,
+ * {note}. The bars run best first, each ending in its value in a column as wide as the longest
+ * (`valueWidth`), with Vortex in Blue and the other formats tinted.
  */
 export function renderBars({ unit, better, rows, systems }) {
   const shown = panelRows(pickSystems(rows, systems), better, unit);

@@ -1,9 +1,6 @@
 import { OpenInNewIcon } from "@/components/icons";
 import { formatReadDate, type Panel } from "@/lib/bench-summary";
-import {
-  resultsRow,
-  resultsSystems
-} from "@/vendor/vortex-design/benchmark-card.js";
+import { resultsRow, resultsSystems } from "@/vendor/vortex-design/results.js";
 
 const SOURCE_URL = "https://bench.vortex.dev";
 
@@ -12,7 +9,7 @@ const classes = (...names: (string | false)[]) =>
 
 /**
  * The design system's results table, drawn in JSX from the system's own
- * rules (benchmark-card.js): a row per panel and a column per system, Vortex
+ * rules (results.js): a row per panel and a column per system, Vortex
  * first in Blue, the best figure in each row underlined, and how Vortex does
  * against Parquet last. Its markup is the same as the system's
  * `renderResults`, and tests/unit/results-table.test.tsx holds it there. A
