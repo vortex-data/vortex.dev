@@ -134,14 +134,6 @@ export function datasetJsonLd(groups: readonly Group[]): Record<string, unknown>
   };
 }
 
-/**
- * JSON for an inline `<script type="application/ld+json">`. `<` is escaped,
- * so no value can close the script element.
- */
-export function jsonLdScript(data: unknown): string {
-  return JSON.stringify(data).replaceAll('<', '\\u003c');
-}
-
 export function robotsText(): string {
   return [
     '# Every page is open to crawlers, including AI crawlers.',

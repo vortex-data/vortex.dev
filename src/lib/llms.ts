@@ -131,15 +131,6 @@ export function siteLlmsText({
 }
 
 /**
- * JSON for an inline `<script type="application/ld+json">`. `<` is escaped, so
- * a `</script>` in a title or description cannot end the script early; JSON
- * parsers read `\u003c` as the same character.
- */
-export function jsonLdScript(data: unknown): string {
-  return JSON.stringify(data).replaceAll("<", "\\u003c");
-}
-
-/**
  * The homepage's structured data: the project as schema.org
  * SoftwareSourceCode, and the organization behind it.
  */
