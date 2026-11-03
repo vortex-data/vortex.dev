@@ -193,7 +193,7 @@ const nextConfig = wrapWithPlausible({
 
 /**
  * bench's CDN rule for its pages in the /bench form: five minutes fresh, as
- * vercel.json gives `/` and `/chart/:slug` on bench.vortex.dev. bench's HTML
+ * vercel.json gives `/`, `/methodology` and `/chart/:slug` on bench.vortex.dev. bench's HTML
  * depends on the host (its links are root-relative there and under /bench
  * elsewhere), so production never sends it for the /bench form: should the
  * CDN key a page by path alone, a cached /bench page must not answer for
@@ -204,16 +204,18 @@ export function benchPrefixCdnRules(vercelEnv) {
   if (vercelEnv === "production") {
     return [];
   }
-  return ["/bench", "/bench/chart/:slug"].map((source) => ({
-    source,
-    missing: [...SITE_HOSTS, ...BENCH_HOST],
-    headers: [
-      {
-        key: "Vercel-CDN-Cache-Control",
-        value: "max-age=300, stale-while-revalidate=86400"
-      }
-    ]
-  }));
+  return ["/bench", "/bench/methodology", "/bench/chart/:slug"].map(
+    (source) => ({
+      source,
+      missing: [...SITE_HOSTS, ...BENCH_HOST],
+      headers: [
+        {
+          key: "Vercel-CDN-Cache-Control",
+          value: "max-age=300, stale-while-revalidate=86400"
+        }
+      ]
+    })
+  );
 }
 
 /** Next.js's suffix for a metadata route under `parent`: the first six base-36 digits of its djb2 hash. */

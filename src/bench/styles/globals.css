@@ -1843,12 +1843,14 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
   font-size: 0.75rem;
 }
 
+a.site-footer-link,
 a.site-footer-sha {
   color: var(--ink-muted);
   text-decoration: none;
   transition: color 0.2s ease;
 }
 
+a.site-footer-link:hover,
 a.site-footer-sha:hover,
 a.site-footer-sha:hover code {
   color: var(--accent-ink);
@@ -1997,4 +1999,25 @@ a.site-footer-sha:hover code {
 .filter-badge,
 .group-count {
   border-radius: 2px;
+}
+
+/* ----------------------------------------------------------------------
+ * Methodology page
+ * ---------------------------------------------------------------------- */
+.methodology {
+  max-width: 72ch;
+  line-height: 1.6;
+}
+
+.methodology h2 {
+  margin: 0 0 1rem;
+}
+
+.methodology h3 {
+  margin: 2rem 0 0.5rem;
+  font-size: 1rem;
+}
+
+.methodology p {
+  margin: 0 0 0.75rem;
 }

@@ -7,6 +7,7 @@ import type { ReactNode } from 'react';
 import { BenchBaseProvider } from '@/bench/components/BenchBase';
 import { benchPath } from '@/bench/lib/base-path';
 import { requestBenchBase } from '@/bench/lib/request-base';
+import { BENCH_DESCRIPTION, BENCH_URL, openGraph } from '@/bench/lib/site-files';
 import { FONT_CLASSES } from '@/lib/fonts';
 
 // The Vortex design system's colour roles and scales, which globals.css reads.
@@ -17,7 +18,11 @@ export async function generateMetadata(): Promise<Metadata> {
   const base = await requestBenchBase();
   return {
     title: 'Vortex Benchmarks',
-    description: 'Continuous benchmark results for Vortex.',
+    description: BENCH_DESCRIPTION,
+    // The canonical and Open Graph URLs are bench's public ones, written out
+    // in full. No `metadataBase`: it would also resolve the icons' paths, which
+    // belong to the host serving the page, against bench.vortex.dev.
+    openGraph: openGraph('Vortex Benchmarks', BENCH_DESCRIPTION, `${BENCH_URL}/`),
     // Theme-aware favicons, ported from `render.rs::favicon_links`: the black
     // sigil on light-mode tabs, the white sigil on dark-mode tabs, with the dark
     // sigil as the unmediated fallback (and the apple-touch icon). The files are

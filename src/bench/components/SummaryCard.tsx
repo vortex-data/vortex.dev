@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
 import { displayFormat, displaySeriesLabel } from '@/bench/lib/chart-format';
-import { formatTimeNs } from '@/bench/lib/format';
+import { formatCompressionSizeRatio, formatThroughput, formatTimeNs } from '@/bench/lib/format';
 import type { SeriesRanking, Summary } from '@/bench/lib/summary';
 
 /**
@@ -16,16 +16,6 @@ function seriesTitle(item: SeriesRanking, coverageUnit: string): string {
   return item.measured >= item.total
     ? label
     : `${label} - measured in ${item.measured} of ${item.total} ${coverageUnit}; the rest scored by the missing-series penalty`;
-}
-
-function formatCompressionSizeRatio(value: number): string {
-  return `${Number(value.toPrecision(3))}x`;
-}
-
-function formatThroughput(valueGbS: number, operation: 'encode' | 'decode'): string {
-  return operation === 'encode'
-    ? `${(valueGbS * 1000).toFixed(0)} MB/s`
-    : `${valueGbS.toFixed(2)} GB/s`;
 }
 
 /**
