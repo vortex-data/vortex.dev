@@ -1,11 +1,16 @@
-// Lighthouse CI config. JS instead of JSON so the URL list can be discovered
-// at run time from the velite blog source — hardcoding a slug would break
-// Lighthouse the day that post is renamed or unpublished.
+// Lighthouse CI config for both sites. CI audits the pull request's Vercel
+// preview, where bench has its database, through scripts/preview-proxy.mjs
+// (see .github/workflows/lighthouse.yml):
 //
-// Frontmatter is parsed with a minimal regex (no gray-matter dep) since we
-// only care about `published:` and `date:`. Keeping this file self-contained
-// means it works the same locally (`bun run lighthouse`) and in CI without
-// any install-order concerns.
+//   BASE_URL          where the app answers: the proxy in CI, or a server
+//                     you started, such as `bun run start` with bench's
+//                     BENCH_DB_* variables (default http://localhost:3000)
+//   BENCH_CHART_PATH  optional: one of bench's chart pages, /chart/<slug>
+//
+// JS instead of JSON so the URL list can be discovered at run time from the
+// velite blog source — hardcoding a slug would break Lighthouse the day that
+// post is renamed or unpublished. Frontmatter is parsed with a minimal regex
+// (no gray-matter dep) since we only care about `published:` and `date:`.
 
 const fs = require("node:fs");
 const path = require("node:path");
@@ -46,51 +51,64 @@ function pickSeedSlug() {
   return candidates[0].slug;
 }
 
-const baseUrls = ["http://localhost:3000/", "http://localhost:3000/blog"];
+const base = (process.env.BASE_URL ?? "http://localhost:3000").replace(
+  /\/$/,
+  ""
+);
+const urls = [`${base}/`, `${base}/blog`];
 const seed = pickSeedSlug();
-if (seed) baseUrls.push(`http://localhost:3000/blog/${seed}`);
+if (seed) urls.push(`${base}/blog/${seed}`);
+// bench under `/bench`, as a preview and `bun run start` serve it.
+urls.push(`${base}/bench`);
+if (process.env.BENCH_CHART_PATH)
+  urls.push(`${base}/bench${process.env.BENCH_CHART_PATH}`);
 
-// Assertion thresholds. The first calibration (local `bun run start`,
-// 2026-05-04) had every URL at perf 1.00 and set a flat 0.9 floor on every
-// category. CI runners don't reproduce that for `/`. Across the 95 archived
-// CI runs from 2026-08-04 to 2026-10-28:
+// Assertion thresholds. LHCI asserts on the best of the three runs for each
+// value (its default `aggregationMethod: "optimistic"`), so these are the
+// worst best-of-three values seen. The site's rows come from the 62 CI runs
+// from 2026-10-30 to 2026-11-03, on a local build; the homepage changed on
+// 2026-11-03 (the mark first, one results table), and 10 of the runs have
+// the new one. bench's come from its first CI run on a preview, through the
+// proxy, on 2026-11-03.
 //
-//   /                  perf 0.69–1.00, median 0.90 · 45 of 95 below 0.9
-//   /blog              perf never below 0.95
-//   /blog/<seed>       perf never below 0.95
-//   a11y · bp · seo    never below 0.9 on any URL
+//            perf   FCP     LCP     Speed Index   TBT      CLS
+//   /        1.00   252 ms  602 ms  576 ms        0 ms     0
+//   /blog    1.00   256 ms  646 ms  256 ms        0.5 ms   0.00001
+//   post     0.74   275 ms  660 ms  275 ms        736 ms   0.00001
+//   /bench   1.00   307 ms  561 ms  636 ms        0 ms     0.0001
+//   chart    1.00   387 ms  560 ms  574 ms        8 ms     0.011
 //
-// All of the swing on `/` is Total Blocking Time. FCP, LCP and CLS scored
-// 0.98 or better in every run, while TBT ranged from 0 to 2382 ms. The page's
-// startup JS (React hydration plus the WebGL hero, which runs on the CPU
-// because runners have no GPU) stretches into long tasks whenever the shared
-// runner is busy. More runs don't fix it: the 0.9 floor sits on the median,
-// so the median of 3 or 5 runs fails about as often as a single run.
+// The post's 0.74 is one run, on 2026-10-30, slow in all three passes; in
+// every other run it scored 1.00. The old homepage swung with the shared
+// runner's load (perf down to 0.70, TBT up to 983 ms), because the WebGL
+// mark runs on the CPU there, so its category score was only a warning. The
+// new one has not swung in 30 passes. A preview's first request is a cold
+// start (805 ms to the first byte on bench), so the workflow requests each
+// page once before Lighthouse does.
 //
-// So on `/` the category score is advisory (`warn` still prints it in the
-// log and the PR comment) and the metrics that hold steady on CI hard-fail
-// instead: FCP, LCP and CLS at a 0.9 audit score. Speed Index follows TBT
-// (correlation 0.89) and peaked at 1286 ms, just inside its 0.9 line at
-// 1311 ms, so it gets a 2000 ms cap instead, about the same headroom over
-// the worst run that LCP has under its 0.9 line. TBT gets a 1000 ms cap as a
-// backstop against a large JS regression, not as a target: the median run
-// was 264 ms, but the two slowest runners went past it (1755 and 2382 ms), so
-// expect an occasional re-run. Every other URL keeps the 0.9 performance
-// floor; its pattern matches any non-root path, so a new URL gets the floor
-// by default. Don't relax a threshold to mask a regression without a separate
-// PR.
+// Accessibility and SEO were 1.00 in every run since the contrast fixes of
+// 2026-10-30. Best practices was 0.96 in every run, from one audit only: off
+// Vercel, the Vercel Analytics script is a 404 and logs a console error. The
+// site's layout now leaves the script out there.
+//
+// So every URL gets one bar: performance at 0.9; accessibility, best
+// practices and SEO at 1.00, since their audits don't depend on timing and
+// any new failing audit should fail the check; and metric caps about 1.5 to
+// 2 times the worst value above (CLS more, as bench's chart page sits at
+// 0.011), to catch a real regression but not a slow runner. The site's rows
+// were measured on a local build, not a preview: if the preview runs differ,
+// recalibrate from the archived runs. Don't relax a threshold to mask a
+// regression without a separate PR.
 module.exports = {
   ci: {
     collect: {
-      startServerCommand: "bun run start",
-      startServerReadyPattern: "Ready",
-      url: baseUrls,
-      // "Lighthouse audit" is a required check, so one slow shared runner
+      url: urls,
+      // "Lighthouse and axe" is a required check, so one slow shared runner
       // must not fail it. With several runs, LHCI asserts on the best one
       // (its default `aggregationMethod: "optimistic"`): a real regression
-      // shows in every run and still fails, an outlier run does not. One
-      // blog-post run fell to 0.74 performance on 2026-10-30 against a usual
-      // 1.00.
+      // shows in every run and still fails, an outlier run does not. It
+      // can't cover a runner that is slow for the whole job: on 2026-10-30
+      // all three passes of the blog post scored 0.74.
       numberOfRuns: 3,
       settings: {
         preset: "desktop",
@@ -99,34 +117,17 @@ module.exports = {
       }
     },
     assert: {
-      // LHCI applies every entry whose pattern matches a URL's finalUrl.
-      assertMatrix: [
-        {
-          matchingUrlPattern: ".*",
-          assertions: {
-            "categories:accessibility": ["error", { minScore: 0.9 }],
-            "categories:best-practices": ["error", { minScore: 0.9 }],
-            "categories:seo": ["error", { minScore: 0.9 }]
-          }
-        },
-        {
-          matchingUrlPattern: "^https?://[^/]+/$",
-          assertions: {
-            "categories:performance": ["warn", { minScore: 0.9 }],
-            "first-contentful-paint": ["error", { minScore: 0.9 }],
-            "largest-contentful-paint": ["error", { minScore: 0.9 }],
-            "cumulative-layout-shift": ["error", { minScore: 0.9 }],
-            "speed-index": ["error", { maxNumericValue: 2000 }],
-            "total-blocking-time": ["error", { maxNumericValue: 1000 }]
-          }
-        },
-        {
-          matchingUrlPattern: "^https?://[^/]+/.",
-          assertions: {
-            "categories:performance": ["error", { minScore: 0.9 }]
-          }
-        }
-      ]
+      assertions: {
+        "categories:performance": ["error", { minScore: 0.9 }],
+        "categories:accessibility": ["error", { minScore: 1 }],
+        "categories:best-practices": ["error", { minScore: 1 }],
+        "categories:seo": ["error", { minScore: 1 }],
+        "first-contentful-paint": ["error", { maxNumericValue: 500 }],
+        "largest-contentful-paint": ["error", { maxNumericValue: 1000 }],
+        "speed-index": ["error", { maxNumericValue: 1000 }],
+        "total-blocking-time": ["error", { maxNumericValue: 300 }],
+        "cumulative-layout-shift": ["error", { maxNumericValue: 0.05 }]
+      }
     },
     upload: {
       target: "temporary-public-storage"

@@ -70,7 +70,7 @@ export async function Header({ bench }: HeaderPlace = {}) {
           }
         >
           <MarkGithub />
-          <span className="vx-header-repo">{REPO}</span>
+          <span className="vx-header-repo">{REPO}</span>{" "}
           {stars !== null && (
             <span className="vx-btn-count">
               <StarIcon />

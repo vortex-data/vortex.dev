@@ -104,9 +104,10 @@ were, the same HTML page rule would bound it).
 
 ## Deploys
 
-The `Bench: format, lint, build, test` job in `.github/workflows/ci.yml` runs the check suite (the
-`bench-checks` composite action) on every PR that can affect bench, including `db/migrations/**`
-(the integration suite applies that DDL to its testcontainer). It is a required check on `main`.
+The `Lint, build, verify` job in `.github/workflows/ci.yml` runs bench's checks with the site's on
+every PR, including the integration suite, which applies `db/migrations/**` to its testcontainer.
+`Lighthouse and axe` in `.github/workflows/lighthouse.yml` audits bench on the PR's preview. Both
+are required checks on `main`.
 
 bench deploys with the vortex.dev site: the `vortex` Vercel project builds the app through its
 git integration, a preview deployment for every pull request and a production deployment for every
