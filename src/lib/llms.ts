@@ -99,7 +99,7 @@ export function siteLlmsText({
     lines.push(
       "## Benchmark results",
       "",
-      `Read from ${BENCH} on ${formatReadDate(bench.readAt)}. Each figure is the newest result on the develop branch of ${REPO}, except the GPU row, whose source is given. ${BENCH}/llms.txt has every benchmark, and ${BENCH}/methodology says how they run.`,
+      `Read from ${BENCH} on ${formatReadDate(bench.readAt)}. Each figure is the newest result on the develop branch of ${REPO}, except the GPU row, whose source is given. ${BENCH}/llms.txt summarizes every benchmark group, and ${BENCH}/methodology says how they run.`,
       "",
       ...resultsSentences(bench.panels).map((s) => `- ${s}`),
       ""
@@ -111,7 +111,7 @@ export function siteLlmsText({
     `- [Documentation](${DOCS}/): guides, concepts, and the API reference`,
     `- [Documentation index for language models](${DOCS}/llms.txt)`,
     `- [Benchmarks](${BENCH}/): every result, charted over recent commits`,
-    `- [Benchmark results as text](${BENCH}/llms.txt)`,
+    `- [Benchmark summaries as text](${BENCH}/llms.txt): every group's rankings, with links to each chart`,
     `- [Source code](${REPO})`,
     "",
     "## Blog",

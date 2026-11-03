@@ -35,8 +35,8 @@ export default function MethodologyPage() {
           <p>
             Results for <a href="https://vortex.dev">Vortex</a> and the formats it is compared with,
             measured by the benchmarks in{' '}
-            <a href="https://github.com/vortex-data/vortex">vortex-data/vortex</a>. Every result is
-            also in <a href={`${BENCH_URL}/llms.txt`}>llms.txt</a> as text.
+            <a href="https://github.com/vortex-data/vortex">vortex-data/vortex</a>. The summary of
+            every benchmark group is also in <a href={`${BENCH_URL}/llms.txt`}>llms.txt</a> as text.
           </p>
           {METHODOLOGY.map((section) => (
             <section key={section.title}>

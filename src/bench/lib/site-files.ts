@@ -6,7 +6,7 @@
  *
  * 1. `robots.txt`, which opens every page to crawlers and names the sitemap
  * 2. `sitemap.xml`, with the landing page, the methodology page and every chart
- * 3. `llms.txt` (https://llmstxt.org), the results of every group as text
+ * 3. `llms.txt` (https://llmstxt.org), the summary of every group as text
  *
  * Each is a pure function of the groups `/api/groups` serves, so the routes in
  * `src/app/(bench)/bench` only read the data and send the text. Every URL is
@@ -145,8 +145,8 @@ export function jsonLdScript(data: unknown): string {
 export function robotsText(): string {
   return [
     '# Every page is open to crawlers, including AI crawlers.',
-    `# ${BENCH_URL}/llms.txt holds every result as text, for language models.`,
-    '# The JSON API is for the pages; llms.txt and the pages hold the same results.',
+    `# ${BENCH_URL}/llms.txt summarizes every benchmark group as text, for language models.`,
+    '# The JSON API is for the pages; each chart page gives its own results.',
     'User-agent: *',
     'Allow: /',
     'Disallow: /api/',
@@ -263,7 +263,7 @@ export function summaryLines(summary: Summary): string[] {
       ];
     case 'vectorSearch':
       return [
-        `Score: ${SCORES.query}`,
+        `Score: ${SCORES.vectorSearch}`,
         '',
         ...timingLines(summary.rankings, 'thresholds', 'total'),
       ];

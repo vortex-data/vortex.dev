@@ -27,6 +27,10 @@ export const SCORES = {
   query:
     'the geometric mean, over the queries, of the series’ time divided by the fastest ' +
     'series’ time on that query. 1.00x is the fastest; lower is better.',
+  /** No vector search results reach bench yet; `llms.txt` prints this only if some do. */
+  vectorSearch:
+    'the geometric mean, over the thresholds, of the series’ time divided by the fastest ' +
+    'series’ time at that threshold. 1.00x is the fastest; lower is better.',
   randomAccess:
     'the geometric mean, over the datasets, of the series’ time divided by the fastest ' +
     'series’ time on that dataset. 1.00x is the fastest; lower is better.',
@@ -94,6 +98,8 @@ export const METHODOLOGY: readonly MethodologySection[] = [
         'rank well by skipping work. Each summary says how many a series ran.',
       `Write and scan throughput scores are ${SCORES.throughput}`,
       `File size scores are ${SCORES.size}`,
+      'The string encoding benchmark compares its encoders with FSST instead of Parquet, so ' +
+        'its throughput and size scores divide by FSST’s.',
       'Each summary uses each series’ newest result on develop.',
     ],
   },
