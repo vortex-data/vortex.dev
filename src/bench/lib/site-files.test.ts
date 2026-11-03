@@ -8,7 +8,6 @@ import {
   chartDescription,
   chartSeriesLabel,
   datasetJsonLd,
-  jsonLdScript,
   llmsText,
   robotsText,
   seriesLabel,
@@ -198,11 +197,5 @@ describe('chartDescription', () => {
 describe('the Dataset JSON-LD', () => {
   it('names every group as a variable measured', () => {
     expect(datasetJsonLd(groups).variableMeasured).toEqual(['Compression', 'Clickbench']);
-  });
-
-  it('cannot close its script element', () => {
-    expect(jsonLdScript({ name: '</script><script>' })).toBe(
-      '{"name":"\\u003c/script>\\u003cscript>"}',
-    );
   });
 });

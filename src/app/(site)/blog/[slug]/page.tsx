@@ -6,7 +6,7 @@ import { ArrowBackIcon } from "@/components/icons";
 import { MDXRenderer } from "@/components/MDXRenderer";
 import { getAllPosts, getAllSlugs, getPostBySlug } from "@/lib/blog";
 import { baseUrl, siteName } from "@/lib/constants";
-import { jsonLdScript } from "@/lib/llms";
+import { jsonLdScript } from "@/lib/json-ld";
 import { adjacentPosts, bylineParts } from "@/lib/posts";
 
 interface BlogPostPageProps {

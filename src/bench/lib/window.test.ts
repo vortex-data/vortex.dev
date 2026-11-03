@@ -4,6 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   canonicalWindowQuery,
+  COMMIT_WINDOW_RUNGS,
   commitWindowLimit,
   DEFAULT_COMMIT_WINDOW,
   MAX_NUMERIC_COMMIT_WINDOW,
@@ -22,13 +23,26 @@ describe('parseCommitWindow', () => {
     expect(parseCommitWindow(' all ')).toEqual({ kind: 'all' });
   });
 
-  it('parses a plain numeric window', () => {
-    expect(parseCommitWindow('50')).toEqual({ kind: 'last', n: 50 });
+  it('parses a numeric window that is a rung', () => {
+    for (const rung of COMMIT_WINDOW_RUNGS) {
+      expect(parseCommitWindow(String(rung))).toEqual({ kind: 'last', n: rung });
+    }
   });
 
-  it('floors 0 to 1 and clamps large values to the max', () => {
-    expect(parseCommitWindow('0')).toEqual({ kind: 'last', n: 1 });
+  it('snaps any other count up to the next rung, and large values down to the max', () => {
+    expect(parseCommitWindow('0')).toEqual({ kind: 'last', n: 25 });
+    expect(parseCommitWindow('1')).toEqual({ kind: 'last', n: 25 });
+    expect(parseCommitWindow('26')).toEqual({ kind: 'last', n: 50 });
+    expect(parseCommitWindow('99')).toEqual({ kind: 'last', n: DEFAULT_COMMIT_WINDOW });
+    expect(parseCommitWindow('150')).toEqual({ kind: 'last', n: 200 });
+    expect(parseCommitWindow('999')).toEqual({ kind: 'last', n: MAX_NUMERIC_COMMIT_WINDOW });
     expect(parseCommitWindow('99999')).toEqual({ kind: 'last', n: MAX_NUMERIC_COMMIT_WINDOW });
+  });
+
+  it('keeps the default and the cap on the ladder', () => {
+    expect(COMMIT_WINDOW_RUNGS).toContain(DEFAULT_COMMIT_WINDOW);
+    expect(COMMIT_WINDOW_RUNGS.at(-1)).toBe(MAX_NUMERIC_COMMIT_WINDOW);
+    expect([...COMMIT_WINDOW_RUNGS]).toEqual([...COMMIT_WINDOW_RUNGS].sort((a, b) => a - b));
   });
 
   it('falls back to the default for malformed values', () => {
@@ -90,7 +104,8 @@ describe('canonicalWindowQuery', () => {
   it('respells n canonically', () => {
     expect(query('n=ALL')).toBe('n=all');
     expect(query('n=+0050')).toBe('n=50');
-    expect(query('n=0')).toBe('n=1');
+    expect(query('n=0')).toBe('n=25');
+    expect(query('n=150')).toBe('n=200');
     expect(query('n=99999')).toBe(`n=${MAX_NUMERIC_COMMIT_WINDOW}`);
   });
 

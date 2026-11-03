@@ -131,10 +131,12 @@ the cap if that hook fails. The endpoint **fails closed** (503 when unconfigured
 so an unconfigured deployment never accepts an unauthenticated flush.
 → `src/bench/lib/cache.ts`, `src/bench/lib/data-cache.ts`, `src/app/(bench)/bench/api/revalidate/route.ts`.
 
-**Only the default window is cached; `?n=` is clamped to 1000.**
+**Only the default window is cached; a numeric `?n=` snaps to a rung, up to 1000.**
 Caching every window would explode the key space, so only the default last-100 is
 memoized and other windows ride the per-URL CDN cache. The numeric clamp is a DoS
-floor against `?n=99999999`; `?n=all` is the explicit, uncapped escape hatch.
+floor against `?n=99999999`, and the rungs (25, 50, 100, 200, 500, 1000) keep a
+slug to seven window URLs, each one direct query, instead of a thousand; `?n=all`
+is the explicit, uncapped escape hatch.
 Visual thinning happens client-side via LTTB, so the server never needs a huge
 window for a readable chart.
 → `src/bench/lib/window.ts`, `src/bench/lib/data-cache.ts`, `CLAUDE.md`.

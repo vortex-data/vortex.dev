@@ -8,6 +8,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 // context that plain vitest does not provide. These tests verify the route plus
 // query behavior against the real testcontainer, not the cache layer (covered by
 // `lib/data-cache.test.ts`), so make the cache wrapper a transparent pass-through.
+// The redirect reads the request's host; there is no request here.
+vi.mock('@/bench/lib/request-base', () => ({ requestBenchBase: async () => '' }));
 vi.mock('next/cache', () => ({
   unstable_cache: (fn: (...args: unknown[]) => unknown) => fn,
   revalidateTag: () => {},
@@ -293,7 +295,7 @@ describe.skipIf(!databaseAvailable)(
       ]);
     });
 
-    it('GET /api/group/{slug} returns the group, honoring ?n', async () => {
+    it('GET /api/group/{slug} returns the group, and sends ?n=1 to its rung', async () => {
       const slug = groupKeyToSlug({
         k: 'QueryGroup',
         dataset: 'tpch',
@@ -310,14 +312,13 @@ describe.skipIf(!databaseAvailable)(
       expect(body.summary?.type).toBe('queryBenchmark');
       expect(body.charts).toHaveLength(2);
 
+      // A numeric ?n snaps up to a rung of at least 25 commits, so the route
+      // sends ?n=1 to its one URL rather than narrowing to one commit.
       const windowed = await getGroup(new Request(`http://localhost/api/group/${slug}?n=1`), {
         params: Promise.resolve({ slug }),
       });
-      expect(windowed.status).toBe(200);
-      const windowedBody = (await windowed.json()) as GroupChartsResponse;
-      for (const chart of windowedBody.charts) {
-        expect(chart.commits).toHaveLength(1);
-      }
+      expect(windowed.status).toBe(308);
+      expect(windowed.headers.get('location')).toBe(`/api/group/${slug}?n=25`);
     });
 
     it('GET /api/group/{slug} returns 404 for a well-formed slug with no data', async () => {

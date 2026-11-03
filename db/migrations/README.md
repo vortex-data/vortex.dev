@@ -83,7 +83,7 @@ lexicographic order, which equals numeric order under this convention.
 - `013_read_role_limits.sql` — caps `bench_read` (005) as 011 caps `bench_ci_read`: 400
   connections at most, and by default read-only transactions, a 30 s statement timeout and a
   60 s idle-in-transaction timeout. Only the connection limit is enforced; a session can change
-  the defaults. Apply it as the RDS master.
+  the defaults. The RDS master applied it in production on 2026-11-03.
 
 This README + the runner ship in PR-1.2; `001`/`002` land in PR-1.3, `003` in
 PR-1.4, `004` in PR-2.1, `005` in the Phase-4 operator-gate work (the v4

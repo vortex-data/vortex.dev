@@ -4,7 +4,8 @@ import { InstallTabs } from "@/components/install-tabs";
 import { LogoBanner } from "@/components/logo-banner";
 import { ResultsTable } from "@/components/results-table";
 import { getBenchSummary } from "@/lib/bench-summary";
-import { homeJsonLd, jsonLdScript } from "@/lib/llms";
+import { jsonLdScript } from "@/lib/json-ld";
+import { homeJsonLd } from "@/lib/llms";
 import { getSparkVersion } from "@/lib/maven";
 import styles from "./page.module.css";
 

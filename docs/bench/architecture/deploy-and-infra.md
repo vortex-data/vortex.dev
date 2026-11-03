@@ -6,10 +6,9 @@ SPDX-FileCopyrightText: Copyright the Vortex contributors
 # Deploy and infrastructure
 
 How the v4 stack is provisioned, how code and schema reach production, and the
-(decommissioned) legacy v3 host deploy. Operational detail lives in the runbooks
-([`../runbooks/`](../runbooks/)) and
-[`infra/README.md`](../../../infra/README.md); this doc is the *why* and the
-map.
+(decommissioned) legacy v3 host deploy. Operational detail lives in
+[`infra/README.md`](../../../infra/README.md); `../runbooks/` holds one
+historical note. This doc is the *why* and the map.
 
 ## AWS infrastructure (`infra/`)
 
@@ -61,10 +60,11 @@ key. Migrations are plain `*.sql`, applied in lexicographic order and tracked in
 | `010_random_access_open_mode.sql` | Add `open_mode` (`cached` or `reopen`) to `random_access_times`. |
 | `011_ci_read_role.sql` ✱ | Create `bench_ci_read` for the monorepo's CI, with a connection limit, timeouts, and read-only transactions. |
 | `012_commit_branch.sql` | Record the branch each commit was measured on, on `commits`. |
+| `013_read_role_limits.sql` ✱ | Limit `bench_read` to 400 connections, with read-only, 30 s statement, and 60 s idle-in-transaction defaults. |
 
 ✱ = marked `requires-superuser`. These are applied **once, by the RDS master**
 (the role-management and ownership DDL the `migrator` role deliberately can't
-run): 002 to 008 during bootstrap, and 011 when the monorepo's CI got its role. Steady-state CI then runs as `migrator` against
+run): 002 to 008 during bootstrap, 011 when the monorepo's CI got its role, and 013 on 2026-11-03. Steady-state CI then runs as `migrator` against
 already-applied files (no-ops per the ledger).
 
 ## Schema deploy (`.github/workflows/bench-schema-deploy.yml`)

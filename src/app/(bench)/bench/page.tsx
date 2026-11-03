@@ -17,7 +17,8 @@ import { cachedFilterUniverse, cachedGroups } from '@/bench/lib/data-cache';
 import { parseGroupFilter } from '@/bench/lib/group-filter';
 import type { Group } from '@/bench/lib/queries';
 import { settlesWithin } from '@/bench/lib/settles-within';
-import { BENCH_URL, datasetJsonLd, jsonLdScript } from '@/bench/lib/site-files';
+import { BENCH_URL, datasetJsonLd } from '@/bench/lib/site-files';
+import { jsonLdScript } from '@/lib/json-ld';
 
 // Rendered per request, with CDN caching layered on by `vercel.json`: each
 // render reads every group from Postgres via `collectGroups()`, and Vercel's

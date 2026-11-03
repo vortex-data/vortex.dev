@@ -18,6 +18,7 @@ import { chartKeyFromSlug, groupKeyFromSlug, type ChartKey, type GroupKey } from
 import {
   type BenchDatabase,
   commitUrl,
+  commitWindow,
   integrationDatabaseAvailable,
   seedChartFixture,
   startBenchDatabase,
@@ -168,7 +169,7 @@ describe.skipIf(!databaseAvailable)('groupChartPayloads on the canonical fixture
   it.each(['1', '2', '100', 'all'])(
     'every group matches chartPayload byte for byte at ?n=%s',
     async (n) => {
-      const window = parseCommitWindow(n);
+      const window = commitWindow(n);
       const groups = await collectGroups();
       expect(groups.length).toBeGreaterThan(0);
       for (const group of groups) {
@@ -476,7 +477,7 @@ describe.skipIf(!databaseAvailable)('groupChartPayloads at the window edges', ()
   it.each(['1', '2', '3', '4', 'all'])(
     'group payloads match chartPayload byte for byte at ?n=%s',
     async (n) => {
-      const window = parseCommitWindow(n);
+      const window = commitWindow(n);
       for (const [group, keys] of [
         [G, G_CHARTS],
         [S, [queryChart(S, 1)]],
@@ -491,7 +492,7 @@ describe.skipIf(!databaseAvailable)('groupChartPayloads at the window edges', ()
   );
 
   it('gives each chart its own window', async () => {
-    const [q1, q2, q3] = await groupChartPayloads(G, G_CHARTS, parseCommitWindow('4'));
+    const [q1, q2, q3] = await groupChartPayloads(G, G_CHARTS, commitWindow('4'));
     expect(q1?.history).toEqual({
       total_commits: 6,
       start_index: 2,
@@ -519,7 +520,7 @@ describe.skipIf(!databaseAvailable)('groupChartPayloads at the window edges', ()
   it.each(['1', '4', 'all'])(
     'matches chartPayload when compression variants mix NULL and non-NULL at ?n=%s',
     async (n) => {
-      const window = parseCommitWindow(n);
+      const window = commitWindow(n);
       const keys: ChartKey[] = [
         { k: 'CompressionTime', dataset: 'cx', dataset_variant: 'v1' },
         { k: 'CompressionTime', dataset: 'cx', dataset_variant: null },
@@ -566,7 +567,7 @@ describe.skipIf(!databaseAvailable)('groupChartPayloads at the window edges', ()
   it.each(['1', '2', '3', '4', 'all'])(
     'matches chartPayload for random-access, vector-search and compression-size groups at ?n=%s',
     async (n) => {
-      const window = parseCommitWindow(n);
+      const window = commitWindow(n);
       for (const [group, keys] of OTHER_FAMILIES) {
         const expected = await Promise.all(keys.map((key) => chartPayload(key, window)));
         expect(expected.every((payload) => payload !== null)).toBe(true);
@@ -578,7 +579,7 @@ describe.skipIf(!databaseAvailable)('groupChartPayloads at the window edges', ()
   );
 
   it('gives each random-access and vector-search chart its own window', async () => {
-    const window = parseCommitWindow('4');
+    const window = commitWindow('4');
     const [ra, rb] = await groupChartPayloads(...OTHER_FAMILIES[0]!, window);
     expect(ra?.history).toEqual({
       total_commits: 6,

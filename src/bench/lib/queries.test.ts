@@ -8,6 +8,8 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 // context that plain vitest does not provide. These tests verify the route plus
 // query behavior against the real testcontainer, not the cache layer (covered by
 // `lib/data-cache.test.ts`), so make the cache wrapper a transparent pass-through.
+// The redirect reads the request's host; there is no request here.
+vi.mock('@/bench/lib/request-base', () => ({ requestBenchBase: async () => '' }));
 vi.mock('next/cache', () => ({
   unstable_cache: (fn: (...args: unknown[]) => unknown) => fn,
   revalidateTag: () => {},
@@ -25,6 +27,7 @@ import { chartKeyToSlug, type ChartKey, type GroupKey } from './slug';
 import {
   type BenchDatabase,
   commitUrl,
+  commitWindow,
   integrationDatabaseAvailable,
   seedChartFixture,
   startBenchDatabase,
@@ -178,7 +181,7 @@ describe.skipIf(!databaseAvailable)('chartPayload (testcontainers Postgres)', ()
   });
 
   it('caps commits with ?n and stays unbounded with ?n=all', async () => {
-    const one = await chartPayload(QUERY_Q1, parseCommitWindow('1'));
+    const one = await chartPayload(QUERY_Q1, commitWindow('1'));
     expect(one?.commits).toHaveLength(1);
     // ?n keeps the most recent commit (oldest-first array, so the last one).
     expect(one?.commits[0]?.sha).toBe('3'.repeat(40));
@@ -195,7 +198,7 @@ describe.skipIf(!databaseAvailable)('chartPayload (testcontainers Postgres)', ()
     // the boundary that the `commit_timestamp` cutoff and `commit_sha` tie-trim
     // together govern. Must hold identically before and after the recency-filter
     // refactor.
-    const payload = await chartPayload(QUERY_Q1, parseCommitWindow('2'));
+    const payload = await chartPayload(QUERY_Q1, commitWindow('2'));
     expect(payload).toEqual({
       display_name: 'tpch sf=1 Q1 [nvme]',
       unit_kind: 'time_ns',
@@ -280,14 +283,15 @@ describe.skipIf(!databaseAvailable)('chartPayload (testcontainers Postgres)', ()
     expect(body.commits).toHaveLength(3);
   });
 
-  it('GET /api/chart/{slug}?n=1 narrows the commit window', async () => {
+  it('GET /api/chart/{slug}?n=1 redirects to the smallest window the route serves', async () => {
+    // A numeric ?n snaps up to a rung of at least 25 commits, so the route
+    // sends ?n=1 to its one URL rather than narrowing to one commit.
     const slug = chartKeyToSlug(QUERY_Q1);
     const res = await GET(new Request(`http://localhost/api/chart/${slug}?n=1`), {
       params: Promise.resolve({ slug }),
     });
-    expect(res.status).toBe(200);
-    const body = (await res.json()) as { commits: unknown[] };
-    expect(body.commits).toHaveLength(1);
+    expect(res.status).toBe(308);
+    expect(res.headers.get('location')).toBe(`/api/chart/${slug}?n=25`);
   });
 
   it('GET /api/chart/{slug} returns 200 (not 500) for ?n=all and a malformed ?n', async () => {
@@ -627,7 +631,7 @@ describe.skipIf(!databaseAvailable)('chartPayload seeded-window semantics', () =
   it('breaks identical timestamps by commit_sha (DESC keeps the larger; oldest-first by ASC)', async () => {
     // ?n=1 keeps the most recent commit; with equal timestamps the tie-break is
     // commit_sha DESC, so E (e > d) is kept.
-    const one = await chartPayload({ k: 'RandomAccess', dataset: 'tie' }, parseCommitWindow('1'));
+    const one = await chartPayload({ k: 'RandomAccess', dataset: 'tie' }, commitWindow('1'));
     expect(one?.commits.map((c) => c.sha)).toEqual([E]);
     // The full window orders oldest-first by (timestamp ASC, commit_sha ASC).
     const all = await chartPayload({ k: 'RandomAccess', dataset: 'tie' }, parseCommitWindow('all'));
@@ -706,7 +710,7 @@ describe.skipIf(!databaseAvailable)('reads see only the develop branch', () => {
   });
 
   it.each(['1', '100', 'all'])('charts only develop commits for ?n=%s', async (n) => {
-    const window = parseCommitWindow(n);
+    const window = commitWindow(n);
     const expected = n === '1' ? [B] : [A, B];
     const single = await chartPayload(chart, window);
     const [grouped] = await groupChartPayloads(group, [chart], window);
