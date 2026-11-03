@@ -180,11 +180,14 @@ jobs:
             bunx playwright install --with-deps chromium webkit
           fi
 
+      # playwright.config.ts runs one test at a time, for the smoke tests
+      # against the local server in ci.yml. The preview has no such limit, so
+      # axe uses the runner's four CPUs.
       - name: axe
         env:
           BASE_URL: ${{ env.PROXY }}
           BENCH_URL: ${{ env.PROXY }}/bench
-        run: bunx playwright test --grep @axe
+        run: bunx playwright test --grep @axe --workers=4
 
       # In CI, playwright.config.ts uses only the `github` reporter, so there
       # is no HTML report; a failed test keeps its trace in test-results/.
