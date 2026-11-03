@@ -106,9 +106,9 @@ describe.skipIf(!databaseAvailable || !BUILD_PRESENT)(
       const first = await (await fetch(BASE)).text();
       expect(first).toContain('class="group-details"');
       const html = await (await fetch(BASE)).text();
-      // The site's header and footer, then bench's toolbar (server-rendered islands).
-      expect(html).toContain('<header class="vx-header has-nav">');
-      expect(html).toContain('<footer class="vx-footer">');
+      // The site's header and footer, with solid rules, then bench's toolbar (server-rendered islands).
+      expect(html).toContain('<header class="vx-header has-nav is-solid">');
+      expect(html).toContain('<footer class="vx-footer is-solid">');
       expect(html).toContain('<div class="bench-toolbar"><h1 class="bench-title">Benchmarks</h1>');
       expect(html).toContain('data-role="theme-toggle"');
       expect(html).toContain('data-action="expand-all"');

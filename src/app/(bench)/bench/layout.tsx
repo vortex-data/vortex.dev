@@ -87,7 +87,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           <div className="bench-frame">
             <Header bench={{ home: benchPath(base, '/') }} />
             {children}
-            <Footer origin="https://vortex.dev" />
+            <Footer origin="https://vortex.dev" solid />
           </div>
         </BenchBaseProvider>
       </body>

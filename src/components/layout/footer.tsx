@@ -22,10 +22,17 @@ const links = (origin: string) => [
  * CSS inverts it in Light), the line LF Projects requires, followed by the
  * card's credit, and the project's links. `origin` is the site's, for a page
  * served from another host (bench), where the charter's path is not the site's.
+ * `solid` is the card's solid variant, which bench takes with the Header's.
  */
-export function Footer({ origin = "" }: { origin?: string } = {}) {
+export function Footer({
+  origin = "",
+  solid = false
+}: {
+  origin?: string;
+  solid?: boolean;
+} = {}) {
   return (
-    <footer className="vx-footer">
+    <footer className={solid ? "vx-footer is-solid" : "vx-footer"}>
       <img
         className="vx-footer-mark"
         src={LFMark.src}

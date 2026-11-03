@@ -17,7 +17,9 @@ import { HeaderMenu, HeaderNav, type HeaderPlace } from "./header-nav";
  *
  * On bench, which is served from its own host, the wordmark and the site's
  * links point back to vortex.dev, Bench is the current section, and there is
- * no ThemeSwitch: bench's theme toggle is in its toolbar.
+ * no ThemeSwitch: bench's theme toggle is in its toolbar. bench takes the
+ * card's solid variant (`is-solid`), whose rules suit a tool's toolbar and
+ * tables better than the frame's dashes.
  */
 export async function Header({ bench }: HeaderPlace = {}) {
   const stars = await getStarCount();
@@ -42,7 +44,9 @@ export async function Header({ bench }: HeaderPlace = {}) {
     </>
   );
   return (
-    <header className="vx-header has-nav">
+    <header
+      className={bench ? "vx-header has-nav is-solid" : "vx-header has-nav"}
+    >
       <div className="vx-header-start">
         {bench ? (
           <a href="https://vortex.dev" aria-label="Vortex home">

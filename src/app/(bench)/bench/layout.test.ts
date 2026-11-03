@@ -21,7 +21,8 @@ vi.mock('@/components/layout/header', () => ({
     createElement('header', { 'data-home': bench.home }),
 }));
 vi.mock('@/components/layout/footer', () => ({
-  Footer: ({ origin }: { origin: string }) => createElement('footer', { 'data-origin': origin }),
+  Footer: ({ origin, solid }: { origin: string; solid: boolean }) =>
+    createElement('footer', { 'data-origin': origin, 'data-solid': String(solid) }),
 }));
 // next/font is a build step; its classes set the design system's --vx-face-* variables.
 vi.mock('@/lib/fonts', () => ({ FONT_CLASSES: 'face-sans face-mono face-display' }));
@@ -71,9 +72,9 @@ describe('RootLayout', () => {
 });
 
 describe("the layout's frame", () => {
-  it("wraps every page in the site's header and footer, pointed at bench and the site", () => {
+  it("wraps every page in the site's header and footer, pointed at bench and the site, with solid rules", () => {
     expect(html).toMatch(
-      /<div class="bench-frame"><header data-home="\/"><\/header><main><\/main><footer data-origin="https:\/\/vortex.dev"><\/footer><\/div>/,
+      /<div class="bench-frame"><header data-home="\/"><\/header><main><\/main><footer data-origin="https:\/\/vortex.dev" data-solid="true"><\/footer><\/div>/,
     );
   });
 });

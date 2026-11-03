@@ -1,7 +1,7 @@
 /* Vortex design system components (sections: base, brand, site, docs, blog, focus), copied by tools/site-styles.mjs.
    Edit the system, then run tools/site-styles.mjs; do not edit here.
    Made by: node tools/site-styles.mjs <site> --sections base,brand,site,docs,blog,focus --faces --vx-face --base
-   sha256 cfa608512c82fd595227ebd78d98d311e479691a94edfb5d436ea7dfae35659c */
+   sha256 6fa35ecaf885b98d1c07ef26e053a5da2ec0d8353429cabe385596f0d6fa932e */
 
 /* ------------------------------------------------------------------ base */
 /* Every component sizes with border-box, so it draws the same under a site's reset or none. */
@@ -508,6 +508,15 @@
 .vx-footer-text { flex: 1 1 420px; min-width: 0; margin: 0; }
 .vx-footer-credit { white-space: nowrap; }
 .vx-footer-nav { display: flex; flex-wrap: wrap; gap: var(--space-8) var(--space-16); }
+/* The solid variant, for a tool such as bench, whose own controls and tables sit under the header:
+   the same header and footer, with solid rules in line, flush to the window's edges, and a rule
+   only on the side that faces the page. */
+.vx-header.is-solid, .vx-header.is-solid .vx-header-start, .vx-header.is-solid .vx-header-end, .vx-footer.is-solid {
+  --vx-dash-x: linear-gradient(var(--line), var(--line));
+  --vx-dash-y: linear-gradient(var(--line), var(--line));
+}
+.vx-header.is-solid { margin-top: 0; background-image: var(--vx-dash-x); background-position: left bottom; }
+.vx-footer.is-solid { margin-bottom: 0; background-image: var(--vx-dash-x); background-position: left top; }
 
 /* The mono headline: tight, as the old terminal set it, and at the h3 size on phones. */
 .vx-display-mono { text-wrap: pretty; }

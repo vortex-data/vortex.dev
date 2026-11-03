@@ -20,6 +20,17 @@ describe("Footer", () => {
       /href="https:\/\/vortex.dev\/charter.pdf"/
     );
   });
+
+  it("draws the frame's dashed rule on the site and a solid one on bench", () => {
+    assert.match(
+      renderToStaticMarkup(<Footer />),
+      /^<footer class="vx-footer">/
+    );
+    assert.match(
+      renderToStaticMarkup(<Footer origin="https://vortex.dev" solid />),
+      /^<footer class="vx-footer is-solid">/
+    );
+  });
 });
 
 describe("Header on bench", () => {
@@ -34,5 +45,16 @@ describe("Header on bench", () => {
     assert.match(html, /href="https:\/\/vortex.dev\/blog">Blog</);
     assert.doesNotMatch(html, /vx-theme-switch/);
     assert.match(html, /aria-label="vortex-data\/vortex on GitHub"/);
+  });
+
+  it("draws solid rules on bench, and the frame's dashed ones on the site", async () => {
+    assert.match(
+      renderToStaticMarkup(await Header({ bench: { home: "/" } })),
+      /^<header class="vx-header has-nav is-solid">/
+    );
+    assert.match(
+      renderToStaticMarkup(await Header()),
+      /^<header class="vx-header has-nav">/
+    );
   });
 });
