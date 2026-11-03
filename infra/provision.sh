@@ -123,6 +123,8 @@ readonly PG_CI_READ_ROLE="bench_ci_read"
 readonly TAG_KEY_PROJECT="Project"
 readonly TAG_VAL_PROJECT="vortex-benchmarks"
 readonly TAG_KEY_OWNER="ManagedBy"
+# The script now lives at infra/provision.sh. This tag value keeps the old path on purpose:
+# changing it would drift the tags on resources that already exist.
 readonly TAG_VAL_OWNER="bench/infra/provision.sh"
 
 # -----------------------------------------------------------------------------
@@ -463,6 +465,8 @@ ensure_backup_replication() {
 
 put_rds_alarm() {
     # $1 name suffix, $2 metric, $3 statistic, $4 comparison, $5 threshold, $6 description
+    # The runbook is now infra/README.md. The description keeps the old path on purpose: changing
+    # it would drift the alarms that already exist.
     aws cloudwatch put-metric-alarm \
         --alarm-name "${DB_INSTANCE_IDENTIFIER}-$1" \
         --alarm-description "$6 Runbook: bench/infra/README.md in vortex-data/vortex.dev." \

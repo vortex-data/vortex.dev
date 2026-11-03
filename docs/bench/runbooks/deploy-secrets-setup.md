@@ -347,6 +347,11 @@ any time — none writes to production data or changes deployed infrastructure.
 
 ### E.1 Vercel build (CLI auth + project link)
 
+> **Historical, from before the one-app move.** bench no longer deploys with the Vercel CLI: the
+> `vortex` project builds it with the site through its git integration, so `VERCEL_TOKEN`,
+> `BENCH_BUILD_SHA` and `vercel build` here, and the CLI deploy in E.3, no longer apply. E.2 (schema
+> deploy) and E.4 (keep-warm) still do.
+
 This mirrors what `web-deploy.yml` does: the workflow runs the Vercel CLI from the **repo root** with
 `VERCEL_ORG_ID` + `VERCEL_PROJECT_ID` exported as env (the project's Root Directory = `web/` setting
 makes the CLI build `web/`). Reproduce that exact resolution path so the check actually exercises the
@@ -411,6 +416,8 @@ step.
 > `migrations/README.md` § Bootstrap ordering.
 
 ### E.3 Web deploy end-to-end (GitHub Actions credential path)
+
+> **Historical, from before the one-app move:** see the note under E.1.
 
 This validates the full deploy pipeline as the workflow runs it — the `VERCEL_TOKEN` **secret** plus
 the `VERCEL_ORG_ID` / `VERCEL_PROJECT_ID` **variables**, consumed by `web-deploy.yml` from the repo
