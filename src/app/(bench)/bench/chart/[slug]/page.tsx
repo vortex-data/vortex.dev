@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
 import type { Metadata } from 'next';
-import { notFound, permanentRedirect } from 'next/navigation';
+import { notFound, permanentRedirect, redirect } from 'next/navigation';
 import { cache } from 'react';
 
 import { Chart } from '@/bench/components/Chart';
@@ -59,18 +59,27 @@ async function redirectToCanonical(slug: string, sp: Awaited<SearchParams>): Pro
   const window = parseCommitWindow(search.get('n'));
   const isDefault = window.kind === 'last' && window.n === DEFAULT_COMMIT_WINDOW;
   // Without the universe the filters stay as sent: cutting them to nothing
-  // would hide every series behind a permanent redirect.
+  // would hide every series.
   const universe = isDefault ? undefined : await cachedFilterUniverse().catch(() => undefined);
+  let filtersChanged = false;
   const canonical = canonicalWindowQuery(search, CHART_PAGE_PARAMS, (name, value) => {
     if (universe === undefined) {
       return value;
     }
-    return canonicalFilterCsv(value, name === 'engine' ? universe.engines : universe.formats);
+    const filter = canonicalFilterCsv(
+      value,
+      name === 'engine' ? universe.engines : universe.formats,
+    );
+    filtersChanged ||= filter !== value;
+    return filter;
   });
   if (canonical !== null || canonicalSlug !== slug) {
     const path = benchPath(await requestBenchBase(), `/chart/${encodeURIComponent(canonicalSlug)}`);
     const query = canonical ?? search.toString();
-    permanentRedirect(query === '' ? path : `${path}?${query}`);
+    // Right after an ingest adds an engine or format, the cached universe can
+    // still lack it for a request, so a redirect that changed the filters is
+    // temporary: a browser must not keep it.
+    (filtersChanged ? redirect : permanentRedirect)(query === '' ? path : `${path}?${query}`);
   }
 }
 
