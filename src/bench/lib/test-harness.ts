@@ -20,6 +20,7 @@ import { randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import { Client, type Pool } from 'pg';
+import type { CommitWindow } from './window';
 
 /** A disposable Postgres database. Callers own teardown: resetPool(), then stop(). */
 export interface BenchDatabase {
@@ -251,6 +252,16 @@ export const TREE_SHA = 'fedcba9876543210fedcba9876543210fedcba98';
 /** Render the fixture commit URL for `sha`, matching the ingest writer. */
 export function commitUrl(sha: string): string {
   return `https://github.com/vortex-data/vortex/commit/${sha}`;
+}
+
+/**
+ * A commit window as the query layer takes it: `all`, or the newest `n` commits for any count.
+ * The suites pin the window edges with windows of one to four commits over the small fixtures.
+ * `parseCommitWindow` would snap those up to its smallest rung (25), which no fixture here can
+ * fill, so the window is built directly.
+ */
+export function commitWindow(n: string): CommitWindow {
+  return n === 'all' ? { kind: 'all' } : { kind: 'last', n: Number(n) };
 }
 
 /** Seed the canonical three-commit fixture (see [`COMMITS`]) into `pool`. */
