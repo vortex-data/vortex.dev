@@ -20,11 +20,11 @@ export type Row = {
   score: number | null;
   measured?: number;
   total?: number;
-  /** Why the system cannot run the benchmark at all; the card says N/A. */
+  /** Why the system cannot run the benchmark at all; the table says N/A. */
   unavailable?: string;
 };
 
-/** One panel of the BenchmarkCard, as `benchmark-card.js` reads it. */
+/** One benchmark, a row of the results table, as `results.js` reads it. */
 export type Panel = {
   title: string;
   /** The panel's name as a row of the homepage's results table: "Scan". */
@@ -41,8 +41,8 @@ export type Panel = {
 
 export type BenchSummary = { panels: Panel[]; readAt: Date };
 
-// The systems the card can compare, by bench's format name, in the order the
-// rows are listed (the card sorts them best first). Each panel chooses the
+// The systems the table can compare, by bench's format name, in the order the
+// rows are listed (the table sorts them best first). Each panel chooses the
 // ones it shows (`systems`). Bench runs Arrow (as Arrow IPC files) only in
 // random access and file size.
 const SYSTEMS = [
@@ -63,7 +63,7 @@ type Ranking = Record<string, unknown>;
 // same datasets) as bench's score, from the latest per-query times in the
 // group's charts. Bench's score is the geomean of each time against the
 // fastest series, so Parquet's time over Vortex's is bench's score ratio, and
-// each time is checked against it. benchmark-card.js prints the values as
+// each time is checked against it. results.js prints the values as
 // bench does.
 
 type Source = {
@@ -96,7 +96,7 @@ type Source = {
   };
 };
 
-// The six panels, in the card's order: five from bench and, beside
+// The six panels, in the table's order: five from bench and, beside
 // ClickBench, the GPU result bench does not publish yet, kept by hand in
 // gpu-result.ts with its source.
 const SOURCES: (Source | Panel)[] = [
@@ -179,13 +179,13 @@ const positive = (x: unknown): x is number =>
 const count = (x: unknown) =>
   typeof x === "number" && Number.isInteger(x) && x >= 0 ? x : undefined;
 
-// Whether bench ran the system on the whole workload, as benchmark-card.js
+// Whether bench ran the system on the whole workload, as results.js
 // decides it.
 const measured = (r: Row) =>
   r.score !== null &&
   !(r.measured !== undefined && r.total !== undefined && r.measured < r.total);
 
-// Bench's coverage passes through: benchmark-card.js shows a system measured
+// Bench's coverage passes through: results.js shows a system measured
 // on only part of the workload as "Not measured".
 function rowFor(source: Source, rankings: Ranking[], format: string) {
   const name = source.name(format);
@@ -291,13 +291,13 @@ function timeRows(
 }
 
 /**
- * The BenchmarkCard's six panels: five from bench (its `/api/groups`
+ * The results table's six panels: five from bench (its `/api/groups`
  * payload's `groups` array and, for a time panel, `charts`, its group's
  * `/api/group` payload by group name) and the hand-kept GPU panel. Each
- * bench panel has a row for every system the card knows and names the ones
+ * bench panel has a row for every system the table knows and names the ones
  * it shows (`systems`). A shown system bench did not report keeps its row
- * with no score, so the card says "Not measured". A group that is missing,
- * or that reports none of the shown systems, gives `null`: the card shows six
+ * with no score, so the table says "Not measured". A group that is missing,
+ * or that reports none of the shown systems, gives `null`: the table shows six
  * panels or none.
  */
 export function panelsFrom(
@@ -327,7 +327,7 @@ export function panelsFrom(
       // bench's chart window counts commits across the repository, so a
       // benchmark that has not run lately has no times in it although its
       // scores stand. Then the panel shows the scores, against the fastest,
-      // and the card stays on the page.
+      // and the table stays on the page.
       const listed = isObject(group) ? group.charts : undefined;
       const expected = Array.isArray(listed)
         ? listed.flatMap((c) =>
@@ -370,7 +370,7 @@ export function panelsFrom(
  * (`/api/group/{slug}`, the last `WINDOW` commits). `readAt` is the time
  * bench answered the first read (its Date header), so a cached answer keeps
  * its own date. Any failure (a timeout, an error status, a payload without
- * all six panels) gives `null`, and the page then leaves the card out. A
+ * all six panels) gives `null`, and the page then leaves the table out. A
  * time panel whose charts are missing from the window shows bench's scores.
  * `fetchImpl` is for tests.
  */
@@ -421,7 +421,7 @@ export async function getBenchSummary(
   }
 }
 
-/** "28 Oct 2026", in UTC, for the card's source line. */
+/** "28 Oct 2026", in UTC, for the table's source line. */
 export function formatReadDate(d: Date): string {
   return formatDay(d);
 }

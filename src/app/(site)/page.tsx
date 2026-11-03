@@ -4,7 +4,7 @@ import { InstallTabs } from "@/components/install-tabs";
 import { LogoBanner } from "@/components/logo-banner";
 import { ResultsTable } from "@/components/results-table";
 import { getBenchSummary } from "@/lib/bench-summary";
-import { homeJsonLd } from "@/lib/llms";
+import { homeJsonLd, jsonLdScript } from "@/lib/llms";
 import { getSparkVersion } from "@/lib/maven";
 import styles from "./page.module.css";
 
@@ -48,7 +48,7 @@ export default async function Home() {
     <div className={styles.home}>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(homeJsonLd()) }}
+        dangerouslySetInnerHTML={{ __html: jsonLdScript(homeJsonLd()) }}
       />
       <section className={styles.hero}>
         <span className={`vx-label vx-eyebrow ${styles.eyebrow}`}>

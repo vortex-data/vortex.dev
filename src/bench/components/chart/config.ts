@@ -10,7 +10,7 @@ import type {
   Plugin,
 } from 'chart.js';
 
-import { displaySeriesLabel, parsePrNumber, type VisibleRange } from '@/bench/lib/chart-format';
+import { commitLinkUrl, displaySeriesLabel, type VisibleRange } from '@/bench/lib/chart-format';
 
 import { externalTooltipHandler } from './tooltip';
 import type { BenchDataset, CardState } from './types';
@@ -113,8 +113,7 @@ export function lineChartConfig(input: {
         if (!commit) {
           return;
         }
-        const pr = parsePrNumber(commit.message);
-        const url = pr ? `https://github.com/vortex-data/vortex/pull/${pr}` : commit.url;
+        const url = commitLinkUrl(commit.message, commit.url);
         if (url) {
           window.open(url, '_blank', 'noopener');
         }

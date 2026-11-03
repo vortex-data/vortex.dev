@@ -2,7 +2,7 @@ import type { Panel } from "./bench-summary";
 import { geomean } from "./geomean";
 
 /**
- * The BenchmarkCard's GPU panel. Bench does not publish a GPU benchmark yet,
+ * The results table's GPU row. Bench does not publish a GPU benchmark yet,
  * so this one result is MAINTAINED BY HAND.
  *
  * Source: Will Manning's measurements, shown in the Vortex UW–Madison talk
@@ -26,8 +26,8 @@ import { geomean } from "./geomean";
  * To update: change the times in `GPU_QUERIES` (and `PARQUET_CONFIGS` if the
  * configurations change). The panel computes its geomeans from them. Change
  * `source.note` if the hardware, scale factor or source changes. Keep the
- * note short: the card prints it under the panels as "GPU analytics with
- * cuDF: <note>". If cuDF gains a Lance integration, give Lance its times in
+ * note short: the results table gives it as the GPU row's hover title and
+ * screen-reader text. If cuDF gains a Lance integration, give Lance its times in
  * the table and a row computed like Vortex's.
  */
 export const PARQUET_CONFIGS = [

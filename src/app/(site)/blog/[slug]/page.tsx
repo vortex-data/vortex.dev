@@ -6,6 +6,7 @@ import { ArrowBackIcon } from "@/components/icons";
 import { MDXRenderer } from "@/components/MDXRenderer";
 import { getAllPosts, getAllSlugs, getPostBySlug } from "@/lib/blog";
 import { baseUrl, siteName } from "@/lib/constants";
+import { jsonLdScript } from "@/lib/llms";
 import { adjacentPosts, bylineParts } from "@/lib/posts";
 
 interface BlogPostPageProps {
@@ -90,7 +91,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
     <div className="blog-page">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }}
+        dangerouslySetInnerHTML={{ __html: jsonLdScript(articleSchema) }}
       />
       <NextLink href="/blog" className="vx-label vx-nav-link blog-back">
         <ArrowBackIcon />

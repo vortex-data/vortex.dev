@@ -1,7 +1,7 @@
 /* Vortex design system components (sections: base, brand, site, docs, blog, focus), copied by tools/site-styles.mjs.
    Edit the system, then run tools/site-styles.mjs; do not edit here.
    Made by: node tools/site-styles.mjs <site> --sections base,brand,site,docs,blog,focus --faces --vx-face --base
-   sha256 5130c175e87bd6573c902fea6df7c6ae8c31472f05602491b77df211d76996d3 */
+   sha256 38a6d88c449bde99957c50d84ca3397317222dc797c5949306c429d7e92704ec */
 
 /* ------------------------------------------------------------------ base */
 /* Every component sizes with border-box, so it draws the same under a site's reset or none. */
@@ -49,7 +49,7 @@
   text-decoration-thickness: 1px;
   text-decoration-color: color-mix(in srgb, var(--ink) 30%, transparent);
   text-underline-offset: 3px;
-  transition: color 150ms ease-out, text-decoration-color 150ms ease-out;
+  transition: color var(--vx-motion), text-decoration-color var(--vx-motion);
 }
 .vx-link:hover,
 .vx-prose a:hover {
@@ -64,7 +64,7 @@
   color: var(--ink-muted);
   text-decoration: none;
   white-space: nowrap;
-  transition: color 150ms ease-out;
+  transition: color var(--vx-motion);
 }
 .vx-nav-link:hover,
 .vx-nav-link[aria-current="page"],
@@ -85,7 +85,6 @@
   gap: var(--space-4);
 }
 .vx-kbd {
-  box-sizing: border-box;
   display: grid;
   place-items: center;
   min-width: 20px;
@@ -102,6 +101,13 @@
     --page-pad: var(--space-16);
   }
 }
+
+/* Headings take ink, so a page never has to say so. It sits in base, which every site
+   copies. :where() keeps it at no specificity, so any component that colours its own headings wins. */
+:where(.vx-display, .vx-display-mono, .vx-h1, .vx-h2, .vx-h3, .vx-h4, .vx-h5, .vx-stat) { color: var(--ink); }
+
+/* The one control transition (Motion.md): colour, border and fade changes on hover and press. */
+:root { --vx-motion: 150ms ease-out; }
 
 /* ------------------------------------------------------------------ brand */
 /* The label, the strip, then the pause control at the end of the row. On a phone the label and
@@ -137,7 +143,7 @@
   border: 1px solid var(--edge);
   border-radius: var(--radius-control);
   cursor: pointer;
-  transition: color 150ms ease-out, background-color 150ms ease-out, border-color 150ms ease-out;
+  transition: color var(--vx-motion), background-color var(--vx-motion), border-color var(--vx-motion);
 }
 .vx-logos-pause:hover {
   color: var(--ink);
@@ -188,7 +194,7 @@
   display: block;
   filter: brightness(0) invert(1);
   opacity: 0.62;
-  transition: opacity 150ms ease-out;
+  transition: opacity var(--vx-motion);
 }
 .vx-logos-set a {
   position: relative;
@@ -256,7 +262,7 @@
    the page, at page-max with page-pad on both sides, as the header and footer are. */
 .vx-page { min-height: 100dvh; display: flex; flex-direction: column; }
 .vx-page > main { flex: 1 0 auto; }
-.vx-band { box-sizing: border-box; width: 100%; max-width: var(--page-max); margin-inline: auto; padding: var(--space-80) var(--page-pad); }
+.vx-band { width: 100%; max-width: var(--page-max); margin-inline: auto; padding: var(--space-80) var(--page-pad); }
 .vx-band.is-compact { padding-block: var(--space-48); }
 @media (min-width: 761px) {
   .vx-band { padding-block: var(--space-152); }
@@ -281,7 +287,7 @@
   background-position: left top, left bottom, left top, right top;
 }
 .vx-frame .vx-tabs-list { border-bottom: 0; background: var(--vx-dash-x) left bottom / 16px 1px repeat-x; }
-/* Two columns on the 24px gutter. They stack where the page's nav moves to a second row. */
+/* Two columns on the 24px gutter. They stack at 760px. */
 .vx-split { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gutter); align-items: start; }
 @media (max-width: 760px) {
   .vx-split { grid-template-columns: minmax(0, 1fr); }
@@ -300,7 +306,7 @@
   cursor: pointer;
   text-decoration: none;
   white-space: nowrap;
-  transition: background-color 150ms ease-out, border-color 150ms ease-out;
+  transition: background-color var(--vx-motion), border-color var(--vx-motion);
 }
 .vx-btn svg { width: 16px; height: 16px; fill: currentColor; }
 .vx-btn[disabled], .vx-btn[aria-disabled="true"] { opacity: 0.45; cursor: default; }
@@ -320,7 +326,6 @@
 .vx-status.has-mark { grid-template-columns: minmax(0, 760px) minmax(320px, 1fr); align-content: normal; }
 .vx-status-text { display: grid; align-content: center; justify-items: start; gap: var(--space-24); }
 .vx-status-text > * { margin: 0; }
-.vx-status-text h1 { color: var(--ink); }
 .vx-status-sentence { color: var(--ink-body); }
 /* The mark's cell has a height to fill. Its host is never taller than 9/10 of the cell's width. */
 .vx-status-mark { position: relative; min-height: 0; container-type: size; }
@@ -337,7 +342,6 @@
    A row holds a field and its button. */
 .vx-field {
   appearance: none;
-  box-sizing: border-box;
   height: var(--control-md);
   margin: 0;
   padding: 0 var(--space-12);
@@ -346,7 +350,7 @@
   background: var(--raised);
   border: 1px solid var(--edge);
   border-radius: var(--radius-control);
-  transition: border-color 150ms ease-out;
+  transition: border-color var(--vx-motion);
 }
 .vx-field::placeholder { color: var(--ink-muted); opacity: 1; }
 .vx-field:hover { border-color: var(--ink); }
@@ -359,7 +363,6 @@
 /* The header: the wordmark, then either the site's navigation or the docs' label and search,
    then the end group. */
 .vx-header {
-  box-sizing: border-box;
   display: flex;
   align-items: center;
   gap: var(--space-24);
@@ -371,6 +374,7 @@
   background-size: 16px 1px;
   background-repeat: repeat-x;
   background-position: left top, left bottom;
+  position: relative;
 }
 .vx-header-start { display: flex; flex-shrink: 0; align-items: center; gap: var(--space-12); }
 /* On one row, dashed rules close off the wordmark and the end group, as the old terminal header did. */
@@ -387,13 +391,12 @@
   [data-theme="system"] .vx-header-mark.is-dark { display: none; }
   [data-theme="system"] .vx-header-mark.is-light { display: block; }
 }
-.vx-header-label { padding-left: var(--space-12); border-left: 1px solid var(--edge); line-height: 16px; }
+.vx-header-label { margin: 0; padding-left: var(--space-12); border-left: 1px solid var(--edge); line-height: 16px; }
 .vx-header-nav { display: flex; gap: var(--space-24); margin-left: auto; }
 .vx-header-end { display: flex; align-items: center; gap: var(--space-16); margin-left: auto; }
 .vx-header-nav + .vx-header-end { margin-left: 0; }
 .vx-search {
   appearance: none;
-  box-sizing: border-box;
   flex: 1 1 auto;
   display: flex;
   align-items: center;
@@ -408,7 +411,7 @@
   font: 400 14px/1 var(--font-sans);
   color: var(--ink-muted);
   cursor: pointer;
-  transition: border-color 150ms ease-out;
+  transition: border-color var(--vx-motion);
 }
 .vx-search:hover { border-color: var(--ink); }
 .vx-search svg { width: 16px; height: 16px; flex-shrink: 0; fill: currentColor; }
@@ -422,7 +425,6 @@
    <details>, so it opens without scripts. Its panel is a popover under the button, on the ground with
    the buttons' solid edge: it covers what is under it, and never reads as one of the page's dashed
    frames. */
-.vx-header { position: relative; }
 .vx-header-menu { display: none; }
 .vx-header-menu > summary { list-style: none; }
 .vx-header-menu > summary::-webkit-details-marker { display: none; }
@@ -477,10 +479,9 @@
 @media (max-width: 480px) {
   .vx-header-repo { display: none; }
 }
-/* The homepage headline, "Fast, small, open: pick three.", takes one line (822px) in the hero's 840px column. Where
-   it wraps, it never strands one word on its last line, and on phones its lines balance. */
+/* A display line never strands one word on its last line, and on phones its lines balance. */
 .vx-display { text-wrap: pretty; }
-/* The homepage headline sets at the h1 size on phones, where 64px would take four lines. */
+/* On phones it sets at the h1 size, where 64px would take four lines. */
 @media (max-width: 640px) {
   .vx-display { font-size: 48px; text-wrap: balance; }
 }
@@ -497,7 +498,7 @@
   background-repeat: repeat-x;
   background-position: left top, left bottom;
   font: 400 11px/1.5 var(--font-mono);
-  letter-spacing: 0.02em;
+  letter-spacing: 0.02em; /* the one tracked style: small print */
   color: var(--ink-muted);
 }
 .vx-footer-mark { height: 12px; width: auto; opacity: 0.85; }
@@ -519,8 +520,7 @@
 .vx-footer.is-solid { margin-bottom: 0; background-image: var(--vx-dash-x); background-position: left top; }
 /* The tools variant, for a tool such as bench: one sticky row holds the wordmark, the tool's label,
    its own controls (.vx-header-tools) and the end group. The site's links are always behind the
-   Menu button, so the controls have the room. The label can be the page's h1. */
-.vx-header-label { margin: 0; }
+   Menu button, so the controls have the room. The label can be the page's h1, so it takes no margin. */
 .vx-header.has-tools { position: sticky; top: 0; z-index: 1000; }
 /* No vertical rules: the tools sit between the groups, so rules closing off the wordmark and the
    end group would only fence the controls in, and the label reads as part of the wordmark. */
@@ -641,31 +641,8 @@
 .vx-copy .is-check, .vx-copy.is-done .is-copy { display: none; }
 .vx-copy.is-done .is-check { display: block; }
 
-/* A bar's value has one width in every row of a panel, so every track has one length and the bars
-   share a scale. renderPanel sets --bar-value on each panel's vx-bars to fit its longest value
-   ("578.63 ms" is 9ch, "5.12×" 5ch), and the value takes it in its own 11px figures. 6ch is the
-   fallback. A name takes 7ch, which holds "Parquet". */
-.vx-bench { overflow: hidden; container: vx-bench / inline-size; --bar-value: 6ch; --bar-name: 7ch; }
-.vx-bench-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--space-8) var(--space-16); padding: var(--space-12) var(--space-20); border-bottom: 1px solid var(--line); }
-.vx-bench-headline { margin: 0; font: 500 14px/1.3 var(--font-sans); color: var(--ink); }
-.vx-bench-sub { color: var(--ink-muted); font-weight: 400; }
-/* Two, three or six columns by the card's own width, so a panel's text is never much under 175px.
-   At 1440 the six share one row. */
-.vx-bench-panels { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-/* Each panel rules its top and left edges 1px outside itself. The head's rule and the card's
-   clipped edge hide the outer ones, so a rule shows only between panels, in any number of rows.
-   The panels in a row share three rows (title, figure, bars), so a title that takes a third line
-   moves every figure in its row down with it. */
-.vx-bench-panel { display: grid; grid-row: span 3; grid-template-rows: subgrid; gap: var(--space-8); align-content: start; padding: var(--space-12) var(--space-16); border-top: 1px solid var(--line); border-left: 1px solid var(--line); margin: -1px 0 0 -1px; }
-.vx-bench-title { display: grid; }
-/* One line for a title. The panels in a row share their rows, so a title that wraps moves every
-   figure in its row down with it and the figures still line up. */
-.vx-bench-metric { text-wrap: balance; }
-/* The factor and the words that say who won share a line, and the words wrap under it in a
-   narrow panel. A 4px gap keeps "1.07× larger than Parquet" on one line in six columns. */
-.vx-bench-big { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-4); color: var(--ink); }
-.vx-bench-note { color: var(--ink-muted); }
-/* A bar chart's rows: name, a bar on its track, the value. Vortex is the one Blue row. */
+/* A bar chart's rows: name, a bar on its track, the value. Vortex is the one Blue row. renderBars
+   sets --bar-value to fit the longest value, so every track has one length and the bars share a scale. */
 .vx-bars { display: grid; gap: var(--space-8); }
 .vx-bar {
   display: grid;
@@ -692,31 +669,6 @@
 .vx-bar:is(.is-parquet, .is-lance, .is-arrow) .vx-bar-fill { opacity: 0.42; }
 .vx-bars.is-lg .vx-bar { gap: var(--space-12); font-size: 12.5px; }
 .vx-bars.is-lg .vx-bar-track { height: 10px; }
-/* The card's bars end in their values with a short unit ("42.25 ms", "5.12×"), small and muted,
-   Vortex's included, so the magnitudes read at a glance and the bars and the factor still lead.
-   The value with its full unit is the row's title and screen-reader text. A system with no score
-   says "Not measured" where its bar would be. In a panel whose text is narrower than about 175px,
-   a bar beside its name and value was 15 to 50px wide. So there each bar runs the panel's width
-   under its name and value: about 140px on a 375px phone. One column would give 190px bars, but
-   the card would grow taller than a phone's screen. */
-.vx-bench .vx-bars { align-content: start; }
-.vx-bench .vx-bar { grid-template-columns: minmax(0, 1fr) auto; row-gap: var(--space-4); }
-.vx-bench .vx-bar-value { font-size: 11px; color: var(--ink-muted); inline-size: var(--bar-value); }
-.vx-bench .vx-bar-track { grid-column: 1 / -1; grid-row: 2; }
-.vx-bench .vx-bar-missing { grid-column: 1 / -1; grid-row: 2; }
-@container vx-bench (min-width: 410px) {
-  .vx-bench .vx-bar { grid-template-columns: var(--bar-name, 56px) minmax(0, 1fr) auto; }
-  .vx-bench .vx-bar-track { grid-column: auto; grid-row: auto; }
-  .vx-bench .vx-bar-missing { grid-column: 2 / -1; grid-row: auto; }
-}
-@container vx-bench (min-width: 640px) {
-  .vx-bench-panels { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .vx-bench-panel { padding: var(--space-12) var(--space-20); }
-}
-@container vx-bench (min-width: 1260px) {
-  .vx-bench-panels { grid-template-columns: repeat(6, minmax(0, 1fr)); }
-  .vx-bench-panel { padding-inline: var(--space-16); }
-}
 
 /* ------------------------------------------------------------------ docs */
 /* A fieldset, so its margin and minimum width are cleared. Until a script presses a button, the
@@ -741,7 +693,7 @@
   height: 26px;
   border-radius: var(--radius-control);
   color: var(--ink-muted);
-  transition: color 150ms ease-out, background-color 150ms ease-out;
+  transition: color var(--vx-motion), background-color var(--vx-motion);
 }
 .vx-theme-switch button:hover { color: var(--ink); }
 .vx-theme-switch button[aria-pressed="true"],
@@ -752,7 +704,6 @@
 
 /* DocsNav and Toc style the lists Sphinx writes, so they select its elements. */
 .vx-docs-nav {
-  box-sizing: border-box;
   width: 260px;
   display: grid;
   align-content: start;
@@ -772,7 +723,7 @@
   font: 400 14px/1.3 var(--font-sans);
   color: var(--ink-body);
   text-decoration: none;
-  transition: background-color 150ms ease-out, color 150ms ease-out;
+  transition: background-color var(--vx-motion), color var(--vx-motion);
 }
 .vx-docs-nav a:hover { background: var(--wash); color: var(--ink); }
 .vx-docs-nav a[aria-current="page"] { background: var(--raised); color: var(--ink); font-weight: 500; }
@@ -788,7 +739,7 @@
   font: 400 14px/1.4 var(--font-sans);
   color: var(--ink-muted);
   text-decoration: none;
-  transition: color 150ms ease-out, box-shadow 150ms ease-out;
+  transition: color var(--vx-motion), box-shadow var(--vx-motion);
 }
 .vx-toc a:hover { color: var(--ink); }
 .vx-toc a[aria-current="true"] { color: var(--ink); box-shadow: inset 2px 0 0 var(--accent); }
@@ -796,7 +747,6 @@
 
 .vx-code { background: var(--raised); border-radius: var(--radius-card); overflow: hidden; }
 .vx-code-head {
-  box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -853,7 +803,7 @@
   padding-bottom: var(--space-16);
   border-bottom: 1px solid var(--line);
 }
-.vx-blog-title { margin: 0; color: var(--ink); }
+.vx-blog-title { margin: 0; }
 .vx-blog-feeds { display: flex; gap: var(--space-16); }
 /* With has-mark, a still of the ASCII mark sits in the heading's top right corner, above the feeds:
    mono characters, dim in edge, fading in from the left. The frame is the data-frame attribute,
@@ -899,12 +849,12 @@
   padding: var(--space-16) var(--space-12);
   color: inherit;
   text-decoration: none;
-  transition: background-color 150ms ease-out;
+  transition: background-color var(--vx-motion);
 }
 .vx-post-row::after { content: ""; position: absolute; right: var(--space-12); bottom: 0; left: var(--space-12); border-bottom: 1px solid var(--line); }
 .vx-post-row:hover { background: var(--wash); }
 .vx-post-row-meta { grid-row: span 2; display: grid; align-content: start; gap: var(--space-4); padding-top: var(--space-4); }
-.vx-post-row-title { margin: 0; color: var(--ink); }
+.vx-post-row-title { margin: 0; }
 .vx-post-row-excerpt { margin: 0; color: var(--ink-muted); }
 @container (max-width: 560px) {
   .vx-post-row { grid-template-columns: minmax(0, 1fr); }
@@ -929,7 +879,6 @@
 .vx-cover-ch { fill: var(--ground); font: 500 16px var(--font-mono); text-anchor: middle; dominant-baseline: central; }
 
 .vx-article {
-  box-sizing: border-box;
   max-width: calc(68ch + 2 * var(--space-48));
   margin: 0 auto;
   padding: var(--space-48) var(--space-48) var(--space-32);
@@ -937,7 +886,7 @@
 }
 .vx-article-head { margin-bottom: var(--space-32); }
 /* The head reads the title, the dek and the byline. */
-.vx-article-title { margin: 0 0 var(--space-16); color: var(--ink); text-wrap: balance; }
+.vx-article-title { margin: 0 0 var(--space-16); text-wrap: balance; }
 /* The dek says what the post is in one sentence. Two lines at most: a longer one is cut, except
    on a phone, where it runs to its end. */
 .vx-article-dek {
@@ -972,7 +921,7 @@
   color: var(--ink-muted);
   text-decoration: none;
   opacity: 0;
-  transition: opacity 150ms ease-out, color 150ms ease-out;
+  transition: opacity var(--vx-motion), color var(--vx-motion);
 }
 .vx-prose > :is(h2, h3, h4, h5, h6):hover .vx-anchor,
 .vx-prose .vx-heading-link:focus-visible .vx-anchor,
@@ -991,7 +940,7 @@
   white-space: nowrap;
   border: 1px solid transparent;
   border-radius: var(--radius-control);
-  transition: color 150ms ease-out, border-color 150ms ease-out;
+  transition: color var(--vx-motion), border-color var(--vx-motion);
 }
 .vx-prose a.vx-ref:hover { color: var(--ink); border-color: var(--edge); }
 /* Markers are drawn here, because a site's reset often removes them. */
@@ -1049,7 +998,7 @@
   text-decoration: none;
   border: 1px solid var(--line);
   border-radius: var(--radius-card);
-  transition: background-color 150ms ease-out, border-color 150ms ease-out;
+  transition: background-color var(--vx-motion), border-color var(--vx-motion);
 }
 .vx-post-nav-link:hover { background: var(--wash); border-color: var(--edge); }
 .vx-post-nav-link.is-prev { grid-column: 1; }

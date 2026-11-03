@@ -1,4 +1,4 @@
-// Types for benchmark-card.js. Copy this file beside the module, so TypeScript reads it.
+// Types for results.js. Copy this file beside the module, so TypeScript reads it.
 
 export type BenchRow = {
   system: string;
@@ -88,7 +88,7 @@ export function versusParquet(
 
 export function formatFactor(f: number | null): string;
 
-/** The big figure: a whole percentage below 2× ("57%"), a factor from 2× up ("5.1×"), "1×" when level, "—" when not measured. */
+/** The verdict's figure: a whole percentage below 2× ("57%"), a factor from 2× up ("5.1×"), "1×" when level, "—" when not measured. */
 export function panelFactor(
   kind: BenchPanel["kind"],
   vs: Pick<Versus, "factor" | "vortexWins"> & Partial<Pick<Versus, "tie" | "missing">>
@@ -100,20 +100,12 @@ export function panelNote(
 ): string;
 
 
-export function renderPanel(panel: BenchPanel): string;
-
-/** One comparison's bars on their own, for a chart outside the card: the bars renderPanel draws. */
+/** One comparison's bars, for a Figure or a page's section. */
 export function renderBars(chart: Pick<BenchPanel, "unit" | "better" | "rows" | "systems">): string;
 
 /** A bar row's class: `vx-bar` with `is-ours`, `is-parquet`, `is-lance`, `is-arrow`,
  * `is-missing` or `is-na` as they apply. */
 export function barClass(row: Pick<PanelRow, "system" | "state" | "ours">): string;
-
-/** The few words after the headline's dot, from the panels' units: "times in ms, ratios to Parquet, best first". */
-export function benchCaption(panels: readonly Pick<BenchPanel, "unit">[]): string;
-
-/** How each kind of value the panels show is made, for the caption's title and screen readers. */
-export function benchMethod(panels: readonly Pick<BenchPanel, "unit">[]): string;
 
 /** How Vortex does against Parquet in a few words: "5.1× faster", "14% larger", "as fast", "Vortex not measured". */
 export function panelVerdict(
