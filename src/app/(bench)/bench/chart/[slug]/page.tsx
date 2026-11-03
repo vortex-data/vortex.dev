@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
 import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
+import { notFound, permanentRedirect } from 'next/navigation';
 import { cache } from 'react';
 
 import { Chart } from '@/bench/components/Chart';
@@ -13,7 +13,9 @@ import { cachedDefaultChartPayload } from '@/bench/lib/data-cache';
 import { chartPayload, collectFilterUniverse, type ChartResponse } from '@/bench/lib/queries';
 import { chartDescription, chartUrl, openGraph } from '@/bench/lib/site-files';
 import { chartKeyFromSlug, chartKeyToSlug, type ChartKey } from '@/bench/lib/slug';
-import { DEFAULT_COMMIT_WINDOW, parseCommitWindow } from '@/bench/lib/window';
+import { benchPath } from '@/bench/lib/base-path';
+import { requestBenchBase } from '@/bench/lib/request-base';
+import { canonicalWindowQuery, DEFAULT_COMMIT_WINDOW, parseCommitWindow } from '@/bench/lib/window';
 
 // Rendered per request, like the landing page: the payload comes from Postgres
 // at request time and `force-dynamic` keeps `next build` independent of a live
@@ -24,6 +26,28 @@ export const dynamic = 'force-dynamic';
 
 type Params = Promise<{ slug: string }>;
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
+
+/** The query parameters this page reads. */
+const CHART_PAGE_PARAMS = ['n', 'engine', 'format'] as const;
+
+/**
+ * Redirect a request for a non-default window to that window's one URL (see
+ * `canonicalWindowQuery`). Both `generateMetadata` and the page call it before
+ * `getChart`, because either one alone would already run the direct query.
+ */
+async function redirectToCanonicalWindow(slug: string, sp: Awaited<SearchParams>): Promise<void> {
+  const search = new URLSearchParams();
+  for (const [name, value] of Object.entries(sp)) {
+    for (const v of Array.isArray(value) ? value : value === undefined ? [] : [value]) {
+      search.append(name, v);
+    }
+  }
+  const canonical = canonicalWindowQuery(search, CHART_PAGE_PARAMS);
+  if (canonical !== null) {
+    const base = await requestBenchBase();
+    permanentRedirect(benchPath(base, `/chart/${encodeURIComponent(slug)}?${canonical}`));
+  }
+}
 
 /**
  * Resolve the chart payload for this request, deduped across `generateMetadata`
@@ -61,6 +85,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const sp = await searchParams;
+  await redirectToCanonicalWindow(slug, sp);
   const chart = await getChart(slug, singleSearchParam(sp.n));
   if (chart === null) {
     return {};
@@ -111,6 +136,7 @@ export default async function ChartPage({
   } catch {
     notFound();
   }
+  await redirectToCanonicalWindow(slug, sp);
   // The filter universe is OPTIONAL chrome, matching v3's `.ok()` on
   // `cached_filter_universe`: a failed universe query renders the page without
   // the filter dropdown rather than failing an otherwise renderable chart.

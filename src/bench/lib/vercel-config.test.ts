@@ -19,6 +19,23 @@ const vercelConfig = JSON.parse(
 
 const CDN_CACHE = 'max-age=300, stale-while-revalidate=86400';
 
+/**
+ * The host a `has` condition matches. Vercel reads the value as a regular
+ * expression, so it must be anchored and escaped, as `next.config.mjs` writes
+ * it: a bare `bench.vortex.dev` would also match `benchxvortex.dev`.
+ */
+function hostName(pattern: string): string {
+  const match = /^\^(.*)\$$/.exec(pattern);
+  if (!match) {
+    throw new Error(`host condition ${pattern} is not anchored`);
+  }
+  const host = match[1]!.replace(/\\\./g, '.');
+  if (host.replace(/\./g, '\\.') !== match[1]) {
+    throw new Error(`host condition ${pattern} has an unescaped dot`);
+  }
+  return host;
+}
+
 /** The paths (with any host condition) that get bench's page CDN rule. */
 function cdnCachedSources(): string[] {
   return (vercelConfig.headers ?? [])
@@ -27,7 +44,7 @@ function cdnCachedSources(): string[] {
     )
     .map((rule) => {
       const host = rule.has?.find((c) => c.type === 'host')?.value;
-      return host ? `${host}${rule.source}` : rule.source;
+      return host ? `${hostName(host)}${rule.source}` : rule.source;
     })
     .sort();
 }

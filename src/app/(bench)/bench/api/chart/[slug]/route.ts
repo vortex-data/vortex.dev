@@ -7,7 +7,9 @@ import { READ_API_CACHE_CONTROL } from '@/bench/lib/cache';
 import { cachedDefaultChartPayload } from '@/bench/lib/data-cache';
 import { chartPayload } from '@/bench/lib/queries';
 import { chartKeyFromSlug, type ChartKey } from '@/bench/lib/slug';
-import { DEFAULT_COMMIT_WINDOW, parseCommitWindow } from '@/bench/lib/window';
+import { benchPath } from '@/bench/lib/base-path';
+import { requestBenchBase } from '@/bench/lib/request-base';
+import { canonicalWindowQuery, DEFAULT_COMMIT_WINDOW, parseCommitWindow } from '@/bench/lib/window';
 
 /**
  * `GET /api/chart/{slug}` returns the [`ChartResponse`] JSON for one chart.
@@ -33,7 +35,15 @@ export async function GET(
       { status: 400 },
     );
   }
-  const window = parseCommitWindow(new URL(request.url).searchParams.get('n'));
+  const search = new URL(request.url).searchParams;
+  // A non-default window is a direct query, so it gets one URL: see
+  // `canonicalWindowQuery`.
+  const canonical = canonicalWindowQuery(search, ['n']);
+  if (canonical !== null) {
+    const path = benchPath(await requestBenchBase(), `/api/chart/${encodeURIComponent(slug)}`);
+    return new NextResponse(null, { status: 308, headers: { location: `${path}?${canonical}` } });
+  }
+  const window = parseCommitWindow(search.get('n'));
   // The default last-100 window is served from the Data Cache (warm across
   // invocations, refreshed on ingest); every other window keeps the direct
   // query and rides the per-URL CDN cache only.

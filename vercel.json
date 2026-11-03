@@ -7,7 +7,7 @@
   "headers": [
     {
       "source": "/",
-      "has": [{ "type": "host", "value": "bench.vortex.dev" }],
+      "has": [{ "type": "host", "value": "^bench\\.vortex\\.dev$" }],
       "headers": [
         {
           "key": "Vercel-CDN-Cache-Control",
@@ -17,7 +17,7 @@
     },
     {
       "source": "/methodology",
-      "has": [{ "type": "host", "value": "bench.vortex.dev" }],
+      "has": [{ "type": "host", "value": "^bench\\.vortex\\.dev$" }],
       "headers": [
         {
           "key": "Vercel-CDN-Cache-Control",
@@ -27,7 +27,7 @@
     },
     {
       "source": "/chart/:slug",
-      "has": [{ "type": "host", "value": "bench.vortex.dev" }],
+      "has": [{ "type": "host", "value": "^bench\\.vortex\\.dev$" }],
       "headers": [
         {
           "key": "Vercel-CDN-Cache-Control",

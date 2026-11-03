@@ -11,6 +11,7 @@ import {
   clampRangeWindow,
   collectAllValues,
   commitDateLabel,
+  commitLinkUrl,
   decimateSeries,
   displayFormat,
   displaySeriesLabel,
@@ -22,8 +23,8 @@ import {
   HOVER_PREFETCH_PRIORITY,
   IDENTITY_UNIT,
   INTERACTION_FULL_PRIORITY,
-  LAZY_HYDRATION_ROOT_MARGIN,
   latestValuesSentence,
+  LAZY_HYDRATION_ROOT_MARGIN,
   lttbIndices,
   magnitudeReference,
   MAX_VISIBLE_POINTS,
@@ -1038,5 +1039,25 @@ describe('chartPriority', () => {
     // `+0`, not `-0`: `Object.is` (and so `toBe`) tells them apart.
     expect(Object.is(chartPriority(0), 0)).toBe(true);
     expect(chartPriority(7)).toBe(-7);
+  });
+});
+
+describe('commitLinkUrl', () => {
+  it('opens the PR a squash subject names', () => {
+    expect(commitLinkUrl('Fix it (#123)', 'https://example.com/x')).toBe(
+      'https://github.com/vortex-data/vortex/pull/123',
+    );
+  });
+
+  it("opens the commit's own GitHub URL", () => {
+    const url = 'https://github.com/vortex-data/vortex/commit/abc';
+    expect(commitLinkUrl('No PR here', url)).toBe(url);
+  });
+
+  it('opens nothing for a URL that is not a GitHub page', () => {
+    expect(commitLinkUrl('No PR', 'javascript:alert(1)')).toBeNull();
+    expect(commitLinkUrl('No PR', 'https://github.com.example.com/x')).toBeNull();
+    expect(commitLinkUrl('No PR', 'http://github.com/x')).toBeNull();
+    expect(commitLinkUrl('No PR', null)).toBeNull();
   });
 });

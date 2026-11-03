@@ -62,3 +62,43 @@ export function parseCommitWindow(raw: string | null | undefined): CommitWindow 
 export function commitWindowLimit(window: CommitWindow): number | null {
   return window.kind === 'all' ? null : window.n;
 }
+
+/** The canonical `?n=` spelling of a window: `all`, or the clamped count. */
+export function windowParam(window: CommitWindow): string {
+  return window.kind === 'all' ? 'all' : String(window.n);
+}
+
+/**
+ * The canonical query string for a request whose `?n=` selects a window other
+ * than the default, or `null` when no redirect is needed.
+ *
+ * Only the default window is read through the Data Cache; every other window
+ * is a direct database query, and the CDN caches it per full URL. Without
+ * this, a client could add a new parameter (`?n=all&x=1`, `&x=2`, …) or spell
+ * `n` another way (`?n=+0500`) on each request, miss the CDN every time, and
+ * send each request to the database. Redirecting to one URL per window and
+ * page keeps those requests on the CDN.
+ *
+ * The canonical form keeps the `allowed` parameters in the request's order,
+ * the first value of each, with `n` spelled by [`windowParam`]; it drops
+ * every other parameter. A request with the default window returns `null`,
+ * whatever else its query holds: it costs no direct query.
+ */
+export function canonicalWindowQuery(
+  search: URLSearchParams,
+  allowed: readonly string[],
+): string | null {
+  const window = parseCommitWindow(search.get('n'));
+  if (window.kind === 'last' && window.n === DEFAULT_COMMIT_WINDOW) {
+    return null;
+  }
+  const canonical = new URLSearchParams();
+  for (const [name, value] of search) {
+    if (!allowed.includes(name) || canonical.has(name)) {
+      continue;
+    }
+    canonical.set(name, name === 'n' ? windowParam(window) : value);
+  }
+  const query = canonical.toString();
+  return query === search.toString() ? null : query;
+}

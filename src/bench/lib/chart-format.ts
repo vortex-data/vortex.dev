@@ -302,6 +302,20 @@ export function parsePrNumber(message: unknown): string | null {
 }
 
 /**
+ * The page a click on a commit opens: its PR when the squash subject names
+ * one, else the commit's own URL. The URL comes from the database, which only
+ * the ingest writes, so it opens only when it is a GitHub page: a stored
+ * `javascript:` or other URL opens nothing.
+ */
+export function commitLinkUrl(message: unknown, url: unknown): string | null {
+  const pr = parsePrNumber(message);
+  if (pr) {
+    return `https://github.com/vortex-data/vortex/pull/${pr}`;
+  }
+  return typeof url === 'string' && url.startsWith('https://github.com/') ? url : null;
+}
+
+/**
  * HTML-escape a string for interpolation into tooltip markup. The external
  * tooltip builds `innerHTML` strings (a direct port of `chart-init.js`), so
  * every dynamic value passes through here first.

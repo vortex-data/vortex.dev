@@ -2,7 +2,12 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import { panelsFrom } from "@/lib/bench-summary";
-import { homeJsonLd, resultsSentences, siteLlmsText } from "@/lib/llms";
+import {
+  homeJsonLd,
+  jsonLdScript,
+  resultsSentences,
+  siteLlmsText
+} from "@/lib/llms";
 
 const fixture = (name: string) =>
   JSON.parse(
@@ -74,5 +79,13 @@ describe("homeJsonLd", () => {
       graph[1]?.codeRepository,
       "https://github.com/vortex-data/vortex"
     );
+  });
+});
+
+describe("jsonLdScript", () => {
+  it("escapes < so a value cannot close the script element", () => {
+    const text = jsonLdScript({ headline: "a </script><b>" });
+    assert.ok(!text.includes("<"));
+    assert.deepEqual(JSON.parse(text), { headline: "a </script><b>" });
   });
 });
