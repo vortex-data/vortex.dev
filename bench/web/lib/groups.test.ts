@@ -801,6 +801,9 @@ describe.skipIf(!databaseAvailable)('summary math fidelity (testcontainers Postg
       await insertCompTimePair(sha, 'encode', 9_000, 1_000, dataset);
       await insertCompSizePair(sha, 9_000, 1_000, dataset);
     }
+    // The patterns match only at the start of the name, so this dataset stays in.
+    await insertCompTimePair(sha, 'encode', 1_000, 3_000, 'taxi-sparse-wide');
+    await insertCompSizePair(sha, 1_000, 1_000, 'taxi-sparse-wide');
 
     const time = expectDefined(
       await collectGroupSummary({ k: 'CompressionTimeGroup' }),
@@ -829,8 +832,8 @@ describe.skipIf(!databaseAvailable)('summary math fidelity (testcontainers Postg
       'Vortex compression-size ranking',
     );
     expect(vortexSize.minRatio).toBeCloseTo(0.25, 6);
-    expect(vortexSize.ratio).toBeCloseTo(0.25, 6);
-    expect(vortexSize.maxRatio).toBeCloseTo(0.25, 6);
+    expect(vortexSize.ratio).toBeCloseTo(0.5, 6);
+    expect(vortexSize.maxRatio).toBeCloseTo(1.0, 6);
   });
 
   it('selects one commit when the latest timestamps collide', async () => {

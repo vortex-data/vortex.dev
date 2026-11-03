@@ -41,7 +41,7 @@ import { getPool } from './db';
 import { randomAccessStorage, type RandomAccessStorage } from './random-access';
 import { compareCodeUnits } from './families';
 import type { GroupKey } from './slug';
-import { STRING_DATASET_PATTERN } from './compression-suite';
+import { STRING_DATASET_PATTERN, SUMMARY_EXCLUDED_DATASET_PATTERNS } from './compression-suite';
 
 /**
  * Freshness buckets for compression-time and compression-size summaries.
@@ -60,16 +60,24 @@ const COMPRESSION_BASELINE = 'parquet';
 /** The `string-bench` encoder every other string encoder is compared with. */
 const STRING_ENCODING_BASELINE = 'fsst';
 
-function compressionSummaryQueryParams(): [string[], string[], string, string] {
+function compressionSummaryQueryParams(): [string[], string[], string, string, string[]] {
   return [
     [...COMPRESSION_SHARED_SNAPSHOT_FORMATS, ...COMPRESSION_INDEPENDENT_SNAPSHOT_FORMATS],
     COMPRESSION_SHARED_SNAPSHOT_FORMATS,
     COMPRESSION_SNAPSHOT_ANCHOR,
     COMPRESSION_BASELINE,
+    [...SUMMARY_EXCLUDED_DATASET_PATTERNS],
   ];
 }
 
-function compressionSizeSummaryQueryParams(): [string[], string[], string, string, string] {
+function compressionSizeSummaryQueryParams(): [
+  string[],
+  string[],
+  string,
+  string,
+  string,
+  string[],
+] {
   return [
     [
       ...COMPRESSION_SHARED_SNAPSHOT_FORMATS,
@@ -80,6 +88,7 @@ function compressionSizeSummaryQueryParams(): [string[], string[], string, strin
     COMPRESSION_SNAPSHOT_ANCHOR,
     COMPRESSION_BASELINE,
     ARROW_IPC_FORMAT,
+    [...SUMMARY_EXCLUDED_DATASET_PATTERNS],
   ];
 }
 
@@ -616,9 +625,7 @@ function compressionRankings(rows: readonly CompressionTimeSample[]): Compressio
  * Each independently benchmarked format uses its own newest complete snapshot.
  * Every sample uses Parquet timing from the same commit. Aggregate throughput uses the newest
  * available decoded Arrow memory size for each dataset. The size commit does not need to match.
- * The `wide table` and `sparse-wide` datasets are left out. They are pathological cases with many
- * variants each, so in a geomean over all datasets they would be heavily over-represented. They
- * still chart in the group.
+ * The datasets in `SUMMARY_EXCLUDED_DATASET_PATTERNS` are left out.
  * The JSON field lookup returns `NULL` before migration 009 adds the column, so web deployment
  * does not depend on migration deployment order.
  */
@@ -645,8 +652,7 @@ async function compressionSamples(): Promise<CompressionTimeSample[]> {
          AND p.format = $4
          AND t.value_ns > 0
          AND p.value_ns > 0
-         AND lower(t.dataset) NOT LIKE '%wide table%'
-         AND lower(t.dataset) NOT LIKE '%sparse-wide%'
+         AND NOT (t.dataset LIKE ANY($5::text[]))
     ), snapshot_policy AS (
       SELECT format,
              CASE WHEN format = ANY($2::text[]) THEN $3 ELSE format END AS anchor_format
@@ -678,8 +684,7 @@ async function compressionSamples(): Promise<CompressionTimeSample[]> {
         JOIN ${BRANCH_COMMITS} c ON c.commit_sha = s.commit_sha
        WHERE s.format = $4
          AND s.uncompressed_bytes::float8 > 0
-         AND lower(s.dataset) NOT LIKE '%wide table%'
-         AND lower(s.dataset) NOT LIKE '%sparse-wide%'
+         AND NOT (s.dataset LIKE ANY($5::text[]))
        ORDER BY s.dataset, s.dataset_variant NULLS FIRST,
                 c.timestamp DESC, s.commit_sha DESC
     )
@@ -785,9 +790,7 @@ function compressionSizeRankings(rows: readonly CompressionSizeSample[]): Compre
  * and compares it with Parquet from the same commit. Arrow IPC uses its newest value for each
  * dataset and Parquet from the same commit. Compression ratios use the newest available decoded
  * Arrow memory size for each dataset. The size commit does not need to match.
- * The `wide table` and `sparse-wide` datasets are left out. They are pathological cases with many
- * variants each, so in a geomean over all datasets they would be heavily over-represented. They
- * still chart in the group.
+ * The datasets in `SUMMARY_EXCLUDED_DATASET_PATTERNS` are left out.
  * `uncompressed_bytes` is read as a plain column, so migration 009 must be applied before a web
  * deploy that includes this query. A JSON field lookup would tolerate an older schema, but it
  * serializes whole rows and timed out in production, so it was dropped once 009 was applied there.
@@ -813,8 +816,7 @@ async function compressionSizeSamples(): Promise<CompressionSizeSample[]> {
          AND p.format = $4
          AND s.value_bytes > 0
          AND p.value_bytes > 0
-         AND lower(s.dataset) NOT LIKE '%wide table%'
-         AND lower(s.dataset) NOT LIKE '%sparse-wide%'
+         AND NOT (s.dataset LIKE ANY($6::text[]))
     ), snapshot_policy AS (
       SELECT format,
              CASE WHEN format = ANY($2::text[]) THEN $3 ELSE format END AS anchor_format
@@ -858,8 +860,7 @@ async function compressionSizeSamples(): Promise<CompressionSizeSample[]> {
         JOIN ${BRANCH_COMMITS} c ON c.commit_sha = s.commit_sha
        WHERE s.format = $4
          AND s.uncompressed_bytes::float8 > 0
-         AND lower(s.dataset) NOT LIKE '%wide table%'
-         AND lower(s.dataset) NOT LIKE '%sparse-wide%'
+         AND NOT (s.dataset LIKE ANY($6::text[]))
        ORDER BY s.dataset, s.dataset_variant NULLS FIRST,
                 c.timestamp DESC, s.commit_sha DESC
     )
