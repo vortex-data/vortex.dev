@@ -8,6 +8,7 @@ import { BenchBaseProvider } from '@/bench/components/BenchBase';
 import { benchPath } from '@/bench/lib/base-path';
 import { FONTS_CSS } from '@/bench/lib/fonts';
 import { requestBenchBase } from '@/bench/lib/request-base';
+import { BENCH_DESCRIPTION, BENCH_URL } from '@/bench/lib/site-files';
 
 import '@/bench/styles/globals.css';
 // The Vortex design system's skin: colours, corners and Geist over globals.css.
@@ -17,7 +18,16 @@ export async function generateMetadata(): Promise<Metadata> {
   const base = await requestBenchBase();
   return {
     title: 'Vortex Benchmarks',
-    description: 'Continuous benchmark results for Vortex.',
+    description: BENCH_DESCRIPTION,
+    // Absolute URLs in the metadata (canonical links, Open Graph) are bench's
+    // public ones, whichever host serves the page.
+    metadataBase: new URL(BENCH_URL),
+    openGraph: {
+      title: 'Vortex Benchmarks',
+      description: BENCH_DESCRIPTION,
+      siteName: 'Vortex Benchmarks',
+      type: 'website',
+    },
     // Theme-aware favicons, ported from `render.rs::favicon_links`: the black
     // sigil on light-mode tabs, the white sigil on dark-mode tabs, with the dark
     // sigil as the unmediated fallback (and the apple-touch icon). The files are

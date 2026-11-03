@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
+import type { Metadata } from 'next';
 import { Suspense } from 'react';
 
 import { Footer } from '@/bench/components/Footer';
@@ -16,6 +17,7 @@ import { cachedFilterUniverse, cachedGroups } from '@/bench/lib/data-cache';
 import { parseGroupFilter } from '@/bench/lib/group-filter';
 import type { Group } from '@/bench/lib/queries';
 import { settlesWithin } from '@/bench/lib/settles-within';
+import { BENCH_URL, datasetJsonLd, jsonLdScript } from '@/bench/lib/site-files';
 
 // Rendered per request, with CDN caching layered on by `vercel.json`: each
 // render reads every group from Postgres via `collectGroups()`, and Vercel's
@@ -29,6 +31,9 @@ import { settlesWithin } from '@/bench/lib/settles-within';
 // rule drives CDN caching while browsers still revalidate on every load.
 // `force-dynamic` keeps `next build` independent of a live database.
 export const dynamic = 'force-dynamic';
+
+// One canonical URL, whatever filter or group the query string restores.
+export const metadata: Metadata = { alternates: { canonical: `${BENCH_URL}/` } };
 
 /**
  * The landing page: a server-rendered section per group in canonical
@@ -127,6 +132,11 @@ function HomeContent({ data: [params, groups, universe] }: { data: LandingData }
           <p className="empty">No data ingested yet.</p>
         ) : (
           <>
+            {/* The results as a schema.org Dataset, for search engines. */}
+            <script
+              type="application/ld+json"
+              dangerouslySetInnerHTML={{ __html: jsonLdScript(datasetJsonLd(groups)) }}
+            />
             {/* Shown only with JavaScript off, above the groups. */}
             <noscript>
               <p className="no-script no-script--lead">

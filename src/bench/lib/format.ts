@@ -29,3 +29,15 @@ export function formatTimeNs(ns: number): string {
   }
   return `${ns.toFixed(0)} ns`;
 }
+
+/** A size ratio to three significant figures, as `1.14x`. */
+export function formatCompressionSizeRatio(value: number): string {
+  return `${Number(value.toPrecision(3))}x`;
+}
+
+/** Aggregate throughput as the summary card shows it: MB/s for writes, GB/s for scans. */
+export function formatThroughput(valueGbS: number, operation: 'encode' | 'decode'): string {
+  return operation === 'encode'
+    ? `${(valueGbS * 1000).toFixed(0)} MB/s`
+    : `${valueGbS.toFixed(2)} GB/s`;
+}
