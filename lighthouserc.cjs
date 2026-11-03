@@ -76,26 +76,26 @@ const urls = picked.filter(Boolean).map((p) => `${base}${p}`);
 
 // Assertion thresholds. LHCI asserts on the best of the three runs for each
 // value (its default `aggregationMethod: "optimistic"`), so these are the
-// worst best-of-three values seen. The site's rows come from the 62 CI runs
-// from 2026-10-30 to 2026-11-03, on a local build; the homepage changed on
-// 2026-11-03 (the mark first, one results table), and 10 of the runs have
-// the new one. bench's come from its first CI run on a preview, through the
-// proxy, on 2026-11-03.
+// worst best-of-three values seen. They come from the CI runs on a preview,
+// through the proxy, since CI moved there on 2026-11-03: seven passes of
+// every page that day, one of them a failed attempt that a re-run replaced.
 //
 //            perf   FCP     LCP     Speed Index   TBT      CLS
-//   /        1.00   252 ms  602 ms  576 ms        0 ms     0
-//   /blog    1.00   256 ms  646 ms  256 ms        0.5 ms   0.00001
-//   post     0.74   275 ms  660 ms  275 ms        736 ms   0.00001
-//   /bench   1.00   307 ms  561 ms  636 ms        0 ms     0.0001
-//   chart    1.00   387 ms  560 ms  574 ms        8 ms     0.011
+//   /        1.00   302 ms  622 ms  1046 ms       0 ms     0
+//   /blog    1.00   344 ms  666 ms  349 ms        0 ms     0
+//   post     1.00   340 ms  692 ms  340 ms        0 ms     0
+//   /bench   1.00   446 ms  701 ms  453 ms        0 ms     0
+//   chart    1.00   382 ms  664 ms  612 ms        41 ms    0.011
 //
-// The post's 0.74 is one run, on 2026-10-30, slow in all three passes; in
-// every other run it scored 1.00. The old homepage swung with the shared
-// runner's load (perf down to 0.70, TBT up to 983 ms), because the WebGL
-// mark runs on the CPU there, so its category score was only a warning. The
-// new one has not swung in 30 passes. A preview's first request is a cold
-// start (805 ms to the first byte on bench), so the workflow requests each
-// page once before Lighthouse does.
+// The homepage's Speed Index swings the most: its best of three runs is
+// usually about 700 ms, but single runs reach 2219 ms, and in the failed
+// attempt all three were slow (1409, 1046 and 1084 ms). Speed Index measures
+// how fast the page looks complete, and the WebGL mark starts drawing once
+// the page is idle, on the runner's CPU. On a local build, before the
+// preview, every page's values were lower, and the homepage's Speed Index
+// was at most 576 ms. A preview's first request is a cold start (805 ms to
+// the first byte on bench), so the workflow requests each page once before
+// Lighthouse does.
 //
 // Accessibility and SEO were 1.00 in every run since the contrast fixes of
 // 2026-10-30. Best practices was 0.96 in every run, from one audit only: off
@@ -106,10 +106,30 @@ const urls = picked.filter(Boolean).map((p) => `${base}${p}`);
 // practices and SEO at 1.00, since their audits don't depend on timing and
 // any new failing audit should fail the check; and metric caps about 1.5 to
 // 2 times the worst value above (CLS more, as bench's chart page sits at
-// 0.011), to catch a real regression but not a slow runner. The site's rows
-// were measured on a local build, not a preview: if the preview runs differ,
+// 0.011), to catch a real regression but not a slow runner. The one
+// exception is the homepage's Speed Index, capped at 2000 ms instead of
+// 1000 ms. LCP keeps its 1000 ms cap, 1.4 times its worst. As more preview
+// runs come in,
 // recalibrate from the archived runs. Don't relax a threshold to mask a
 // regression without a separate PR.
+function escapeRegExp(text) {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function assertions({ speedIndex }) {
+  return {
+    "categories:performance": ["error", { minScore: 0.9 }],
+    "categories:accessibility": ["error", { minScore: 1 }],
+    "categories:best-practices": ["error", { minScore: 1 }],
+    "categories:seo": ["error", { minScore: 1 }],
+    "first-contentful-paint": ["error", { maxNumericValue: 700 }],
+    "largest-contentful-paint": ["error", { maxNumericValue: 1000 }],
+    "speed-index": ["error", { maxNumericValue: speedIndex }],
+    "total-blocking-time": ["error", { maxNumericValue: 300 }],
+    "cumulative-layout-shift": ["error", { maxNumericValue: 0.05 }]
+  };
+}
+
 module.exports = {
   pages,
   ci: {
@@ -129,17 +149,18 @@ module.exports = {
       }
     },
     assert: {
-      assertions: {
-        "categories:performance": ["error", { minScore: 0.9 }],
-        "categories:accessibility": ["error", { minScore: 1 }],
-        "categories:best-practices": ["error", { minScore: 1 }],
-        "categories:seo": ["error", { minScore: 1 }],
-        "first-contentful-paint": ["error", { maxNumericValue: 500 }],
-        "largest-contentful-paint": ["error", { maxNumericValue: 1000 }],
-        "speed-index": ["error", { maxNumericValue: 1000 }],
-        "total-blocking-time": ["error", { maxNumericValue: 300 }],
-        "cumulative-layout-shift": ["error", { maxNumericValue: 0.05 }]
-      }
+      // LHCI applies every entry whose pattern matches a URL, so the two
+      // patterns split the homepage from the other pages.
+      assertMatrix: [
+        {
+          matchingUrlPattern: `^${escapeRegExp(base)}/$`,
+          assertions: assertions({ speedIndex: 2000 })
+        },
+        {
+          matchingUrlPattern: `^${escapeRegExp(base)}/.`,
+          assertions: assertions({ speedIndex: 1000 })
+        }
+      ]
     },
     upload: {
       target: "temporary-public-storage"
