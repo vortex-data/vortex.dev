@@ -401,14 +401,15 @@ describe.skipIf(!databaseAvailable)('summary math fidelity (testcontainers Postg
     op: string,
     vortexNs: number,
     parquetNs: number,
+    dataset = 'tpch-lineitem',
   ): Promise<void> {
     await getPool().query(
       `INSERT INTO compression_times
            (measurement_id, commit_sha, dataset, dataset_variant, format, op,
             value_ns, all_runtimes_ns)
-         VALUES ($1, $2, 'tpch-lineitem', NULL, 'vortex-file-compressed', $4, $5, '{1}'::bigint[]),
-                ($3, $2, 'tpch-lineitem', NULL, 'parquet',                $4, $6, '{1}'::bigint[])`,
-      [nextId(), sha, nextId(), op, vortexNs, parquetNs],
+         VALUES ($1, $2, $7, NULL, 'vortex-file-compressed', $4, $5, '{1}'::bigint[]),
+                ($3, $2, $7, NULL, 'parquet',                $4, $6, '{1}'::bigint[])`,
+      [nextId(), sha, nextId(), op, vortexNs, parquetNs, dataset],
     );
   }
 
@@ -417,15 +418,16 @@ describe.skipIf(!databaseAvailable)('summary math fidelity (testcontainers Postg
     sha: string,
     vortexBytes: number,
     parquetBytes: number,
+    dataset = 'tpch-lineitem',
   ): Promise<void> {
     const uncompressedBytes = parquetBytes * 4;
     await getPool().query(
       `INSERT INTO compression_sizes
            (measurement_id, commit_sha, dataset, dataset_variant, format,
             value_bytes, uncompressed_bytes)
-         VALUES ($1, $2, 'tpch-lineitem', NULL, 'vortex-file-compressed', $4, $6),
-                ($3, $2, 'tpch-lineitem', NULL, 'parquet',                $5, $6)`,
-      [nextId(), sha, nextId(), vortexBytes, parquetBytes, uncompressedBytes],
+         VALUES ($1, $2, $7, NULL, 'vortex-file-compressed', $4, $6),
+                ($3, $2, $7, NULL, 'parquet',                $5, $6)`,
+      [nextId(), sha, nextId(), vortexBytes, parquetBytes, uncompressedBytes, dataset],
     );
   }
 
@@ -788,6 +790,50 @@ describe.skipIf(!databaseAvailable)('summary math fidelity (testcontainers Postg
     ]);
     expect(size.rankings[0]!.ratio).toBeCloseTo(0.25, 6);
     expect(size.rankings[1]!.ratio).toBeCloseTo(1.0, 6);
+  });
+
+  it('leaves the wide-table and sparse-wide datasets out of the compression summaries', async () => {
+    const sha = 'e'.repeat(40);
+    await insertCommit(sha, '2026-04-23T12:00:00Z');
+    await insertCompTimePair(sha, 'encode', 1_000, 3_000);
+    await insertCompSizePair(sha, 1_000, 4_000);
+    for (const dataset of ['wide table cols=1000 chunks=50 rows=1000', 'sparse-wide-nested-runs']) {
+      await insertCompTimePair(sha, 'encode', 9_000, 1_000, dataset);
+      await insertCompSizePair(sha, 9_000, 1_000, dataset);
+    }
+    // The patterns match only at the start of the name, so this dataset stays in.
+    await insertCompTimePair(sha, 'encode', 1_000, 3_000, 'taxi-sparse-wide');
+    await insertCompSizePair(sha, 1_000, 1_000, 'taxi-sparse-wide');
+
+    const time = expectDefined(
+      await collectGroupSummary({ k: 'CompressionTimeGroup' }),
+      'compression-time summary',
+    );
+    if (time.type !== 'compression') {
+      throw new Error(`expected compression summary, got ${time.type}`);
+    }
+    const vortexTime = expectDefined(
+      time.rankings.find(
+        (ranking) => ranking.operation === 'encode' && ranking.name === 'vortex-file-compressed',
+      ),
+      'Vortex compression ranking',
+    );
+    expect(vortexTime.ratio).toBeCloseTo(3.0, 6);
+
+    const size = expectDefined(
+      await collectGroupSummary({ k: 'CompressionSizeGroup' }),
+      'compression-size summary',
+    );
+    if (size.type !== 'compressionSize') {
+      throw new Error(`expected compressionSize summary, got ${size.type}`);
+    }
+    const vortexSize = expectDefined(
+      size.rankings.find((ranking) => ranking.name === 'vortex-file-compressed'),
+      'Vortex compression-size ranking',
+    );
+    expect(vortexSize.minRatio).toBeCloseTo(0.25, 6);
+    expect(vortexSize.ratio).toBeCloseTo(0.5, 6);
+    expect(vortexSize.maxRatio).toBeCloseTo(1.0, 6);
   });
 
   it('selects one commit when the latest timestamps collide', async () => {

@@ -196,6 +196,7 @@ describe('compression summaries', () => {
       ['vortex-file-compressed', 'parquet'],
       'vortex-file-compressed',
       'parquet',
+      ['wide table %', 'sparse-wide-%'],
     ];
     const sizeParams = [
       ['vortex-file-compressed', 'parquet', 'lance', 'arrow-ipc'],
@@ -203,6 +204,7 @@ describe('compression summaries', () => {
       'vortex-file-compressed',
       'parquet',
       'arrow-ipc',
+      ['wide table %', 'sparse-wide-%'],
     ];
     const calls = query.mock.calls as Array<[string, unknown[]]>;
     expect(calls[0]![1]).toEqual(timingParams);
