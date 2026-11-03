@@ -144,7 +144,7 @@ class MigrationTests(unittest.TestCase):
             conn.rollback()
         with psycopg.connect(self.target) as conn:
             self.assertEqual(conn.execute("SELECT rolconnlimit FROM pg_roles WHERE rolname = 'bench_read'")
-                             .fetchone()[0], 200)
+                             .fetchone()[0], 400)
         with psycopg.connect(self.target) as conn:
             conn.execute("INSERT INTO commits (commit_sha, timestamp, tree_sha, url) "
                          "VALUES ('a', now(), 't', 'u')")

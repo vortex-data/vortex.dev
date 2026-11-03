@@ -221,7 +221,7 @@ recovers. Each alarm needs three 5-minute periods (15 minutes) in breach.
 |---|---|---|
 | `vortex-bench-prod-free-storage-low` | `FreeStorageSpace` minimum < 2 GiB | Storage autoscaling grows the disk at 10% free, so this fires only when autoscaling has not kept up or has reached its 100 GiB ceiling. |
 | `vortex-bench-prod-cpu-high` | `CPUUtilization` average > 80% | The hourly peak was 71% in October 2026, during ingest. |
-| `vortex-bench-prod-connections-high` | `DatabaseConnections` maximum > 300 | The peak was 93 in October 2026. `max_connections` is 1,702 on `db.r7g.large`. |
+| `vortex-bench-prod-connections-high` | `DatabaseConnections` maximum > 300 | The peak was 180 on 2026-10-28, during a burst of cache fills after an ingest; on other October days it was at most 93. `max_connections` is 1,702 on `db.r7g.large`. |
 
 The RDS event subscription `vortex-bench-prod-events` forwards `failure` and
 `low storage` events for `vortex-bench-prod`.
