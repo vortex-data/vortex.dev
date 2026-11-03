@@ -132,9 +132,20 @@ describe.skipIf(!databaseAvailable || !BUILD_PRESENT)(
       // The groups are visible HTML: no Suspense boundary streams them into a
       // hidden segment that only React's inline script reveals, so a reader
       // without JavaScript sees them.
+      // The one boundary that may stream is the header's GitHub button, which
+      // waits for the star count; without JavaScript its fallback, the same
+      // button without the count, stays.
       expect(html).not.toContain('Loading benchmark summaries');
-      expect(html).not.toMatch(/<div hidden="?"? id="S:/);
-      expect(html).not.toContain('$RC(');
+      const segments = [...html.matchAll(/<div hidden="?"? id="S:[^"]*">([\s\S]*?)<\/div>/g)].map(
+        (m) => m[1] ?? '',
+      );
+      for (const segment of segments) {
+        expect(segment).toMatch(
+          /^<a class="vx-btn [^"]*vx-header-spill" href="https:\/\/github\.com\//,
+        );
+        expect(segment).not.toContain('data-group-slug');
+      }
+      expect(segments.length).toBeLessThanOrEqual(1);
       // The open-groups bootstrap precedes the first group and its finish
       // step follows the last, so each listed group opens before it paints.
       const bootstrap = html.indexOf('data-role="open-groups-bootstrap"');
