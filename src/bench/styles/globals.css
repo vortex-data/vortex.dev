@@ -695,7 +695,7 @@ main {
 
 .compression-size-group {
   color: var(--ink-muted);
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   font-weight: 600;
   text-align: center;
 }
@@ -763,7 +763,7 @@ main {
 .scores-explanation {
   margin-top: 0.45rem;
   color: var(--ink-muted);
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-style: italic;
   text-align: center;
 }

@@ -145,6 +145,19 @@ describe("bench's stylesheet on the system's tokens", () => {
     }
   });
 
+  // impeccable flags body text under 12px and functional text under 11px. The score tables'
+  // footnotes and the compression table's "vs" labels were 11.5px and 10.9px.
+  it('sets the score footnotes and column groups at 12px or more', () => {
+    for (const sel of ['.scores-explanation', '.compression-size-group']) {
+      const sizes = decls
+        .filter((d) => selectorsOf(d).some((s) => s.endsWith(sel)) && d.prop === 'font-size')
+        .map((d) => d.value);
+      expect(sizes.length, sel).toBeGreaterThan(0);
+      for (const v of sizes)
+        expect(Number.parseFloat(v), `${sel} ${v}`).toBeGreaterThanOrEqual(0.75);
+    }
+  });
+
   // Cards and popovers stand on their borders, as the system's do. Only the tooltips, which sit
   // over a chart's lines, keep a shadow.
   it('draws no shadows but on the tooltips', () => {
