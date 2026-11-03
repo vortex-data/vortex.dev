@@ -86,20 +86,6 @@ export function versusParquet(
   better: BenchPanel["better"]
 ): Versus;
 
-export type BestOther = Omit<Versus, "missing"> & {
-  /** The system compared: the best other measured system the panel shows, or null when there is none. */
-  system: string | null;
-  /** "Vortex" when Vortex is not measured, "others" when no other system is, otherwise null. */
-  missing: "Vortex" | "others" | null;
-};
-
-/** Vortex against the best other measured system the panel shows (`systems`, or every row). */
-export function versusBestOther(
-  rows: readonly BenchRow[],
-  better: BenchPanel["better"],
-  systems?: readonly string[]
-): BestOther;
-
 export function formatFactor(f: number | null): string;
 
 /** The big figure: a whole percentage below 2× ("57%"), a factor from 2× up ("5.1×"), "1×" when level, "—" when not measured. */
@@ -129,7 +115,7 @@ export function benchCaption(panels: readonly Pick<BenchPanel, "unit">[]): strin
 /** How each kind of value the panels show is made, for the caption's title and screen readers. */
 export function benchMethod(panels: readonly Pick<BenchPanel, "unit">[]): string;
 
-/** How Vortex does against Parquet, or against another system's `Versus`, in a few words: "5.1× faster", "14% larger", "as fast", "Vortex not measured". */
+/** How Vortex does against Parquet in a few words: "5.1× faster", "14% larger", "as fast", "Vortex not measured". */
 export function panelVerdict(
   kind: BenchPanel["kind"],
   vs: Pick<Versus, "factor" | "vortexWins"> & Partial<Pick<Versus, "tie" | "missing">>
@@ -148,17 +134,12 @@ export type ResultsCell = {
   ours: boolean;
   /** Whether the cell holds the row's best measured score. Every cell that ties for it is best. */
   best: boolean;
-  /** Whether the cell is the best other system's, the one the verdict compares Vortex with. */
-  versus: boolean;
 };
 
 export type ResultsRow = {
   name: string;
   cells: ResultsCell[];
-  /** How Vortex does against the best other system: "3.1× faster", "14% larger", "no other system measured". */
   verdict: string;
-  /** The system the verdict compares Vortex with, or null when there is none. */
-  versus: string | null;
   /** Where the figures come from when they are not bench's, as the row head's hover title and screen-reader text. */
   source: PanelSource | null;
 };

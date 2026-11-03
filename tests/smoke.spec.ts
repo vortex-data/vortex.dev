@@ -203,8 +203,7 @@ test.describe("home bands", () => {
   });
 
   // Home E2: the model card's motif. Each row underlines its best figure,
-  // which is mostly Vortex's, and says how Vortex does against the best
-  // other system, whose figure is dotted.
+  // which is mostly Vortex's, and says how Vortex does against Parquet.
   // Every cell keeps its full unit as its hover title. Lance cannot run in
   // cuDF, so it is N/A there, and the hand-kept GPU row names its source.
   test("each row marks its best figure, and every cell names its system and full unit", async ({
@@ -218,9 +217,6 @@ test.describe("home bands", () => {
         name: tr.querySelector("th")?.firstChild?.textContent ?? "",
         best: tr.querySelectorAll("td.is-best").length,
         verdict: tr.querySelector("td.is-verdict")?.textContent ?? "",
-        versus: [...tr.querySelectorAll("td.is-versus")].map(
-          (td) => td.getAttribute("title")?.split(":")[0] ?? ""
-        ),
         titles: [...tr.querySelectorAll("td:not(.is-verdict)")].map(
           (td) => td.getAttribute("title") ?? ""
         )
@@ -237,10 +233,8 @@ test.describe("home bands", () => {
     for (const r of rows) {
       expect(r.best, r.name).toBeGreaterThanOrEqual(1);
       expect(r.verdict, r.name).toMatch(
-        /^(\d[\d.]*(×|%) (faster|slower|smaller|larger)|as fast|the same size) than (Parquet|Lance|Arrow)$/
+        /^(\d[\d.]*(×|%) (faster|slower|smaller|larger)|as fast|the same size|\w+ not measured)$/
       );
-      expect(r.versus, r.name).toHaveLength(1);
-      expect(r.verdict.endsWith(` than ${r.versus[0]}`), r.name).toBe(true);
       for (const t of r.titles)
         expect(t, r.name).toMatch(/^(Vortex|Parquet|Lance|Arrow): \S/);
     }
@@ -842,10 +836,8 @@ test.describe("results table on phones", () => {
             .filter((th) => getComputedStyle(th).display !== "none")
             .map((th) => th.textContent)
         }));
-        expect(m.heads).toEqual(["Benchmark", "Vortex", "vs best other"]);
+        expect(m.heads).toEqual(["Benchmark", "Vortex", "vs Parquet"]);
         expect(m.right).toBeLessThanOrEqual(width);
-        // The other columns are hidden, so the verdict names the system.
-        await expect(table.locator(".vx-results-than").first()).toBeVisible();
       });
     });
   }
