@@ -7,8 +7,11 @@ import { expect, type Page, test } from "@playwright/test";
  * The site's pages run against `BASE_URL`, like the smoke specs. bench's pages
  * run only when `BENCH_URL` names where bench starts: `http://host/bench` on a
  * preview or a local build, or `https://bench.vortex.dev`. bench needs its
- * database to render, so CI checks bench on the pull request's Vercel preview
- * with `--grep @bench` (see `.github/workflows/lighthouse.yml`).
+ * database to render, so CI runs both on the pull request's Vercel preview
+ * with `--grep @axe` (see `.github/workflows/lighthouse.yml`), and the smoke
+ * run in ci.yml leaves them out with `--grep-invert @axe`. The tag sits in
+ * each title, not in an options object, which Biome's Playwright rule
+ * rejects.
  *
  * A page fails on any violation that axe rates serious or critical, against
  * WCAG 2.1 A and AA, except the known ones below. Moderate and minor ones are
@@ -60,7 +63,7 @@ async function expectNoSeriousViolations(
   expect(report, `${label}: serious or critical axe violations`).toEqual([]);
 }
 
-test.describe("site", () => {
+test.describe("site @axe", () => {
   let postSlug: string | null = null;
 
   test.beforeAll(async () => {
@@ -100,9 +103,7 @@ const BENCH_KNOWN: Known[] = [
   { id: "nested-interactive", target: /(^|[ >])summary$/ }
 ];
 
-// The tag sits in the title, not in an options object, which Biome's Playwright
-// rule rejects.
-test.describe("bench @bench", () => {
+test.describe("bench @axe", () => {
   const benchUrl = process.env.BENCH_URL?.replace(/\/$/, "");
   test.skip(!benchUrl, "BENCH_URL is not set");
   const at = (path: string) => `${benchUrl}${path === "/" ? "/" : path}`;

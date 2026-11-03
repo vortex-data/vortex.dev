@@ -1,16 +1,13 @@
 name: Lighthouse
 
+# Lighthouse and axe for both sites, on each pull request's Vercel preview.
+# bench renders from its database, which only a deployment has, so one job
+# audits the site and bench together there, instead of a local build.
 on:
-  # Every pull request starts this workflow, and the `changes` job skips each
-  # site's audit when the change can't affect that site. A skipped job reports
-  # success, so "Lighthouse audit" can be a required check; a workflow
-  # filtered out by `paths` would never report and would block the merge.
   pull_request:
-  workflow_dispatch:
 
 permissions:
   contents: read
-  pull-requests: write
 
 # Including `github.workflow` in the key keeps this from colliding with any
 # other workflow that happens to share a ref-based group prefix.
@@ -19,122 +16,12 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  changes:
-    name: Detect changed paths
-    runs-on: ubuntu-26.04
-    timeout-minutes: 5
-    outputs:
-      site: ${{ steps.paths.outputs.site }}
-      bench: ${{ steps.paths.outputs.bench }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
-        with:
-          fetch-depth: 2
-          persist-credentials: false
-      - id: paths
-        uses: ./.github/actions/changed-paths
-
-  lighthouse:
-    name: Lighthouse audit
-    needs: changes
-    # Lighthouse audits the marketing site only. Skipped, which counts as
-    # passing, when only bench's own files changed. If the path check itself
-    # fails, run anyway rather than skip.
-    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.site == 'true') }}
-    runs-on: ubuntu-26.04
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
-
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6  # v2.2.0
-        with:
-          bun-version: 1.4.3
-
-      # Bun is the package manager and script runner, but Next.js (and the
-      # lhci binary) run on Node. The runner image is pinned (ubuntu-24.04)
-      # but Node version inside it can still drift; pin via .nvmrc so a
-      # future GitHub bump can't break the audit silently.
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
-        with:
-          node-version-file: .nvmrc
-
-      # Cache Bun's resolved package store keyed on the lockfile hash.
-      - name: Cache Bun install cache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
-        with:
-          path: ~/.bun/install/cache
-          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-bun-
-
-      # Cache Next.js's incremental build output. Keyed on lockfile + commit
-      # SHA so the exact-key match is always per-commit fresh; restore-keys
-      # fall back to any previous build on the same lockfile so most CI runs
-      # hit a cache and skip rebuilding unchanged webpack modules.
-      - name: Cache Next.js build cache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
-        with:
-          path: ${{ github.workspace }}/.next/cache
-          key: ${{ runner.os }}-nextjs-${{ hashFiles('bun.lock') }}-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-nextjs-${{ hashFiles('bun.lock') }}-
-            ${{ runner.os }}-nextjs-
-
-      - name: Install
-        run: bun install --frozen-lockfile
-
-      - name: Build
-        run: bun run build
-
-      # The action handles starting the server (per lighthouserc.cjs's
-      # `startServerCommand`), running Lighthouse against each URL, asserting
-      # the thresholds, and uploading reports to temporary public storage.
-      # Threshold rationale lives in lighthouserc.cjs alongside the values.
-      - name: Lighthouse CI
-        id: lighthouse
-        uses: treosh/lighthouse-ci-action@3e7e23fb74242897f95c0ba9cabad3d0227b9b18  # v12
-        with:
-          configPath: ./lighthouserc.cjs
-          uploadArtifacts: true
-          temporaryPublicStorage: true
-
-      # Fork PRs, and Dependabot's PRs from this repository, get a read-only
-      # GITHUB_TOKEN that can't post comments. A failed comment must not fail
-      # this required check, so only same-repository, non-Dependabot PRs get
-      # one, and both comment steps are non-fatal for any other token limit.
-      # `if: always()` so the PR comment still posts when assertions fail —
-      # reviewers can see *which* category regressed without digging through
-      # the workflow log.
-      - name: Format PR comment
-        if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' && steps.lighthouse.outputs.links != ''
-        id: lh-comment
-        continue-on-error: true
-        env:
-          LINKS_JSON: ${{ steps.lighthouse.outputs.links }}
-        run: |
-          {
-            echo 'body<<COMMENT_EOF'
-            scripts/lighthouse-comment.sh 'Lighthouse audit'
-            echo 'COMMENT_EOF'
-          } >> "$GITHUB_OUTPUT"
-
-      - name: Post or update PR comment
-        if: github.event_name == 'pull_request' && steps.lh-comment.outputs.body != ''
-        continue-on-error: true
-        uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88  # v3.0.5
-        with:
-          header: lighthouse
-          message: ${{ steps.lh-comment.outputs.body }}
-
-  bench:
-    name: "Bench: Lighthouse and axe (preview)"
-    needs: changes
-    # bench needs its database to render, so this job audits the pull
-    # request's Vercel preview instead of a local build. It reaches the
-    # preview through scripts/preview-proxy.mjs, which holds the bypass
-    # secret. Skipped, which counts as passing, when the change can't affect
-    # bench, and on PRs from forks and Dependabot, which get no secrets.
-    if: ${{ !cancelled() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' && (needs.changes.result != 'success' || needs.changes.outputs.bench == 'true') }}
+  audit:
+    name: Lighthouse and axe
+    # Fork PRs and Dependabot's PRs get no secrets, so they can't reach the
+    # protected preview. The job is skipped for them, which counts as passing
+    # for this required check.
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
     runs-on: ubuntu-26.04
     timeout-minutes: 40
     permissions:
@@ -152,6 +39,8 @@ jobs:
         with:
           bun-version: 1.4.3
 
+      # Bun is the package manager and script runner; the proxy, lhci and
+      # Playwright run on Node, pinned by .nvmrc.
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
         with:
           node-version-file: .nvmrc
@@ -198,6 +87,8 @@ jobs:
           echo "::error::No Vercel preview of ${SHA} after 20 minutes."
           exit 1
 
+      # The proxy holds the bypass secret and adds it only to requests for the
+      # preview; see scripts/preview-proxy.mjs.
       - name: Start the preview proxy
         env:
           VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
@@ -212,25 +103,34 @@ jobs:
           curl -s "${PROXY}/bench/api/health" | head -c 500
           exit 1
 
-      - name: Pick a chart page
+      # Request each page once, so no Lighthouse run measures a cold start.
+      - name: Pick a chart page and warm the preview
         id: chart
         run: |
           slug="$(curl -sf "${PROXY}/bench/api/groups" \
             | jq -r '[.groups[] | select(.charts | length > 0)][0].charts[0].slug // empty')"
           if [ -n "${slug}" ]; then echo "path=/chart/${slug}" >> "$GITHUB_OUTPUT"; fi
+          for path in / /blog /bench ${slug:+/bench/chart/${slug}}; do
+            curl -s -o /dev/null -w "%{http_code} %{time_total}s ${path}\n" "${PROXY}${path}"
+          done
 
+      # The action runs Lighthouse against each URL in lighthouserc.cjs,
+      # asserts the thresholds and uploads the reports to temporary public
+      # storage. Threshold rationale lives in lighthouserc.cjs.
       - name: Lighthouse CI
         id: lighthouse
         uses: treosh/lighthouse-ci-action@3e7e23fb74242897f95c0ba9cabad3d0227b9b18  # v12
         env:
-          BENCH_URL: ${{ env.PROXY }}/bench
+          BASE_URL: ${{ env.PROXY }}
           BENCH_CHART_PATH: ${{ steps.chart.outputs.path }}
         with:
-          configPath: ./lighthouserc.bench.cjs
+          configPath: ./lighthouserc.cjs
           uploadArtifacts: true
-          artifactName: lighthouse-results-bench
           temporaryPublicStorage: true
 
+      # A failed comment must not fail this required check, so both comment
+      # steps are non-fatal. `if: always()` so the comment still posts when
+      # assertions fail, and reviewers can see which category regressed.
       - name: Format PR comment
         if: always() && steps.lighthouse.outputs.links != ''
         id: lh-comment
@@ -240,7 +140,7 @@ jobs:
         run: |
           {
             echo 'body<<COMMENT_EOF'
-            scripts/lighthouse-comment.sh 'Lighthouse audit: bench (preview)'
+            scripts/lighthouse-comment.sh 'Lighthouse audit'
             echo 'COMMENT_EOF'
           } >> "$GITHUB_OUTPUT"
 
@@ -249,11 +149,11 @@ jobs:
         continue-on-error: true
         uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88  # v3.0.5
         with:
-          header: lighthouse-bench
+          header: lighthouse
           message: ${{ steps.lh-comment.outputs.body }}
 
-      # The same browsers as the site's smoke tests in ci.yml, from the same
-      # cache.
+      # The same browsers as the smoke tests in ci.yml, from the same cache,
+      # keyed on the installed Playwright version and the runner image.
       - name: Get Playwright version
         if: always() && steps.chart.outcome == 'success'
         id: playwright-version
@@ -285,13 +185,14 @@ jobs:
       - name: axe
         if: always() && steps.chart.outcome == 'success'
         env:
+          BASE_URL: ${{ env.PROXY }}
           BENCH_URL: ${{ env.PROXY }}/bench
-        run: bunx playwright test tests/a11y.spec.ts --grep @bench
+        run: bunx playwright test --grep @axe
 
       - name: Upload Playwright report
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
-          name: playwright-report-bench
+          name: playwright-report
           path: playwright-report/
           retention-days: 7
