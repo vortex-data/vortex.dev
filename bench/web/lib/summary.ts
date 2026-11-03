@@ -780,6 +780,8 @@ function compressionSizeRankings(rows: readonly CompressionSizeSample[]): Compre
  * and compares it with Parquet from the same commit. Arrow IPC uses its newest value for each
  * dataset and Parquet from the same commit. Compression ratios use the newest available decoded
  * Arrow memory size for each dataset. The size commit does not need to match.
+ * The synthetic `wide table` and `sparse-wide` datasets are left out: they still chart in the
+ * group, but not in its summary.
  * `uncompressed_bytes` is read as a plain column, so migration 009 must be applied before a web
  * deploy that includes this query. A JSON field lookup would tolerate an older schema, but it
  * serializes whole rows and timed out in production, so it was dropped once 009 was applied there.
@@ -806,6 +808,7 @@ async function compressionSizeSamples(): Promise<CompressionSizeSample[]> {
          AND s.value_bytes > 0
          AND p.value_bytes > 0
          AND lower(s.dataset) NOT LIKE '%wide table%'
+         AND lower(s.dataset) NOT LIKE '%sparse-wide%'
     ), snapshot_policy AS (
       SELECT format,
              CASE WHEN format = ANY($2::text[]) THEN $3 ELSE format END AS anchor_format
@@ -850,6 +853,7 @@ async function compressionSizeSamples(): Promise<CompressionSizeSample[]> {
        WHERE s.format = $4
          AND s.uncompressed_bytes::float8 > 0
          AND lower(s.dataset) NOT LIKE '%wide table%'
+         AND lower(s.dataset) NOT LIKE '%sparse-wide%'
        ORDER BY s.dataset, s.dataset_variant NULLS FIRST,
                 c.timestamp DESC, s.commit_sha DESC
     )
