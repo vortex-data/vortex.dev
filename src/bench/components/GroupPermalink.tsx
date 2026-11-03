@@ -5,9 +5,13 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { getGroupSnapshot } from '@/lib/chart-store';
-import { GROUP_FILTER_PARAM, HIDDEN_SERIES_PARAM, SHOWN_SERIES_PARAM } from '@/lib/group-filter';
-import { CheckIcon, LinkIcon } from '@/components/icons';
+import { getGroupSnapshot } from '@/bench/lib/chart-store';
+import {
+  GROUP_FILTER_PARAM,
+  HIDDEN_SERIES_PARAM,
+  SHOWN_SERIES_PARAM,
+} from '@/bench/lib/group-filter';
+import { CheckIcon, LinkIcon } from '@/bench/components/icons';
 
 /** How long the copied-confirmation state stays visible, in milliseconds. */
 const COPIED_FEEDBACK_MS = 1500;

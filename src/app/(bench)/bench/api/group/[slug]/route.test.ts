@@ -6,7 +6,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 // `groupKeyFromSlug` validates the 400 path; a thrown error is a bad slug.
-vi.mock('@/lib/slug', () => ({
+vi.mock('@/bench/lib/slug', () => ({
   groupKeyFromSlug: (slug: string) => {
     if (slug === 'bad') {
       throw new Error('invalid');
@@ -21,7 +21,7 @@ const cachedDefaultGroupCharts = vi.fn<(slug: string) => Promise<Bundle>>(async 
   name: 'cached',
   charts: [],
 }));
-vi.mock('@/lib/data-cache', () => ({
+vi.mock('@/bench/lib/data-cache', () => ({
   cachedDefaultGroupCharts: (slug: string) => cachedDefaultGroupCharts(slug),
 }));
 
@@ -29,11 +29,11 @@ const collectGroupCharts = vi.fn<(key: unknown, window: unknown) => Promise<Bund
   name: 'direct',
   charts: [],
 }));
-vi.mock('@/lib/queries', () => ({
+vi.mock('@/bench/lib/queries', () => ({
   collectGroupCharts: (key: unknown, window: unknown) => collectGroupCharts(key, window),
 }));
 
-import { GET } from '@/app/api/group/[slug]/route';
+import { GET } from '@/app/(bench)/bench/api/group/[slug]/route';
 
 function get(slug: string, n: string | null): Promise<Response> {
   const query = n === null ? '' : `?n=${encodeURIComponent(n)}`;

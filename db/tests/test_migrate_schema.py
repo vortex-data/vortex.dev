@@ -15,8 +15,8 @@ import uuid
 import psycopg
 from psycopg.conninfo import make_conninfo
 
-ROOT = Path(__file__).resolve().parents[2]
-RUNNER = ROOT / "scripts/migrate-schema.py"
+ROOT = Path(__file__).resolve().parents[1]
+RUNNER = ROOT / "migrate-schema.py"
 
 
 class MigrationTests(unittest.TestCase):

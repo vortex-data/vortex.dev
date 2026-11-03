@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { groupAnchor, groupAnchors } from '@/lib/anchor';
+import { groupAnchor, groupAnchors } from '@/bench/lib/anchor';
 
 describe('groupAnchor', () => {
   it('slugifies real group display names into readable anchors', () => {

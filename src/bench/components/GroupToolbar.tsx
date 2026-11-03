@@ -5,8 +5,8 @@
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 
-import { FilterIcon } from '@/components/icons';
-import { DEFAULT_VISIBLE, type FilterUniverse } from '@/lib/chart-format';
+import { FilterIcon } from '@/bench/components/icons';
+import { DEFAULT_VISIBLE, type FilterUniverse } from '@/bench/lib/chart-format';
 import {
   applyGroupMacro,
   clearGroupSeriesFilter,
@@ -19,7 +19,7 @@ import {
   subscribeGroup,
   subscribeGlobalFilter,
   toggleGroupSeries,
-} from '@/lib/chart-store';
+} from '@/bench/lib/chart-store';
 
 /**
  * The per-group toolbar between a group's summary card and its chart grid, the

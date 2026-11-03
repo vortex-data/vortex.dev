@@ -12,10 +12,10 @@ vi.mock('next/cache', () => ({
 
 // Mock data-cache so the module-level `unstable_cache` calls in that file do not
 // execute during this test (which only mocks `revalidateTag`, not `unstable_cache`).
-vi.mock('@/lib/data-cache', () => ({ BENCH_DATA_TAG: 'bench-data' }));
+vi.mock('@/bench/lib/data-cache', () => ({ BENCH_DATA_TAG: 'bench-data' }));
 
-import { POST } from '@/app/api/revalidate/route';
-import { BENCH_DATA_TAG } from '@/lib/data-cache';
+import { POST } from '@/app/(bench)/bench/api/revalidate/route';
+import { BENCH_DATA_TAG } from '@/bench/lib/data-cache';
 
 function post(token: string | null): Request {
   const headers = new Headers();

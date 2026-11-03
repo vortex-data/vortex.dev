@@ -5,7 +5,7 @@
  * Runs against a live server (default http://localhost:3000, override with
  * `BASE`). Designed to be run after `bun run start` — checks sitemap, robots,
  * RSS feeds, OG images, canonicals, JSON-LD on posts, internal links, and
- * theme-token parity between `src/lib/theme.ts` and `src/app/globals.css`.
+ * theme-token parity between `src/lib/theme.ts` and `src/app/(site)/globals.css`.
  *
  * Usage:
  *   bun run start &
@@ -390,7 +390,7 @@ async function checkThemeParity(): Promise<void> {
   let css: string;
   try {
     css = await readFile(
-      path.join(process.cwd(), "src", "app", "globals.css"),
+      path.join(process.cwd(), "src", "app", "(site)", "globals.css"),
       "utf-8"
     );
   } catch (err) {

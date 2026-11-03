@@ -6,7 +6,7 @@ import {
   seedActiveFromAllowlist,
   type FilterUniverse,
   type GlobalFilterState,
-} from '@/lib/chart-format';
+} from '@/bench/lib/chart-format';
 
 // ---------------------------------------------------------------------------
 // Global filter store.

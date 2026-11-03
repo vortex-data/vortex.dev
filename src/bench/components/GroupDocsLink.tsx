@@ -3,11 +3,11 @@
 
 'use client';
 
-import { BookIcon } from '@/components/icons';
+import { BookIcon } from '@/bench/components/icons';
 
 /**
  * The "what does this measure?" link in a group's summary header, pointing at
- * the benchmark's explainer doc in the monorepo (see [`@/lib/benchmark-docs`]).
+ * the benchmark's explainer doc in the monorepo (see [`@/bench/lib/benchmark-docs`]).
  * It is the long-form counterpart to the info tooltip's one-liner, and the same
  * doc the monorepo's PR benchmark comment links.
  *

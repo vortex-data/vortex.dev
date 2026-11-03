@@ -3,11 +3,11 @@
 
 import { NextResponse } from 'next/server';
 
-import { READ_API_CACHE_CONTROL } from '@/lib/cache';
-import { cachedDefaultChartPayload } from '@/lib/data-cache';
-import { chartPayload } from '@/lib/queries';
-import { chartKeyFromSlug, type ChartKey } from '@/lib/slug';
-import { DEFAULT_COMMIT_WINDOW, parseCommitWindow } from '@/lib/window';
+import { READ_API_CACHE_CONTROL } from '@/bench/lib/cache';
+import { cachedDefaultChartPayload } from '@/bench/lib/data-cache';
+import { chartPayload } from '@/bench/lib/queries';
+import { chartKeyFromSlug, type ChartKey } from '@/bench/lib/slug';
+import { DEFAULT_COMMIT_WINDOW, parseCommitWindow } from '@/bench/lib/window';
 
 /**
  * `GET /api/chart/{slug}` returns the [`ChartResponse`] JSON for one chart.

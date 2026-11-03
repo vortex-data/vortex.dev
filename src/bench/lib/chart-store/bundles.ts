@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
-import { chartHasRecentData, FETCH_TIMEOUT_MS } from '@/lib/chart-format';
-import { unlessPageLeft } from '@/lib/page-leave';
-import type { ChartResponse, GroupChartsResponse } from '@/lib/queries';
+import { chartHasRecentData, FETCH_TIMEOUT_MS } from '@/bench/lib/chart-format';
+import { unlessPageLeft } from '@/bench/lib/page-leave';
+import type { ChartResponse, GroupChartsResponse } from '@/bench/lib/queries';
 
 import { noteChartRecentData, noteGroupSeries } from './group-store';
 import { bundleQueue, type QueueEntry } from './queues';

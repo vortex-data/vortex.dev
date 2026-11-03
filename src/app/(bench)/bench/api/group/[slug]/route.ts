@@ -3,11 +3,11 @@
 
 import { NextResponse } from 'next/server';
 
-import { READ_API_CACHE_CONTROL } from '@/lib/cache';
-import { cachedDefaultGroupCharts } from '@/lib/data-cache';
-import { collectGroupCharts } from '@/lib/queries';
-import { groupKeyFromSlug, type GroupKey } from '@/lib/slug';
-import { DEFAULT_COMMIT_WINDOW, parseCommitWindow } from '@/lib/window';
+import { READ_API_CACHE_CONTROL } from '@/bench/lib/cache';
+import { cachedDefaultGroupCharts } from '@/bench/lib/data-cache';
+import { collectGroupCharts } from '@/bench/lib/queries';
+import { groupKeyFromSlug, type GroupKey } from '@/bench/lib/slug';
+import { DEFAULT_COMMIT_WINDOW, parseCommitWindow } from '@/bench/lib/window';
 
 /**
  * `GET /api/group/{slug}` returns the [`GroupChartsResponse`] for one group: its

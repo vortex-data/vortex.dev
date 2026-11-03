@@ -13,7 +13,7 @@ import {
   URL_WRITE_DELAY_MS,
   urlWritePending,
   writeUrlNow,
-} from '@/lib/url-writes';
+} from '@/bench/lib/url-writes';
 
 const setHash = (hash: string) => (url: URL) => {
   url.hash = hash;

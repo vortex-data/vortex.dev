@@ -32,7 +32,7 @@ import {
 } from './test-harness';
 import { parseCommitWindow } from './window';
 import { getPool, resetPool } from './db';
-import { GET } from '@/app/api/chart/[slug]/route';
+import { GET } from '@/app/(bench)/bench/api/chart/[slug]/route';
 
 const QUERY_Q1: ChartKey = {
   k: 'QueryMeasurement',

@@ -5,14 +5,14 @@
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 
-import { ChartController } from '@/components/chart/controller';
+import { ChartController } from '@/bench/components/chart/controller';
 import {
   chartAriaLabel,
   chartPriority,
   LAZY_HYDRATION_ROOT_MARGIN,
   throttle,
   ZOOM_THROTTLE_MS,
-} from '@/lib/chart-format';
+} from '@/bench/lib/chart-format';
 import {
   abortGroupBundle,
   chartIsHiddenAsEmpty,
@@ -22,8 +22,8 @@ import {
   getGroupSnapshot,
   subscribeGlobalFilter,
   subscribeGroup,
-} from '@/lib/chart-store';
-import type { ChartResponse } from '@/lib/queries';
+} from '@/bench/lib/chart-store';
+import type { ChartResponse } from '@/bench/lib/queries';
 
 /**
  * The per-chart client island, the React port of the per-card layer of

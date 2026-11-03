@@ -8,11 +8,11 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { Chart } from '@/components/Chart';
-import { lineChartConfig } from '@/components/chart/config';
-import type { CardState } from '@/components/chart/types';
-import { IDENTITY_UNIT, visibleRange } from '@/lib/chart-format';
-import { resetGroup, resetPayloadCache, toggleGroupSeries } from '@/lib/chart-store';
+import { Chart } from '@/bench/components/Chart';
+import { lineChartConfig } from '@/bench/components/chart/config';
+import type { CardState } from '@/bench/components/chart/types';
+import { IDENTITY_UNIT, visibleRange } from '@/bench/lib/chart-format';
+import { resetGroup, resetPayloadCache, toggleGroupSeries } from '@/bench/lib/chart-store';
 
 // A Chart.js stand-in with the parts the controller touches after it
 // constructs a chart: the data, the options and dataset visibility.
@@ -33,7 +33,7 @@ class StubChart {
   destroy(): void {}
 }
 
-vi.mock('@/lib/chart-js', () => ({
+vi.mock('@/bench/lib/chart-js', () => ({
   loadChartJs: () => Promise.resolve(StubChart),
 }));
 

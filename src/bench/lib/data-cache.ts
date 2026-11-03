@@ -3,8 +3,8 @@
 
 import { unstable_cache } from 'next/cache';
 
-import { retryGroupCacheFill, withGroupCacheFillLock } from '@/lib/cache-fill';
-import type { FilterUniverse } from '@/lib/chart-format';
+import { retryGroupCacheFill, withGroupCacheFillLock } from '@/bench/lib/cache-fill';
+import type { FilterUniverse } from '@/bench/lib/chart-format';
 import {
   chartPayload,
   collectFilterUniverse,
@@ -13,9 +13,14 @@ import {
   type ChartResponse,
   type Group,
   type GroupChartsResponse,
-} from '@/lib/queries';
-import { chartKeyFromSlug, chartKeyToSlug, groupKeyFromSlug, groupKeyToSlug } from '@/lib/slug';
-import { DEFAULT_COMMIT_WINDOW } from '@/lib/window';
+} from '@/bench/lib/queries';
+import {
+  chartKeyFromSlug,
+  chartKeyToSlug,
+  groupKeyFromSlug,
+  groupKeyToSlug,
+} from '@/bench/lib/slug';
+import { DEFAULT_COMMIT_WINDOW } from '@/bench/lib/window';
 
 /**
  * The single revalidation tag shared by every cached read below. A successful

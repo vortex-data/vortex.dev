@@ -10,7 +10,7 @@ import type {
   Plugin,
 } from 'chart.js';
 
-import { displaySeriesLabel, parsePrNumber, type VisibleRange } from '@/lib/chart-format';
+import { displaySeriesLabel, parsePrNumber, type VisibleRange } from '@/bench/lib/chart-format';
 
 import { externalTooltipHandler } from './tooltip';
 import type { BenchDataset, CardState } from './types';

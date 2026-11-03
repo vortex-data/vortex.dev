@@ -40,7 +40,7 @@ import {
   URL_WRITE_DELAY_MS,
   type UrlEdit,
   writeUrlNow,
-} from '@/lib/url-writes';
+} from '@/bench/lib/url-writes';
 
 /** One group section on the page: its readable anchor (the section `id`) and
  * its opaque API slug (`data-group-slug`). */

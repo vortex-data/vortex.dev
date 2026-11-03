@@ -7,10 +7,10 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { FilterBar } from '@/components/FilterBar';
-import { parseFilterCsv, seriesPassesFilter } from '@/lib/chart-format';
-import { getGlobalFilterSnapshot } from '@/lib/chart-store';
-import { resetUrlWrites, URL_WRITE_DELAY_MS } from '@/lib/url-writes';
+import { FilterBar } from '@/bench/components/FilterBar';
+import { parseFilterCsv, seriesPassesFilter } from '@/bench/lib/chart-format';
+import { getGlobalFilterSnapshot } from '@/bench/lib/chart-store';
+import { resetUrlWrites, URL_WRITE_DELAY_MS } from '@/bench/lib/url-writes';
 
 /** Fake the write scheduler's timers and its clock, `performance.now()`. */
 function useFakeClock(): void {

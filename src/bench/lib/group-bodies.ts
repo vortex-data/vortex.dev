@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
-import { initGroupFilter } from '@/lib/chart-store';
+import { initGroupFilter } from '@/bench/lib/chart-store';
 
 /**
  * Page-load bookkeeping for the landing page's group bodies ([`GroupBody`]).

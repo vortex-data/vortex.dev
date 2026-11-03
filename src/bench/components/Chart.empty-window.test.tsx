@@ -7,10 +7,10 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { Chart } from '@/components/Chart';
-import { resetGroup, resetPayloadCache, setShowEmptyCharts } from '@/lib/chart-store';
+import { Chart } from '@/bench/components/Chart';
+import { resetGroup, resetPayloadCache, setShowEmptyCharts } from '@/bench/lib/chart-store';
 
-vi.mock('@/lib/chart-js', () => ({
+vi.mock('@/bench/lib/chart-js', () => ({
   loadChartJs: () => new Promise(() => {}),
 }));
 

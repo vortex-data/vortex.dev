@@ -9,7 +9,7 @@ describe("site components", () => {
     const files = readdirSync(src, {
       recursive: true,
       encoding: "utf8"
-    }).filter((f) => /\.tsx?$/.test(f));
+    }).filter((f) => /\.tsx?$/.test(f) && !f.includes(".test."));
     assert.ok(files.length > 10);
     for (const f of files) {
       const code = readFileSync(new URL(f, src), "utf8")

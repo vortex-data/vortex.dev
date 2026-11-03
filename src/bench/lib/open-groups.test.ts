@@ -5,7 +5,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { groupAnchors } from '@/lib/anchor';
+import { groupAnchors } from '@/bench/lib/anchor';
 import {
   cancelOpenFragmentSync,
   flushOpenFragmentSync,
@@ -26,7 +26,7 @@ import {
   setAllGroupsOpen,
   syncOpenFragment,
   takeOpenGroupsBootstrap,
-} from '@/lib/open-groups';
+} from '@/bench/lib/open-groups';
 
 /** Fake the write scheduler's timers and its clock, `performance.now()`. */
 function useFakeClock(): void {

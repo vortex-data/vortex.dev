@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
-import { seriesPassesFilter, seriesPassesGroupFilter } from '@/lib/chart-format';
-import type { SeriesTag } from '@/lib/queries';
+import { seriesPassesFilter, seriesPassesGroupFilter } from '@/bench/lib/chart-format';
+import type { SeriesTag } from '@/bench/lib/queries';
 
 import { getGlobalFilterSnapshot, type GlobalFilterSnapshot } from './global-filter';
 

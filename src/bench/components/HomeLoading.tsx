@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
-import { Footer } from '@/components/Footer';
-import { Header } from '@/components/Header';
+import { Footer } from '@/bench/components/Footer';
+import { Header } from '@/bench/components/Header';
 
 /**
  * The landing page's loading view, streamed at once when its data is slow to

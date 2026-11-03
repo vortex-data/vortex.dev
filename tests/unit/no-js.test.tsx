@@ -8,7 +8,7 @@ import { LogoBanner } from "@/components/logo-banner";
 import { installTabs } from "@/lib/install";
 
 const css = readFileSync(
-  new URL("../../src/app/globals.css", import.meta.url),
+  new URL("../../src/app/(site)/globals.css", import.meta.url),
   "utf8"
 );
 

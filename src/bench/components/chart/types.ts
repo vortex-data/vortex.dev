@@ -3,8 +3,8 @@
 
 import type { Chart as ChartJs, ChartDataset } from 'chart.js';
 
-import type { DisplayUnit, NormalizedChartPayload } from '@/lib/chart-format';
-import type { QueueEntry } from '@/lib/chart-store';
+import type { DisplayUnit, NormalizedChartPayload } from '@/bench/lib/chart-format';
+import type { QueueEntry } from '@/bench/lib/chart-store';
 
 /** A Chart.js line dataset extended with the bench-specific carry-alongs. */
 export interface BenchDataset extends ChartDataset<'line', (number | null)[]> {

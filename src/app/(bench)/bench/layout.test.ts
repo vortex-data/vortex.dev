@@ -8,12 +8,12 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 
-import RootLayout from '@/app/layout';
+import RootLayout from '@/app/(bench)/bench/layout';
 
 // The stylesheets are Next.js's to build; loading them here would run bench's
 // PostCSS config through Vite.
-vi.mock('./globals.css', () => ({}));
-vi.mock('./vortex-skin.css', () => ({}));
+vi.mock('@/bench/styles/globals.css', () => ({}));
+vi.mock('@/bench/styles/vortex-skin.css', () => ({}));
 
 const html = renderToStaticMarkup(createElement(RootLayout, null, createElement('main')));
 

@@ -7,16 +7,16 @@ import { act, StrictMode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 
-import { LandingState } from '@/components/LandingState';
-import { OPEN_GROUPS_BOOTSTRAP, OPEN_GROUPS_FINISH } from '@/components/OpenGroupsScript';
-import { noteGroupBodyOpen, resetGroupBodies } from '@/lib/group-bodies';
+import { LandingState } from '@/bench/components/LandingState';
+import { OPEN_GROUPS_BOOTSTRAP, OPEN_GROUPS_FINISH } from '@/bench/components/OpenGroupsScript';
+import { noteGroupBodyOpen, resetGroupBodies } from '@/bench/lib/group-bodies';
 import {
   OPEN_FRAGMENT_SYNC_DELAY_MS,
   resetOpenFragmentSync,
   setAllGroupsOpen,
   takeOpenGroupsBootstrap,
-} from '@/lib/open-groups';
-import type { NavigationKind, SavedScroll } from '@/lib/scroll-restore';
+} from '@/bench/lib/open-groups';
+import type { NavigationKind, SavedScroll } from '@/bench/lib/scroll-restore';
 
 // Three groups in page order, as the landing page renders them.
 const GROUPS = [

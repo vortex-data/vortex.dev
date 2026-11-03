@@ -4,7 +4,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
-import { Chart } from '@/components/Chart';
+import { Chart } from '@/bench/components/Chart';
 
 describe('Chart (server-rendered card markup)', () => {
   const html = renderToStaticMarkup(

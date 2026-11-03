@@ -4,9 +4,9 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { ListIcon } from '@/components/icons';
+import { ListIcon } from '@/bench/components/icons';
 
-import { openAndScrollTo, syncOpenFragment } from '@/lib/open-groups';
+import { openAndScrollTo, syncOpenFragment } from '@/bench/lib/open-groups';
 
 /**
  * A group entry for the jump menu: its display name and the `data-group-slug`

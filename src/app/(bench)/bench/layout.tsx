@@ -4,11 +4,11 @@
 import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
 
-import { FONTS_CSS } from '@/lib/fonts';
+import { FONTS_CSS } from '@/bench/lib/fonts';
 
-import './globals.css';
+import '@/bench/styles/globals.css';
 // The Vortex design system's skin: colours, corners and Geist over globals.css.
-import './vortex-skin.css';
+import '@/bench/styles/vortex-skin.css';
 
 export const metadata: Metadata = {
   title: 'Vortex Benchmarks',

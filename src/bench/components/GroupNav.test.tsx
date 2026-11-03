@@ -8,7 +8,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { GroupNav, jumpToGroup, type GroupNavItem } from '@/components/GroupNav';
+import { GroupNav, jumpToGroup, type GroupNavItem } from '@/bench/components/GroupNav';
 
 const GROUPS: GroupNavItem[] = [
   { name: 'Random Access', slug: 'random_access.abc' },

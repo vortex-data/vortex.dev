@@ -8,13 +8,13 @@ import { createRoot, hydrateRoot, type Root } from 'react-dom/client';
 import { renderToStaticMarkup, renderToString } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { GroupBody, type GroupBodyProps } from '@/components/GroupBody';
-import { GroupSection } from '@/components/GroupSection';
+import { GroupBody, type GroupBodyProps } from '@/bench/components/GroupBody';
+import { GroupSection } from '@/bench/components/GroupSection';
 import {
   OPEN_GROUPS_BOOTSTRAP,
   OPEN_GROUPS_FINISH,
   OpenGroupsScript,
-} from '@/components/OpenGroupsScript';
+} from '@/bench/components/OpenGroupsScript';
 import {
   abortGroupBundle,
   bundleQueue,
@@ -22,14 +22,14 @@ import {
   initGroupFilter,
   resetPayloadCache,
   toggleGroupSeries,
-} from '@/lib/chart-store';
-import { groupBodiesReady, resetGroupBodies } from '@/lib/group-bodies';
-import { takeOpenGroupsBootstrap } from '@/lib/open-groups';
-import type { Group } from '@/lib/queries';
+} from '@/bench/lib/chart-store';
+import { groupBodiesReady, resetGroupBodies } from '@/bench/lib/group-bodies';
+import { takeOpenGroupsBootstrap } from '@/bench/lib/open-groups';
+import type { Group } from '@/bench/lib/queries';
 
 // The real island is covered by the `Chart.*` suites; here a bare card stands
 // in for it, so the body's own mount, fetch and abort behavior is all that runs.
-vi.mock('@/components/Chart', async () => {
+vi.mock('@/bench/components/Chart', async () => {
   const { createElement } = await import('react');
   return {
     Chart: ({ slug, index }: { slug: string; index: number }) =>

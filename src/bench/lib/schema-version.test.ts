@@ -45,7 +45,7 @@ describe('SCHEMA_VERSION', () => {
 
   it('matches the anchor declaration documented in CONTRACT.md', () => {
     const docTsVersion = versionFromFile(
-      '../../CONTRACT.md',
+      '../../../docs/bench/CONTRACT.md',
       TS_DECL,
       'CONTRACT.md (TS anchor row)',
     );

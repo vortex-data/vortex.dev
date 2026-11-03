@@ -5,18 +5,18 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
-import { FilterBar } from '@/components/FilterBar';
-import type { FilterUniverse } from '@/lib/chart-format';
+import { FilterBar } from '@/bench/components/FilterBar';
+import type { FilterUniverse } from '@/bench/lib/chart-format';
 import {
   CollapseAllIcon,
   DarkModeIcon,
   ExpandAllIcon,
   LightModeIcon,
   MenuIcon,
-} from '@/components/icons';
-import { GitHubIcon } from '@/components/mark-github';
-import { setAllGroupsOpen } from '@/lib/open-groups';
-import { effectiveTheme } from '@/lib/theme';
+} from '@/bench/components/icons';
+import { GitHubIcon } from '@/bench/components/mark-github';
+import { setAllGroupsOpen } from '@/bench/lib/open-groups';
+import { effectiveTheme } from '@/bench/lib/theme';
 
 /**
  * The sticky site header, the full client port of

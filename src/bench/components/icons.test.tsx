@@ -5,7 +5,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
-import * as icons from '@/components/icons';
+import * as icons from '@/bench/components/icons';
 
 const ICONS = Object.entries(icons);
 

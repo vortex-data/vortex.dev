@@ -2,10 +2,10 @@
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { sql } from '@/lib/db';
+import { sql } from '@/bench/lib/db';
 import { GET } from './route';
 
-vi.mock('@/lib/db', () => ({ sql: vi.fn() }));
+vi.mock('@/bench/lib/db', () => ({ sql: vi.fn() }));
 
 afterEach(() => {
   vi.unstubAllEnvs();

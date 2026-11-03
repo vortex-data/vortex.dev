@@ -115,7 +115,7 @@ function applyMigrations(settings: {
     [
       'run',
       '--no-project',
-      fileURLToPath(new URL('../../scripts/migrate-schema.py', import.meta.url)),
+      fileURLToPath(new URL('../../../db/migrate-schema.py', import.meta.url)),
       'apply',
     ],
     {

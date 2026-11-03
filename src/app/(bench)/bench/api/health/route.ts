@@ -3,7 +3,7 @@
 
 import { NextResponse } from 'next/server';
 
-import { collectHealth } from '@/lib/health';
+import { collectHealth } from '@/bench/lib/health';
 
 // A liveness probe must reflect the live database, never a cached snapshot.
 export const dynamic = 'force-dynamic';

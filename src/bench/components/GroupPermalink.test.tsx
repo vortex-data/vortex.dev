@@ -8,13 +8,13 @@ import { createRoot, hydrateRoot, type Root } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { GroupPermalink, groupPermalinkUrl } from '@/components/GroupPermalink';
+import { GroupPermalink, groupPermalinkUrl } from '@/bench/components/GroupPermalink';
 import {
   initGlobalFilter,
   initGroupFilter,
   noteGroupSeries,
   toggleGroupSeries,
-} from '@/lib/chart-store';
+} from '@/bench/lib/chart-store';
 
 describe('groupPermalinkUrl', () => {
   it('joins origin, pathname, and the readable anchor fragment', () => {

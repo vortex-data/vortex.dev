@@ -9,8 +9,8 @@ import {
   seriesStyle,
   type ChartTheme,
   type NormalizedChartPayload,
-} from '@/lib/chart-format';
-import { getGlobalFilterSnapshot } from '@/lib/chart-store';
+} from '@/bench/lib/chart-format';
+import { getGlobalFilterSnapshot } from '@/bench/lib/chart-store';
 
 import type { BenchDataset } from './types';
 

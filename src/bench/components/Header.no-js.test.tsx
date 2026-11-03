@@ -7,7 +7,7 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { Header } from '@/components/Header';
+import { Header } from '@/bench/components/Header';
 
 describe('Header and the no-js class', () => {
   let root: Root | null = null;
