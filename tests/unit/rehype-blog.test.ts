@@ -151,6 +151,8 @@ describe("rehypeTables", () => {
     const wrap = tree.children[0] as HastElement;
     assert.equal(wrap.tagName, "div");
     assert.deepEqual(wrap.properties.className, ["vx-table-wrap"]);
+    assert.equal(wrap.properties.tabIndex, 0);
+    assert.equal(wrap.properties.role, "region");
     assert.equal((wrap.children[0] as HastElement).tagName, "table");
   });
 
