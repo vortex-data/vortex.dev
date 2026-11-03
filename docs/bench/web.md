@@ -72,15 +72,17 @@ warmth:
   `Cache-Control: public, s-maxage=300, stale-while-revalidate=3600` on success responses
   (`src/bench/lib/cache.ts`); error responses omit the header so they are never CDN-cached. `/api/health`
   is deliberately uncached so the liveness probe always reflects the live database.
-- The HTML pages (`/` and `/chart/:slug`) cannot set response headers from a server component,
+  The crawler files (`/robots.txt`, `/sitemap.xml`, `/llms.txt`, from `src/bench/lib/site-files.ts`)
+  set the same header.
+- The HTML pages (`/`, `/methodology` and `/chart/:slug`) cannot set response headers from a server component,
   and Next.js emits `Cache-Control: no-store` for `force-dynamic` pages, which takes precedence
   over config-file `Cache-Control` rules. Instead, `vercel.json` sets `Vercel-CDN-Cache-Control`
   on those routes: that header is consumed (and stripped) by Vercel's CDN alone at the highest
   precedence, so the CDN caches the rendered pages while browsers still revalidate every load.
   Header rules match the path as requested, before the app's rewrites, so the rule names
-  bench.vortex.dev's form of each page: `/` and `/chart/:slug` on that host. bench's HTML differs
+  bench.vortex.dev's form of each page: `/`, `/methodology` and `/chart/:slug` on that host. bench's HTML differs
   between its two URL forms (its links are root-relative on bench.vortex.dev and under `/bench`
-  elsewhere), so the `/bench` form (`/bench`, `/bench/chart/:slug`) gets the same rule only
+  elsewhere), so the `/bench` form (`/bench`, `/bench/methodology`, `/bench/chart/:slug`) gets the same rule only
   outside production, from `benchPrefixCdnRules` in `next.config.mjs`: in production a cached
   `/bench` page must never answer for bench.vortex.dev.
 
