@@ -32,6 +32,18 @@ export type BenchPanel = {
   systems?: readonly string[];
   /** For figures that are not bench's: where they come from, as the panel title's hover title and screen-reader text. */
   source?: PanelSource;
+  /**
+   * Vortex's lowest and highest score across bench's datasets, for a panel whose geomean hides a
+   * wide spread. The table's foot prints it (`resultsNotes`).
+   */
+  range?: PanelRange;
+};
+
+export type PanelRange = {
+  min: number;
+  max: number;
+  /** What the scores are against, as the note names it: "Parquet+zstd". */
+  against: string;
 };
 
 export type PanelSource = {
@@ -139,5 +151,8 @@ export type ResultsRow = {
 /** One panel as a row of the results table, with a cell per name in `systems`. */
 export function resultsRow(panel: BenchPanel, systems: readonly string[]): ResultsRow;
 
-/** The results table as HTML. `read` is the date the figures were read, "2 Nov 2026"; `icon` is the open_in_new icon's markup, which ends the source link. */
+/** The notes under the results table, one per panel with a `range`. */
+export function resultsNotes(panels: readonly BenchPanel[]): string[];
+
+/** The results table as HTML. `read` is the date the figures were read, "2 Nov 2026", which the head prints after the source link; `icon` is the open_in_new icon's markup, which ends that link. */
 export function renderResults(panels: readonly BenchPanel[], options?: { read?: string; icon?: string }): string;

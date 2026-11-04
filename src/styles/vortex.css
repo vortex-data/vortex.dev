@@ -1,7 +1,7 @@
 /* Vortex design system components (sections: base, brand, site, docs, blog, focus), copied by tools/site-styles.mjs.
    Edit the system, then run tools/site-styles.mjs; do not edit here.
    Made by: node tools/site-styles.mjs <site> --sections base,brand,site,docs,blog,focus --faces --vx-face --base
-   sha256 38a6d88c449bde99957c50d84ca3397317222dc797c5949306c429d7e92704ec */
+   sha256 aa2870bd3826133fc0251d4d210dbe981185d93a4901df2b7a7a7aafc082ed5e */
 
 /* ------------------------------------------------------------------ base */
 /* Every component sizes with border-box, so it draws the same under a site's reset or none. */
@@ -272,10 +272,11 @@
 .vx-page-head { display: grid; justify-items: start; gap: var(--space-18); max-width: 840px; }
 .vx-page-head > * { margin: 0; }
 .vx-page-head > .vx-lede { color: var(--ink-body); }
-/* The frame: the terminal's dashed rule, 1px wide, 12px on and 4px off, in ink-body. The header and
-   the footer draw it on their long edges, and a .vx-frame box draws it on all four, over the ground,
-   so it can sit on the ASCII mark. Inside a frame, the tabs' rule is dashed too. */
-:where(.vx-header, .vx-header-start, .vx-header-end, .vx-footer, .vx-frame) {
+/* The frame: the terminal's dashed rule, 1px wide, 12px on and 4px off, in ink-body. The header
+   draws it below itself and the footer above itself, on the side that faces the page, and a
+   .vx-frame box draws it on all four, over the ground, so it can sit on the ASCII mark. Inside a
+   frame, the tabs' rule is dashed too. */
+:where(.vx-header, .vx-footer, .vx-frame) {
   --vx-dash-x: linear-gradient(90deg, var(--ink-body) 12px, transparent 12px);
   --vx-dash-y: linear-gradient(180deg, var(--ink-body) 12px, transparent 12px);
 }
@@ -326,7 +327,8 @@
 .vx-status.has-mark { grid-template-columns: minmax(0, 760px) minmax(320px, 1fr); align-content: normal; }
 .vx-status-text { display: grid; align-content: center; justify-items: start; gap: var(--space-24); }
 .vx-status-text > * { margin: 0; }
-.vx-status-sentence { color: var(--ink-body); }
+/* The homepage's voice: a mono headline (vx-display-mono) and a mono sentence at the standfirst's size. */
+.vx-status-sentence { font: 400 16px/1.6 var(--font-mono); color: var(--ink-body); }
 /* The mark's cell has a height to fill. Its host is never taller than 9/10 of the cell's width. */
 .vx-status-mark { position: relative; min-height: 0; container-type: size; }
 .vx-status-mark > * { position: absolute; inset: 0; height: min(100cqh, 90cqw); margin: auto 0; }
@@ -370,18 +372,17 @@
   margin-top: var(--space-16);
   padding: 0 var(--page-pad);
   background-color: var(--ground);
-  background-image: var(--vx-dash-x), var(--vx-dash-x);
+  background-image: var(--vx-dash-x);
   background-size: 16px 1px;
   background-repeat: repeat-x;
-  background-position: left top, left bottom;
+  background-position: left bottom;
   position: relative;
 }
 .vx-header-start { display: flex; flex-shrink: 0; align-items: center; gap: var(--space-12); }
-/* On one row, dashed rules close off the wordmark and the end group, as the old terminal header did. */
+/* On one row, 32px set the wordmark and the end group apart from the links. */
 @media (min-width: 801px) {
-  .vx-header-start, .vx-header-end { align-self: stretch; }
-  .vx-header-start { padding-right: var(--space-32); background: var(--vx-dash-y) right top / 1px 16px repeat-y; }
-  .vx-header-end { padding-left: var(--space-32); background: var(--vx-dash-y) left top / 1px 16px repeat-y; }
+  .vx-header-start { padding-right: var(--space-32); }
+  .vx-header-end { padding-left: var(--space-32); }
 }
 .vx-header-mark { height: 24px; width: auto; display: block; }
 .vx-header-mark.is-light, [data-theme="light"] .vx-header-mark.is-dark { display: none; }
@@ -493,10 +494,10 @@
   gap: var(--space-16) var(--space-24);
   margin-bottom: var(--space-16);
   padding: var(--space-16) var(--page-pad);
-  background-image: var(--vx-dash-x), var(--vx-dash-x);
+  background-image: var(--vx-dash-x);
   background-size: 16px 1px;
   background-repeat: repeat-x;
-  background-position: left top, left bottom;
+  background-position: left top;
   font: 400 11px/1.5 var(--font-mono);
   letter-spacing: 0.02em; /* the one tracked style: small print */
   color: var(--ink-muted);
@@ -512,19 +513,14 @@
 /* The solid variant, for a tool such as bench, whose own controls and tables sit under the header:
    the same header and footer, with solid rules in line, flush to the window's edges, and a rule
    only on the side that faces the page. */
-.vx-header.is-solid, .vx-header.is-solid .vx-header-start, .vx-header.is-solid .vx-header-end, .vx-footer.is-solid {
-  --vx-dash-x: linear-gradient(var(--line), var(--line));
-  --vx-dash-y: linear-gradient(var(--line), var(--line));
-}
+.vx-header.is-solid, .vx-footer.is-solid { --vx-dash-x: linear-gradient(var(--line), var(--line)); }
 .vx-header.is-solid { margin-top: 0; background-image: var(--vx-dash-x); background-position: left bottom; }
 .vx-footer.is-solid { margin-bottom: 0; background-image: var(--vx-dash-x); background-position: left top; }
 /* The tools variant, for a tool such as bench: one sticky row holds the wordmark, the tool's label,
    its own controls (.vx-header-tools) and the end group. The site's links are always behind the
    Menu button, so the controls have the room. The label can be the page's h1, so it takes no margin. */
 .vx-header.has-tools { position: sticky; top: 0; z-index: 1000; }
-/* No vertical rules: the tools sit between the groups, so rules closing off the wordmark and the
-   end group would only fence the controls in, and the label reads as part of the wordmark. */
-.vx-header.has-tools .vx-header-start, .vx-header.has-tools .vx-header-end { background: none; }
+/* No divider beside the label: it reads as part of the wordmark. */
 .vx-header.has-tools .vx-header-label { border-left: 0; padding-left: 0; }
 .vx-header.has-tools .vx-header-nav { display: none; }
 .vx-header.has-tools .vx-header-menu { display: block; }
@@ -573,19 +569,18 @@
    the best figure in each row is underlined, as a model card marks its best score, and the last
    column says how Vortex does against Parquet. Below 760px only Vortex and the verdict show. */
 .vx-results { padding: var(--space-18) var(--space-24); font: 400 13px/1.6 var(--font-mono); color: var(--ink-body); }
-.vx-results-head,
-.vx-results-foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--space-4) var(--space-16); margin: 0; }
-.vx-results-head { margin-bottom: var(--space-12); color: var(--ink); }
-.vx-results-read,
-.vx-results-foot { color: var(--ink-muted); }
-.vx-results-foot { margin-top: var(--space-12); }
+.vx-results-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--space-4) var(--space-16); margin: 0 0 var(--space-12); color: var(--ink); }
+/* The source line: bench's link and the read date, which wrap as one line each. */
+.vx-results-src { display: inline-flex; flex-wrap: wrap; gap: 0 var(--space-8); color: var(--ink-muted); }
+.vx-results-src > * { white-space: nowrap; }
+/* The foot: the key, then a note for each panel with a range, one per line. */
+.vx-results-foot { display: grid; gap: var(--space-4); margin: var(--space-12) 0 0; color: var(--ink-muted); }
 .vx-results-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
 .vx-results-table th,
 .vx-results-table td { padding: var(--space-4) 0 var(--space-4) var(--space-16); text-align: right; white-space: nowrap; font-weight: 400; }
 .vx-results-table th:first-child { padding-left: 0; text-align: left; }
 .vx-results-table thead th { padding-bottom: var(--space-8); color: var(--ink-muted); }
 .vx-results-table tbody th { color: var(--ink-body); }
-.vx-results-table tbody tr + tr > * { background: linear-gradient(90deg, var(--line) 4px, transparent 4px) left top / 8px 1px repeat-x; }
 .vx-results-table .is-ours { color: var(--accent-ink); }
 .vx-results-table .is-missing { color: var(--ink-muted); }
 .vx-results-table .is-best { color: var(--ink); font-weight: 600; text-decoration: underline 2px; text-underline-offset: 5px; }
@@ -603,7 +598,7 @@
 }
 
 .vx-eyebrow { display: inline-flex; align-items: center; gap: var(--space-8); }
-.vx-eyebrow::before { content: ""; width: 6px; height: 6px; background: var(--accent); flex: none; }
+.vx-eyebrow::before { content: ""; width: 6px; height: 6px; background: var(--ink-muted); flex: none; }
 
 .vx-tabs { overflow: hidden; }
 .vx-tabs-list { display: flex; padding: 0 var(--space-4); border-bottom: 1px solid var(--line); overflow-x: auto; }
@@ -626,7 +621,7 @@
 @media (max-width: 400px) {
   .vx-tabs-list button { padding-inline: var(--space-4); }
 }
-.vx-tabs-list button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+.vx-tabs-list button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--ink); }
 .vx-tabs-code { display: flex; align-items: flex-start; gap: var(--space-12); padding: var(--space-12) var(--space-16); }
 /* Every panel shares one grid cell and only the selected one shows, so the block is always the
    tallest panel's height and switching tabs never moves the page. */
@@ -635,6 +630,8 @@
 .vx-tabs-pre { margin: 0; flex: 1; min-width: 0; font: 400 13px/1.6 var(--font-mono); color: var(--ink-body); white-space: pre-wrap; overflow-wrap: anywhere; }
 .vx-tabs-pre.is-idle { visibility: hidden; }
 .vx-prompt { color: var(--ink-muted); user-select: none; }
+/* The caret after the last command: a terminal's block, still, so it never pulls the eye. */
+.vx-caret { display: inline-block; width: 0.6em; height: 1.15em; margin-left: 2px; vertical-align: -0.2em; background: var(--ink-muted); user-select: none; }
 .vx-copy { all: unset; cursor: pointer; color: var(--ink-muted); padding: 2px; }
 .vx-copy:hover { color: var(--ink); }
 .vx-copy svg { width: 16px; height: 16px; fill: currentColor; display: block; }

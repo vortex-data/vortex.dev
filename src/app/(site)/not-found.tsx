@@ -33,8 +33,8 @@ export default function NotFound() {
     <div className="vx-status has-mark">
       <div className="vx-status-text">
         <span className="vx-label vx-eyebrow">404</span>
-        <h1 className="vx-h1">Page not found.</h1>
-        <p className="vx-lede vx-status-sentence">{SENTENCE}</p>
+        <h1 className="vx-display-mono">Page not found.</h1>
+        <p className="vx-status-sentence">{SENTENCE}</p>
         <div className="vx-btn-row">
           <NextLink className="vx-btn vx-btn-primary" href="/">
             Go to the homepage

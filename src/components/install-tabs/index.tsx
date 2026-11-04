@@ -104,6 +104,7 @@ export function InstallTabs({ sparkVersion }: { sparkVersion: string | null }) {
                   {line.text}
                 </span>
               ))}
+              <span className="vx-caret" aria-hidden="true" />
             </pre>
           ))}
         </div>
