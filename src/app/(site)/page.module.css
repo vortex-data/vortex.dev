@@ -166,9 +166,9 @@
     padding: var(--space-64) var(--page-pad);
   }
 
+  .hero:has([data-mark-mode="static"], [data-mark-mode="error"]) > *,
   :global(.no-webgl) .hero > *,
-  :global(.no-js) .hero > *,
-  .hero:has([data-mark-mode="static"], [data-mark-mode="error"]) > * {
+  :global(.no-js) .hero > * {
     position: static;
     grid-column: 1;
   }

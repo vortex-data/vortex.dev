@@ -86,6 +86,7 @@ a:hover {
  * `!important` beats every display rule those controls carry, the mobile
  * ones included. */
 .no-js [data-requires-js] {
+  /* biome-ignore lint/complexity/noImportantStyles: the rule must beat every display rule on these controls. */
   display: none !important;
 }
 
@@ -96,6 +97,13 @@ a:hover {
   display: flex;
   flex-direction: column;
   min-height: 100dvh;
+}
+
+main {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: var(--space-32) var(--page-pad);
 }
 
 .bench-frame > main {
@@ -201,6 +209,7 @@ a:hover {
   font-size: 18px;
   font-weight: 600;
 }
+.chart-card-title a,
 .page-header h1 a {
   color: var(--ink);
 }
@@ -210,16 +219,30 @@ a:hover {
   font-size: 0.875rem;
 }
 
-main {
-  width: 100%;
-  max-width: none;
-  margin: 0;
-  padding: var(--space-32) var(--page-pad);
-}
-
 .empty {
   color: var(--ink-muted);
   font-style: italic;
+}
+
+/* ----------------------------------------------------------------------
+ * Methodology page
+ * ---------------------------------------------------------------------- */
+.methodology {
+  max-width: 72ch;
+  line-height: 1.6;
+}
+
+.methodology h2 {
+  margin: 0 0 var(--space-16);
+}
+
+.methodology h3 {
+  margin: var(--space-32) 0 var(--space-8);
+  font-size: 1rem;
+}
+
+.methodology p {
+  margin: 0 0 var(--space-12);
 }
 
 /* The landing page's loading view (`HomeLoading`), streamed while a slow
@@ -309,6 +332,9 @@ main {
   text-align: center;
   color: var(--ink-muted);
   transition: transform 120ms ease;
+}
+.no-js .group-summary-row::before {
+  display: none;
 }
 .group-disclosure[open] > .group-summary .group-summary-row::before {
   transform: rotate(90deg);
@@ -497,6 +523,14 @@ main {
   opacity: 1;
   visibility: visible;
 }
+.chart-grid {
+  width: 100%;
+  max-width: none;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-16);
+}
+
 .group-body > .chart-grid {
   padding: var(--space-20);
   /* Page-level surface behind the chart cards. v2's `.benchmark-graphs`
@@ -513,6 +547,12 @@ main {
   background: var(--surface);
   padding: var(--space-12) var(--space-32);
   margin: 0;
+}
+
+.chart-meta + .benchmark-scores-summary {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  margin-bottom: var(--space-16);
 }
 
 /* A collapsed group ends with its summary card: the section's own border
@@ -536,9 +576,6 @@ main {
 .no-js .group-summary {
   cursor: default;
 }
-.no-js .group-summary-row::before {
-  display: none;
-}
 .no-js .group-summary:hover .group-summary-row {
   background: none;
 }
@@ -548,12 +585,6 @@ main {
 
 .group-body > .chart-grid .chart-card:last-child {
   margin-bottom: 0;
-}
-
-.chart-meta + .benchmark-scores-summary {
-  border: 1px solid var(--line);
-  border-radius: var(--radius-card);
-  margin-bottom: var(--space-16);
 }
 
 .scores-title {
@@ -647,6 +678,20 @@ main {
   padding: 0.1rem 0 0.3rem;
 }
 
+.compression-size-group {
+  color: var(--ink-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.compression-size-heading {
+  color: var(--ink-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-align: center;
+}
+
 .compression-size-arrow-header .compression-size-group,
 .compression-size-arrow-header .compression-size-heading {
   grid-column: 3;
@@ -689,20 +734,6 @@ main {
 
 .compression-size-parquet-row {
   font-size: 0.875rem;
-}
-
-.compression-size-group {
-  color: var(--ink-muted);
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-align: center;
-}
-
-.compression-size-heading {
-  color: var(--ink-muted);
-  font-size: 0.72rem;
-  font-weight: 600;
-  text-align: center;
 }
 
 .compression-size-value {
@@ -1053,9 +1084,6 @@ main {
   gap: var(--space-8);
   flex-wrap: wrap;
 }
-.chart-card-title a {
-  color: var(--ink);
-}
 .chart-card-title a:hover {
   color: var(--accent-ink);
 }
@@ -1121,22 +1149,16 @@ main {
   border-color: color-mix(in srgb, var(--bad) 35%, transparent);
 }
 
-.chart-grid {
-  width: 100%;
-  max-width: none;
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: var(--space-16);
-}
-
 .chart-wrap {
   width: 100%;
   position: relative;
   height: 420px;
 }
-.chart-card .chart-wrap canvas,
-.chart-wrap canvas {
+.chart-wrap canvas,
+.chart-card .chart-wrap canvas {
+  /* biome-ignore lint/complexity/noImportantStyles: only !important beats Chart.js's inline canvas size. */
   width: 100% !important;
+  /* biome-ignore lint/complexity/noImportantStyles: only !important beats Chart.js's inline canvas size. */
   height: 100% !important;
 }
 
@@ -1281,11 +1303,6 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
   font-size: 0.8rem;
   z-index: 1;
 }
-.chart-placeholder .chart-spinner {
-  width: 1.4rem;
-  height: 1.4rem;
-  border-width: 3px;
-}
 /* The placeholder's "loading…" label, sized to match the chip/loading text. */
 .chart-placeholder-text {
   font-size: 0.75rem;
@@ -1299,6 +1316,11 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
   border-top-color: var(--accent-ink);
   border-radius: 50%;
   animation: chart-spin 0.7s linear infinite;
+}
+.chart-placeholder .chart-spinner {
+  width: 1.4rem;
+  height: 1.4rem;
+  border-width: 3px;
 }
 @keyframes chart-spin {
   to {
@@ -1495,6 +1517,10 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
     flex-basis: 100%;
     margin-left: 0;
   }
+  .chart-grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-8);
+  }
   .group-body > .chart-grid {
     padding: var(--space-12);
   }
@@ -1574,10 +1600,6 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
     width: 100%;
     flex: 1 1 auto;
     min-width: 6rem;
-  }
-  .chart-grid {
-    grid-template-columns: 1fr;
-    gap: var(--space-8);
   }
   .chart-wrap {
     height: 350px;
@@ -1731,9 +1753,7 @@ a.site-footer-sha:hover code {
 .chart-card {
   border-radius: var(--radius-card);
 }
-.group-summary {
-  border-radius: var(--radius-card) var(--radius-card) 0 0;
-}
+
 .control-btn,
 .toolbar-btn,
 .group-toolbar-reset,
@@ -1792,25 +1812,4 @@ a.site-footer-sha:hover code {
 /* The inline retry on a failed chart sits on the error panel, so its press takes the panel's ink. */
 .chart-error-retry:active {
   background: color-mix(in srgb, var(--on-bad) 22%, transparent);
-}
-
-/* ----------------------------------------------------------------------
- * Methodology page
- * ---------------------------------------------------------------------- */
-.methodology {
-  max-width: 72ch;
-  line-height: 1.6;
-}
-
-.methodology h2 {
-  margin: 0 0 var(--space-16);
-}
-
-.methodology h3 {
-  margin: var(--space-32) 0 var(--space-8);
-  font-size: 1rem;
-}
-
-.methodology p {
-  margin: 0 0 var(--space-12);
 }
