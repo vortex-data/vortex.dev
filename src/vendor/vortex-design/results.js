@@ -238,7 +238,7 @@ export function renderResults(panels, { read, icon = "" } = {}) {
   const systems = resultsSystems(panels);
   const cls = (...c) => (c.filter(Boolean).length ? ` class="${c.filter(Boolean).join(" ")}"` : "");
   const when = read ? `<span aria-hidden="true">·</span><span>read ${esc(read)}</span>` : "";
-  const head = `<p class="vx-results-head"><span>File format benchmarks</span><span class="vx-results-src"><a class="vx-source vx-nav-link" href="https://bench.vortex.dev">bench.vortex.dev${icon}</a>${when}</span></p>`;
+  const head = `<p class="vx-results-head"><span>File format benchmarks</span><span class="vx-label-sm vx-results-src"><a class="vx-source vx-nav-link" href="https://bench.vortex.dev">bench.vortex.dev${icon}</a>${when}</span></p>`;
   const cols = `<tr><th scope="col">Benchmark</th>${systems.map((s) => `<th scope="col"${cls(isOurs(s) && "is-ours")}>${esc(s)}</th>`).join("")}<th scope="col" class="is-verdict">vs Parquet</th></tr>`;
   const body = panels
     .map((p) => {
