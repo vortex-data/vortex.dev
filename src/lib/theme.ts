@@ -53,14 +53,13 @@ const NO_JS_SWAP =
   'document.documentElement.className=document.documentElement.className.replace("no-js","js");';
 
 /**
- * Before the design system's script reads the choice: bench saved it under
- * `localStorage["bench-theme"]` (Light or Dark) before it shared `vx-theme`
- * with the rest of the site, on this same origin. A saved Light or Dark moves
- * to `vx-theme` unless the reader already made a choice there, and the old
- * key goes.
+ * bench saved the choice under `localStorage["bench-theme"]` (Light or Dark)
+ * before it shared `vx-theme` with the rest of the site, on this same origin.
+ * The design system's script takes it as a legacy key: a valid value there is
+ * the choice when `vx-theme` holds none, even when storage refuses to copy it,
+ * and the old key goes.
  */
-const BENCH_KEY_MIGRATION =
-  'try{var b=localStorage.getItem("bench-theme");if(b!==null){if((b==="light"||b==="dark")&&localStorage.getItem("vx-theme")===null)localStorage.setItem("vx-theme",b);localStorage.removeItem("bench-theme")}}catch(e){}';
+const LEGACY_KEYS = ["bench-theme"];
 
 /**
  * On the homepage only, before first paint: whether the browser can give the
@@ -97,21 +96,22 @@ export function probeWebgl(doc: Document = document): void {
 
 /**
  * The first-paint script for this site's paths: the `no-js` swap, the
- * homepage's WebGL probe, the move of bench's old key, then the
- * design system's script, which sets `<html data-theme>` from the reader's
- * choice (the `vx-theme` cookie that vortex.dev's subdomains share, else
- * storage, else Dark) and `data-theme-choice`, from which the system's CSS
- * shows the switch's choice pressed before hydration.
+ * homepage's WebGL probe, then the design system's script, which sets
+ * `<html data-theme>` from the reader's choice (the `vx-theme` cookie that
+ * vortex.dev's subdomains share, else storage, else bench's old key, else
+ * Dark) and `data-theme-choice`, from which the system's CSS shows the
+ * switch's choice pressed before hydration. A choice found only in storage is
+ * copied into the cookie, so the other surfaces see it.
  */
 export const THEME_BOOTSTRAP =
-  NO_JS_SWAP + WEBGL_PROBE + BENCH_KEY_MIGRATION + themeBootstrap();
+  NO_JS_SWAP + WEBGL_PROBE + themeBootstrap({ legacy: LEGACY_KEYS });
 
 /**
- * bench's first-paint script: the same `no-js` swap, key move, and theme, without the
+ * bench's first-paint script: the same `no-js` swap and theme, without the
  * homepage's WebGL probe, which bench's own "/" does not need.
  */
 export const BENCH_THEME_BOOTSTRAP =
-  NO_JS_SWAP + BENCH_KEY_MIGRATION + themeBootstrap();
+  NO_JS_SWAP + themeBootstrap({ legacy: LEGACY_KEYS });
 
 /**
  * `win.localStorage`, or null where reading the property itself throws

@@ -7,7 +7,8 @@ export type Theme = "light" | "dark";
 export type Themeable = readonly string[];
 
 export function isThemeable(path: string, themeable?: Themeable): boolean;
-export function themeBootstrap(options?: { themeable?: Themeable }): string;
+/** `legacy` names older storage keys whose choice moves to vx-theme (bench's "bench-theme"). */
+export function themeBootstrap(options?: { themeable?: Themeable; legacy?: readonly string[] }): string;
 export const THEME_BOOTSTRAP: string;
 /** The cookie's choice when it holds one, else storage's, else "system". */
 export function readChoice(storage: Pick<Storage, "getItem"> | null | undefined, cookie?: string): ThemeChoice;

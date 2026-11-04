@@ -76,27 +76,58 @@ describe("themeFor", () => {
   });
 });
 
-// Runs a first-paint script against a page whose storage holds `items`, and returns the theme and
-// what storage holds afterwards.
-function bootWith(script: string, items: Record<string, string>) {
+// Runs a first-paint script against a page on bench.vortex.dev whose storage holds `items`, and
+// returns the theme, what storage holds afterwards, and the cookies the script wrote. With
+// `refuseWrites`, storage reads but every write throws (full or read-only storage).
+function bootWith(
+  script: string,
+  items: Record<string, string>,
+  { refuseWrites = false } = {}
+) {
   const store = new Map(Object.entries(items));
   const root = { className: "no-js", dataset: {} as Record<string, string> };
+  const cookies: string[] = [];
+  const refuse = () => {
+    if (refuseWrites) throw new Error("storage is full");
+  };
   runInNewContext(script, {
     document: {
       documentElement: root,
-      cookie: "",
+      get cookie() {
+        return "";
+      },
+      set cookie(value: string) {
+        cookies.push(value);
+      },
       createElement: () => ({ getContext: () => null })
     },
-    location: { pathname: "/bench" },
+    location: {
+      pathname: "/bench",
+      hostname: "bench.vortex.dev",
+      protocol: "https:"
+    },
     localStorage: {
       getItem: (key: string) => store.get(key) ?? null,
-      setItem: (key: string, value: string) => void store.set(key, value),
-      removeItem: (key: string) => void store.delete(key)
+      setItem: (key: string, value: string) => {
+        refuse();
+        store.set(key, value);
+      },
+      removeItem: (key: string) => {
+        refuse();
+        store.delete(key);
+      }
     },
     matchMedia: () => ({ matches: true })
   });
-  return { theme: root.dataset.theme, store: Object.fromEntries(store) };
+  return {
+    theme: root.dataset.theme,
+    store: Object.fromEntries(store),
+    cookies
+  };
 }
+
+const SHARED_LIGHT =
+  "vx-theme=light; path=/; max-age=31536000; samesite=lax; domain=vortex.dev; secure";
 
 // bench saved the choice under "bench-theme" before it shared vx-theme with the site, on the same
 // origin, so a returning reader keeps a Light or Dark choice they made there.
@@ -105,17 +136,34 @@ describe("the old bench key", () => {
     ["bench", BENCH_THEME_BOOTSTRAP],
     ["the site", THEME_BOOTSTRAP]
   ] as const) {
-    it(`moves to vx-theme on ${name}'s first paint`, () => {
+    it(`moves to vx-theme and the shared cookie on ${name}'s first paint`, () => {
       assert.deepEqual(bootWith(script, { "bench-theme": "light" }), {
         theme: "light",
-        store: { "vx-theme": "light" }
+        store: { "vx-theme": "light" },
+        cookies: [SHARED_LIGHT]
       });
     });
 
     it(`gives way to a vx-theme choice on ${name}, and is removed`, () => {
       assert.deepEqual(
-        bootWith(script, { "bench-theme": "light", "vx-theme": "dark" }),
-        { theme: "dark", store: { "vx-theme": "dark" } }
+        bootWith(script, { "bench-theme": "light", "vx-theme": "dark" }).store,
+        { "vx-theme": "dark" }
+      );
+      assert.equal(
+        bootWith(script, { "bench-theme": "light", "vx-theme": "dark" }).theme,
+        "dark"
+      );
+    });
+
+    // Codex on vortex.dev#194: a failed copy must not reset a Light choice to Dark.
+    it(`still paints its choice on ${name} when storage refuses the move`, () => {
+      assert.deepEqual(
+        bootWith(script, { "bench-theme": "light" }, { refuseWrites: true }),
+        {
+          theme: "light",
+          store: { "bench-theme": "light" },
+          cookies: [SHARED_LIGHT]
+        }
       );
     });
   }
@@ -125,8 +173,21 @@ describe("the old bench key", () => {
       bootWith(BENCH_THEME_BOOTSTRAP, { "bench-theme": "sepia" }),
       {
         theme: "dark",
-        store: {}
+        store: {},
+        cookies: []
       }
+    );
+  });
+});
+
+// Codex on vortex.dev#194: a choice saved on vortex.dev before the cookie existed lives only in
+// that origin's storage; the first paint copies it to the cookie, so bench, the docs and the
+// Explorer see it too.
+describe("a choice kept only in storage", () => {
+  it("is copied to the shared cookie", () => {
+    assert.deepEqual(
+      bootWith(THEME_BOOTSTRAP, { "vx-theme": "light" }).cookies,
+      [SHARED_LIGHT]
     );
   });
 });
