@@ -1174,7 +1174,7 @@ const GROUP_ORDER: readonly string[] = [
   'TPC-DS (S3) (SF=10)',
   'TPC-DS (S3) (SF=100)',
   'Statistical and Population Genetics',
-  'PolarSignals Profiling',
+  'Polar Signals Profiling',
   'fineweb [nvme]',
   'fineweb [s3]',
   'appian [nvme]',
@@ -1208,7 +1208,8 @@ export function compareGroupSortKey(a: string, b: string): number {
  *  - `tpcds` + storage + scale_factor -> `TPC-DS (NVMe) (SF=1)`,
  *  - `clickbench` -> `Clickbench`,
  *  - `statpopgen` -> `Statistical and Population Genetics` (v2 `src/config.js`),
- *  - `polarsignals` -> `PolarSignals Profiling` (v2 `src/config.js`),
+ *  - `polarsignals` -> `Polar Signals Profiling` (v2 `src/config.js` wrote
+ *    `PolarSignals`; the anchor keeps that spelling, `anchor.ts`),
  *  - anything else -> the legacy `dataset[/variant] sf=N [storage]` shape.
  *
  * The `statpopgen`/`polarsignals` names are exactly the keys `groupDescription`
@@ -1241,7 +1242,7 @@ export function groupNameQuery(
   } else if (dataset === 'statpopgen') {
     base = 'Statistical and Population Genetics';
   } else if (dataset === 'polarsignals') {
-    base = 'PolarSignals Profiling';
+    base = 'Polar Signals Profiling';
   }
   if (base !== null) {
     return datasetVariant !== null ? `${base} / ${datasetVariant}` : base;

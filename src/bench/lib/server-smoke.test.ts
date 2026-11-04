@@ -161,7 +161,7 @@ describe.skipIf(!databaseAvailable || !BUILD_PRESENT)(
       expect(html).toContain('data-role="theme-toggle" data-requires-js="true"');
     });
 
-    it('serves the chart permalink page with the v3 title and meta line', async () => {
+    it('serves the chart permalink page with its page title and meta line', async () => {
       const slug = chartKeyToSlug(QUERY_Q1);
       const raw = await (await fetch(`${BASE}/chart/${slug}`)).text();
       // React's streaming SSR separates adjacent text expressions with
@@ -173,7 +173,7 @@ describe.skipIf(!databaseAvailable || !BUILD_PRESENT)(
         previous = html;
         html = html.replace(/<!--[\s\S]*?-->/g, '');
       }
-      expect(html).toContain('tpch sf=1 Q1 [nvme] - Vortex Benchmarks');
+      expect(html).toContain('tpch sf=1 Q1 [nvme] | Vortex');
       expect(html).toContain('class="chart-meta"');
       expect(html).toContain('unit: ');
       expect(html).toContain('2 series');

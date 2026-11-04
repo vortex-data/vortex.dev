@@ -28,10 +28,10 @@ describe('groupDescription', () => {
         'analytics data',
     );
     expect(groupDescription('Statistical and Population Genetics')).toBe(
-      'A suite of Statistical and Population genetics queries using the gnomAD dataset',
+      'A suite of statistical and population genetics queries using the gnomAD dataset',
     );
-    expect(groupDescription('PolarSignals Profiling')).toBe(
-      'Profiling data benchmark modeled on PolarSignals/Parca, exercising scan-layer performance ' +
+    expect(groupDescription('Polar Signals Profiling')).toBe(
+      'Profiling data benchmark modeled on Polar Signals/Parca, exercising scan-layer performance ' +
         'with projection and filter pushdown on deeply nested schemas',
     );
   });

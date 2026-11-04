@@ -435,7 +435,7 @@ export function Chart({ slug, name, index, groupSlug, initialPayload }: ChartIsl
             step={1}
             defaultValue={100}
             data-role="scope-slider"
-            aria-label="Custom commit window"
+            aria-label="Show commits"
             ref={sliderRef}
           />
         </div>

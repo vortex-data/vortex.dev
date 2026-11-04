@@ -12,12 +12,26 @@
  */
 
 /**
+ * Anchors that stay as they were when a group's name changed, so links that
+ * readers already shared still land on the group. The group was named
+ * "PolarSignals Profiling" until its owners' spelling replaced it.
+ */
+const KEPT_ANCHORS: Readonly<Record<string, string>> = {
+  'Polar Signals Profiling': 'polarsignals-profiling',
+};
+
+/**
  * Derive a URL anchor from a group display name: lowercase, every run of
  * non-alphanumerics collapsed to a single `-`, leading/trailing dashes
  * trimmed. `TPC-H (NVMe) (SF=1)` becomes `tpc-h-nvme-sf-1`. A name with no
- * alphanumerics at all falls back to `group` so the anchor is never empty.
+ * alphanumerics at all falls back to `group` so the anchor is never empty. A
+ * renamed group keeps its old anchor (`KEPT_ANCHORS`).
  */
 export function groupAnchor(name: string): string {
+  const kept = KEPT_ANCHORS[name];
+  if (kept !== undefined) {
+    return kept;
+  }
   const anchor = name
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')

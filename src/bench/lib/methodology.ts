@@ -26,14 +26,14 @@ export interface MethodologySection {
 export const SCORES = {
   query:
     'the geometric mean, over the queries, of the series’ time divided by the fastest ' +
-    'series’ time on that query. 1.00x is the fastest; lower is better.',
+    'series’ time on that query. 1.00× is the fastest. Lower is better.',
   /** No vector search results reach bench yet; `llms.txt` prints this only if some do. */
   vectorSearch:
     'the geometric mean, over the thresholds, of the series’ time divided by the fastest ' +
-    'series’ time at that threshold. 1.00x is the fastest; lower is better.',
+    'series’ time at that threshold. 1.00× is the fastest. Lower is better.',
   randomAccess:
     'the geometric mean, over the datasets, of the series’ time divided by the fastest ' +
-    'series’ time on that dataset. 1.00x is the fastest; lower is better.',
+    'series’ time on that dataset. 1.00× is the fastest. Lower is better.',
   throughput:
     'the geometric mean, over the datasets, of the format’s throughput divided by ' +
     'Parquet’s. Higher is better.',
@@ -49,8 +49,8 @@ export const METHODOLOGY: readonly MethodologySection[] = [
       'Every push to the develop branch of https://github.com/vortex-data/vortex runs the ' +
         'compression, string encoding, random access, and SQL query benchmarks, and bench ' +
         'records their results. A nightly run at 00:00 UTC adds TPC-H at scale factor 100 ' +
-        'and TPC-DS at scale factors 10 and 100. Benchmarks run on pull requests only ' +
-        'comment on the pull request; their results never reach bench.',
+        'and TPC-DS at scale factors 10 and 100. Benchmarks that run on pull requests only ' +
+        'comment on the pull request. Their results never reach bench.',
     ],
   },
   {
@@ -68,7 +68,7 @@ export const METHODOLOGY: readonly MethodologySection[] = [
     text: [
       'Queries run on DataFusion 55 and DuckDB 2.0. The formats are Vortex (its default ' +
         'and compact write strategies), Apache Parquet, Lance 13, Arrow IPC, DuckDB’s own ' +
-        'format, and, for random access, LitData; not every suite runs every format. The ' +
+        'format, and, for random access, LitData. Not every suite runs every format. The ' +
         'compression and file size benchmarks write Parquet with parquet-rs 59 and zstd at ' +
         'level 3. ClickBench reads its published Parquet files.',
     ],
@@ -77,12 +77,12 @@ export const METHODOLOGY: readonly MethodologySection[] = [
     title: 'How a result is measured',
     text: [
       'SQL suites drop the operating system’s page cache before each query, run it ' +
-        'several times, and record the median time. Most suites run each query 5 times; ' +
+        'several times, and record the median time. Most suites run each query 5 times. ' +
         'TPC-H at scale factors 1 and 10 and Appian run it 10 times, TPC-DS at scale ' +
         'factor 100 runs it 3 times, and the Vortex queries run it 100 times.',
       'Random access drops the page cache before each dataset, format, access pattern, ' +
         'and open mode, repeats the lookups for 10 seconds, and records the median. Hot ' +
-        'results keep one file open after a one-second untimed warm-up; cold results open ' +
+        'results keep one file open after a one-second untimed warm-up. Cold results open ' +
         'the file again, footer included, for each lookup.',
       'The compression benchmark drops the page cache before each dataset, writes and ' +
         'scans it 5 times, and records the fastest run.',

@@ -114,7 +114,7 @@ const getChart = cache(async (slug: string, n: string | null): Promise<ChartResp
 });
 
 /**
- * The browser-tab title mirrors v3: `{display_name} - Vortex Benchmarks`. The
+ * The browser-tab title is `{display_name} | Vortex`, the system's page title. The
  * description gives each series' newest value, and the canonical URL is the
  * chart's canonical slug without a window.
  */
@@ -133,7 +133,7 @@ export async function generateMetadata({
     return {};
   }
   const key = chartKeyFromSlug(slug);
-  const title = `${chart.display_name} - Vortex Benchmarks`;
+  const title = `${chart.display_name} | Vortex`;
   const description = chartDescription(chart, key.k);
   const url = chartUrl(chartKeyToSlug(key));
   return {

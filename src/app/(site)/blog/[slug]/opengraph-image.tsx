@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { getAllSlugs, getPostBySlug } from "@/lib/blog";
-import { OG_CONTENT_TYPE, OG_SIZE, renderPostOgImage } from "@/lib/og";
+import { siteName } from "@/lib/constants";
+import { OG_CONTENT_TYPE, OG_SIZE, renderOgCard } from "@/lib/og";
 import { formatPostDate } from "@/lib/posts";
 
 export const alt = "Vortex blog post";
@@ -22,9 +23,11 @@ export default async function OgImage({
   const post = getPostBySlug(slug);
   if (!post) notFound();
 
-  return renderPostOgImage({
-    slug,
-    title: post.title,
-    date: formatPostDate(post.date)
+  return renderOgCard({
+    seed: slug,
+    eyebrow: `${siteName} blog`,
+    title: [post.title],
+    face: "display",
+    foot: formatPostDate(post.date)
   });
 }

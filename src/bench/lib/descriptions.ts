@@ -61,10 +61,10 @@ function staticDescription(name: string): string | null {
         'analytics data'
       );
     case 'Statistical and Population Genetics':
-      return 'A suite of Statistical and Population genetics queries using the gnomAD dataset';
-    case 'PolarSignals Profiling':
+      return 'A suite of statistical and population genetics queries using the gnomAD dataset';
+    case 'Polar Signals Profiling':
       return (
-        'Profiling data benchmark modeled on PolarSignals/Parca, exercising scan-layer ' +
+        'Profiling data benchmark modeled on Polar Signals/Parca, exercising scan-layer ' +
         'performance with projection and filter pushdown on deeply nested schemas'
       );
     default:

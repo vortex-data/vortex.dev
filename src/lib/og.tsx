@@ -1,87 +1,13 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { ImageResponse } from "next/og";
-import { siteName } from "@/lib/constants";
-import { THEME } from "@/lib/theme";
 import { coverLayout } from "@/vendor/vortex-design/cover.js";
 
 export const OG_SIZE = { width: 1200, height: 630 } as const;
 export const OG_CONTENT_TYPE = "image/png";
 
-export function renderOgImage(props: {
-  title: string;
-  description?: string | undefined;
-}) {
-  return new ImageResponse(
-    <OgCard title={props.title} description={props.description} />,
-    OG_SIZE
-  );
-}
-
-function OgCard({
-  title,
-  description
-}: {
-  title: string;
-  description?: string | undefined;
-}) {
-  return (
-    <div
-      style={{
-        height: "100%",
-        width: "100%",
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "space-between",
-        padding: "80px",
-        backgroundColor: THEME.background,
-        color: THEME.foreground,
-        fontFamily: "sans-serif"
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "16px",
-          fontSize: 28,
-
-          color: "rgba(255,255,255,0.7)",
-          fontFamily: "monospace"
-        }}
-      >
-        <span>{siteName}</span>
-      </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: "28px" }}>
-        <div
-          style={{
-            fontSize: 76,
-            fontWeight: 300,
-            lineHeight: 1.08,
-            letterSpacing: "-0.02em",
-            color: THEME.foreground
-          }}
-        >
-          {title}
-        </div>
-        {description ? (
-          <div
-            style={{
-              fontSize: 32,
-              lineHeight: 1.35,
-              color: "rgba(255,255,255,0.7)"
-            }}
-          >
-            {description}
-          </div>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
 /**
- * The design system's Dark values for a post's Open Graph image. Satori reads
+ * The design system's Dark values for the Open Graph cards. Satori reads
  * no CSS custom properties, so the Cover's tokens are copied here;
  * `tests/unit/og.test.ts` checks them against `vortex-tokens.css`.
  */
@@ -114,22 +40,27 @@ const OG_SCALE = 1.5;
 const OG_COVER = { width: 792, height: 408, clear: 384 } as const;
 
 /**
- * A post's Open Graph image: the post's Cover, drawn from its slug, on the
- * right, and on the left the site and the blog in Geist Mono over its title
- * in Geist.
+ * An Open Graph card in the design system's parts: a Cover, drawn from
+ * `seed`, on the right, and on the left an eyebrow in Geist Mono over a title
+ * and a foot line. A post's card sets its title in Geist, the blog's
+ * headline face. The homepage's card sets it in Geist Mono, the voice of the
+ * homepage's headline. Each entry in `title` starts a new line.
  */
-export async function renderPostOgImage(props: {
-  slug: string;
-  title: string;
-  date: string;
+export async function renderOgCard(props: {
+  seed: string;
+  eyebrow: string;
+  title: readonly string[];
+  face: "display" | "mono";
+  foot: string;
 }) {
   const { display, mono } = await loadOgFonts();
-  const cover = coverLayout(props.slug, OG_COVER);
+  const cover = coverLayout(props.seed, OG_COVER);
   const k = OG_SCALE;
   // A block that bleeds off the bottom runs to the image's bottom edge.
   const bottom = (b: { y: number; h: number }) =>
     b.y + b.h >= cover.height ? OG_SIZE.height - b.y * k : b.h * k;
   const c = OG_COVER_COLOURS;
+  const titleLength = props.title.join(" ").length;
   const fill = { slab: c.accent, edge: c.edge, muted: c.muted } as const;
   return new ImageResponse(
     <div
@@ -199,20 +130,32 @@ export async function renderPostOgImage(props: {
           }}
         >
           <div style={{ width: 10, height: 10, backgroundColor: c.accent }} />
-          <span>{`${siteName} blog`}</span>
+          <span>{props.eyebrow}</span>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
           <div
             style={{
-              fontFamily: "Geist",
-              fontSize: props.title.length > 32 ? 60 : 68,
-              fontWeight: 500,
-              lineHeight: 1.04,
-              letterSpacing: "-0.02em",
+              display: "flex",
+              flexDirection: "column",
+              ...(props.face === "display"
+                ? {
+                    fontFamily: "Geist",
+                    fontSize: titleLength > 32 ? 60 : 68,
+                    fontWeight: 500,
+                    lineHeight: 1.04,
+                    letterSpacing: "-0.02em"
+                  }
+                : {
+                    fontFamily: "Geist Mono",
+                    fontSize: 44,
+                    lineHeight: 1.15
+                  }),
               color: c.ink
             }}
           >
-            {props.title}
+            {props.title.map((line) => (
+              <div key={line}>{line}</div>
+            ))}
           </div>
           <div
             style={{
@@ -222,7 +165,7 @@ export async function renderPostOgImage(props: {
               color: c.muted
             }}
           >
-            {props.date}
+            {props.foot}
           </div>
         </div>
       </div>
