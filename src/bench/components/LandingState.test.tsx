@@ -275,6 +275,36 @@ describe('LandingState', () => {
     expect(document.activeElement).toBe(document.body);
   });
 
+  // A fragment jump would add a `#main` history entry, which the hashchange
+  // handler then rewrites to the open groups, so Back would seem to do
+  // nothing.
+  it('moves focus to main on a skip link click without adding a history entry', async () => {
+    const main = document.createElement('main');
+    main.id = 'main';
+    main.tabIndex = -1;
+    const skip = document.createElement('a');
+    skip.className = 'vx-skip-link';
+    skip.href = '#main';
+    document.body.prepend(skip);
+    document.body.appendChild(main);
+    await mount('/#clickbench');
+    const length = window.history.length;
+
+    const click = new MouseEvent('click', { bubbles: true, cancelable: true });
+    skip.dispatchEvent(click);
+    expect(click.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(main);
+    expect(window.location.hash).toBe('#clickbench');
+    expect(window.history.length).toBe(length);
+
+    // A modified click is left to the browser.
+    main.blur();
+    const modified = new MouseEvent('click', { bubbles: true, cancelable: true, metaKey: true });
+    skip.dispatchEvent(modified);
+    expect(modified.defaultPrevented).toBe(false);
+    expect(document.activeElement).not.toBe(main);
+  });
+
   it('ignores a malformed fragment', async () => {
     await mount('/#%E0%A4%A');
     await flush();
