@@ -120,8 +120,7 @@ function jsonLd(html: string): JsonLdResult {
   const blocks: Array<Record<string, unknown>> = [];
   const re =
     /<script[^>]+type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/gi;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(html)) !== null) {
+  for (const m of html.matchAll(re)) {
     const raw = m[1] ?? "";
     try {
       blocks.push(JSON.parse(raw));
@@ -135,8 +134,7 @@ function jsonLd(html: string): JsonLdResult {
 function internalHrefs(html: string): string[] {
   const hrefs = new Set<string>();
   const re = /<a[^>]+href="(\/[^"#]*)(?:#[^"]*)?"/gi;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(html)) !== null) {
+  for (const m of html.matchAll(re)) {
     const href = m[1];
     if (!href) continue;
     if (href.startsWith("//")) continue;
@@ -162,7 +160,9 @@ async function checkSitemap(): Promise<string[]> {
     fail("sitemap.xml", `content-type=${r.ctype}`);
     return [];
   }
-  const locs = [...r.body.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]!);
+  const locs = [...r.body.matchAll(/<loc>([^<]+)<\/loc>/g)].flatMap((m) =>
+    m[1] ? [m[1]] : []
+  );
   const required = ["/", "/blog"];
   const paths = locs.map((l) => l.replace(/^https?:\/\/[^/]+/, "") || "/");
   const missing = required.filter((p) => !paths.includes(p));
@@ -384,8 +384,8 @@ async function checkInternalLinks(
 // generation paints with one shade and the site renders with another —
 // exactly the bug this check is here to catch. Currently only
 // `THEME.background` has a corresponding CSS variable (`--background` in
-// `:root`); `THEME.foreground` is white-on-dark and uses Tailwind's
-// built-in `text-white`, so there's nothing to assert against in CSS.
+// `:root`); `THEME.foreground` has no variable in `globals.css`, so there's
+// nothing to assert against in CSS.
 async function checkThemeParity(): Promise<void> {
   let css: string;
   try {

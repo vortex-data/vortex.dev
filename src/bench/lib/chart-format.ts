@@ -214,6 +214,11 @@ const FORMAT_ORDER_FALLBACK = 6;
 /** Engine draw priority within a format: datafusion is layered ahead of duckdb. */
 const ENGINE_ORDER: Record<string, number> = { datafusion: 0, duckdb: 1 };
 
+/** The table's own rank for `key`, or `fallback` when the table has none. */
+function rankIn(table: Record<string, number>, key: string | undefined, fallback: number): number {
+  return (key !== undefined && Object.hasOwn(table, key) ? table[key] : undefined) ?? fallback;
+}
+
 /**
  * The Chart.js `order` for a series (lower renders on top). Series are layered by
  * format importance first -- Vortex in front, then Parquet, vortex-compact, the
@@ -226,9 +231,8 @@ export function seriesOrder(
   meta: { engine?: string; format?: string } | null | undefined,
 ): number {
   const { engine, format } = seriesDims(name, meta);
-  const formatRank =
-    format && format in FORMAT_ORDER ? FORMAT_ORDER[format]! : FORMAT_ORDER_FALLBACK;
-  const engineRank = engine && engine in ENGINE_ORDER ? ENGINE_ORDER[engine]! : 0;
+  const formatRank = rankIn(FORMAT_ORDER, format, FORMAT_ORDER_FALLBACK);
+  const engineRank = rankIn(ENGINE_ORDER, engine, 0);
   return formatRank * 10 + engineRank;
 }
 
@@ -298,7 +302,7 @@ export function parsePrNumber(message: unknown): string | null {
     return null;
   }
   const m = message.match(/\(#(\d+)\)/);
-  return m ? m[1]! : null;
+  return m?.[1] ?? null;
 }
 
 /**
@@ -468,7 +472,8 @@ export function magnitudeReference(values: readonly (number | null | undefined)[
   }
   sample.sort((a, b) => a - b);
   const mid = Math.floor(sample.length / 2);
-  return sample.length % 2 ? sample[mid]! : (sample[mid - 1]! + sample[mid]!) / 2;
+  const upper = sample[mid] ?? 0;
+  return sample.length % 2 ? upper : ((sample[mid - 1] ?? upper) + upper) / 2;
 }
 
 /**
@@ -735,8 +740,8 @@ export function lttbIndices(
     let ax = 0;
     let ay = 0;
     for (let j = nextStart; j < nextEnd; j++) {
-      ax += xs[j]!;
-      ay += ys[j]!;
+      ax += xs[j] ?? 0;
+      ay += ys[j] ?? 0;
     }
     ax /= count;
     ay /= count;
@@ -745,12 +750,13 @@ export function lttbIndices(
     // `(a, avg_next)`.
     const rangeStart = Math.floor(bi * bucket) + 1;
     const rangeEnd = Math.floor((bi + 1) * bucket) + 1;
-    const pax = xs[a]!;
-    const pay = ys[a]!;
+    const pax = xs[a] ?? 0;
+    const pay = ys[a] ?? 0;
     let maxArea = -1;
     let maxIdx = rangeStart;
     for (let k = rangeStart; k < rangeEnd; k++) {
-      const area = Math.abs((pax - ax) * (ys[k]! - pay) - (pax - xs[k]!) * (ay - pay)) * 0.5;
+      const area =
+        Math.abs((pax - ax) * ((ys[k] ?? 0) - pay) - (pax - (xs[k] ?? 0)) * (ay - pay)) * 0.5;
       if (area > maxArea) {
         maxArea = area;
         maxIdx = k;
@@ -824,7 +830,10 @@ export function decimateSeries(
   const budget = Math.max(2, Math.floor(maxPoints / perSeries.length));
   for (const series of perSeries) {
     for (const local of lttbIndices(series.idxs, series.vals, budget)) {
-      kept.add(series.idxs[local]!);
+      const idx = series.idxs[local];
+      if (idx !== undefined) {
+        kept.add(idx);
+      }
     }
   }
   return { kept, downsampled: true };
@@ -893,8 +902,11 @@ export function normalizeChartPayload(payload: ChartResponse): NormalizedChartPa
   const total = history.total_commits;
   const start = history.start_index;
   const normalizedCommits = new Array<CommitPoint | null>(total).fill(null);
-  for (let ci = 0; ci < commits.length && start + ci < total; ci++) {
-    normalizedCommits[start + ci] = commits[ci]!;
+  for (const [ci, commit] of commits.entries()) {
+    if (start + ci >= total) {
+      break;
+    }
+    normalizedCommits[start + ci] = commit;
   }
 
   const rawSeries = payload.series ?? {};
@@ -1067,7 +1079,7 @@ export function seedActiveFromAllowlist(
  * `lance` is excluded by default: its benchmarks run far slower than the other
  * formats, so leaving it on dominates the y-axis and buries the comparison.
  */
-export const DEFAULT_HIDDEN_FORMATS: readonly string[] = ['lance'];
+const DEFAULT_HIDDEN_FORMATS: readonly string[] = ['lance'];
 
 /**
  * Seed the active FORMAT chips from a URL allowlist. An explicit allowlist is

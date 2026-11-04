@@ -7,6 +7,7 @@ import { renderToReadableStream, renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { Group } from '@/bench/lib/queries';
+import { defined } from '@/lib/defined';
 
 const { GROUPS, UNIVERSE, READ } = vi.hoisted(() => {
   const groups: Group[] = [
@@ -120,7 +121,7 @@ describe('the landing page', () => {
     const html = await streamedHtml();
     expect(html).not.toContain('Loading benchmark summaries');
     expect(html).not.toContain('<!--$?-->');
-    expect(visibleText(html)).toContain(GROUPS[0]!.name);
+    expect(visibleText(html)).toContain(defined(GROUPS[0]).name);
   });
 
   describe('on a slow read (a Data Cache miss)', () => {
@@ -143,13 +144,13 @@ describe('the landing page', () => {
       const text = visibleText(html);
       expect(text).toContain('Loading benchmark summaries');
       expect(text).toContain('Without JavaScript this page cannot finish loading.');
-      expect(text).not.toContain(GROUPS[0]!.name);
+      expect(text).not.toContain(defined(GROUPS[0]).name);
     });
 
     it('renders the groups once the read finishes', async () => {
       READ.ms = 400;
       const html = await streamedHtml();
-      expect(visibleText(html)).toContain(GROUPS[0]!.name);
+      expect(visibleText(html)).toContain(defined(GROUPS[0]).name);
     });
   });
 });

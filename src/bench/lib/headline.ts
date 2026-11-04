@@ -18,9 +18,9 @@
 import { displayFormat } from '@/bench/lib/chart-format';
 import type { SeriesRanking, Summary } from '@/bench/lib/summary';
 
-export type HeadlineTone = 'better' | 'worse' | 'same' | 'neutral';
+type HeadlineTone = 'better' | 'worse' | 'same' | 'neutral';
 
-export interface HeadlinePart {
+interface HeadlinePart {
   text: string;
   tone: HeadlineTone;
 }

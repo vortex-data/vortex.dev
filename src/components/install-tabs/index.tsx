@@ -96,6 +96,7 @@ export function InstallTabs({ sparkVersion }: { sparkVersion: string | null }) {
               data-label={tab.label}
             >
               {tab.lines.map((line, n) => (
+                // biome-ignore lint/suspicious/noArrayIndexKey: a tab's lines are constant and never reorder.
                 <span key={n}>
                   {n > 0 && "\n"}
                   {line.prompt && (

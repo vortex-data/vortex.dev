@@ -105,10 +105,9 @@ describe('empty-window charts hide by default and the toggle reveals them', () =
       }
     });
     root = {
-      unmount: () =>
-        roots.forEach((r) => {
-          r.unmount();
-        }),
+      unmount: () => {
+        for (const r of roots) r.unmount();
+      },
       render: () => {},
     } as unknown as Root;
     // Let the bundle fetch resolve, prime the cache, classify, and re-render.

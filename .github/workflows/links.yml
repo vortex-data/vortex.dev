@@ -1,0 +1,65 @@
+name: Links
+
+# Checks the external links in the blog: the posts in src/content/blog and the
+# posts on other sites that the blog index lists (src/content/links.ts).
+# `bun run verify` already checks the site's internal links on every PR.
+#
+# Not a required check, so a broken link never blocks a merge. It runs:
+#   - weekly, because a page on another site can disappear at any time
+#   - on a PR that changes the blog's content, to catch a mistyped link
+#   - by hand (workflow_dispatch)
+# The job summary lists each broken link.
+
+on:
+  schedule:
+    - cron: "0 9 * * 1"
+  pull_request:
+    paths:
+      - "src/content/**"
+      - ".github/workflows/links.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: links-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  lychee:
+    name: External links
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The action downloads the lychee binary named by lycheeVersion from
+      # lychee's GitHub releases. The job has read-only contents access and no
+      # secrets, so that binary can read only the public repository.
+      #
+      # Excluded hosts block automated requests, so they fail when the page is
+      # there: LinkedIn answers 999, and the ACM Digital Library (doi.org
+      # 10.1145) answers 403. The action passes the job's GitHub token, which
+      # raises GitHub's rate limit. lychee 0.24.2 checks a file named here
+      # whatever its extension (the run counts 106 links with or without
+      # --extensions). The flag names `ts` anyway, because lychee's default
+      # extension list, which filters what it finds in directories, has no
+      # `ts`.
+      - name: Check links
+        uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8  # v2.9.0
+        with:
+          lycheeVersion: v0.24.2
+          args: >-
+            --no-progress
+            --max-retries 3
+            --timeout 30
+            --accept 200..=299,429
+            --extensions mdx,ts
+            --exclude '^https://(www\.)?linkedin\.com/'
+            --exclude '^https://doi\.org/10\.1145/'
+            --exclude '^https://dl\.acm\.org/'
+            'src/content/**/*.mdx'
+            src/content/links.ts

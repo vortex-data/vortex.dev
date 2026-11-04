@@ -11,7 +11,7 @@ import { BenchHeader } from '@/bench/components/BenchHeader';
 import { HomeLoading } from '@/bench/components/HomeLoading';
 import { LandingState } from '@/bench/components/LandingState';
 import { OpenGroupsScript } from '@/bench/components/OpenGroupsScript';
-import { groupAnchors } from '@/bench/lib/anchor';
+import { groupAnchor, groupAnchors } from '@/bench/lib/anchor';
 import { type FilterUniverse, parseFilterCsv, singleSearchParam } from '@/bench/lib/chart-format';
 import { cachedFilterUniverse, cachedGroups } from '@/bench/lib/data-cache';
 import { parseGroupFilter } from '@/bench/lib/group-filter';
@@ -140,6 +140,7 @@ function HomeContent({ data: [params, groups, universe] }: { data: LandingData }
             {/* The results as a schema.org Dataset, for search engines. */}
             <script
               type="application/ld+json"
+              // biome-ignore lint/security/noDangerouslySetInnerHtml: JSON-LD from our own data; jsonLdScript escapes every <.
               dangerouslySetInnerHTML={{ __html: jsonLdScript(datasetJsonLd(groups)) }}
             />
             {/* Shown only with JavaScript off, above the groups. */}
@@ -163,7 +164,7 @@ function HomeContent({ data: [params, groups, universe] }: { data: LandingData }
                   <GroupSection
                     key={group.slug}
                     group={group}
-                    anchor={anchors[i]!}
+                    anchor={anchors[i] ?? groupAnchor(group.name)}
                     startIndex={startIndex}
                     universe={universe}
                     initialHiddenSeries={

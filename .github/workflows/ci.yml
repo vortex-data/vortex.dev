@@ -86,6 +86,12 @@ jobs:
       - name: Type check
         run: bun run typecheck
 
+      # knip finds unused files, exports and dependencies. It runs after the
+      # build for the same reason tsc does: it resolves `#site/content` to
+      # .velite/, which the build writes.
+      - name: Unused code and dependencies
+        run: bun run knip
+
       - name: Unit tests
         run: bun run test
 

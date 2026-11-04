@@ -2,7 +2,7 @@
 // user-guide/duckdb, user-guide/datafusion and user-guide/spark.
 
 /** One line of a command block. `prompt` is "$" for a shell command, else "". */
-export type InstallLine = { prompt: string; text: string };
+type InstallLine = { prompt: string; text: string };
 
 export type InstallTab = { key: string; label: string; lines: InstallLine[] };
 

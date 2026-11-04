@@ -116,11 +116,8 @@ export interface SeriesRanking {
   total: number;
 }
 
-/** @deprecated Prefer [`SeriesRanking`]; kept as the historical spelling. */
-export type QueryRanking = SeriesRanking;
-
 /** One format and operation in the compression throughput summary. */
-export interface CompressionRanking {
+interface CompressionRanking {
   /** On-disk format. */
   name: string;
   /** Compression operation. */
@@ -132,7 +129,7 @@ export interface CompressionRanking {
 }
 
 /** One format in the compression size summary. */
-export interface CompressionSizeRanking {
+interface CompressionSizeRanking {
   /** On-disk format. */
   name: string;
   /** Minimum size ratio to Parquet across datasets. */

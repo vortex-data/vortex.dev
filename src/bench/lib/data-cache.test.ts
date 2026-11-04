@@ -56,6 +56,7 @@ import {
   cachedFilterUniverse,
   cachedGroups,
 } from '@/bench/lib/data-cache';
+import { defined } from '@/lib/defined';
 
 afterEach(() => {
   cacheCalls.length = 0;
@@ -90,17 +91,17 @@ describe('data-cache wrappers', () => {
   it('locks each group bundle on its own key, and the group list on every fill slot', async () => {
     await cachedGroups();
     await cachedDefaultGroupCharts('gs');
-    expect(withGroupCacheFillLock.mock.calls[0]![0]).toBe('groups');
-    expect(withGroupCacheFillLock.mock.calls[0]![2]).toEqual({ exclusive: true });
-    expect(withGroupCacheFillLock.mock.calls[1]![0]).toBe('group-charts:gs');
-    expect(withGroupCacheFillLock.mock.calls[1]![2]).toBeUndefined();
+    expect(defined(withGroupCacheFillLock.mock.calls[0])[0]).toBe('groups');
+    expect(defined(withGroupCacheFillLock.mock.calls[0])[2]).toEqual({ exclusive: true });
+    expect(defined(withGroupCacheFillLock.mock.calls[1])[0]).toBe('group-charts:gs');
+    expect(defined(withGroupCacheFillLock.mock.calls[1])[2]).toBeUndefined();
   });
 
   it('reads and fills an aliased slug under its canonical slug', async () => {
     const { collectGroupCharts, chartPayload } = await import('@/bench/lib/queries');
     await cachedDefaultGroupCharts('gs-alias');
     await cachedDefaultChartPayload('cs-alias');
-    expect(withGroupCacheFillLock.mock.calls[0]![0]).toBe('group-charts:gs');
+    expect(defined(withGroupCacheFillLock.mock.calls[0])[0]).toBe('group-charts:gs');
     expect(vi.mocked(collectGroupCharts)).toHaveBeenLastCalledWith(
       { slug: 'gs' },
       expect.anything(),

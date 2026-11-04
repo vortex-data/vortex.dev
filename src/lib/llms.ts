@@ -5,7 +5,7 @@ import { copyText, installTabs } from "@/lib/install";
 import { resultsRow, resultsSystems } from "@/vendor/vortex-design/results.js";
 
 // What the homepage says Vortex is, for llms.txt and the structured data.
-export const SUMMARY =
+const SUMMARY =
   "Vortex is an open-source columnar file format for fast scans, random access, and compression, with Rust, Python, DuckDB, DataFusion, and Spark support. It is an Apache-2.0 project of the Linux Foundation.";
 
 const REPO = "https://github.com/vortex-data/vortex";

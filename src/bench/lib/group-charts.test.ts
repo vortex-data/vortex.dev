@@ -25,6 +25,7 @@ import {
   TREE_SHA,
 } from './test-harness';
 import { type CommitWindow, parseCommitWindow } from './window';
+import { defined } from '@/lib/defined';
 
 describe('historyFor', () => {
   it('bounds a long history to the window', () => {
@@ -117,7 +118,7 @@ async function statementsOf<T>(
   const clients = new Set(clientQuery.mock.contexts as Client[]);
   expect(clients.size).toBe(1);
   // Only the pool's own idle listener is left on the released client.
-  expect([...clients][0]!.listenerCount('error')).toBe(1);
+  expect(defined([...clients][0]).listenerCount('error')).toBe(1);
   expect(texts[0]).toBe('BEGIN ISOLATION LEVEL REPEATABLE READ, READ ONLY');
   expect(texts.at(-1)).toBe('COMMIT');
   clientQuery.mockRestore();
@@ -580,7 +581,7 @@ describe.skipIf(!databaseAvailable)('groupChartPayloads at the window edges', ()
 
   it('gives each random-access and vector-search chart its own window', async () => {
     const window = commitWindow('4');
-    const [ra, rb] = await groupChartPayloads(...OTHER_FAMILIES[0]!, window);
+    const [ra, rb] = await groupChartPayloads(...defined(OTHER_FAMILIES[0]), window);
     expect(ra?.history).toEqual({
       total_commits: 6,
       start_index: 2,
@@ -595,7 +596,7 @@ describe.skipIf(!databaseAvailable)('groupChartPayloads at the window edges', ()
     });
     expect(rb?.commits.map((c) => c.sha)).toEqual([D, E, F]);
     expect(rb?.series).toEqual({ 'f1:hot': [null, 51, 52] });
-    const [, tenth, short] = await groupChartPayloads(...OTHER_FAMILIES[1]!, window);
+    const [, tenth, short] = await groupChartPayloads(...defined(OTHER_FAMILIES[1]), window);
     expect(tenth?.history).toEqual({
       total_commits: 4,
       start_index: 0,

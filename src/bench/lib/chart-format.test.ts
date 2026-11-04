@@ -49,6 +49,7 @@ import {
   visibleRange,
 } from './chart-format';
 import type { ChartResponse, CommitPoint } from './queries';
+import { defined } from '@/lib/defined';
 
 function commit(sha: string): CommitPoint {
   return {
@@ -252,7 +253,9 @@ function seen(hex: string, vision: Vision): Lab {
   const m = MACHADO[vision];
   const clamp = (v: number): number => Math.min(1, Math.max(0, v));
   return labOf(
-    m.map((row) => clamp(row[0]! * rgb[0] + row[1]! * rgb[1] + row[2]! * rgb[2])) as Rgb,
+    m.map((row) =>
+      clamp(defined(row[0]) * rgb[0] + defined(row[1]) * rgb[1] + defined(row[2]) * rgb[2]),
+    ) as Rgb,
   );
 }
 
@@ -692,7 +695,7 @@ describe('lttbIndices', () => {
     expect(kept).toContain(50);
     // Indices are strictly increasing.
     for (let i = 1; i < kept.length; i++) {
-      expect(kept[i]).toBeGreaterThan(kept[i - 1]!);
+      expect(kept[i]).toBeGreaterThan(defined(kept[i - 1]));
     }
   });
 });

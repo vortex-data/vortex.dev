@@ -15,7 +15,7 @@
  */
 
 /** The five fact-table names, spelled exactly as in `migrations/001`. */
-export type FamilyTable =
+type FamilyTable =
   | 'query_measurements'
   | 'compression_times'
   | 'compression_sizes'

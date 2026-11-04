@@ -6,12 +6,5 @@
   },
   "[css]": {
     "editor.formatOnSave": false
-  },
-  "tailwindCSS.classAttributes": [
-    "class",
-    "className",
-    ".*ClassName",
-    "ngClass",
-    ".*Styles"
-  ]
+  }
 }

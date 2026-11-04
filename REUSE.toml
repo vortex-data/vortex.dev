@@ -21,6 +21,8 @@ path = [
   "tests/**",
   ".github/**",
   ".vscode/**",
+  ".editorconfig",
+  ".gitattributes",
   ".gitignore",
   ".nvmrc",
   "*.cjs",

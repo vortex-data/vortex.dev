@@ -13,7 +13,7 @@
  * bench's public one, whichever host serves the file.
  */
 
-import { groupAnchors } from '@/bench/lib/anchor';
+import { groupAnchor, groupAnchors } from '@/bench/lib/anchor';
 import { groupDocUrl } from '@/bench/lib/benchmark-docs';
 import { formatCompressionSizeRatio, formatThroughput, formatTimeNs } from '@/bench/lib/format';
 import { groupHeadline, headlineText } from '@/bench/lib/headline';
@@ -50,7 +50,7 @@ export function chartUrl(slug: string): string {
 }
 
 /** A value in its unit, as `12.34 ms`, `1.21 GB`, `850 MB/s`. */
-export function formatValue(value: number, unitKind: UnitKind): string {
+function formatValue(value: number, unitKind: UnitKind): string {
   switch (unitKind) {
     case 'time_ns':
       return formatTimeNs(value);
@@ -372,7 +372,7 @@ export function llmsText(groups: readonly Group[], readAt: Date): string {
     }
     const doc = groupDocUrl(group.slug);
     lines.push(
-      `- [${group.name} charts](${groupUrl(anchors[i]!)}): ` +
+      `- [${group.name} charts](${groupUrl(anchors[i] ?? groupAnchor(group.name))}): ` +
         `${group.charts.length} ${group.charts.length === 1 ? 'chart' : 'charts'} ` +
         'of the results over recent commits',
     );

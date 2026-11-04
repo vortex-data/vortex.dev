@@ -24,6 +24,7 @@ import {
   takeOpenGroupsBootstrap,
 } from '@/bench/lib/open-groups';
 import { USER_INPUT } from '@/bench/lib/scroll-restore';
+import { defined } from '@/lib/defined';
 
 const UNIVERSE: FilterUniverse = { engines: ['duckdb'], formats: ['parquet', 'vortex'] };
 const NAMES = ['TPC-H (NVMe) (SF=1)', 'Random Access', 'Clickbench'];
@@ -34,8 +35,8 @@ const ANCHORS = groupAnchors(NAMES);
 const SECTIONS = NAMES.map((name, i) => (
   <GroupSection
     key={SLUGS[i]}
-    group={{ name, slug: SLUGS[i]!, charts: [{ name: 'q1', slug: `${SLUGS[i]}.q1` }] }}
-    anchor={ANCHORS[i]!}
+    group={{ name, slug: defined(SLUGS[i]), charts: [{ name: 'q1', slug: `${SLUGS[i]}.q1` }] }}
+    anchor={defined(ANCHORS[i])}
     startIndex={i}
     universe={UNIVERSE}
   />
@@ -307,17 +308,17 @@ describe('OpenGroupsScript', () => {
 
     it('opens a listed group as soon as it is parsed, before the later groups arrive', async () => {
       const page = stream('#random-access');
-      page.append(SECTION_HTML[0]!);
+      page.append(defined(SECTION_HTML[0]));
       await page.settle();
       expect(openAnchors(page.doc)).toEqual([]);
 
-      page.append(SECTION_HTML[1]!);
+      page.append(defined(SECTION_HTML[1]));
       await page.settle();
       expect(openAnchors(page.doc)).toEqual(['random-access']);
       // The marker waits for the finish step.
       expect((page.doc as unknown as Record<string, unknown>).__benchOpenGroups).toBeUndefined();
 
-      page.append(SECTION_HTML[2]!);
+      page.append(defined(SECTION_HTML[2]));
       page.finish();
       expect(openAnchors(page.doc)).toEqual(['random-access']);
       expect(takeOpenGroupsBootstrap(page.doc)).toEqual({ input: false });
@@ -341,7 +342,7 @@ describe('OpenGroupsScript', () => {
 
     it('keeps closed a listed group the reader closed before the last group arrived', async () => {
       const page = stream('#tpc-h-nvme-sf-1,clickbench');
-      page.append(SECTION_HTML[0]!);
+      page.append(defined(SECTION_HTML[0]));
       await page.settle();
       expect(openAnchors(page.doc)).toEqual(['tpc-h-nvme-sf-1']);
 
@@ -350,7 +351,7 @@ describe('OpenGroupsScript', () => {
         throw new Error('no disclosure');
       }
       first.open = false;
-      page.append(SECTION_HTML[1]! + SECTION_HTML[2]!);
+      page.append(defined(SECTION_HTML[1]) + defined(SECTION_HTML[2]));
       await page.settle();
       page.finish();
       expect(openAnchors(page.doc)).toEqual(['clickbench']);
@@ -370,9 +371,9 @@ describe('OpenGroupsScript', () => {
 
     it('records input from before the last group arrived', () => {
       const page = stream('#clickbench');
-      page.append(SECTION_HTML[0]!);
+      page.append(defined(SECTION_HTML[0]));
       page.window.dispatchEvent(new page.window.Event('keydown'));
-      page.append(SECTION_HTML[1]! + SECTION_HTML[2]!);
+      page.append(defined(SECTION_HTML[1]) + defined(SECTION_HTML[2]));
       page.finish();
       expect(takeOpenGroupsBootstrap(page.doc)).toEqual({ input: true });
     });

@@ -240,7 +240,7 @@ export async function startBenchDatabase(
 // The canonical web UI fixture contains three oldest-first commits. Vortex and
 // Parquet occur on each commit. Lance occurs only on the oldest commit to test
 // its sparse cadence. Each commit adds a bias to keep other series non-flat.
-export const COMMITS: ReadonlyArray<readonly [string, string, string]> = [
+const COMMITS: ReadonlyArray<readonly [string, string, string]> = [
   ['1'.repeat(40), '2026-04-23T12:00:00Z', 'first commit'],
   ['2'.repeat(40), '2026-04-24T12:00:00Z', 'second commit'],
   ['3'.repeat(40), '2026-04-25T12:00:00Z', 'third commit'],
@@ -278,8 +278,7 @@ export async function seedChartFixture(pool: Pool): Promise<void> {
       [sha, ts, msg, TREE_SHA, commitUrl(sha)],
     );
   }
-  for (let i = 0; i < COMMITS.length; i += 1) {
-    const sha = COMMITS[i]![0];
+  for (const [i, [sha]] of COMMITS.entries()) {
     const bias = i * 50_000;
     // query_measurements: Q1 has two engine/format series, Q2 has one.
     const qm: ReadonlyArray<readonly [number, string, string, number]> = [

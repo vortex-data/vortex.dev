@@ -1,0 +1,10 @@
+# Store text files with LF endings, on every platform.
+* text=auto eol=lf
+
+# The license texts stay byte for byte as REUSE downloaded them.
+LICENSES/** -text
+
+# Generated or vendored: collapse them in diffs and leave them out of the
+# language statistics.
+bun.lock linguist-generated
+src/vendor/** linguist-vendored

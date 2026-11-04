@@ -57,16 +57,16 @@
     "rules": {
       "preset": "recommended",
       "suspicious": {
-        "noExplicitAny": "off",
-        "noArrayIndexKey": "off",
-        "noAssignInExpressions": "off",
-        "noShadowRestrictedNames": "off"
+        "noExplicitAny": "error",
+        "noArrayIndexKey": "error",
+        "noAssignInExpressions": "error",
+        "noShadowRestrictedNames": "error"
       },
       "style": {
-        "useImportType": "warn",
-        "noNonNullAssertion": "off",
-        "noParameterAssign": "off",
-        "noDescendingSpecificity": "off"
+        "useImportType": "error",
+        "noParameterAssign": "error",
+        "noDescendingSpecificity": "error",
+        "noNonNullAssertion": "error"
       },
       "correctness": {
         "noUnusedVariables": {
@@ -76,7 +76,7 @@
           }
         },
         "noUnusedImports": "error",
-        "useExhaustiveDependencies": "off",
+        "useExhaustiveDependencies": "error",
         "useHookAtTopLevel": "error"
       },
       "a11y": {
@@ -86,14 +86,15 @@
         "noSvgWithoutTitle": "error"
       },
       "complexity": {
-        "noForEach": "off",
-        "noUselessFragments": "off"
+        "noForEach": "error",
+        "noUselessFragments": "error",
+        "noImportantStyles": "error"
       },
       "performance": {
         "noImgElement": "off"
       },
       "security": {
-        "noDangerouslySetInnerHtml": "off"
+        "noDangerouslySetInnerHtml": "error"
       }
     }
   },
@@ -121,16 +122,6 @@
       "css": {
         "formatter": {
           "quoteStyle": "single"
-        }
-      },
-      "linter": {
-        "rules": {
-          "correctness": {
-            "useExhaustiveDependencies": "error"
-          },
-          "complexity": {
-            "noImportantStyles": "off"
-          }
         }
       },
       "assist": {

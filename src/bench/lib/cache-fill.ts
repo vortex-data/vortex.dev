@@ -58,13 +58,14 @@ const slotWaiters: { exclusive: boolean; grant: (slots: number) => void }[] = []
 // running fills to finish, and no later fill passes it.
 function grantSlots(): void {
   const capacity = cacheFillSlots();
-  while (slotWaiters.length > 0) {
-    const slots = slotWaiters[0]!.exclusive ? capacity : 1;
+  for (let head = slotWaiters[0]; head; head = slotWaiters[0]) {
+    const slots = head.exclusive ? capacity : 1;
     if (usedSlots + slots > capacity) {
       return;
     }
     usedSlots += slots;
-    slotWaiters.shift()!.grant(slots);
+    slotWaiters.shift();
+    head.grant(slots);
   }
 }
 

@@ -27,7 +27,7 @@ const declsOf = (source: string) =>
 const decls = declsOf(css);
 const selectorsOf = (d: { sel: string }) => d.sel.split(',').map((s) => s.trim());
 /** The last value globals.css gives `prop` on exactly `selector`, as the cascade would. */
-const valueOf = (selector: string, prop: string) =>
+const lastValue = (selector: string, prop: string) =>
   decls.filter((d) => selectorsOf(d).includes(selector) && d.prop === prop).at(-1)?.value;
 
 // The system's colour roles, from the tokens stylesheet.
@@ -98,31 +98,31 @@ describe("bench's stylesheet on the system's tokens", () => {
   // Words take accent-ink; fills take accent with on-accent text. In Light the two are one Blue.
   it('fills with accent and writes on it in on-accent', () => {
     for (const sel of ['.filter-badge', '.filter-chip--active']) {
-      expect(valueOf(sel, 'background'), sel).toBe('var(--accent)');
-      expect(valueOf(sel, 'color'), sel).toBe('var(--on-accent)');
+      expect(lastValue(sel, 'background'), sel).toBe('var(--accent)');
+      expect(lastValue(sel, 'color'), sel).toBe('var(--on-accent)');
     }
-    expect(valueOf('.filter-chip--active:hover', 'border-color')).toBe('var(--accent)');
-    expect(valueOf('.toolbar-slider', 'accent-color')).toBe('var(--accent)');
-    expect(valueOf('.chart-range-strip-handle', 'background')).toBe('var(--accent)');
-    expect(valueOf('a', 'color')).toBe('var(--accent-ink)');
+    expect(lastValue('.filter-chip--active:hover', 'border-color')).toBe('var(--accent)');
+    expect(lastValue('.toolbar-slider', 'accent-color')).toBe('var(--accent)');
+    expect(lastValue('.chart-range-strip-handle', 'background')).toBe('var(--accent)');
+    expect(lastValue('a', 'color')).toBe('var(--accent-ink)');
   });
 
   // The system's States rule: a pressed switch sits on surface in ink inside a raised group, and
   // a switch is never Blue.
   it('draws the linear and log toggles as a switch, with no Blue', () => {
-    expect(valueOf('.toolbar-btn', 'background')).toBe('var(--raised)');
-    expect(valueOf('.toolbar-btn', 'color')).toBe('var(--ink-muted)');
+    expect(lastValue('.toolbar-btn', 'background')).toBe('var(--raised)');
+    expect(lastValue('.toolbar-btn', 'color')).toBe('var(--ink-muted)');
     for (const sel of ['.toolbar-btn--active', '.toolbar-btn--active:hover']) {
-      expect(valueOf(sel, 'background'), sel).toBe('var(--surface)');
-      expect(valueOf(sel, 'border-color'), sel).toBe('var(--line)');
-      expect(valueOf(sel, 'color'), sel).toBe('var(--ink)');
+      expect(lastValue(sel, 'background'), sel).toBe('var(--surface)');
+      expect(lastValue(sel, 'border-color'), sel).toBe('var(--line)');
+      expect(lastValue(sel, 'color'), sel).toBe('var(--ink)');
     }
   });
 
   it('gives cards the card radius and controls the control radius', () => {
-    expect(valueOf('.group-details', 'border-radius')).toBe('var(--radius-card)');
+    expect(lastValue('.group-details', 'border-radius')).toBe('var(--radius-card)');
     for (const control of ['.control-btn', '.toolbar-btn', '.filter-chip']) {
-      expect(valueOf(control, 'border-radius'), control).toBe('var(--radius-control)');
+      expect(lastValue(control, 'border-radius'), control).toBe('var(--radius-control)');
     }
   });
 
@@ -135,10 +135,10 @@ describe("bench's stylesheet on the system's tokens", () => {
   });
 
   it('sets the header buttons as mono labels, mutes ranks, and squares the badges', () => {
-    expect(valueOf('.control-btn', 'font-family')).toBe('var(--font-mono)');
-    expect(valueOf('.score-rank', 'color')).toBe('var(--ink-muted)');
+    expect(lastValue('.control-btn', 'font-family')).toBe('var(--font-mono)');
+    expect(lastValue('.score-rank', 'color')).toBe('var(--ink-muted)');
     for (const sel of ['.filter-badge', '.group-count']) {
-      expect(valueOf(sel, 'border-radius'), sel).toBe('2px');
+      expect(lastValue(sel, 'border-radius'), sel).toBe('2px');
     }
   });
 
@@ -175,12 +175,12 @@ describe("bench's stylesheet on the system's tokens", () => {
   // The system's header (has-tools) sticks and holds the controls, so bench draws no toolbar.
   it("puts the controls on the system's sticky header, and draws no toolbar of its own", () => {
     expect(css).not.toMatch(/\.bench-toolbar[\s,{]|\.bench-title/);
-    expect(valueOf(':root', '--toolbar-height')).toBe('64px');
+    expect(lastValue(':root', '--toolbar-height')).toBe('64px');
     // `hidden` on the root would make body a scroll container that never scrolls, and the
     // header would stick to it, not to the window; `clip` clips without one.
-    expect(valueOf('body', 'overflow-x')).toBe('clip');
+    expect(lastValue('body', 'overflow-x')).toBe('clip');
     // The fixed Groups button needs room under the footer, or it covers the footer's mark.
-    expect(valueOf('.bench-frame:has(.group-nav-toggle)', 'padding-bottom')).toBe('3.5rem');
+    expect(lastValue('.bench-frame:has(.group-nav-toggle)', 'padding-bottom')).toBe('3.5rem');
     // Below 1260px the buttons' words hide, but the Filters count stays in view.
     expect(css).toMatch(
       /@media \(max-width: 1260px\) \{\s*\.bench-toolbar-controls \.vx-btn > span:not\(\.filter-badge\),/,
@@ -193,7 +193,7 @@ describe("bench's stylesheet on the system's tokens", () => {
     expect(css).toMatch(
       /@media \(max-width: 400px\) \{\s*\.vx-header-tools \.vx-btn \{\s*padding-inline: 0\.4rem;/,
     );
-    expect(valueOf('main', 'padding')).toBe('var(--space-16) var(--page-pad)');
+    expect(lastValue('main', 'padding')).toBe('var(--space-16) var(--page-pad)');
     expect(css).not.toMatch(/sticky-header|site-title|repo-link|nav-controls|logo-link/);
   });
 
@@ -201,15 +201,15 @@ describe("bench's stylesheet on the system's tokens", () => {
   // Vortex's rows only: the other formats' scores are in ink-body.
   it('sets group names and scores in mono, with Blue only on Vortex', () => {
     for (const sel of ['.group-name', '.scores-title', '.score-item']) {
-      expect(valueOf(sel, 'font-family'), sel).toBe('var(--font-mono)');
+      expect(lastValue(sel, 'font-family'), sel).toBe('var(--font-mono)');
     }
     // Will's B (2026-11-03): weight 400 at 13px read too thin, Light most of all.
-    expect(valueOf('.group-name', 'font-weight')).toBe('600');
-    expect(valueOf('.scores-title', 'font-size')).toBe('13px');
-    expect(valueOf('.scores-title', 'color')).toBe('var(--ink-body)');
-    expect(valueOf('.score-item', 'font-size')).toBe('14px');
-    expect(valueOf('.score-series', 'font-weight')).toBe('500');
-    expect(valueOf('.score-value', 'color')).toBe('var(--ink-body)');
+    expect(lastValue('.group-name', 'font-weight')).toBe('600');
+    expect(lastValue('.scores-title', 'font-size')).toBe('13px');
+    expect(lastValue('.scores-title', 'color')).toBe('var(--ink-body)');
+    expect(lastValue('.score-item', 'font-size')).toBe('14px');
+    expect(lastValue('.score-series', 'font-weight')).toBe('500');
+    expect(lastValue('.score-value', 'color')).toBe('var(--ink-body)');
     expect(
       decls.some(
         (d) =>
@@ -229,7 +229,7 @@ describe("bench's stylesheet on the system's tokens", () => {
 
   it('clips sideways overflow on html and body, so sticky headers keep working', () => {
     for (const sel of ['html', 'body']) {
-      expect(valueOf(sel, 'overflow-x'), sel).toBe('clip');
+      expect(lastValue(sel, 'overflow-x'), sel).toBe('clip');
     }
   });
 
@@ -260,7 +260,7 @@ describe("bench's stylesheet on the system's tokens", () => {
     // retries it.
     for (const state of ['windowed', 'error']) {
       const sel = `.chart-window-chip[data-state='${state}']:not(:disabled):active`;
-      expect(valueOf(sel, 'background'), sel).toBeDefined();
+      expect(lastValue(sel, 'background'), sel).toBeDefined();
     }
   });
 });

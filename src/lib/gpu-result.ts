@@ -30,18 +30,24 @@ import { geomean } from "./geomean";
  * screen-reader text. If cuDF gains a Lance integration, give Lance its times in
  * the table and a row computed like Vortex's.
  */
-export const PARQUET_CONFIGS = [
+const PARQUET_CONFIGS = [
   "PyArrow, zstd(3)",
   "PyArrow, Snappy",
   "cuDF, Snappy, 1M-row groups",
   "cuDF, Snappy, 4M-row groups"
 ] as const;
 
+/** A tuple of times, one for each entry of `T`. */
+type TimesFor<T extends readonly unknown[]> = {
+  readonly [K in keyof T]: number;
+};
+
 /** Mean query time in ms, hot: Vortex, then Parquet in `PARQUET_CONFIGS` order. */
 export const GPU_QUERIES: readonly {
   query: string;
   vortex: number;
-  parquet: readonly [number, number, number, number];
+  /** One time per entry in `PARQUET_CONFIGS`, so the two cannot drift apart. */
+  parquet: TimesFor<typeof PARQUET_CONFIGS>;
 }[] = [
   { query: "Q1", vortex: 32.37, parquet: [106.6, 97.96, 89.87, 82.28] },
   { query: "Q5", vortex: 13.27, parquet: [104.3, 82.99, 69.44, 61.04] },

@@ -68,6 +68,7 @@ export function LogoBanner({ className }: { className?: string | undefined }) {
         <div className="vx-logos-track">
           {Array.from({ length: copies }, (_, i) => (
             <div
+              // biome-ignore lint/suspicious/noArrayIndexKey: the copies are identical, so the index is their only identity.
               key={i}
               ref={i === 0 ? first : undefined}
               className="vx-logos-set"

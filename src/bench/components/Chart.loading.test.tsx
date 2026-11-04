@@ -12,6 +12,7 @@ import { FETCH_TIMEOUT_MS } from '@/bench/lib/chart-format';
 import { PAGE_LEAVE_GRACE_MS } from '@/bench/lib/page-leave';
 import { fullHistoryQueue } from '@/bench/lib/chart-store';
 import { loadChartJs } from '@/bench/lib/chart-js';
+import { defined } from '@/lib/defined';
 
 // Mock Chart.js construction to a NEVER-RESOLVING loader by default:
 // maybeConstruct awaits it forever and never reaches `new Chart(...)`, so the
@@ -396,7 +397,7 @@ describe('Chart opt-in full-history loading', () => {
       }
     });
     expect(charts).toHaveLength(1);
-    const stub = charts[0]!;
+    const stub = defined(charts[0]);
     expect(stub.options.plugins.tooltip.enabled).toBe(false);
     expect(stub.options.plugins.zoom.limits.x).toEqual({ min: 0, max: 19, minRange: 4 });
 
@@ -442,18 +443,18 @@ describe('Chart opt-in full-history loading', () => {
       const { signals } = stubAbortableWindowFetch();
       await renderOpenGroup();
       expect(signals.length).toBeGreaterThanOrEqual(1);
-      expect(signals[0]!.aborted).toBe(false);
+      expect(defined(signals[0]).aborted).toBe(false);
     });
 
     it('aborts a stalled window fetch at FETCH_TIMEOUT_MS and shows an error', async () => {
       vi.useFakeTimers();
       const { signals } = stubAbortableWindowFetch();
       await renderOpenGroup();
-      expect(signals[0]!.aborted).toBe(false);
+      expect(defined(signals[0]).aborted).toBe(false);
       await act(async () => {
         await vi.advanceTimersByTimeAsync(FETCH_TIMEOUT_MS);
       });
-      expect(signals[0]!.aborted).toBe(true);
+      expect(defined(signals[0]).aborted).toBe(true);
       const err = container.querySelector('.chart-error');
       expect(err).not.toBeNull();
       vi.useRealTimers();
@@ -462,12 +463,12 @@ describe('Chart opt-in full-history loading', () => {
     it('unmount (destroy) aborts an in-flight window fetch', async () => {
       const { signals } = stubAbortableWindowFetch();
       await renderOpenGroup();
-      expect(signals[0]!.aborted).toBe(false);
+      expect(defined(signals[0]).aborted).toBe(false);
       await act(async () => {
         root?.unmount();
         root = null;
       });
-      expect(signals[0]!.aborted).toBe(true);
+      expect(defined(signals[0]).aborted).toBe(true);
     });
 
     it('a close/destroy abort is silent (no error indicator)', async () => {
@@ -477,7 +478,7 @@ describe('Chart opt-in full-history loading', () => {
         root?.unmount();
         root = null;
       });
-      expect(signals[0]!.aborted).toBe(true);
+      expect(defined(signals[0]).aborted).toBe(true);
       // destroy sets disposed, so the rejected fetch must not paint an error.
       expect(container.querySelector('.chart-error')).toBeNull();
     });
@@ -521,14 +522,14 @@ describe('Chart opt-in full-history loading', () => {
         await Promise.resolve();
       });
       expect(signals.length).toBeGreaterThanOrEqual(1);
-      expect(signals[0]!.aborted).toBe(false);
+      expect(defined(signals[0]).aborted).toBe(false);
       // Unmounting destroys the controller; the per-fetch aborter is bridged
       // from the controller-lifetime aborter so it must fire immediately.
       await act(async () => {
         root?.unmount();
         root = null;
       });
-      expect(signals[0]!.aborted).toBe(true);
+      expect(defined(signals[0]).aborted).toBe(true);
     });
 
     it('a stalled full-history fetch times out and the chip offers retry', async () => {
@@ -551,7 +552,7 @@ describe('Chart opt-in full-history loading', () => {
       await act(async () => {
         await vi.advanceTimersByTimeAsync(FETCH_TIMEOUT_MS);
       });
-      expect(signals[0]!.aborted).toBe(true);
+      expect(defined(signals[0]).aborted).toBe(true);
       expect(chip?.dataset.state).toBe('error');
       expect(chip?.textContent).toBe('retry');
       vi.useRealTimers();

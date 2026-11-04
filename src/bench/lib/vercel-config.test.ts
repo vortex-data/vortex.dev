@@ -4,6 +4,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { defined } from '@/lib/defined';
 
 interface HeaderRule {
   source: string;
@@ -31,10 +32,10 @@ function hostName(pattern: string): string {
   }
   // Labels joined by escaped dots, and nothing else: an unescaped dot or any
   // other regular-expression character fails.
-  if (!/^[a-z0-9-]+(?:\\\.[a-z0-9-]+)+$/.test(match[1]!)) {
+  if (!/^[a-z0-9-]+(?:\\\.[a-z0-9-]+)+$/.test(defined(match[1]))) {
     throw new Error(`host condition ${pattern} is not an escaped host name`);
   }
-  return match[1]!.replaceAll('\\.', '.');
+  return defined(match[1]).replaceAll('\\.', '.');
 }
 
 /** The paths (with any host condition) that get bench's page CDN rule. */
