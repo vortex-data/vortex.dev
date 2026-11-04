@@ -127,6 +127,7 @@ function HomeContent({ data: [params, groups, universe] }: { data: LandingData }
   return (
     <>
       <BenchHeader
+        groupControls={groups.length > 0}
         universe={universe}
         initialEngines={initialEngines}
         initialFormats={initialFormats}

@@ -8,9 +8,24 @@ import { Toolbar } from '@/bench/components/Toolbar';
 
 const UNIVERSE = { engines: ['datafusion', 'duckdb'], formats: ['parquet', 'vortex'] };
 
+// Expand all and Collapse all open and close the landing page's groups, so
+// they render only where the page asks for them: the chart page, the
+// methodology page and the loading view have no groups.
+describe('Toolbar group controls', () => {
+  it('renders Expand all and Collapse all only when the page has groups', () => {
+    const without = renderToStaticMarkup(
+      <Toolbar universe={UNIVERSE} initialEngines={[]} initialFormats={[]} />,
+    );
+    expect(without).not.toContain('data-action="expand-all"');
+    expect(without).not.toContain('data-action="collapse-all"');
+    expect(without).toContain('data-role="global-filter-bar"');
+    expect(renderToStaticMarkup(<Toolbar />)).not.toContain('Expand all');
+  });
+});
+
 describe('Toolbar (server-rendered)', () => {
   const html = renderToStaticMarkup(
-    <Toolbar universe={UNIVERSE} initialEngines={[]} initialFormats={[]} />,
+    <Toolbar groupControls universe={UNIVERSE} initialEngines={[]} initialFormats={[]} />,
   );
 
   // The site's header holds the page's title, the theme toggle and the GitHub button.

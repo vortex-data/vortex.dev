@@ -12,6 +12,9 @@ import { setAllGroupsOpen } from '@/bench/lib/open-groups';
 
 /** What a page passes for the filter dropdown. */
 export type ToolbarProps = {
+  /** Draw Expand all and Collapse all: only the landing page, with its
+   * groups, passes it. */
+  groupControls?: boolean;
   universe?: FilterUniverse | undefined;
   initialEngines?: string[] | null;
   initialFormats?: string[] | null;
@@ -31,17 +34,24 @@ export type ToolbarProps = {
  * kept at least 300 ms apart. The native `toggle` event
  * (which also fires for scripted changes) is how each group body learns its
  * group opened, so no shared React tree is needed between the toolbar and the
- * groups. On a page without groups (the chart page) the buttons do nothing.
+ * groups. The two buttons render only where the page passes `groupControls`:
+ * the landing page, when it has groups. The chart page, the methodology page
+ * and the loading view have no groups for them to open or close.
  *
  * The filter dropdown renders only when the universe has at least one chip,
  * matching v3's `show_filters` guard. Pages without chart data (or without the
- * universe fetched) pass an empty universe and get the two buttons.
+ * universe fetched) pass an empty universe and get no dropdown.
  *
  * Without JavaScript none of the buttons can work, so each carries
  * `data-requires-js`, which hides it under the root's `no-js` class
  * (globals.css), as does the filter dropdown ([`FilterBar`]).
  */
-export function Toolbar({ universe, initialEngines, initialFormats }: ToolbarProps) {
+export function Toolbar({
+  groupControls = false,
+  universe,
+  initialEngines,
+  initialFormats,
+}: ToolbarProps) {
   // The pre-paint script has swapped `no-js` for `js` already. If React ever
   // renders the root `<html>` afresh (a root-level hydration failure does), it
   // puts the server's `no-js` back, which would hide every control that needs
@@ -56,26 +66,30 @@ export function Toolbar({ universe, initialEngines, initialFormats }: ToolbarPro
   return (
     // biome-ignore lint/a11y/useAriaPropsSupportedByRole: deliberate markup, as bench has always rendered the group controls.
     <div className="bench-toolbar-controls" aria-label="Benchmark group controls">
-      <button
-        className="vx-btn vx-btn-secondary is-mono"
-        type="button"
-        data-action="expand-all"
-        data-requires-js
-        onClick={() => setAllGroupsOpen(window, true)}
-      >
-        <ExpandAllIcon />
-        <span>Expand all</span>
-      </button>
-      <button
-        className="vx-btn vx-btn-secondary is-mono"
-        type="button"
-        data-action="collapse-all"
-        data-requires-js
-        onClick={() => setAllGroupsOpen(window, false)}
-      >
-        <CollapseAllIcon />
-        <span>Collapse all</span>
-      </button>
+      {groupControls && (
+        <>
+          <button
+            className="vx-btn vx-btn-secondary is-mono"
+            type="button"
+            data-action="expand-all"
+            data-requires-js
+            onClick={() => setAllGroupsOpen(window, true)}
+          >
+            <ExpandAllIcon />
+            <span>Expand all</span>
+          </button>
+          <button
+            className="vx-btn vx-btn-secondary is-mono"
+            type="button"
+            data-action="collapse-all"
+            data-requires-js
+            onClick={() => setAllGroupsOpen(window, false)}
+          >
+            <CollapseAllIcon />
+            <span>Collapse all</span>
+          </button>
+        </>
+      )}
       {showFilters && (
         <FilterBar
           universe={universe}
