@@ -10,9 +10,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { GroupPermalink, groupPermalinkUrl } from '@/bench/components/GroupPermalink';
 import {
+  applyGroupMacro,
   initGlobalFilter,
   initGroupFilter,
   noteGroupSeries,
+  resetGroup,
   toggleGroupSeries,
 } from '@/bench/lib/chart-store';
 
@@ -89,6 +91,7 @@ describe('GroupPermalink click behavior', () => {
     Reflect.deleteProperty(navigator, 'clipboard');
     window.history.replaceState(null, '', '/');
     initGroupFilter('random_access', [], []);
+    resetGroup('random_access');
   });
 
   /** Mount the link inside a real `<details>`/`<summary>` host, as on the
@@ -256,6 +259,23 @@ describe('GroupPermalink click behavior', () => {
 
     expect(copiedText).toEqual([
       `${window.location.origin}/?group=random-access&hide=datafusion+parquet&hide=duckdb%3Avortex#random-access`,
+    ]);
+  });
+
+  // A permalink names series, so an engine or format the group's filter hides
+  // reaches it as the series that engine or format covers.
+  it('copies the series an engine or format choice hides', async () => {
+    const { link } = mount();
+    noteGroupSeries('random_access', {
+      'datafusion:parquet': { engine: 'datafusion', format: 'parquet' },
+      'duckdb:parquet': { engine: 'duckdb', format: 'parquet' },
+    });
+    applyGroupMacro('random_access', 'engine', 'datafusion');
+
+    await click(link);
+
+    expect(copiedText).toEqual([
+      `${window.location.origin}/?group=random-access&hide=datafusion%3Aparquet#random-access`,
     ]);
   });
 

@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useBenchPath } from '@/bench/components/BenchBase';
-import { getGroupSnapshot } from '@/bench/lib/chart-store';
+import { getGroupSnapshot, groupHiddenSeries } from '@/bench/lib/chart-store';
 import {
   GROUP_FILTER_PARAM,
   HIDDEN_SERIES_PARAM,
@@ -103,7 +103,12 @@ export function GroupPermalink({
   const [href, setHref] = useState(path(`/#${encodeURIComponent(anchor)}`));
   const permalink = useCallback((): string => {
     const snapshot = getGroupSnapshot(groupSlug);
-    return groupPermalinkUrl(anchor, snapshot.hiddenSeries, snapshot.shownSeries, window.location);
+    return groupPermalinkUrl(
+      anchor,
+      groupHiddenSeries(snapshot),
+      snapshot.shownSeries,
+      window.location,
+    );
   }, [anchor, groupSlug]);
   const refreshHref = useCallback((): void => {
     setHref(permalink().slice(window.location.origin.length));

@@ -22,7 +22,6 @@ import {
   PAN_THROTTLE_MS,
   pickDisplayUnit,
   rangeTouchesUnloadedHistory,
-  seriesPassesFilter,
   seriesPassesGroupFilter,
   throttle,
   visibleRange,
@@ -37,6 +36,7 @@ import {
   getCachedPayload,
   getGlobalFilterSnapshot,
   getGroupSnapshot,
+  groupDefaultVisible,
   hydrationQueue,
   noteChartRecentData,
   noteGroupSeries,
@@ -1004,8 +1004,8 @@ export class ChartController {
       }
       // `dataset.hidden` directly (not `setDatasetVisibility`) so the legend
       // stays in sync; the visibility map is a separate channel.
-      const globalVisible = seriesPassesFilter(ds.benchMeta, global.active, global.universe);
-      ds.hidden = !seriesPassesGroupFilter(group, ds.label ?? '', globalVisible);
+      const defaultVisible = groupDefaultVisible(group, ds.benchMeta, global);
+      ds.hidden = !seriesPassesGroupFilter(group, ds.label ?? '', defaultVisible);
     }
     chart.update('none');
     this.syncLatestValues();
