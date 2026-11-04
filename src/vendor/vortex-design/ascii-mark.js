@@ -31,7 +31,7 @@ const THREE_URL = "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module
  * a DotField already lies under the host, so the page shows one grid of dots, not two). The mark
  * is decorative: keep the host aria-hidden.
  * Colours follow the host's colour-scheme, which the tokens set per theme: Dark greys on a Dark
- * ground, mirrored greys in Light (markPalette in ascii-core.js), and the brush in the accent. In
+ * ground, mirrored greys in Light (markPalette in ascii-core.js), and a two-tone Blue brush. In
  * Light the symbol image is inverted, so pass the white one in both themes.
  * Resolves to { mode: "live" | "reduced" | "static", destroy() }. Call destroy() when the host
  * leaves the page: it stops the loop, removes the listeners and frees the WebGL context.
@@ -76,7 +76,7 @@ async function mount(host, opts, cleanups, destroy) {
     const read = (name, fallback) => css.getPropertyValue(name).trim() || fallback;
     inks = p.inks.map((n) => read(n, "#888"));
     field = read(p.field, light ? "#d4d4d2" : "#2b2b29");
-    brush = [read(p.brush[0], "#2f63ff"), read(p.brush[1], "#8fa9ff")];
+    brush = [read(p.brush[0], "#2f63ff"), read(p.brush[1], light ? "#1d0fed" : "#8fa9ff")];
   };
   paint();
   const repaints = [];

@@ -59,7 +59,9 @@ export function markPalette(scheme) {
   return {
     inks: light ? ["--grey-400", "--grey-450", "--grey-600", "--black"] : ["--grey-600", "--grey-500", "--grey-400", "--grey-50"],
     field: light ? "--grey-300" : "--grey-700",
-    brush: ["--accent", "--accent-ink"],
+    // The trail's edge, then its core, which stands out more from the ground. Light's accent and
+    // accent-ink are one Blue, so the brush names the scale to keep two tones in both themes.
+    brush: light ? ["--blue-bright", "--blue"] : ["--blue-bright", "--blue-soft"],
   };
 }
 
