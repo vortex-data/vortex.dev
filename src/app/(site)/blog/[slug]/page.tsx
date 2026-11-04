@@ -91,7 +91,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
   return (
     <div className="has-dot-field">
       <DotField />
-      <div className="blog-page">
+      <div className="blog-page vx-dot-clear">
         <script
           type="application/ld+json"
           // biome-ignore lint/security/noDangerouslySetInnerHtml: JSON-LD from our own data; jsonLdScript escapes every <.
