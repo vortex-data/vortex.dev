@@ -192,7 +192,7 @@ describe('SummaryCard', () => {
     expect(html).toContain('class="score-rank">#3</span>');
     expect(html).toContain('class="score-value compression-size-value">—</span>');
     expect(html).toContain(
-      'class="visually-hidden">vortex: minimum 0.55x, mean 0.45x, maximum 1.55x</span>',
+      'class="vx-sr-only">vortex: minimum 0.55x, mean 0.45x, maximum 1.55x</span>',
     );
     expect(html).toContain('aria-hidden="true"');
     expect(html).not.toContain('GB');

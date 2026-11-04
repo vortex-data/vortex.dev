@@ -94,7 +94,6 @@ export function GroupNav({ groups }: { groups: GroupNavItem[] }) {
       <button
         className="control-btn group-nav-toggle"
         type="button"
-        aria-haspopup="true"
         aria-expanded={open}
         aria-controls="group-nav-panel"
         ref={toggleRef}
