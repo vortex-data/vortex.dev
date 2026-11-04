@@ -91,21 +91,27 @@ export function applyTheme(choice = readChoice(store()), { themeable, path = loc
 }
 
 // Wires a .vx-theme-switch: buttons carry data-choice and aria-pressed.
-// With { apply: false } it shows the current theme without changing it on load.
-// `themeable` is the same list the bootstrap took.
+// With { apply: false } it shows the current choice (the bootstrap's data-theme-choice, else the
+// theme) without changing it on load. `themeable` is the same list the bootstrap took. Returns a
+// function that removes the listeners.
 export function mountThemeSwitch(el, { apply = true, themeable } = {}) {
   const buttons = [...el.querySelectorAll("button[data-choice]")];
-  let choice = apply ? applyTheme(undefined, { themeable }) : readChoice(store());
-  if (!apply) choice = document.documentElement.dataset.theme === "light" ? "light" : "dark";
+  const root = document.documentElement.dataset;
+  let choice = apply ? applyTheme(undefined, { themeable }) : CHOICES.includes(root.themeChoice) ? root.themeChoice : root.theme === "light" ? "light" : "dark";
   const press = () => buttons.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.choice === choice)));
-  buttons.forEach((b) =>
-    b.addEventListener("click", () => {
-      choice = b.dataset.choice;
-      saveChoice(store(), choice);
-      applyTheme(choice, { themeable });
-      press();
-    }),
-  );
-  dark().addEventListener("change", () => choice === "system" && applyTheme(choice, { themeable }));
+  const onClick = (e) => {
+    choice = e.currentTarget.dataset.choice;
+    saveChoice(store(), choice);
+    applyTheme(choice, { themeable });
+    press();
+  };
+  const onOs = () => choice === "system" && applyTheme(choice, { themeable });
+  const media = dark();
+  for (const b of buttons) b.addEventListener("click", onClick);
+  media.addEventListener("change", onOs);
   press();
+  return () => {
+    for (const b of buttons) b.removeEventListener("click", onClick);
+    media.removeEventListener("change", onOs);
+  };
 }

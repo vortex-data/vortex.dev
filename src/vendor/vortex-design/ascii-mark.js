@@ -35,6 +35,21 @@ const THREE_URL = "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module
  * leaves the page: it stops the loop, removes the listeners and frees the WebGL context.
  */
 export async function mountAsciiMark(host, opts = {}) {
+  const cleanups = [];
+  const destroy = () => {
+    while (cleanups.length) cleanups.pop()();
+  };
+  // A step that throws part-way (a lost WebGL context, a bad three.js) must not leave the observer,
+  // the canvas, or the context alive: the caller never gets destroy() from a rejected promise.
+  try {
+    return await mount(host, opts, cleanups, destroy);
+  } catch (err) {
+    destroy();
+    throw err;
+  }
+}
+
+async function mount(host, opts, cleanups, destroy) {
   const hostCss = getComputedStyle(host);
   const o = {
     font: hostCss.getPropertyValue("--font-mono").trim() || '"Geist Mono", ui-monospace, monospace',
@@ -48,10 +63,6 @@ export async function mountAsciiMark(host, opts = {}) {
     threeUrl: THREE_URL,
     exposure: 2.5,
     ...opts,
-  };
-  const cleanups = [];
-  const destroy = () => {
-    while (cleanups.length) cleanups.pop()();
   };
   // The palette for the host's scheme, read again whenever a data-theme changes on the page.
   let inks, field, brush, light;

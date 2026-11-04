@@ -82,15 +82,9 @@ describe("the design system's copies are unedited", () => {
   }
 
   it("lists every vendored module in SHA256SUMS", () => {
-    // The site's own files there: the README, the sums, and the type
-    // declarations the site writes for modules the system ships without one.
-    const own = new Set([
-      "README.md",
-      "SHA256SUMS",
-      "ascii-core.d.ts",
-      "ascii-mark.d.ts",
-      "three.d.ts"
-    ]);
+    // The site's own files there: the README, the sums, and the types for
+    // three.js, which the system does not ship.
+    const own = new Set(["README.md", "SHA256SUMS", "three.d.ts"]);
     const listed = new Set(
       read("src/vendor/vortex-design/SHA256SUMS")
         .trim()
