@@ -228,21 +228,10 @@ export function resultsRow(panel, systems) {
 }
 
 /**
- * The notes under the results table: one for each panel with a `range`, Vortex's lowest and highest
- * score across bench's datasets, so a geomean that hides a wide spread says so. "File size:
- * geomean of bench’s datasets, from 0.677× to 1.55× Parquet+zstd".
- */
-export function resultsNotes(panels) {
-  return panels
-    .filter((p) => p.range)
-    .map((p) => `${p.short ?? p.title}: geomean of bench’s datasets, from ${formatScore(p.range.min, "×")}× to ${formatScore(p.range.max, "×")}× ${p.range.against}`);
-}
-
-/**
  * The results table: one row per panel and a column per system, Vortex first in Blue, the best
  * figure in each row underlined, and the verdict against Parquet last. The head names the source
  * and the date the figures were read (`read`, "2 Nov 2026") on one line; the foot keys the
- * underline and adds `resultsNotes`. `icon` is the markup of the open_in_new icon that ends the
+ * underline. `icon` is the markup of the open_in_new icon that ends the
  * source link, as every source line does.
  */
 export function renderResults(panels, { read, icon = "" } = {}) {
@@ -260,7 +249,6 @@ export function renderResults(panels, { read, icon = "" } = {}) {
       return `<tr><th scope="row"${src}>${esc(row.name)}${srText}</th>${cells}<td class="is-verdict">${esc(row.verdict)}</td></tr>`;
     })
     .join("");
-  const notes = resultsNotes(panels).map((n) => `<span>${esc(n)}</span>`).join("");
-  const foot = `<p class="vx-results-foot"><span>Underlined: the best in each row</span>${notes}</p>`;
+  const foot = `<p class="vx-results-foot"><span>Underlined: the best in each row</span></p>`;
   return `<section class="vx-frame vx-results" aria-label="Benchmark results">${head}<div class="vx-results-wrap"><table class="vx-results-table"><thead>${cols}</thead><tbody>${body}</tbody></table></div>${foot}</section>`;
 }

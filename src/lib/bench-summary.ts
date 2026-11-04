@@ -38,8 +38,6 @@ export type Panel = {
   systems?: readonly string[];
   /** For figures that are not bench's: their source, printed under the panels. */
   source?: { note: string };
-  /** Vortex's lowest and highest score across bench's datasets (`results.js`). */
-  range?: { min: number; max: number; against: string };
 };
 
 export type BenchSummary = { panels: Panel[]; readAt: Date };
@@ -87,11 +85,6 @@ type Source = {
   score: "score" | "ratio";
   /** The systems the panel shows. */
   systems: readonly string[];
-  /**
-   * For a panel whose geomean hides a wide spread: what its scores are
-   * against. The panel then carries Vortex's `minRatio` and `maxRatio`.
-   */
-  range?: { against: string };
   /**
    * For a time panel: the series in the group's charts that holds a
    * system's times, and the bucket bench's score puts a chart in (a query
@@ -176,8 +169,7 @@ const SOURCES: (Source | Panel)[] = [
     rankings: (s) => s.rankings,
     name: (f) => f,
     score: "ratio",
-    systems: WITH_ARROW,
-    range: { against: "Parquet+zstd" }
+    systems: WITH_ARROW
   }
 ];
 
@@ -211,19 +203,6 @@ function rowFor(source: Source, rankings: Ranking[], format: string) {
     ...(measured === undefined ? {} : { measured }),
     ...(total === undefined ? {} : { total })
   };
-}
-
-// Vortex's lowest and highest score across bench's datasets, from its
-// ranking's `minRatio` and `maxRatio`, or undefined when bench sends no
-// usable pair.
-function rangeFor(rankings: Ranking[], against: string) {
-  const vortex = SYSTEMS.find(([system]) => system === "Vortex")?.[1];
-  const r = rankings.find((x) => x.name === vortex);
-  const min = r?.minRatio;
-  const max = r?.maxRatio;
-  return positive(min) && positive(max) && min <= max
-    ? { min, max, against }
-    : undefined;
 }
 
 // The latest positive value in a series, or undefined.
@@ -380,17 +359,7 @@ export function panelsFrom(
     const { title, short, kind, better, systems } = source;
     const shown = rows.filter((r) => systems.includes(r.system));
     if (shown.every((r) => !measured(r))) return null;
-    const range = source.range && rangeFor(rankings, source.range.against);
-    panels.push({
-      title,
-      short,
-      unit,
-      kind,
-      better,
-      rows,
-      systems,
-      ...(range ? { range } : {})
-    });
+    panels.push({ title, short, unit, kind, better, rows, systems });
   }
   return panels;
 }

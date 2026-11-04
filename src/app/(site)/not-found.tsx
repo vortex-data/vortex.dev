@@ -3,6 +3,8 @@ import NextLink from "next/link";
 import { AsciiMark } from "@/components/ascii-mark";
 
 const TITLE = "Page not found | Vortex";
+// The page's description for search and link previews. The page itself
+// gives the code in its place, because the headline already says this.
 const SENTENCE = "There is no page at this address.";
 
 export const metadata: Metadata = {
@@ -32,9 +34,8 @@ export default function NotFound() {
   return (
     <div className="vx-status has-mark">
       <div className="vx-status-text">
-        <span className="vx-label vx-eyebrow">404</span>
         <h1 className="vx-display-mono">Page not found.</h1>
-        <p className="vx-status-sentence">{SENTENCE}</p>
+        <p className="vx-status-code">HTTP 404</p>
         <div className="vx-btn-row">
           <NextLink className="vx-btn vx-btn-primary" href="/">
             Go to the homepage

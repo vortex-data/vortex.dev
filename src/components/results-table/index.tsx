@@ -1,10 +1,6 @@
 import { OpenInNewIcon } from "@/components/icons";
 import { formatReadDate, type Panel } from "@/lib/bench-summary";
-import {
-  resultsNotes,
-  resultsRow,
-  resultsSystems
-} from "@/vendor/vortex-design/results.js";
+import { resultsRow, resultsSystems } from "@/vendor/vortex-design/results.js";
 
 const SOURCE_URL = "https://bench.vortex.dev";
 
@@ -20,8 +16,7 @@ const classes = (...names: (string | false)[]) =>
  * row whose figures are not bench's names their source in its head's hover
  * title and screen-reader text. The page leaves the table out when the
  * figures cannot be read. The head names bench and the read date on one line,
- * and the foot keys the underline and gives each panel's range
- * (`resultsNotes`).
+ * and the foot keys the underline.
  */
 export function ResultsTable({
   panels,
@@ -96,9 +91,6 @@ export function ResultsTable({
       </div>
       <p className="vx-results-foot">
         <span>Underlined: the best in each row</span>
-        {resultsNotes(panels).map((note) => (
-          <span key={note}>{note}</span>
-        ))}
       </p>
     </section>
   );

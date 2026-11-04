@@ -2,11 +2,7 @@ import { formatReadDate, type Panel } from "@/lib/bench-summary";
 import type { BlogPostMeta } from "@/lib/blog";
 import { baseUrl } from "@/lib/constants";
 import { copyText, installTabs } from "@/lib/install";
-import {
-  resultsNotes,
-  resultsRow,
-  resultsSystems
-} from "@/vendor/vortex-design/results.js";
+import { resultsRow, resultsSystems } from "@/vendor/vortex-design/results.js";
 
 // What the homepage says Vortex is, for llms.txt and the structured data.
 export const SUMMARY =
@@ -48,9 +44,8 @@ function about(panel: Panel): string {
 
 /**
  * The homepage's results table as sentences, one per row: what the row
- * measures, each format's figure, how Vortex does against Parquet, and the
- * spread the table's foot gives for that row. The figures are the table's own
- * labels (results.js).
+ * measures, each format's figure, and how Vortex does against Parquet. The
+ * figures are the table's own labels (results.js).
  */
 export function resultsSentences(panels: readonly Panel[]): string[] {
   const systems = resultsSystems(panels);
@@ -60,10 +55,7 @@ export function resultsSentences(panels: readonly Panel[]): string[] {
       .filter((c) => c.state !== "not-run")
       .map((c) => `${c.system} ${c.state === "measured" ? c.label : c.exact}`)
       .join(", ");
-    const notes = resultsNotes([panel])
-      .map((n) => ` ${n}.`)
-      .join("");
-    return `${row.name}, ${about(panel)}: ${figures}. Vortex against Parquet: ${row.verdict}.${notes}`;
+    return `${row.name}, ${about(panel)}: ${figures}. Vortex against Parquet: ${row.verdict}.`;
   });
 }
 

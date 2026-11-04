@@ -1,7 +1,7 @@
 /* Vortex design system components (sections: base, brand, site, docs, blog, focus), copied by tools/site-styles.mjs.
    Edit the system, then run tools/site-styles.mjs; do not edit here.
    Made by: node tools/site-styles.mjs <site> --sections base,brand,site,docs,blog,focus --faces --vx-face --base
-   sha256 aa2870bd3826133fc0251d4d210dbe981185d93a4901df2b7a7a7aafc082ed5e */
+   sha256 0da296463d0bf982ee4cf0230b0b73d497e368e449e213593bf078a5f9e0e7fb */
 
 /* ------------------------------------------------------------------ base */
 /* Every component sizes with border-box, so it draws the same under a site's reset or none. */
@@ -329,6 +329,7 @@
 .vx-status-text > * { margin: 0; }
 /* The homepage's voice: a mono headline (vx-display-mono) and a mono sentence at the standfirst's size. */
 .vx-status-sentence { font: 400 16px/1.6 var(--font-mono); color: var(--ink-body); }
+.vx-status-code { font: 400 16px/1.6 var(--font-mono); color: var(--ink-muted); }
 /* The mark's cell has a height to fill. Its host is never taller than 9/10 of the cell's width. */
 .vx-status-mark { position: relative; min-height: 0; container-type: size; }
 .vx-status-mark > * { position: absolute; inset: 0; height: min(100cqh, 90cqw); margin: auto 0; }
@@ -630,8 +631,6 @@
 .vx-tabs-pre { margin: 0; flex: 1; min-width: 0; font: 400 13px/1.6 var(--font-mono); color: var(--ink-body); white-space: pre-wrap; overflow-wrap: anywhere; }
 .vx-tabs-pre.is-idle { visibility: hidden; }
 .vx-prompt { color: var(--ink-muted); user-select: none; }
-/* The caret after the last command: a terminal's block, still, so it never pulls the eye. */
-.vx-caret { display: inline-block; width: 0.6em; height: 1.15em; margin-left: 2px; vertical-align: -0.2em; background: var(--ink-muted); user-select: none; }
 .vx-copy { all: unset; cursor: pointer; color: var(--ink-muted); padding: 2px; }
 .vx-copy:hover { color: var(--ink); }
 .vx-copy svg { width: 16px; height: 16px; fill: currentColor; display: block; }

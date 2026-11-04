@@ -691,6 +691,9 @@ test.describe("404", () => {
       page.getByRole("heading", { level: 1, name: "Page not found." })
     ).toBeVisible();
     const main = page.locator("main");
+    // Writing › Site errors: the code follows the headline, and no eyebrow repeats it.
+    await expect(main.locator(".vx-status-code")).toHaveText("HTTP 404");
+    await expect(main.locator(".vx-eyebrow")).toHaveCount(0);
     for (const [name, href] of [
       ["Go to the homepage", "/"],
       ["Read the docs", "https://docs.vortex.dev"],
