@@ -119,11 +119,19 @@ describe("bench's stylesheet on the system's tokens", () => {
     }
   });
 
-  it('gives cards 6px corners and controls 4px', () => {
-    expect(valueOf('.group-details', 'border-radius')).toBe('6px');
+  it('gives cards the card radius and controls the control radius', () => {
+    expect(valueOf('.group-details', 'border-radius')).toBe('var(--radius-card)');
     for (const control of ['.control-btn', '.toolbar-btn', '.filter-chip']) {
-      expect(valueOf(control, 'border-radius'), control).toBe('4px');
+      expect(valueOf(control, 'border-radius'), control).toBe('var(--radius-control)');
     }
+  });
+
+  it("draws no radius off the system scale, except the square badges and the range strip's handles", () => {
+    const parts = [...css.matchAll(/border-radius: ([^;]+);/g)].flatMap((m) =>
+      (m[1] ?? '').split(' '),
+    );
+    const off = parts.filter((v) => !/^(var\(--radius-(card|control|full)\)|0|50%|2px)$/.test(v));
+    expect(off, off.join(', ')).toEqual([]);
   });
 
   it('sets the header buttons as mono labels, mutes ranks, and squares the badges', () => {
@@ -185,7 +193,7 @@ describe("bench's stylesheet on the system's tokens", () => {
     expect(css).toMatch(
       /@media \(max-width: 400px\) \{\s*\.vx-header-tools \.vx-btn \{\s*padding-inline: 0\.4rem;/,
     );
-    expect(valueOf('main', 'padding')).toBe('1rem var(--page-pad)');
+    expect(valueOf('main', 'padding')).toBe('var(--space-16) var(--page-pad)');
     expect(css).not.toMatch(/sticky-header|site-title|repo-link|nav-controls|logo-link/);
   });
 
@@ -217,5 +225,42 @@ describe("bench's stylesheet on the system's tokens", () => {
         .map((d) => d.value),
     ).toEqual(['20px', '17px']);
     expect(css).toMatch(/@media \(max-width: 640px\) \{\s*\.group-name \{\s*font-size: 17px;/);
+  });
+
+  it('clips sideways overflow on html and body, so sticky headers keep working', () => {
+    for (const sel of ['html', 'body']) {
+      expect(valueOf(sel, 'overflow-x'), sel).toBe('clip');
+    }
+  });
+
+  it('shows a press on every control, and a press does not move it', () => {
+    const controls = [
+      '.control-btn',
+      '.toolbar-btn',
+      '.filter-chip',
+      '.filter-chip--active',
+      '.group-toolbar-reset',
+      '.group-toolbar-empty-toggle',
+      '.group-filter-trigger',
+      '.group-permalink',
+      '.group-docs-link',
+      '.group-nav-link',
+      '.chart-window-chip',
+      '.chart-error-retry',
+    ];
+    const pressed = decls.filter((d) => d.sel.includes(':active'));
+    for (const control of controls) {
+      const own = pressed.filter((d) =>
+        selectorsOf(d).some((s) => new RegExp(`\\${control}(?![\\w-])[^,]*:active`).test(s)),
+      );
+      expect(own.length, control).toBeGreaterThan(0);
+      for (const d of own) expect(d.value, `${control} ${d.prop}`).not.toMatch(/translate|scale/);
+    }
+    // The window chip is clickable in two states: "windowed" loads the full history, and "error"
+    // retries it.
+    for (const state of ['windowed', 'error']) {
+      const sel = `.chart-window-chip[data-state='${state}']:not(:disabled):active`;
+      expect(valueOf(sel, 'background'), sel).toBeDefined();
+    }
   });
 });

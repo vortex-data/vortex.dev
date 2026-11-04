@@ -1,7 +1,7 @@
 /* Vortex design system components (sections: base, brand, site, docs, blog, focus), copied by tools/site-styles.mjs.
    Edit the system, then run tools/site-styles.mjs; do not edit here.
    Made by: node tools/site-styles.mjs <site> --sections base,brand,site,docs,blog,focus --faces --vx-face --base
-   sha256 30e1a1ced1d777cf746586d8c635b4d15e6b08ad61a8726287a8533adf0c8437 */
+   sha256 d3fb475ac1fff332981a7716e9dbe280729ac8799378013a499355c24ddd7851 */
 
 /* ------------------------------------------------------------------ base */
 /* Every component sizes with border-box, so it draws the same under a site's reset or none. */
@@ -633,6 +633,8 @@
 }
 /* A selected tab is the one place outside Vortex's data that takes Blue: Blue also marks a selection. */
 .vx-tabs-list button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+/* After the selected rule, so a press shows on the selected tab too. */
+.vx-tabs-list button:active { background: var(--wash); }
 .vx-tabs-code { display: flex; align-items: flex-start; gap: var(--space-12); padding: var(--space-12) var(--space-16); }
 /* Every panel shares one grid cell and only the selected one shows, so the block is always the
    tallest panel's height and switching tabs never moves the page. */
@@ -707,6 +709,8 @@
 :root[data-theme-choice="light"] .vx-theme-switch:not(:has([aria-pressed="true"])) button[data-choice="light"],
 :root[data-theme-choice="dark"] .vx-theme-switch:not(:has([aria-pressed="true"])) button[data-choice="dark"],
 :root[data-theme-choice="system"] .vx-theme-switch:not(:has([aria-pressed="true"])) button[data-choice="system"] { background: var(--surface); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
+/* After the pressed rule, so a press shows on the current choice too. */
+.vx-theme-switch button:active { background: var(--raised); }
 .vx-theme-switch svg { width: 16px; height: 16px; fill: currentColor; }
 
 /* DocsNav and Toc style the lists Sphinx writes, so they select its elements. */

@@ -110,13 +110,13 @@ a:hover {
 .bench-toolbar-controls {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: var(--space-12);
   min-width: 0;
 }
 
 @media (max-width: 960px) {
   .bench-toolbar-controls {
-    gap: 0.5rem;
+    gap: var(--space-8);
   }
 }
 
@@ -134,7 +134,7 @@ a:hover {
   gap: 0.45rem;
   min-height: 36px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--radius-card);
   background: var(--surface);
   color: var(--ink);
   font: inherit;
@@ -149,7 +149,7 @@ a:hover {
 }
 
 .control-btn {
-  padding: 0.5rem 1.25rem;
+  padding: var(--space-8) var(--space-20);
   cursor: pointer;
 }
 
@@ -193,19 +193,19 @@ a:hover {
 .page-header {
   border-bottom: 1px solid var(--line);
   background: var(--ground);
-  padding: 1rem 2rem;
+  padding: var(--space-16) var(--space-32);
   width: 100%;
 }
 .page-header h1 {
   margin: 0;
-  font-size: 1.25rem;
+  font-size: 18px;
   font-weight: 600;
 }
 .page-header h1 a {
   color: var(--ink);
 }
 .page-header .subtitle {
-  margin: 0.25rem 0 0;
+  margin: var(--space-4) 0 0;
   color: var(--ink-muted);
   font-size: 0.875rem;
 }
@@ -214,7 +214,7 @@ main {
   width: 100%;
   max-width: none;
   margin: 0;
-  padding: 2rem var(--page-pad);
+  padding: var(--space-32) var(--page-pad);
 }
 
 .empty {
@@ -234,14 +234,14 @@ main {
   width: min(28rem, 100%);
   padding: 2.5rem;
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: var(--radius-card);
   background: var(--surface);
   text-align: center;
 }
 
 .summary-loading-panel h2 {
-  margin: 1rem 0 0.25rem;
-  font-size: 1.25rem;
+  margin: var(--space-16) 0 var(--space-4);
+  font-size: 18px;
 }
 
 .summary-loading-panel p {
@@ -251,7 +251,7 @@ main {
 }
 
 .summary-loading-panel noscript p {
-  margin-top: 0.75rem;
+  margin-top: var(--space-12);
 }
 
 .chart-spinner.summary-loading-spinner {
@@ -263,9 +263,9 @@ main {
 .group-details {
   width: 100%;
   max-width: none;
-  margin-bottom: 3rem;
+  margin-bottom: var(--space-48);
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: var(--radius-card);
   background: var(--surface);
   overflow: hidden;
   /* Offset jump targets (GroupNav) so a jumped-to group title clears the sticky header. */
@@ -284,15 +284,15 @@ main {
    * elevated colour. Using `--code-bg` here flattened the disclosure
    * bar against the page in dark mode. */
   background: var(--surface);
-  border-radius: 12px 12px 0 0;
+  border-radius: var(--radius-card) var(--radius-card) 0 0;
   user-select: none;
 }
 .group-summary-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.75rem;
-  padding: 1rem 2rem;
+  gap: var(--space-12);
+  padding: var(--space-16) var(--space-32);
   border-bottom: 1px solid var(--line);
   transition: background-color 0.2s ease;
 }
@@ -364,7 +364,7 @@ main {
   height: 1.5rem;
   padding: 0;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-card);
   background: transparent;
   color: var(--ink-muted);
   text-decoration: none;
@@ -398,7 +398,7 @@ main {
   width: 1.5rem;
   height: 1.5rem;
   padding: 0;
-  border-radius: 6px;
+  border-radius: var(--radius-card);
   color: var(--ink-muted);
   text-decoration: none;
   flex-shrink: 0;
@@ -440,7 +440,7 @@ main {
   width: 1.25rem;
   height: 1.25rem;
   border-radius: 50%;
-  font-size: 0.95rem;
+  font-size: 14px;
   line-height: 1;
   color: var(--ink-muted);
   cursor: help;
@@ -472,13 +472,13 @@ main {
   position: absolute;
   top: calc(100% + 0.5rem);
   left: 0;
-  padding: 0.5rem 0.75rem;
+  padding: var(--space-8) var(--space-12);
   background: var(--tooltip-bg);
   color: var(--tooltip-fg);
   font-size: 0.8rem;
   font-weight: 400;
   line-height: 1.35;
-  border-radius: 6px;
+  border-radius: var(--radius-card);
   max-width: min(28rem, 90vw);
   width: max-content;
   white-space: normal;
@@ -498,7 +498,7 @@ main {
   visibility: visible;
 }
 .group-body > .chart-grid {
-  padding: 1.25rem;
+  padding: var(--space-20);
   /* Page-level surface behind the chart cards. v2's `.benchmark-graphs`
    * uses `--bg-color` (`#101010` in dark mode); `--page-bg` is the v3
    * alias for the page colour. Using `--bg` here made the grid behind
@@ -511,7 +511,7 @@ main {
   /* Elevated surface, same role as v2's `.benchmark-scores-summary`
    * which uses `--bg-secondary`. */
   background: var(--surface);
-  padding: 0.75rem 2rem;
+  padding: var(--space-12) var(--space-32);
   margin: 0;
 }
 
@@ -552,12 +552,12 @@ main {
 
 .chart-meta + .benchmark-scores-summary {
   border: 1px solid var(--line);
-  border-radius: 8px;
-  margin-bottom: 1rem;
+  border-radius: var(--radius-card);
+  margin-bottom: var(--space-16);
 }
 
 .scores-title {
-  margin: 0 0 0.5rem;
+  margin: 0 0 var(--space-8);
   color: var(--ink-body);
   font-family: var(--font-mono);
   font-size: 13px;
@@ -566,7 +566,7 @@ main {
 
 .scores-list {
   column-count: 1;
-  column-gap: 1.25rem;
+  column-gap: var(--space-20);
 }
 
 .scores-list--split {
@@ -585,8 +585,8 @@ main {
 
 .compression-scores-panel + .compression-scores-panel {
   border-left: 1px solid var(--line);
-  padding-left: 1.25rem;
-  margin-left: 1.25rem;
+  padding-left: var(--space-20);
+  margin-left: var(--space-20);
 }
 
 .compression-scores-list {
@@ -609,8 +609,8 @@ main {
 
 .random-access-scores-panel + .random-access-scores-panel {
   border-left: 1px solid var(--line);
-  padding-left: 1.25rem;
-  margin-left: 1.25rem;
+  padding-left: var(--space-20);
+  margin-left: var(--space-20);
 }
 
 .random-access-scores-list {
@@ -629,21 +629,21 @@ main {
 
 .compression-size-parquet-panel {
   border-left: 1px solid var(--line);
-  padding-left: 1.25rem;
-  margin-left: 1.25rem;
+  padding-left: var(--space-20);
+  margin-left: var(--space-20);
 }
 
 .compression-size-arrow-header,
 .score-item.compression-size-arrow-row {
   display: grid;
   grid-template-columns: 2.25rem minmax(0, 1fr) 7rem;
-  column-gap: 1rem;
+  column-gap: var(--space-16);
 }
 
 .compression-size-arrow-header,
 .compression-size-parquet-header {
   grid-template-rows: auto auto;
-  row-gap: 0.25rem;
+  row-gap: var(--space-4);
   padding: 0.1rem 0 0.3rem;
 }
 
@@ -668,7 +668,7 @@ main {
 .compression-size-parquet-row {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  column-gap: 1rem;
+  column-gap: var(--space-16);
 }
 
 .compression-size-parquet-header .compression-size-group {
@@ -712,8 +712,8 @@ main {
 .score-item {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.25rem 0;
+  gap: var(--space-8);
+  padding: var(--space-4) 0;
   font-family: var(--font-mono);
   font-size: 14px;
   break-inside: avoid;
@@ -740,7 +740,7 @@ main {
 .score-metrics {
   display: inline-flex;
   align-items: baseline;
-  gap: 0.75rem;
+  gap: var(--space-12);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -799,7 +799,7 @@ main {
   min-width: 1.25rem;
   height: 1.25rem;
   padding: 0 0.4rem;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   background: var(--accent);
   color: var(--on-accent);
   font-size: 0.7rem;
@@ -814,12 +814,12 @@ main {
   z-index: 1100;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--space-8);
   min-width: 22rem;
   max-width: min(90vw, 36rem);
-  padding: 0.75rem 0.85rem;
+  padding: var(--space-12) 0.85rem;
   border: 1px solid var(--edge);
-  border-radius: 8px;
+  border-radius: var(--radius-card);
   background: var(--surface);
 }
 .filter-panel[hidden] {
@@ -844,7 +844,7 @@ main {
   min-height: 24px;
   padding: 0.1rem 0.6rem;
   border: 1px solid var(--line);
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   background: var(--surface);
   color: var(--ink);
   font-size: 0.78rem;
@@ -870,12 +870,12 @@ main {
 .toolbar--card {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.4rem 0.75rem;
+  gap: 0.4rem var(--space-12);
   align-items: center;
-  padding: 0.4rem 0.5rem;
-  margin-bottom: 0.5rem;
+  padding: 0.4rem var(--space-8);
+  margin-bottom: var(--space-8);
   border: 1px solid var(--line);
-  border-radius: 4px;
+  border-radius: var(--radius-control);
   background: var(--surface);
   font-size: 0.78rem;
 }
@@ -883,7 +883,7 @@ main {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.25rem;
+  gap: var(--space-4);
 }
 .toolbar-label {
   color: var(--ink-muted);
@@ -895,9 +895,9 @@ main {
   align-items: center;
   justify-content: center;
   min-height: 24px;
-  padding: 0.1rem 0.5rem;
+  padding: 0.1rem var(--space-8);
   border: 1px solid var(--raised);
-  border-radius: 3px;
+  border-radius: var(--radius-control);
   background: var(--raised);
   color: var(--ink-muted);
   font-size: 0.78rem;
@@ -934,15 +934,15 @@ main {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.35rem 0.75rem;
-  padding: 0.4rem 1.25rem;
+  gap: 0.35rem var(--space-12);
+  padding: 0.4rem var(--space-20);
   border-bottom: 1px solid var(--line);
   background: var(--surface);
   font-size: 0.78rem;
 }
 .group-toolbar-y {
   flex: 0 0 auto;
-  gap: 0.25rem;
+  gap: var(--space-4);
 }
 .group-filter-dropdown {
   position: relative;
@@ -952,7 +952,7 @@ main {
 }
 .group-filter-trigger {
   min-height: 28px;
-  padding: 0.25rem 0.85rem;
+  padding: var(--space-4) 0.85rem;
   font-size: 0.78rem;
 }
 .group-filter-panel {
@@ -966,9 +966,9 @@ main {
   gap: 0.6rem;
   min-width: 24rem;
   max-width: min(90vw, 42rem);
-  padding: 0.75rem 0.85rem;
+  padding: var(--space-12) 0.85rem;
   border: 1px solid var(--edge);
-  border-radius: 8px;
+  border-radius: var(--radius-card);
   background: var(--surface);
 }
 .group-filter-panel[hidden] {
@@ -993,7 +993,7 @@ main {
   min-height: 24px;
   padding: 0.1rem 0.6rem;
   border: 1px solid var(--line);
-  border-radius: 3px;
+  border-radius: var(--radius-control);
   background: var(--surface);
   color: var(--ink-muted);
   font: inherit;
@@ -1017,12 +1017,12 @@ main {
 .chart-meta {
   color: var(--ink-muted);
   font-size: 0.875rem;
-  margin: 0 0 0.75rem;
+  margin: 0 0 var(--space-12);
 }
 .chart-meta code {
   background: var(--ground);
   padding: 0.1rem 0.35rem;
-  border-radius: 3px;
+  border-radius: var(--radius-control);
   font-size: 0.85em;
 }
 
@@ -1032,10 +1032,10 @@ main {
   max-width: none;
   position: relative;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--radius-card);
   background: var(--surface);
-  padding: 1.25rem;
-  margin-bottom: 1rem;
+  padding: var(--space-20);
+  margin-bottom: var(--space-16);
 }
 /* A card classified as empty in the latest-100 window hides via the `hidden`
  * attribute (the group toolbar's "show empty charts" toggle reveals it).
@@ -1046,11 +1046,11 @@ main {
 }
 .chart-card-title {
   margin: 0 0 0.4rem;
-  font-size: 0.95rem;
+  font-size: 14px;
   font-weight: 500;
   display: flex;
   align-items: baseline;
-  gap: 0.5rem;
+  gap: var(--space-8);
   flex-wrap: wrap;
 }
 .chart-card-title a {
@@ -1068,7 +1068,7 @@ main {
   font-size: 0.7rem;
   font-weight: 500;
   padding: 0.1rem 0.45rem;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   background: var(--ground);
   color: var(--ink-muted);
   border: 1px solid var(--line);
@@ -1090,7 +1090,7 @@ main {
   font-weight: 500;
   line-height: 1.4;
   padding: 0.1rem 0.45rem;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   background: var(--ground);
   color: var(--ink-muted);
   border: 1px solid var(--line);
@@ -1126,7 +1126,7 @@ main {
   max-width: none;
   display: grid;
   grid-template-columns: 1fr;
-  gap: 1rem;
+  gap: var(--space-16);
 }
 
 .chart-wrap {
@@ -1143,7 +1143,7 @@ main {
 @media (min-width: 1200px) {
   .chart-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 1.5rem;
+    gap: var(--space-24);
   }
 
   .chart-wrap {
@@ -1178,7 +1178,7 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
   inset: 0;
   background: var(--ground);
   border: 1px solid var(--line);
-  border-radius: 3px;
+  border-radius: var(--radius-control);
   overflow: hidden;
 }
 .chart-range-strip-window {
@@ -1232,17 +1232,17 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
 }
 
 .no-script {
-  margin-top: 1rem;
-  padding: 0.75rem 1rem;
+  margin-top: var(--space-16);
+  padding: var(--space-12) var(--space-16);
   border: 1px solid var(--line);
-  border-radius: 4px;
+  border-radius: var(--radius-control);
   background: var(--ground);
   color: var(--ink-muted);
   font-size: 0.875rem;
 }
 /* The landing page's note opens `<main>`, above the first group. */
 .no-script--lead {
-  margin: 0 0 1.5rem;
+  margin: 0 0 var(--space-24);
 }
 
 /* Per-card loading + error indicators (lazy-fetch on details toggle). */
@@ -1252,8 +1252,8 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
   top: 0.5rem;
   right: 0.75rem;
   font-size: 0.75rem;
-  padding: 0.15rem 0.5rem;
-  border-radius: 4px;
+  padding: 0.15rem var(--space-8);
+  border-radius: var(--radius-control);
   pointer-events: none;
   z-index: 5;
 }
@@ -1275,7 +1275,7 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
+  gap: var(--space-8);
   color: var(--ink-muted);
   background: color-mix(in srgb, var(--ground) 60%, transparent);
   font-size: 0.8rem;
@@ -1340,7 +1340,7 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
   color: var(--on-bad);
   background: transparent;
   border: 1px solid currentColor;
-  border-radius: 4px;
+  border-radius: var(--radius-control);
   padding: 0 0.35rem;
 }
 
@@ -1363,8 +1363,8 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
   z-index: 20;
   background: var(--tooltip-bg);
   color: var(--tooltip-fg);
-  border-radius: 6px;
-  padding: 0.5rem 0.65rem;
+  border-radius: var(--radius-card);
+  padding: var(--space-8) var(--space-12);
   font-size: 0.8rem;
   line-height: 1.35;
   max-width: 22rem;
@@ -1375,7 +1375,7 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
 }
 .tt-title {
   font-weight: 600;
-  margin-bottom: 0.25rem;
+  margin-bottom: var(--space-4);
   font-variant-numeric: tabular-nums;
 }
 .tt-rows {
@@ -1468,19 +1468,19 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
     font-size: 0.75rem;
   }
   main {
-    padding: 1rem var(--page-pad);
+    padding: var(--space-16) var(--page-pad);
   }
   .group-details {
-    margin-bottom: 1.5rem;
-    border-radius: 8px;
+    margin-bottom: var(--space-24);
+    border-radius: var(--radius-card);
   }
   .group-summary {
-    border-radius: 8px 8px 0 0;
+    border-radius: var(--radius-card) var(--radius-card) 0 0;
   }
   .group-summary-row {
     flex-wrap: wrap;
-    gap: 0.5rem;
-    padding: 0.75rem 1rem;
+    gap: var(--space-8);
+    padding: var(--space-12) var(--space-16);
   }
   .group-name {
     flex: 1 1 auto;
@@ -1489,21 +1489,21 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
   }
   .group-count {
     flex: 0 0 auto;
-    font-size: 0.65rem;
+    font-size: 11px;
   }
   .group-headline {
     flex-basis: 100%;
     margin-left: 0;
   }
   .group-body > .chart-grid {
-    padding: 0.75rem;
+    padding: var(--space-12);
   }
   .benchmark-scores-summary {
-    padding: 0.6rem 1rem;
+    padding: 0.6rem var(--space-16);
   }
   .group-toolbar {
-    padding: 0.4rem 0.75rem;
-    gap: 0.35rem 0.5rem;
+    padding: 0.4rem var(--space-12);
+    gap: 0.35rem var(--space-8);
   }
   .group-filter-panel {
     min-width: 0;
@@ -1522,7 +1522,7 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
   }
   .toolbar-btn {
     min-height: 32px;
-    padding: 0.25rem 0.6rem;
+    padding: var(--space-4) 0.6rem;
     font-size: 0.85rem;
   }
   .scores-list {
@@ -1534,9 +1534,9 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
   .compression-scores-panel + .compression-scores-panel {
     border-top: 1px solid var(--line);
     border-left: 0;
-    padding-top: 0.75rem;
+    padding-top: var(--space-12);
     padding-left: 0;
-    margin-top: 0.75rem;
+    margin-top: var(--space-12);
     margin-left: 0;
   }
   .random-access-scores {
@@ -1545,9 +1545,9 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
   .random-access-scores-panel + .random-access-scores-panel {
     border-top: 1px solid var(--line);
     border-left: 0;
-    padding-top: 0.75rem;
+    padding-top: var(--space-12);
     padding-left: 0;
-    margin-top: 0.75rem;
+    margin-top: var(--space-12);
     margin-left: 0;
   }
   .score-item {
@@ -1577,7 +1577,7 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
   }
   .chart-grid {
     grid-template-columns: 1fr;
-    gap: 0.5rem;
+    gap: var(--space-8);
   }
   .chart-wrap {
     height: 350px;
@@ -1596,7 +1596,7 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
  * Kept small + muted so it sits below the content without competing.
  */
 .site-footer {
-  padding: 1.5rem 2rem 2rem;
+  padding: var(--space-24) var(--space-32) var(--space-32);
   text-align: center;
   color: var(--ink-muted);
   font-size: 0.75rem;
@@ -1649,12 +1649,13 @@ a.site-footer-sha:hover code {
   z-index: 901;
   display: flex;
   flex-direction: column;
-  width: min(18rem, calc(100vw - 2rem));
+  /* 100%, not 100vw: a fixed box's 100% is the viewport without its scrollbar. */
+  width: min(18rem, calc(100% - 2rem));
   max-height: calc(100vh - var(--toolbar-height) - 5rem);
-  padding: 0.75rem;
+  padding: var(--space-12);
   overflow-y: auto;
   border: 1px solid var(--edge);
-  border-radius: 10px;
+  border-radius: var(--radius-card);
   background: var(--surface);
   /* Hidden until toggled; fade + slide up from the bottom-left toggle. */
   visibility: hidden;
@@ -1674,7 +1675,7 @@ a.site-footer-sha:hover code {
 
 .group-nav-heading {
   margin: 0 0 0.4rem;
-  padding: 0 0.5rem;
+  padding: 0 var(--space-8);
   color: var(--ink-muted);
   font-size: 0.75rem;
   font-weight: 600;
@@ -1692,9 +1693,9 @@ a.site-footer-sha:hover code {
 .group-nav-link {
   display: block;
   width: 100%;
-  padding: 0.4rem 0.5rem;
+  padding: 0.4rem var(--space-8);
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--radius-card);
   background: transparent;
   color: var(--ink);
   font: inherit;
@@ -1728,10 +1729,10 @@ a.site-footer-sha:hover code {
 .group-details,
 .summary-loading-panel,
 .chart-card {
-  border-radius: 6px;
+  border-radius: var(--radius-card);
 }
 .group-summary {
-  border-radius: 6px 6px 0 0;
+  border-radius: var(--radius-card) var(--radius-card) 0 0;
 }
 .control-btn,
 .toolbar-btn,
@@ -1745,7 +1746,7 @@ a.site-footer-sha:hover code {
 .group-permalink,
 .group-docs-link,
 .filter-chip {
-  border-radius: 4px;
+  border-radius: var(--radius-control);
 }
 .control-btn {
   font-family: var(--font-mono);
@@ -1759,7 +1760,38 @@ a.site-footer-sha:hover code {
 }
 .filter-badge,
 .group-count {
+  /* Square badges, on purpose: 2px, under the control radius. */
   border-radius: 2px;
+}
+
+/* A press shows, as on the system's buttons: an outlined control fills one step up, a filled one
+ * darkens toward the ground. A press never moves a control, so it also cancels the hover lift.
+ * These rules come after each control's pressed or active rule, so a press shows on those too. */
+.control-btn:active,
+.toolbar-btn:active,
+.filter-chip:active,
+.group-toolbar-reset:active,
+.group-toolbar-empty-toggle:active,
+.group-filter-trigger:active,
+.group-permalink:active,
+.group-docs-link:active,
+.group-nav-link:active {
+  background: var(--raised);
+  transform: none;
+}
+.filter-chip--active:active {
+  background: color-mix(in srgb, var(--accent) 82%, var(--ground));
+}
+.chart-window-chip[data-state='windowed']:not(:disabled):active {
+  background: color-mix(in srgb, var(--accent-ink) 22%, transparent);
+}
+/* The error state is the retry button, so it shows a press too. */
+.chart-window-chip[data-state='error']:not(:disabled):active {
+  background: color-mix(in srgb, var(--bad) 22%, transparent);
+}
+/* The inline retry on a failed chart sits on the error panel, so its press takes the panel's ink. */
+.chart-error-retry:active {
+  background: color-mix(in srgb, var(--on-bad) 22%, transparent);
 }
 
 /* ----------------------------------------------------------------------
@@ -1771,14 +1803,14 @@ a.site-footer-sha:hover code {
 }
 
 .methodology h2 {
-  margin: 0 0 1rem;
+  margin: 0 0 var(--space-16);
 }
 
 .methodology h3 {
-  margin: 2rem 0 0.5rem;
+  margin: var(--space-32) 0 var(--space-8);
   font-size: 1rem;
 }
 
 .methodology p {
-  margin: 0 0 0.75rem;
+  margin: 0 0 var(--space-12);
 }
