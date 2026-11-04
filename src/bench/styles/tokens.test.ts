@@ -35,7 +35,7 @@ const ROLES = new Set([...tokens.matchAll(/^\s*--([a-z0-9-]+):/gm)].map((m) => m
 
 // bench's own values, which the system has no role for: the tooltip (black in Light, raised in
 // Dark), the green and red of a better or worse result with the text on that red, and the height
-// of the sticky header.
+// of the sticky header, and the side padding of a group's summary row.
 const OWN = new Set([
   '--tooltip-bg',
   '--tooltip-fg',
@@ -43,6 +43,7 @@ const OWN = new Set([
   '--bad',
   '--on-bad',
   '--toolbar-height',
+  '--group-pad-x',
 ]);
 
 describe("bench's stylesheet on the system's tokens", () => {
