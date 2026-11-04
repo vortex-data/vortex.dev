@@ -147,6 +147,8 @@ async function mount(host, opts, cleanups, destroy) {
   geometry.setIndex(new THREE.BufferAttribute(g.indices, 1));
   const material = new THREE.MeshStandardMaterial({ color: "#ffffff", metalness: 0, roughness: 0.6, flatShading: true });
   const mesh = new THREE.Mesh(geometry, material);
+  // The render target, made at the first resize. Declared before the cleanup that frees it.
+  let target = null;
   cleanups.push(() => {
     geometry.dispose();
     material.dispose();
@@ -170,7 +172,6 @@ async function mount(host, opts, cleanups, destroy) {
   let cw = 0;
   let W = 0;
   let H = 0;
-  let target = null;
   // The grid reads the render back from the GPU. Where three.js has an async read (WebGL2's pixel
   // pack buffer and a fence), the page never waits for the GPU after the first frame: the grid
   // draws from the newest read that has landed. Elsewhere, and for the still frame under reduced
