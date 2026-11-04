@@ -133,18 +133,26 @@ const NUMBER = /^[−-]?\d/;
  * body cell starts with a number is `is-num` (right-aligned, mono); and a
  * body row that starts with "Total" is `is-total`. A region takes its name
  * from the heading above it (`aria-labelledby`), so a screen reader's list of
- * regions tells the tables apart. It runs after `rehypeHeadingIds`. A table
- * with no heading above it is named "Table".
+ * regions tells the tables apart. Only a heading in the table's own flow
+ * counts: one inside a callout or another nested element names nothing
+ * after that element ends. It runs after `rehypeHeadingIds`. A table with no
+ * such heading is named "Table".
  */
 export function rehypeTables() {
   return (tree: HastRoot) => {
     const wraps: [HastElement, Parent, number, string | undefined][] = [];
-    let heading: string | undefined;
-    visit(tree, (el, parent, i) => {
-      if (HEADING.test(el.tagName) && typeof el.properties.id === "string")
-        heading = el.properties.id;
-      if (el.tagName === "table") wraps.push([el, parent, i, heading]);
-    });
+    // A heading seen inside a child stays in that child's walk.
+    const walk = (parent: Parent, inherited: string | undefined): void => {
+      let heading = inherited;
+      parent.children.forEach((el, i) => {
+        if (el.type !== "element") return;
+        if (HEADING.test(el.tagName) && typeof el.properties.id === "string")
+          heading = el.properties.id;
+        if (el.tagName === "table") wraps.push([el, parent, i, heading]);
+        else walk(el, heading);
+      });
+    };
+    walk(tree, undefined);
     for (const [table, parent, i, labelledBy] of wraps) {
       markNumbers(table);
       parent.children[i] = {

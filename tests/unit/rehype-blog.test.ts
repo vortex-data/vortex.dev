@@ -176,6 +176,23 @@ describe("rehypeTables", () => {
     assert.equal(third?.properties.ariaLabelledBy, "speeds");
   });
 
+  it("does not name a region after a heading inside an earlier element", () => {
+    const tree = run(
+      rehypeTables,
+      root(
+        el("h2", [text("Sizes")], { id: "sizes" }),
+        el("blockquote", [el("h3", [text("Aside")], { id: "aside" })]),
+        table(),
+        el("blockquote", [el("h4", [text("Inner")], { id: "inner" }), table()])
+      )
+    );
+    const [, quote, outer, nested] = tree.children as HastElement[];
+    assert.equal(quote?.tagName, "blockquote");
+    assert.equal(outer?.properties.ariaLabelledBy, "sizes");
+    const inner = nested?.children[1] as HastElement;
+    assert.equal(inner.properties.ariaLabelledBy, "inner");
+  });
+
   it("right-aligns a column whose every cell is a number, and marks a Total row", () => {
     const tree = run(rehypeTables, root(table()));
     const t = (tree.children[0] as HastElement).children[0] as HastElement;
