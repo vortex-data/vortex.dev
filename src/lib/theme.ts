@@ -22,8 +22,6 @@ export const THEME = {
   foreground: "#ffffff"
 } as const;
 
-export type ThemeKey = keyof typeof THEME;
-
 export {
   readChoice,
   saveChoice,

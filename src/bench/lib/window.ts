@@ -83,7 +83,7 @@ export function commitWindowLimit(window: CommitWindow): number | null {
 }
 
 /** The canonical `?n=` spelling of a window: `all`, or the rung it snapped to. */
-export function windowParam(window: CommitWindow): string {
+function windowParam(window: CommitWindow): string {
   return window.kind === 'all' ? 'all' : String(window.n);
 }
 

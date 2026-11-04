@@ -1,0 +1,13 @@
+{
+  "$schema": "./node_modules/knip/schema.json",
+  "entry": [
+    "lighthouserc.cjs",
+    "velite.config.ts",
+    "src/bench/styles/postcss.config.mjs",
+    "scripts/*.{ts,mjs}",
+    "scripts/parity/**/*.{ts,mjs}"
+  ],
+  "ignore": ["src/vendor/**"],
+  "ignoreDependencies": ["server-only"],
+  "ignoreBinaries": ["uv"]
+}

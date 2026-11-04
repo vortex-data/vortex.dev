@@ -7,7 +7,7 @@
 
 import { calloutOf } from "../vendor/vortex-design/callout.js";
 
-export interface HastText {
+interface HastText {
   type: "text";
   value: string;
 }

@@ -50,7 +50,7 @@ export function chartUrl(slug: string): string {
 }
 
 /** A value in its unit, as `12.34 ms`, `1.21 GB`, `850 MB/s`. */
-export function formatValue(value: number, unitKind: UnitKind): string {
+function formatValue(value: number, unitKind: UnitKind): string {
   switch (unitKind) {
     case 'time_ns':
       return formatTimeNs(value);

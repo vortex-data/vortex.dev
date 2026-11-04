@@ -6,7 +6,7 @@
  * `commits.branch`; reads see only this branch's commits, so numbers measured on
  * any other branch never reach a chart, a summary, or a commit window.
  */
-export const READ_BRANCH = 'develop';
+const READ_BRANCH = 'develop';
 
 if (!/^[A-Za-z0-9._/-]+$/.test(READ_BRANCH)) {
   throw new Error(`READ_BRANCH is spliced into SQL and must be a plain branch name`);

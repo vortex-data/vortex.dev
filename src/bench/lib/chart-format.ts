@@ -1079,7 +1079,7 @@ export function seedActiveFromAllowlist(
  * `lance` is excluded by default: its benchmarks run far slower than the other
  * formats, so leaving it on dominates the y-axis and buries the comparison.
  */
-export const DEFAULT_HIDDEN_FORMATS: readonly string[] = ['lance'];
+const DEFAULT_HIDDEN_FORMATS: readonly string[] = ['lance'];
 
 /**
  * Seed the active FORMAT chips from a URL allowlist. An explicit allowlist is

@@ -1140,7 +1140,7 @@ export interface GroupsResponse {
  * with the full [`ChartResponse`] payload flattened in at the same level,
  * matching the Rust `#[serde(flatten)]` on `NamedChartResponse.chart`.
  */
-export type NamedChartResponse = ChartResponse & {
+type NamedChartResponse = ChartResponse & {
   name: string;
   slug: string;
 };

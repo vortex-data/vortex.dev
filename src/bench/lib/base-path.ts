@@ -18,10 +18,10 @@
  */
 
 /** The host that serves bench from the root. */
-export const BENCH_HOST = 'bench.vortex.dev';
+const BENCH_HOST = 'bench.vortex.dev';
 
 /** The path bench's routes live under on every other host. */
-export const BENCH_PREFIX = '/bench';
+const BENCH_PREFIX = '/bench';
 
 /** The prefix of bench's paths: none on its own host, `/bench` elsewhere. */
 export type BenchBase = '' | typeof BENCH_PREFIX;
