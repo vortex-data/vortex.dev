@@ -732,6 +732,17 @@ test.describe("404", () => {
     await expect(host).toHaveCount(1, { timeout: 15000 });
     expect(await host.getAttribute("data-mark-mode")).not.toBe("error");
   });
+
+  // Codex on #194: bench's header adds a hidden "Benchmarks" h1, which must not
+  // compete with the 404's own.
+  test("a bench 404 has one h1, the code", async ({ page }) => {
+    const res = await page.goto("/bench/no-such-page");
+    expect(res?.status()).toBe(404);
+    await expect(page.locator("h1")).toHaveCount(1);
+    await expect(
+      page.getByRole("heading", { level: 1, name: "404" })
+    ).toBeVisible();
+  });
 });
 
 // Note 56: under the blog a 404 follows the reader's theme, and the mark
