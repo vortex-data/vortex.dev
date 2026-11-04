@@ -13,6 +13,13 @@ describe("DotField", () => {
     );
   });
 
+  it("keeps the margins at full strength around a column of text", () => {
+    assert.equal(
+      renderToStaticMarkup(<DotField margins />),
+      '<div class="vx-dot-field is-margins" aria-hidden="true"></div>'
+    );
+  });
+
   it("lies first under the 404's Status card, which hosts it", () => {
     assert.match(
       renderToStaticMarkup(<NotFoundStatus />),

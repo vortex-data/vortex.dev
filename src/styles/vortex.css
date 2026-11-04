@@ -1,7 +1,7 @@
 /* Vortex design system components (sections: base, brand, chrome, site, blog, tables, focus), copied by tools/site-styles.mjs.
    Edit the system, then run tools/site-styles.mjs; do not edit here.
    Made by: node tools/site-styles.mjs <site> --sections base,brand,chrome,site,blog,tables,focus --faces --vx-face --base
-   sha256 183f9f12458f794c7459f537d4c20fcc2e5318da673d78dbc583770073dc8d4d */
+   sha256 46c87ed5db00dcac4d0c19c5a6ec6b8c995fe68548a274806adcad777b3e2935 */
 
 /* ------------------------------------------------------------------ base */
 /* Every component sizes with border-box, so it draws the same under a site's reset or none. */
@@ -122,6 +122,15 @@ main[tabindex="-1"]:focus {
   background-size: 2ch 28px;
   -webkit-mask-image: radial-gradient(closest-side, #000 40%, transparent 100%);
   mask-image: radial-gradient(closest-side, #000 40%, transparent 100%);
+}
+/* Around a column of text (with .vx-dot-clear), the dots show in the margins, where the centred
+   fade is all but clear. This fade keeps the margins at full strength: it fades in from the top,
+   so the header and the top corners stay clear, and from the outer edges. */
+.vx-dot-field.is-margins {
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 var(--space-152), #000 70%, transparent), linear-gradient(to right, transparent, #000 var(--space-80), #000 calc(100% - var(--space-80)), transparent);
+  mask-image: linear-gradient(to bottom, transparent, #000 var(--space-152), #000 70%, transparent), linear-gradient(to right, transparent, #000 var(--space-80), #000 calc(100% - var(--space-80)), transparent);
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
 }
 [data-theme="light"] .vx-dot-field { --dot-field-ink: var(--grey-300); }
 @media (prefers-color-scheme: light) {

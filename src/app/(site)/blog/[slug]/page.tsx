@@ -90,7 +90,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
   // Open Graph image only. Its neighbours are the site's own posts by date.
   return (
     <div className="has-dot-field">
-      <DotField />
+      <DotField margins />
       <div className="blog-page vx-dot-clear">
         <script
           type="application/ld+json"

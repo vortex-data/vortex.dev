@@ -42,7 +42,7 @@ export default function BlogPage() {
 
   return (
     <div className="has-dot-field">
-      <DotField />
+      <DotField margins />
       <div className="blog-page vx-dot-clear">
         <div className="vx-blog-head has-mark">
           {/* The frame is the ::before's content, so it is decoration, not text. */}
