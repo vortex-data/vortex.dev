@@ -382,8 +382,8 @@ async function checkInternalLinks(
 // generation paints with one shade and the site renders with another —
 // exactly the bug this check is here to catch. Currently only
 // `THEME.background` has a corresponding CSS variable (`--background` in
-// `:root`); `THEME.foreground` is white-on-dark and uses Tailwind's
-// built-in `text-white`, so there's nothing to assert against in CSS.
+// `:root`); `THEME.foreground` has no variable in `globals.css`, so there's
+// nothing to assert against in CSS.
 async function checkThemeParity(): Promise<void> {
   let css: string;
   try {
