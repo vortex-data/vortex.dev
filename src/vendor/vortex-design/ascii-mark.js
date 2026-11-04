@@ -76,7 +76,7 @@ async function mount(host, opts, cleanups, destroy) {
     const read = (name, fallback) => css.getPropertyValue(name).trim() || fallback;
     inks = p.inks.map((n) => read(n, "#888"));
     field = read(p.field, light ? "#d4d4d2" : "#2b2b29");
-    brush = [read(p.brush[0], "#2f63ff"), read(p.brush[1], light ? "#1d0fed" : "#8fa9ff")];
+    brush = light ? [read(p.brush[0], "#1d0fed"), read(p.brush[1], "#2f63ff")] : [read(p.brush[0], "#2f63ff"), read(p.brush[1], "#8fa9ff")];
   };
   paint();
   const repaints = [];
