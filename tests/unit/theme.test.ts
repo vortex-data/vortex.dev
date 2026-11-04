@@ -58,7 +58,9 @@ describe("themeFor", () => {
       assert.equal(
         // An unknown stored value reads as System, as the bootstrap reads it.
         themeFor(
-          ["light", "dark", "system"].includes(stored ?? "") ? (stored ?? "") : "system",
+          ["light", "dark", "system"].includes(stored ?? "")
+            ? (stored ?? "")
+            : "system",
           prefersDark,
           { path }
         ),
@@ -86,8 +88,14 @@ describe("THEME_BOOTSTRAP", () => {
   });
 
   it("reads the choice that the vortex.dev cookie shares across the subdomains first", () => {
-    assert.equal(boot("/", "dark", false, false, true, "vx-theme=light").theme, "light");
-    assert.equal(boot("/", "dark", false, true, true, "a=1; vx-theme=light").theme, "light");
+    assert.equal(
+      boot("/", "dark", false, false, true, "vx-theme=light").theme,
+      "light"
+    );
+    assert.equal(
+      boot("/", "dark", false, true, true, "a=1; vx-theme=light").theme,
+      "light"
+    );
   });
 
   it("records the choice, which the switch shows pressed before hydration", () => {

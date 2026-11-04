@@ -24,7 +24,10 @@ describe("Footer", () => {
   it("is the same footer on every surface, over one solid rule", () => {
     const want = /^<footer class="vx-footer">/;
     assert.match(renderToStaticMarkup(<Footer />), want);
-    assert.match(renderToStaticMarkup(<Footer origin="https://vortex.dev" />), want);
+    assert.match(
+      renderToStaticMarkup(<Footer origin="https://vortex.dev" />),
+      want
+    );
   });
 });
 
@@ -66,7 +69,10 @@ describe("Header on bench", () => {
   // Design system DECISIONS 35: one header on every surface. A surface adds only its tools.
   it("draws the same header on the site and on bench", async () => {
     const want = /^<header class="vx-header"><div class="vx-header-start">/;
-    assert.match(renderToStaticMarkup(await Header({ bench: { home: "/" } })), want);
+    assert.match(
+      renderToStaticMarkup(await Header({ bench: { home: "/" } })),
+      want
+    );
     assert.match(renderToStaticMarkup(await Header()), want);
   });
 
@@ -87,7 +93,10 @@ describe("Header on bench", () => {
         html,
         /<a class="vx-label vx-nav-link vx-header-menu-spill" href="https:\/\/github.com\/vortex-data\/vortex" aria-label="vortex-data\/vortex on GitHub">GitHub<svg/
       );
-      assert.doesNotMatch(html, /<h1|vx-header-spill|vx-header-label|has-nav|is-solid/);
+      assert.doesNotMatch(
+        html,
+        /<h1|vx-header-spill|vx-header-label|has-nav|is-solid/
+      );
     }
   });
 
@@ -102,6 +111,9 @@ describe("Header on bench", () => {
       html,
       /<\/nav><div class="vx-header-tools"><button type="button">Expand all<\/button><\/div><div class="vx-header-end">/
     );
-    assert.doesNotMatch(renderToStaticMarkup(await Header()), /vx-header-tools/);
+    assert.doesNotMatch(
+      renderToStaticMarkup(await Header()),
+      /vx-header-tools/
+    );
   });
 });
