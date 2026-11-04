@@ -25,38 +25,6 @@
   flex-direction: column;
 }
 
-/* The skip link, the first tab stop on every page (WCAG 2.4.1). It is hidden as vx-sr-only hides
-   text until it has focus, then shows at the top left, above the sticky header, on ground in ink in
-   the label voice. The shared focus rule draws its ring. It needs no JavaScript: the fragment moves
-   focus to main, which takes it (tabindex -1) so that the next Tab starts in the content. A ring
-   around the whole of main would mark nothing a reader can use, so main draws none. */
-.vx-skip-link {
-  position: fixed;
-  top: var(--space-8);
-  left: var(--space-8);
-  z-index: 1200;
-  padding: var(--space-8) var(--space-12);
-  border-radius: var(--radius-control);
-  background: var(--ground);
-  color: var(--ink);
-  font-family: var(--font-mono);
-  font-size: 12px;
-  line-height: 1.3;
-  font-weight: 500;
-  text-decoration: none;
-}
-.vx-skip-link:not(:focus) {
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-main[tabindex="-1"]:focus {
-  outline: none;
-}
-
 /* -------------------------------------------------------- no JavaScript
    The server renders `<html class="no-js">` and the first-paint script swaps
    it for `js` (src/lib/theme.ts), so these rules hold only when no script
