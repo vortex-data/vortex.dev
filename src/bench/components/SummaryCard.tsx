@@ -32,6 +32,19 @@ function seriesTitle(item: SeriesRanking, coverageUnit: string): string {
 }
 
 /**
+ * A ranked series' total time. A series measured in only some buckets has a
+ * smaller total than a complete one, so its total says "(partial)", as a
+ * group's headline does, and one measured in none shows a dash.
+ */
+function runtimeText(item: SeriesRanking): string {
+  if (item.measured <= 0) {
+    return '—';
+  }
+  const total = formatTimeNs(item.totalRuntime);
+  return item.measured < item.total ? `${total} (partial)` : total;
+}
+
+/**
  * The per-group summary card.
  *
  * Every [`Summary`] variant renders a `.benchmark-scores-summary` with an
@@ -221,9 +234,7 @@ export function SummaryCard({ summary }: { summary?: Summary | undefined }) {
                       </span>
                       <span className="score-metrics">
                         <span className="score-value">{item.score.toFixed(2)}x</span>
-                        <span className="score-runtime">
-                          {item.measured > 0 ? formatTimeNs(item.totalRuntime) : '—'}
-                        </span>
+                        <span className="score-runtime">{runtimeText(item)}</span>
                       </span>
                     </div>
                   ))}
@@ -257,9 +268,7 @@ export function SummaryCard({ summary }: { summary?: Summary | undefined }) {
                 </span>
                 <span className="score-metrics">
                   <span className="score-value">{item.score.toFixed(2)}x</span>
-                  <span className="score-runtime">
-                    {item.measured > 0 ? formatTimeNs(item.totalRuntime) : '—'}
-                  </span>
+                  <span className="score-runtime">{runtimeText(item)}</span>
                 </span>
               </div>
             ))}

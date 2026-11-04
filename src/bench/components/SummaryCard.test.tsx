@@ -219,6 +219,29 @@ describe('SummaryCard', () => {
     expect(html).toContain('5.00 s');
   });
 
+  // A total over part of the queries is smaller than a complete one, so it says
+  // it is partial beside the complete totals, as a group's headline does.
+  it('marks a total over part of the buckets as partial, in every timing card', () => {
+    const rankings = [
+      {
+        name: 'duckdb:vortex-file',
+        score: 1,
+        totalRuntime: 5_000_000_000,
+        measured: 22,
+        total: 22,
+      },
+      { name: 'duckdb:lance', score: 2, totalRuntime: 3_000_000_000, measured: 20, total: 22 },
+    ];
+    for (const html of [
+      render({ type: 'queryBenchmark', title: 'Performance Summary', rankings, explanation: 'e' }),
+      render({ type: 'vectorSearch', title: 'Vector Search', rankings, explanation: 'e' }),
+      render({ type: 'randomAccess', hotRankings: rankings, coldRankings: [], explanation: 'e' }),
+    ]) {
+      expect(html).toContain('<span class="score-runtime">5.00 s</span>');
+      expect(html).toContain('<span class="score-runtime">3.00 s (partial)</span>');
+    }
+  });
+
   // Blue is for Vortex only: a row is Vortex's when its format, after any `engine:`, is one of
   // Vortex's, so DuckDB on Vortex counts and Vortex's engine on Parquet would not.
   it("marks Vortex's rows, and only them, as ours", () => {
