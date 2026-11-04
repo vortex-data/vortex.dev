@@ -51,8 +51,8 @@ export type ScrollPlan =
 // A chart card inside a landing-page group, and a group section.
 const CHART_CARDS = '.group-details [data-chart-slug]';
 const GROUP_SECTIONS = 'section[data-group-slug]';
-// The site header, which bench draws sticky with its controls on the row (`has-tools`).
-const STICKY_HEADER = '.vx-header.has-tools';
+// The site's one header, which sticks to the top of the window with bench's controls in its tools.
+const STICKY_HEADER = '.vx-header';
 
 /** Input that means the user has taken over the scroll. Not `scroll`: the
  * restorer's own `scrollTo` fires that, and so does the browser's jump to a

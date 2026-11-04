@@ -24,8 +24,8 @@ export type ToolbarProps = {
  * bench's controls, on the site header's row ([`BenchHeader`]): those of
  * section 18 of v3's `chart-init.js` (expand and collapse all, and the global
  * filter dropdown), drawn as the system's secondary mono buttons, as the
- * header's GitHub and Menu buttons are. The header holds the wordmark, the page's title, the theme
- * toggle ([`ThemeToggle`]), the GitHub button and the Menu.
+ * header's GitHub and Menu buttons are. The header holds the wordmark, the links, these controls,
+ * the ThemeSwitch, the GitHub button and the Menu.
  *
  * Expand/Collapse All writes `details.open` on every group disclosure
  * directly, then schedules one write of the open set into the URL fragment

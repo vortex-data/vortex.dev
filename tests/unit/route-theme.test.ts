@@ -37,11 +37,11 @@ describe("applyRouteTheme", () => {
     assert.equal(w.listeners.size, 0);
   });
 
-  it("keeps Dark-only pages dark when the OS changes", () => {
+  it("follows the OS on the homepage too, which is no longer Dark only", () => {
     const w = fakeWindow("system", true);
     applyRouteTheme("/", w.win);
     w.setOs(false);
-    assert.equal(w.root.dataset.theme, "dark");
+    assert.equal(w.root.dataset.theme, "light");
   });
 });
 

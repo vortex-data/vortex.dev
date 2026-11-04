@@ -7,10 +7,18 @@ export type Theme = "light" | "dark";
 export type Themeable = readonly string[];
 
 export function isThemeable(path: string, themeable?: Themeable): boolean;
-export function themeBootstrap(options?: { themeable?: Themeable }): string;
+/** `legacy` names older storage keys whose choice moves to vx-theme (bench's "bench-theme"). */
+export function themeBootstrap(options?: { themeable?: Themeable; legacy?: readonly string[] }): string;
 export const THEME_BOOTSTRAP: string;
-export function readChoice(storage: Pick<Storage, "getItem"> | null | undefined): ThemeChoice;
-export function saveChoice(storage: Pick<Storage, "setItem"> | null | undefined, choice: ThemeChoice): void;
+/** The cookie's choice when it holds one, else storage's, else "system". */
+export function readChoice(storage: Pick<Storage, "getItem"> | null | undefined, cookie?: string): ThemeChoice;
+/** The cookie text: on vortex.dev and its subdomains there, on the host only elsewhere. */
+export function themeCookie(choice: string, hostname: string | undefined, secure: boolean): string | null;
+export function saveChoice(
+  storage: Pick<Storage, "setItem"> | null | undefined,
+  choice: ThemeChoice,
+  options?: { jar?: { cookie: string } | null; hostname?: string; secure?: boolean },
+): void;
 export function resolveTheme(choice: string, prefersDark: boolean): Theme;
 export function themeFor(choice: string, prefersDark: boolean, options?: { path?: string; themeable?: Themeable }): Theme;
 export function applyTheme(choice?: ThemeChoice, options?: { path?: string; themeable?: Themeable }): ThemeChoice;

@@ -56,8 +56,8 @@ describe("bench's stylesheet on the system's tokens", () => {
     expect(existsSync(new URL('./vortex-skin.css', import.meta.url))).toBe(false);
   });
 
-  it('renders data-theme="system", so the tokens follow the OS until a reader chooses', () => {
-    expect(layout).toMatch(/<html[^>]*data-theme="system"/);
+  it('renders data-theme="dark", the default theme, for a reader without scripts', () => {
+    expect(layout).toMatch(/<html[^>]*data-theme="dark"/);
     expect(tokens).toMatch(
       /@media \(prefers-color-scheme: light\) \{\s*\[data-theme="system"\] \{/,
     );
@@ -207,7 +207,7 @@ describe("bench's stylesheet on the system's tokens", () => {
     ]);
   });
 
-  // The system's header (has-tools) sticks and holds the controls, so bench draws no toolbar.
+  // The system's one header sticks and holds the controls in its tools, so bench draws no toolbar.
   it("puts the controls on the system's sticky header, and draws no toolbar of its own", () => {
     expect(css).not.toMatch(/\.bench-toolbar[\s,{]|\.bench-title/);
     expect(lastValue(':root', '--toolbar-height')).toBe('64px');
@@ -216,9 +216,12 @@ describe("bench's stylesheet on the system's tokens", () => {
     expect(lastValue('body', 'overflow-x')).toBe('clip');
     // The fixed Groups button needs room under the footer, or it covers the footer's mark.
     expect(lastValue('.bench-frame:has(.group-nav-toggle)', 'padding-bottom')).toBe('3.5rem');
-    // Below 1260px the buttons' words hide, but the Filters count stays in view.
+    // The site's frame: one --page-max column for the header, main and footer.
+    expect(lastValue('.bench-frame', 'max-width')).toBe('var(--page-max)');
+    expect(lastValue('.bench-frame', 'margin-inline')).toBe('auto');
+    // Below 1440px the buttons' words hide, but the Filters count stays in view.
     expect(css).toMatch(
-      /@media \(max-width: 1260px\) \{\s*\.bench-toolbar-controls \.vx-btn > span:not\(\.filter-badge\),/,
+      /@media \(max-width: 1440px\) \{\s*\.bench-toolbar-controls \.vx-btn > span:not\(\.filter-badge\) \{/,
     );
     // The header's buttons are the system's (vx-btn), and bench restyles none of them.
     expect(css).not.toMatch(

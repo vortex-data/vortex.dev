@@ -79,11 +79,11 @@
 
 /* Corners: from 1240px the install box (480px) and the table (about 620px)
    fit side by side under the mark. The hero takes the screen the header
-   (64px and its 16px margin) leaves, and the mark fills all of it. */
+   (64px) leaves, and the mark fills all of it. */
 @media (min-width: 1240px) {
   .hero {
     display: block;
-    height: calc(100dvh - 80px);
+    height: calc(100dvh - 64px);
     min-height: 680px;
     padding: 0;
   }

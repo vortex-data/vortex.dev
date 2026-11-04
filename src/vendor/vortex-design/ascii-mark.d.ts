@@ -17,6 +17,8 @@ export type AsciiMarkOptions = {
   three?: unknown;
   threeUrl?: string;
   exposure?: number;
+  /** Draw the dot field around the mark (true). Pass false over a DotField, so the dots do not double. */
+  field?: boolean;
 };
 
 export type AsciiMark = { mode: "live" | "reduced" | "static"; destroy(): void };

@@ -27,9 +27,11 @@ const THREE_URL = "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module
  * default), fallbackSrc (the symbol image for the static mode), mode ("auto", or "static" for the
  * still symbol whatever the browser can do), three (a three.js module the site bundles, for pages
  * whose CSP blocks the CDN), threeUrl (where to load three.js otherwise), exposure (how bright the
- * lit faces read on the ramp, 2.5). The mark is decorative: keep the host aria-hidden.
+ * lit faces read on the ramp, 2.5), field (draw the dot field around the mark, true; false when
+ * a DotField already lies under the host, so the page shows one grid of dots, not two). The mark
+ * is decorative: keep the host aria-hidden.
  * Colours follow the host's colour-scheme, which the tokens set per theme: Dark greys on a Dark
- * ground, mirrored greys in Light (markPalette in ascii-core.js), and the brush in the accent. In
+ * ground, mirrored greys in Light (markPalette in ascii-core.js), and a two-tone Blue brush. In
  * Light the symbol image is inverted, so pass the white one in both themes.
  * Resolves to { mode: "live" | "reduced" | "static", destroy() }. Call destroy() when the host
  * leaves the page: it stops the loop, removes the listeners and frees the WebGL context.
@@ -62,6 +64,7 @@ async function mount(host, opts, cleanups, destroy) {
     three: null,
     threeUrl: THREE_URL,
     exposure: 2.5,
+    field: true,
     ...opts,
   };
   // The palette for the host's scheme, read again whenever a data-theme changes on the page.
@@ -73,7 +76,7 @@ async function mount(host, opts, cleanups, destroy) {
     const read = (name, fallback) => css.getPropertyValue(name).trim() || fallback;
     inks = p.inks.map((n) => read(n, "#888"));
     field = read(p.field, light ? "#d4d4d2" : "#2b2b29");
-    brush = [read(p.brush[0], "#2f63ff"), read(p.brush[1], "#8fa9ff")];
+    brush = light ? [read(p.brush[0], "#1d0fed"), read(p.brush[1], "#2f63ff")] : [read(p.brush[0], "#2f63ff"), read(p.brush[1], "#8fa9ff")];
   };
   paint();
   const repaints = [];
@@ -278,7 +281,7 @@ async function mount(host, opts, cleanups, destroy) {
         const b = marks.length && v > 0.03 ? brushStrength(x + cw / 2, y + o.lineHeight / 2, marks) : 0;
         if (b > 0.12) put(b > 0.55 ? brush[1] : brush[0], hexDigit(r, c, tick), x, y);
         else if (v > 0.03) put(inks[Math.min(inks.length - 1, Math.floor(v * inks.length))], rampChar(Math.max(v, 0.12)), x, y);
-        else if (r % 2 === 0 && c % 2 === 0) put(field, ".", x, y);
+        else if (o.field && r % 2 === 0 && c % 2 === 0) put(field, ".", x, y);
       }
     for (const [color, list] of buckets) {
       ctx.fillStyle = color;

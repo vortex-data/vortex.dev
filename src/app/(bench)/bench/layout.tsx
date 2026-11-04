@@ -9,7 +9,9 @@ import { benchPath } from '@/bench/lib/base-path';
 import { requestBenchBase } from '@/bench/lib/request-base';
 import { BENCH_DESCRIPTION, BENCH_URL, openGraph } from '@/bench/lib/site-files';
 import { Footer } from '@/components/layout/footer';
+import { RouteTheme } from '@/components/route-theme';
 import { FONT_CLASSES } from '@/lib/fonts';
+import { BENCH_THEME_BOOTSTRAP } from '@/lib/theme';
 
 // The Vortex design system's colour roles and scales, which globals.css reads,
 // and its components, for the site's header and footer.
@@ -26,17 +28,10 @@ export async function generateMetadata(): Promise<Metadata> {
     // in full. No `metadataBase`: it would also resolve the icons' paths, which
     // belong to the host serving the page, against bench.vortex.dev.
     openGraph: openGraph('Benchmarks | Vortex', BENCH_DESCRIPTION, `${BENCH_URL}/`),
-    // Theme-aware favicons, ported from `render.rs::favicon_links`: the black
-    // sigil on light-mode tabs, the white sigil on dark-mode tabs, with the dark
-    // sigil as the unmediated fallback (and the apple-touch icon). The files are
-    // in public/bench: the root of bench.vortex.dev.
+    // The site's favicon (the system's DECISIONS 36: one set on every
+    // surface), copied into public/bench, the root of bench.vortex.dev.
     icons: {
-      icon: [
-        { url: benchPath(base, '/icon-light.png'), media: '(prefers-color-scheme: light)' },
-        { url: benchPath(base, '/icon-dark.png'), media: '(prefers-color-scheme: dark)' },
-        { url: benchPath(base, '/icon-dark.png') },
-      ],
-      apple: benchPath(base, '/icon-dark.png'),
+      icon: { url: benchPath(base, '/favicon.ico'), sizes: '256x256', type: 'image/x-icon' },
     },
   };
 }
@@ -46,25 +41,13 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-// The pre-paint bootstrap. Its first statement swaps the root's server-rendered
-// `no-js` class for `js`, so `.no-js [data-requires-js]` (globals.css) hides
-// the controls that do nothing without JavaScript only when no script runs.
-// The rest is ported verbatim from `render.rs::theme_bootstrap_script`: apply
-// any stored theme choice before first paint so a dark-mode visitor never
-// flashes the light theme. Inline (not a module) and in `<head>` so it runs
-// before the body renders, and a constant that builds no code from a value.
-// The class and the stored theme (a `data-theme` attribute) differ from what
-// the server rendered, so the root `<html>` carries `suppressHydrationWarning`
-// (attribute-level, one element deep) to keep dev hydration checks quiet. The
-// theme part's bare catch is deliberate and v3-byte-identical: localStorage
-// access throws in some private-browsing modes, and the correct fallback is
-// silently keeping the default prefers-color-scheme theme.
-const THEME_BOOTSTRAP =
-  '(function(){' +
-  'document.documentElement.className=document.documentElement.className.replace("no-js","js");' +
-  'try{var t=localStorage.getItem("bench-theme");if(t==="light"||t==="dark"){document.documentElement.dataset.theme=t;}}catch(e){}' +
-  '})();';
-
+// The pre-paint bootstrap, the site's (`lib/theme.ts`): its first statement
+// swaps the root's server-rendered `no-js` class for `js`, so `.no-js
+// [data-requires-js]` (globals.css) hides the controls that do nothing without
+// JavaScript only when no script runs. The rest sets the reader's theme from
+// the `vx-theme` cookie that vortex.dev's subdomains share (else storage, else
+// Dark) before first paint. The class and the theme differ from what the
+// server rendered, so the root `<html>` carries `suppressHydrationWarning`.
 /**
  * Root layout: the `<html>`/`<body>` shell plus the global stylesheet, the
  * pre-paint theme bootstrap, and the design system's faces, self-hosted as the
@@ -78,17 +61,13 @@ const THEME_BOOTSTRAP =
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const base = await requestBenchBase();
   return (
-    <html
-      lang="en"
-      data-theme="system"
-      className={`no-js ${FONT_CLASSES}`}
-      suppressHydrationWarning
-    >
+    <html lang="en" data-theme="dark" className={`no-js ${FONT_CLASSES}`} suppressHydrationWarning>
       <head>
         {/* biome-ignore lint/security/noDangerouslySetInnerHtml: a constant script that sets the theme before first paint. */}
-        <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
+        <script dangerouslySetInnerHTML={{ __html: BENCH_THEME_BOOTSTRAP }} />
       </head>
       <body>
+        <RouteTheme />
         {/* The first tab stop. Each page's <main> has the id and takes focus
             (tabIndex -1). A fragment-only href works on either base. */}
         <a className="vx-skip-link" href="#main">
@@ -97,7 +76,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         <BenchBaseProvider base={base}>
           <div className="bench-frame">
             {children}
-            <Footer origin="https://vortex.dev" solid />
+            <Footer origin="https://vortex.dev" />
           </div>
         </BenchBaseProvider>
       </body>

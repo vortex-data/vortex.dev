@@ -542,11 +542,12 @@ test.describe("header", () => {
       await expect(link).toHaveAttribute("href", href);
     }
     // The star count is left out when GitHub's API fails, so only the
-    // repository name is certain.
-    const github = page.locator(
-      'header a[href="https://github.com/vortex-data/vortex"]'
-    );
-    await expect(github).toBeVisible();
+    // repository name is certain. The button and its twin row in the Menu
+    // share the address: one of them shows at any width.
+    const github = page
+      .locator('header a[href="https://github.com/vortex-data/vortex"]')
+      .filter({ visible: true });
+    await expect(github).toHaveCount(1);
     await expect(github).toHaveAccessibleName(/^vortex-data\/vortex/);
   });
 });
@@ -627,14 +628,27 @@ test.describe("header menu without scripts", () => {
   });
 });
 
+// On a phone the switch is a row in the Menu's panel: open it first.
+async function openMenuOnPhone(page: Page) {
+  const menu = page.locator(".vx-header-menu > summary");
+  if (await menu.isVisible()) await menu.click();
+}
+
 test.describe("theme switch", () => {
+  // DECISIONS 37 and 43: every surface has the switch and defaults to Dark, even when the OS
+  // prefers Light.
   test("sets data-theme on the blog, and the choice survives a reload", async ({
     page
   }) => {
+    await page.emulateMedia({ colorScheme: "light" });
     await page.goto("/blog");
+    await openMenuOnPhone(page);
     const html = page.locator("html");
     const choice = (name: string) =>
-      page.getByRole("group", { name: "Theme" }).getByRole("button", { name });
+      page
+        .getByRole("group", { name: "Theme" })
+        .filter({ visible: true })
+        .getByRole("button", { name });
     await expect(html).toHaveAttribute("data-theme", "dark");
     await expect(choice("Dark")).toHaveAttribute("aria-pressed", "true");
     await choice("Light").click();
@@ -643,15 +657,18 @@ test.describe("theme switch", () => {
     await expect(choice("Dark")).toHaveAttribute("aria-pressed", "false");
     await page.reload();
     await expect(html).toHaveAttribute("data-theme", "light");
+    await openMenuOnPhone(page);
     await expect(choice("Light")).toHaveAttribute("aria-pressed", "true");
   });
 
   test("System follows the OS while the page stays open", async ({ page }) => {
     await page.emulateMedia({ colorScheme: "light" });
     await page.goto("/blog");
+    await openMenuOnPhone(page);
     const html = page.locator("html");
     await page
       .getByRole("group", { name: "Theme" })
+      .filter({ visible: true })
       .getByRole("button", { name: "System" })
       .click();
     await expect(html).toHaveAttribute("data-theme", "light");
@@ -659,25 +676,29 @@ test.describe("theme switch", () => {
     await expect(html).toHaveAttribute("data-theme", "dark");
   });
 
-  test("the homepage has no switch and stays Dark with Light stored", async ({
+  test("the homepage has the switch and follows a stored Light", async ({
     page
   }) => {
+    await page.emulateMedia({ colorScheme: "dark" });
     await page.addInitScript(() => localStorage.setItem("vx-theme", "light"));
     await page.goto("/");
-    await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
-    await expect(page.getByRole("group", { name: "Theme" })).toHaveCount(0);
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+    await openMenuOnPhone(page);
+    await expect(
+      page.getByRole("group", { name: "Theme" }).filter({ visible: true })
+    ).toHaveCount(1);
   });
 
-  test("a client navigation from a Light blog to the homepage turns Dark", async ({
+  test("a client navigation from a Light blog to the homepage stays Light", async ({
     page
   }) => {
+    await page.emulateMedia({ colorScheme: "dark" });
     await page.addInitScript(() => localStorage.setItem("vx-theme", "light"));
     await page.goto("/blog");
     await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
     await page.getByRole("link", { name: "Vortex home" }).click();
     await expect(page).toHaveURL(/\/$/);
-    await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
-    await expect(page.getByRole("group", { name: "Theme" })).toHaveCount(0);
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
   });
 });
 
@@ -710,6 +731,17 @@ test.describe("404", () => {
     const host = main.locator("[data-mark-mode]");
     await expect(host).toHaveCount(1, { timeout: 15000 });
     expect(await host.getAttribute("data-mark-mode")).not.toBe("error");
+  });
+
+  // Codex on #194: bench's header adds a hidden "Benchmarks" h1, which must not
+  // compete with the 404's own.
+  test("a bench 404 has one h1, the code", async ({ page }) => {
+    const res = await page.goto("/bench/no-such-page");
+    expect(res?.status()).toBe(404);
+    await expect(page.locator("h1")).toHaveCount(1);
+    await expect(
+      page.getByRole("heading", { level: 1, name: "404" })
+    ).toBeVisible();
   });
 });
 
@@ -890,9 +922,14 @@ test.describe("home fills the first screen", () => {
       if (!hero || !mark || !head || !eyebrow || !install || !logos)
         throw new Error("a part of the hero is missing");
       expect(Math.abs(hero.bottom - height)).toBeLessThanOrEqual(1);
-      // The mark's host is the whole hero.
-      expect(mark.top).toBe(hero.top);
-      expect(mark.bottom).toBe(hero.bottom);
+      // The mark's host fills the hero up to the Home card's 820px, and is
+      // centred in a taller one.
+      expect(mark.bottom - mark.top).toBe(
+        Math.min(hero.bottom - hero.top, 820)
+      );
+      expect(
+        Math.abs(mark.top - hero.top - (hero.bottom - mark.bottom))
+      ).toBeLessThanOrEqual(1);
       expect(mark.right - mark.left).toBe(hero.right - hero.left);
       // The corners.
       expect(head.left).toBeLessThan(eyebrow.left);
@@ -1109,6 +1146,7 @@ test.describe("theme on client navigation", () => {
   test("the destination's theme is set before its page paints", async ({
     page
   }) => {
+    await page.emulateMedia({ colorScheme: "dark" });
     await page.goto("/blog");
     await page.evaluate(() => localStorage.setItem("vx-theme", "light"));
     await page.reload();
@@ -1129,7 +1167,8 @@ test.describe("theme on client navigation", () => {
     const theme = await page.evaluate(
       () => (window as unknown as { themeAtCommit?: string }).themeAtCommit
     );
-    expect(theme).toBe("dark");
+    // The homepage follows the choice, as every page does (DECISIONS 37).
+    expect(theme).toBe("light");
   });
 });
 
@@ -1288,8 +1327,12 @@ test.describe("design system rules on the blog", () => {
     page
   }) => {
     await page.goto("/blog");
+    // On a phone the button leaves the row for its twin in the Menu.
+    await openMenuOnPhone(page);
     await expect(
-      page.locator('header a[href="https://github.com/vortex-data/vortex"]')
+      page
+        .locator('header a[href="https://github.com/vortex-data/vortex"]')
+        .filter({ visible: true })
     ).toHaveAccessibleName(/^vortex-data\/vortex( [\d.]+k? stars)? on GitHub$/);
   });
 

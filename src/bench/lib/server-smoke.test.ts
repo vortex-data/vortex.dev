@@ -106,16 +106,15 @@ describe.skipIf(!databaseAvailable || !BUILD_PRESENT)(
       const first = await (await fetch(BASE)).text();
       expect(first).toContain('class="group-details"');
       const html = await (await fetch(BASE)).text();
-      // The site's header and footer, with solid rules, and bench's title, controls and theme
-      // toggle on the header's row (server-rendered islands).
-      expect(html).toContain('<header class="vx-header has-nav has-tools is-solid">');
-      expect(html).toContain('<footer class="vx-footer is-solid">');
-      expect(html).toContain('<h1 class="vx-label vx-header-label">Benchmarks</h1>');
+      // The site's one header and footer, with bench's controls in the header's tools and the
+      // shared ThemeSwitch in its end group (server-rendered islands), then the page's h1.
+      expect(html).toContain('<header class="vx-header">');
+      expect(html).toContain('<footer class="vx-footer">');
+      expect(html).toContain('</header><h1 class="vx-sr-only">Benchmarks</h1>');
       expect(html).toContain(
         '<div class="vx-header-tools"><div class="bench-toolbar-controls" aria-label="Benchmark group controls">',
       );
-      expect(html).toContain('class="vx-label vx-nav-link vx-header-menu-spill theme-toggle"');
-      expect(html).toContain('data-role="theme-toggle"');
+      expect(html).toContain('<div class="vx-header-end"><fieldset class="vx-theme-switch"');
       expect(html).toContain('data-action="expand-all"');
       expect(html).toContain('data-role="global-filter-bar"');
       // The fixture's engines surface as filter chips via collectFilterUniverse.
@@ -141,7 +140,7 @@ describe.skipIf(!databaseAvailable || !BUILD_PRESENT)(
       );
       for (const segment of segments) {
         expect(segment).toMatch(
-          /^<a class="vx-btn [^"]*vx-header-spill" href="https:\/\/github\.com\//,
+          /^<a class="vx-btn [^"]*vx-header-github" href="https:\/\/github\.com\//,
         );
         expect(segment).not.toContain('data-group-slug');
       }
@@ -156,9 +155,11 @@ describe.skipIf(!databaseAvailable || !BUILD_PRESENT)(
       // The pre-paint theme bootstrap is inlined in <head>, and swaps the
       // root's `no-js` class, which hides the controls that need JavaScript.
       // The root follows the OS until a reader chooses, and carries the faces.
-      expect(html).toContain('localStorage.getItem("bench-theme")');
-      expect(html).toContain('<html lang="en" data-theme="system" class="no-js ');
-      expect(html).toContain('data-role="theme-toggle" data-requires-js="true"');
+      expect(html).toContain('localStorage.getItem("vx-theme")');
+      expect(html).toContain('<html lang="en" data-theme="dark" class="no-js ');
+      expect(html).toContain(
+        '<fieldset class="vx-theme-switch" aria-label="Theme" data-requires-js="true">',
+      );
     });
 
     it('serves the chart permalink page with its page title and meta line', async () => {
@@ -184,6 +185,10 @@ describe.skipIf(!databaseAvailable || !BUILD_PRESENT)(
     it('returns 404 HTML for an unknown chart slug', async () => {
       const r = await fetch(`${BASE}/chart/ra.unknown-slug`);
       expect(r.status).toBe(404);
+      // The site's 404 title, not bench's own (DECISIONS 36: one 404 everywhere).
+      const html = await r.text();
+      expect(html).toContain('<title>Page not found | Vortex</title>');
+      expect(html).not.toContain('<meta property="og:url"');
     });
 
     it('serves the chart API the islands fetch from', async () => {
@@ -244,7 +249,7 @@ describe.skipIf(!databaseAvailable || !BUILD_PRESENT)(
       expect(html).toMatch(
         /<a class="vx-label vx-nav-link" href="\/bench" aria-current="page">Bench</,
       );
-      expect(html).toContain('href="/bench/icon-dark.png"');
+      expect(html).toContain('href="/bench/favicon.ico"');
     });
 
     it('serves bench from the root of bench.vortex.dev, with root-relative links', async () => {
@@ -258,7 +263,7 @@ describe.skipIf(!databaseAvailable || !BUILD_PRESENT)(
         /<a class="vx-label vx-nav-link" href="\/" aria-current="page">Bench</,
       );
       expect(landing.body).toContain('href="https://vortex.dev/charter.pdf"');
-      expect(landing.body).toContain('href="/icon-dark.png"');
+      expect(landing.body).toContain('href="/favicon.ico"');
       expect(landing.body).not.toMatch(/(href|src)="\/bench/);
       const chart = await getOnBenchHost(`/chart/${slug}`);
       expect(chart.status).toBe(200);

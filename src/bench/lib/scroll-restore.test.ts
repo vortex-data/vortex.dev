@@ -83,7 +83,7 @@ describe('scroll restore', () => {
 
   beforeEach(() => {
     document.body.innerHTML =
-      '<header class="vx-header has-nav has-tools is-solid"></header>' +
+      '<header class="vx-header"></header>' +
       '<section class="group-details" id="tpc-h" data-group-slug="tpch">' +
       '<details class="group-disclosure" open><summary>TPC-H</summary>' +
       `<div class="chart-grid">${card('c1')}${card('c2')}${card('c3')}</div>` +
