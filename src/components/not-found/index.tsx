@@ -1,9 +1,11 @@
 import NextLink from "next/link";
 import { AsciiMark } from "@/components/ascii-mark";
+import { DotField } from "@/components/dot-field";
 
 /**
  * The 404's body, the same on every surface (the design system's DECISIONS
- * 36): the Status card with the mark. The words follow Writing › Site errors.
+ * 36): the Status card with the mark, over the system's DotField, so the
+ * mark leaves its own dots to it. The words follow Writing › Site errors.
  * It follows the reader's theme, and the mark draws in Light too. `origin` is
  * the site's, for a page served from another host (bench), where the site's
  * paths are not this host's.
@@ -11,7 +13,8 @@ import { AsciiMark } from "@/components/ascii-mark";
 export function NotFoundStatus({ origin = "" }: { origin?: string } = {}) {
   const Link = origin ? "a" : NextLink;
   return (
-    <div className="vx-status has-mark">
+    <div className="vx-status has-mark has-dot-field">
+      <DotField />
       <div className="vx-status-text">
         <h1 className="vx-status-code">404</h1>
         <p className="vx-status-sentence">Page not found.</p>
@@ -28,7 +31,7 @@ export function NotFoundStatus({ origin = "" }: { origin?: string } = {}) {
         </div>
       </div>
       <div className="vx-status-mark">
-        <AsciiMark />
+        <AsciiMark field={false} />
       </div>
     </div>
   );

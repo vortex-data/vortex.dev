@@ -47,9 +47,17 @@ const STILL_STYLE = {
  * while the page loads, as before; once the page is idle the live (or
  * reduced-motion) mark mounts and the symbol goes. Without WebGL, when
  * three.js cannot load, or when mounting throws, the host's `data-mark-mode`
- * says so (`static` or `error`) and the symbol shows.
+ * says so (`static` or `error`) and the symbol shows. `field={false}` leaves
+ * the dot field around the mark to a `DotField` under it, so the page shows
+ * one grid of dots.
  */
-export function AsciiMark({ className }: { className?: string | undefined }) {
+export function AsciiMark({
+  className,
+  field = true
+}: {
+  className?: string | undefined;
+  field?: boolean;
+}) {
   const host = useRef<HTMLDivElement>(null);
   const [drawn, setDrawn] = useState(false);
 
@@ -78,6 +86,7 @@ export function AsciiMark({ className }: { className?: string | undefined }) {
       // No fallbackSrc: the static mark is the symbol the server rendered.
       const mark = await mountAsciiMark(el, {
         three,
+        field,
         ...(font ? { font } : {})
       });
       if (!mounted) return mark.destroy();
@@ -104,7 +113,7 @@ export function AsciiMark({ className }: { className?: string | undefined }) {
       cancel();
       destroy();
     };
-  }, []);
+  }, [field]);
 
   return (
     <div ref={host} className={className} aria-hidden="true">

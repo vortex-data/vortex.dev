@@ -1,7 +1,7 @@
 /* Vortex design system components (sections: base, brand, chrome, site, blog, tables, focus), copied by tools/site-styles.mjs.
    Edit the system, then run tools/site-styles.mjs; do not edit here.
    Made by: node tools/site-styles.mjs <site> --sections base,brand,chrome,site,blog,tables,focus --faces --vx-face --base
-   sha256 3c47a0bfdb59156e3c329807e000fc94f039ec34462c8498dc91a4703934f756 */
+   sha256 78b62a4fd6e69a5d2ff88b89fb2a7b3ee67aa5cc92e01d4930f3e53a0bac8625 */
 
 /* ------------------------------------------------------------------ base */
 /* Every component sizes with border-box, so it draws the same under a site's reset or none. */
@@ -100,6 +100,33 @@ main[tabindex="-1"]:focus {
 .vx-chain-arrow { color: var(--ink-muted); }
 
 /* ------------------------------------------------------------------ brand */
+/* DotField: the ASCII mark's dot field, still, behind a page that has no mark of its own (the
+   blog) or whose mark leaves its field to it (the 404, with the mark's field: false). The dots sit
+   on the mark's grid, a dot in every second cell of 12px Geist Mono and every second 14px line, in
+   the mark's field grey. It covers the top of its host and fades toward the sides and the foot, so
+   no hard edge shows. The host takes .has-dot-field, so the field sits under the host's content
+   and over its background. Decoration only: keep it aria-hidden. */
+.has-dot-field { position: relative; isolation: isolate; }
+.vx-dot-field {
+  --dot-field-ink: var(--grey-700);
+  position: absolute;
+  inset: 0 0 auto;
+  height: min(100%, 1400px);
+  z-index: -1;
+  pointer-events: none;
+  font: 400 12px/14px var(--font-mono);
+  background-image: radial-gradient(circle at 0.5ch 10px, var(--dot-field-ink) 0.8px, transparent 1.2px);
+  background-size: 2ch 28px;
+  -webkit-mask-image: radial-gradient(ellipse 75% 90% at 50% 0%, #000 35%, transparent 100%);
+  mask-image: radial-gradient(ellipse 75% 90% at 50% 0%, #000 35%, transparent 100%);
+}
+[data-theme="light"] .vx-dot-field { --dot-field-ink: var(--grey-300); }
+@media (prefers-color-scheme: light) {
+  [data-theme="system"] .vx-dot-field { --dot-field-ink: var(--grey-300); }
+}
+@media (forced-colors: active), print {
+  .vx-dot-field { display: none; }
+}
 /* The label, the strip, then the pause control at the end of the row. On a phone the label and
    the control share the first row, over the strip. */
 .vx-logos {
@@ -933,6 +960,8 @@ html:has(.vx-header) { scroll-padding-top: calc(var(--space-64) + var(--space-8)
 .vx-article-links { display: flex; flex-wrap: wrap; gap: var(--space-8) var(--space-24); margin: 0; }
 @media (max-width: 640px) {
   .vx-article { padding: var(--space-8) 0 var(--space-24); font-size: 16px; border: 0; background: none; }
+  /* With no card the post's text lies on the ground, so a DotField behind it goes. */
+  .has-dot-field:has(.vx-article) > .vx-dot-field { display: none; }
   .vx-article-title { font-size: 36px; }
   .vx-article-dek { display: block; font-size: 16px; -webkit-line-clamp: none; line-clamp: none; }
   .vx-post-nav { grid-template-columns: minmax(0, 1fr); }
