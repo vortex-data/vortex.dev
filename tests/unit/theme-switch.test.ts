@@ -36,11 +36,13 @@ describe("readChoice", () => {
     for (const c of THEME_CHOICES) assert.equal(readChoice(fakeStorage(c)), c);
   });
 
-  it("is System when the choice is unset, unknown or blocked", () => {
-    assert.equal(readChoice(fakeStorage(null)), "system");
-    assert.equal(readChoice(fakeStorage("sepia")), "system");
-    assert.equal(readChoice(fakeStorage("light", true)), "system");
-    assert.equal(readChoice(null), "system");
+  // Will, 4 Nov 2026: "shared cookie should be respected! but if no other info, dark"
+  // (design system DECISIONS 43).
+  it("is Dark when the choice is unset, unknown or blocked", () => {
+    assert.equal(readChoice(fakeStorage(null)), "dark");
+    assert.equal(readChoice(fakeStorage("sepia")), "dark");
+    assert.equal(readChoice(fakeStorage("light", true)), "dark");
+    assert.equal(readChoice(null), "dark");
   });
 
   it("reads the shared cookie before storage", () => {

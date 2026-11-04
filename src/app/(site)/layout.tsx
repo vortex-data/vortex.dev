@@ -53,14 +53,15 @@ export default function RootLayout({
     </>
   );
 
-  // Dark is the server-rendered default; THEME_BOOTSTRAP corrects it before
-  // first paint on the blog, so React must not flag the attribute it changed.
+  // Dark is the server-rendered default, as it is the default choice;
+  // THEME_BOOTSTRAP sets the reader's choice before first paint, so React must
+  // not flag the attribute it changed.
   // It also swaps `no-js` for `js` first, so controls that need JavaScript
   // hide only when no script runs (globals.css).
   return (
     <html
       lang="en"
-      data-theme="system"
+      data-theme="dark"
       suppressHydrationWarning
       className={`no-js ${FONT_CLASSES}`}
     >

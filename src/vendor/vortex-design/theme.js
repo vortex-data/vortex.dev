@@ -1,4 +1,4 @@
-// The theme choice every surface shares (DECISIONS 37): light, dark or system. The default is System.
+// The theme choice every surface shares (DECISIONS 37, 43): light, dark or system. The default is Dark.
 // It lives in a vx-theme cookie on vortex.dev, so a choice made on the blog holds on docs, bench and
 // the Explorer too, and in localStorage["vx-theme"] as a fallback for hosts outside vortex.dev. It
 // lands on <html data-theme>. The choice itself also lands on <html data-theme-choice>, so the switch
@@ -10,7 +10,7 @@
 const KEY = "vx-theme";
 const CHOICES = ["light", "dark", "system"];
 const PLAIN_PATH = /^\/[\w.~\/-]*$/;
-const DEFAULT = "system";
+const DEFAULT = "dark";
 const YEAR = 31536000;
 const COOKIE = /(?:^|;\s*)vx-theme=([^;]*)/;
 
@@ -50,7 +50,7 @@ export function themeBootstrap({ themeable } = {}) {
 /** The snippet for a site where every page follows the choice. */
 export const THEME_BOOTSTRAP = themeBootstrap();
 
-/** The choice: the cookie's when it holds one, else this origin's storage, else System. */
+/** The choice: the cookie's when it holds one, else this origin's storage, else Dark. */
 export function readChoice(storage, cookie = "") {
   const c = COOKIE.exec(cookie ?? "")?.[1];
   if (CHOICES.includes(c)) return c;

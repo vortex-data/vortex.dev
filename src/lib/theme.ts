@@ -100,7 +100,7 @@ export function probeWebgl(doc: Document = document): void {
  * homepage's WebGL probe, the move of bench's old key, then the
  * design system's script, which sets `<html data-theme>` from the reader's
  * choice (the `vx-theme` cookie that vortex.dev's subdomains share, else
- * storage, else System) and `data-theme-choice`, from which the system's CSS
+ * storage, else Dark) and `data-theme-choice`, from which the system's CSS
  * shows the switch's choice pressed before hydration.
  */
 export const THEME_BOOTSTRAP =
@@ -144,7 +144,7 @@ export function cookieOf(doc: { readonly cookie?: string }): string {
 /**
  * The reader's choice on this page if they made one (their latest action,
  * even when saving it failed), else the shared cookie's, else the stored
- * choice, else System.
+ * choice, else Dark.
  */
 function currentChoice(win: {
   readonly localStorage: Pick<Storage, "getItem">;

@@ -56,8 +56,8 @@ describe("bench's stylesheet on the system's tokens", () => {
     expect(existsSync(new URL('./vortex-skin.css', import.meta.url))).toBe(false);
   });
 
-  it('renders data-theme="system", so the tokens follow the OS until a reader chooses', () => {
-    expect(layout).toMatch(/<html[^>]*data-theme="system"/);
+  it('renders data-theme="dark", the default theme, for a reader without scripts', () => {
+    expect(layout).toMatch(/<html[^>]*data-theme="dark"/);
     expect(tokens).toMatch(
       /@media \(prefers-color-scheme: light\) \{\s*\[data-theme="system"\] \{/,
     );

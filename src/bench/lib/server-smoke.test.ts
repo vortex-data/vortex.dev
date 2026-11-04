@@ -156,7 +156,7 @@ describe.skipIf(!databaseAvailable || !BUILD_PRESENT)(
       // root's `no-js` class, which hides the controls that need JavaScript.
       // The root follows the OS until a reader chooses, and carries the faces.
       expect(html).toContain('localStorage.getItem("vx-theme")');
-      expect(html).toContain('<html lang="en" data-theme="system" class="no-js ');
+      expect(html).toContain('<html lang="en" data-theme="dark" class="no-js ');
       expect(html).toContain(
         '<fieldset class="vx-theme-switch" aria-label="Theme" data-requires-js="true">',
       );

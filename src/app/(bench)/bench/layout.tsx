@@ -46,7 +46,7 @@ export const viewport: Viewport = {
 // [data-requires-js]` (globals.css) hides the controls that do nothing without
 // JavaScript only when no script runs. The rest sets the reader's theme from
 // the `vx-theme` cookie that vortex.dev's subdomains share (else storage, else
-// System) before first paint. The class and the theme differ from what the
+// Dark) before first paint. The class and the theme differ from what the
 // server rendered, so the root `<html>` carries `suppressHydrationWarning`.
 /**
  * Root layout: the `<html>`/`<body>` shell plus the global stylesheet, the
@@ -61,12 +61,7 @@ export const viewport: Viewport = {
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const base = await requestBenchBase();
   return (
-    <html
-      lang="en"
-      data-theme="system"
-      className={`no-js ${FONT_CLASSES}`}
-      suppressHydrationWarning
-    >
+    <html lang="en" data-theme="dark" className={`no-js ${FONT_CLASSES}`} suppressHydrationWarning>
       <head>
         {/* biome-ignore lint/security/noDangerouslySetInnerHtml: a constant script that sets the theme before first paint. */}
         <script dangerouslySetInnerHTML={{ __html: BENCH_THEME_BOOTSTRAP }} />

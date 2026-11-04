@@ -635,11 +635,12 @@ async function openMenuOnPhone(page: Page) {
 }
 
 test.describe("theme switch", () => {
-  // DECISIONS 37: every surface has the switch and defaults to System.
+  // DECISIONS 37 and 43: every surface has the switch and defaults to Dark, even when the OS
+  // prefers Light.
   test("sets data-theme on the blog, and the choice survives a reload", async ({
     page
   }) => {
-    await page.emulateMedia({ colorScheme: "dark" });
+    await page.emulateMedia({ colorScheme: "light" });
     await page.goto("/blog");
     await openMenuOnPhone(page);
     const html = page.locator("html");
@@ -649,11 +650,11 @@ test.describe("theme switch", () => {
         .filter({ visible: true })
         .getByRole("button", { name });
     await expect(html).toHaveAttribute("data-theme", "dark");
-    await expect(choice("System")).toHaveAttribute("aria-pressed", "true");
+    await expect(choice("Dark")).toHaveAttribute("aria-pressed", "true");
     await choice("Light").click();
     await expect(html).toHaveAttribute("data-theme", "light");
     await expect(choice("Light")).toHaveAttribute("aria-pressed", "true");
-    await expect(choice("System")).toHaveAttribute("aria-pressed", "false");
+    await expect(choice("Dark")).toHaveAttribute("aria-pressed", "false");
     await page.reload();
     await expect(html).toHaveAttribute("data-theme", "light");
     await openMenuOnPhone(page);

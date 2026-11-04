@@ -30,13 +30,13 @@ vi.mock('next/headers', () => ({ headers: async () => requestHeaders }));
 const html = renderToStaticMarkup(await RootLayout({ children: createElement('main') }));
 
 /** Load the layout's markup in a browser-like document, scripts on or off. */
-function load(runScripts: boolean, theme?: string, cookie?: string): Document {
+function load(runScripts: boolean, theme?: string, cookie?: string, prefersDark = true): Document {
   return new JSDOM(`<!DOCTYPE html>${html}`, {
     url: 'https://bench.vortex.dev/',
     ...(runScripts ? { runScripts: 'dangerously' as const } : {}),
     beforeParse(window) {
-      // jsdom has no matchMedia: an OS set to Dark.
-      Object.assign(window, { matchMedia: () => ({ matches: true }) });
+      // jsdom has no matchMedia: an OS set to Dark, unless the test says Light.
+      Object.assign(window, { matchMedia: () => ({ matches: prefersDark }) });
       if (theme !== undefined) {
         window.localStorage.setItem('vx-theme', theme);
       }
@@ -49,7 +49,7 @@ function load(runScripts: boolean, theme?: string, cookie?: string): Document {
 
 describe('RootLayout', () => {
   it('renders the root as no-js, which only a script swaps for js', () => {
-    expect(html).toMatch(/^<html lang="en" data-theme="system" class="no-js /);
+    expect(html).toMatch(/^<html lang="en" data-theme="dark" class="no-js /);
     expect(load(false).documentElement.classList.contains('no-js')).toBe(true);
     expect(load(true).documentElement.classList.contains('js')).toBe(true);
     expect(load(true).documentElement.classList.contains('no-js')).toBe(false);
@@ -71,10 +71,13 @@ describe('RootLayout', () => {
     expect(html).not.toMatch(/googleapis|gstatic/);
   });
 
-  it('follows the OS until a reader chooses a theme', () => {
-    expect(load(true).documentElement.dataset.theme).toBe('dark');
-    expect(load(true).documentElement.dataset.themeChoice).toBe('system');
-    expect(load(false).documentElement.dataset.theme).toBe('system');
+  // Will, 4 Nov 2026: "shared cookie should be respected! but if no other info, dark" (design
+  // system DECISIONS 43).
+  it('is Dark until a reader chooses a theme, even when the OS prefers Light', () => {
+    const page = load(true, undefined, undefined, false);
+    expect(page.documentElement.dataset.theme).toBe('dark');
+    expect(page.documentElement.dataset.themeChoice).toBe('dark');
+    expect(load(false).documentElement.dataset.theme).toBe('dark');
   });
 });
 

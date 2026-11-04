@@ -42,18 +42,18 @@ function boot(
   return Object.assign(root.dataset, { className: root.className });
 }
 
-// Every page follows the reader's choice, the homepage too, and no choice is System (design system
-// DECISIONS 37).
+// Every page follows the reader's choice, the homepage too, and no choice is Dark, whatever the OS
+// prefers (design system DECISIONS 37 and 43).
 const CASES: [string, string | null, boolean, "light" | "dark"][] = [
   ["/", "light", false, "light"],
   ["/", "system", false, "light"],
   ["/", null, true, "dark"],
-  ["/", null, false, "light"],
+  ["/", null, false, "dark"],
   ["/blog", "light", true, "light"],
   ["/blog/btrblocks-compressor", "light", true, "light"],
   ["/blog", "dark", false, "dark"],
   ["/blog", "system", true, "dark"],
-  ["/blog", "sepia", false, "light"],
+  ["/blog", "sepia", false, "dark"],
   ["/no-such-page", "light", false, "light"]
 ];
 
@@ -61,11 +61,11 @@ describe("themeFor", () => {
   it("follows the reader's choice on every page", () => {
     for (const [path, stored, prefersDark, want] of CASES) {
       assert.equal(
-        // An unknown stored value reads as System, as the bootstrap reads it.
+        // An unknown stored value reads as Dark, the default, as the bootstrap reads it.
         themeFor(
           ["light", "dark", "system"].includes(stored ?? "")
             ? (stored ?? "")
-            : "system",
+            : "dark",
           prefersDark,
           { path }
         ),
@@ -142,8 +142,8 @@ describe("THEME_BOOTSTRAP", () => {
     }
   });
 
-  it("falls back to System when storage is blocked", () => {
-    assert.equal(boot("/blog", "light", false, true).theme, "light");
+  it("falls back to Dark when storage is blocked", () => {
+    assert.equal(boot("/blog", "light", false, true).theme, "dark");
     assert.equal(boot("/blog", "light", true, true).theme, "dark");
   });
 
@@ -160,7 +160,7 @@ describe("THEME_BOOTSTRAP", () => {
 
   it("records the choice, which the switch shows pressed before hydration", () => {
     assert.equal(boot("/blog", "system", true).themeChoice, "system");
-    assert.equal(boot("/blog", null, true).themeChoice, "system");
+    assert.equal(boot("/blog", null, false).themeChoice, "dark");
   });
 
   it("first swaps the root's no-js class for js, keeping its other classes", () => {

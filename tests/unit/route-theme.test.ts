@@ -64,10 +64,10 @@ function blockedWindow() {
 }
 
 describe("blocked storage", () => {
-  it("falls back to System when reading localStorage itself throws", () => {
+  it("falls back to Dark when reading localStorage itself throws", () => {
     const { win, root } = blockedWindow();
     assert.doesNotThrow(() => applyRouteTheme("/blog", win));
-    assert.equal(root.dataset.theme, "light");
+    assert.equal(root.dataset.theme, "dark");
   });
 
   it("still applies a chosen theme for the page when storage is blocked", () => {
