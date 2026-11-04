@@ -309,7 +309,9 @@ main {
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-12);
-  padding: var(--space-16) var(--space-32);
+  /* The info tooltip reads the side padding to stay inside the card. */
+  --group-pad-x: var(--space-32);
+  padding: var(--space-16) var(--group-pad-x);
   border-bottom: 1px solid var(--line);
   transition: background-color 0.2s ease;
 }
@@ -507,6 +509,31 @@ main {
 [data-tooltip].group-info-icon:focus-visible::after {
   opacity: 1;
   visibility: visible;
+}
+/*
+ * Anchored to the icon's left edge alone, the tooltip ran past the card on a
+ * phone, where the icon sits near the right edge, and the card clipped it.
+ * Where the browser has anchor positioning, the summary row is the tooltip's
+ * containing block and the icon is its anchor. The tooltip starts at the icon,
+ * moves left as far as the row's padding when 22rem would not fit after the
+ * icon, and ends at the latest at the padding on the right. Without anchor
+ * positioning it keeps the rule above.
+ */
+@supports (anchor-name: --group-info) {
+  .group-summary-row {
+    position: relative;
+  }
+  .group-info-icon {
+    position: static;
+    anchor-name: --group-info;
+  }
+  [data-tooltip].group-info-icon::after {
+    top: calc(anchor(--group-info bottom) + 0.5rem);
+    left: clamp(var(--group-pad-x), anchor(--group-info left), 100% - var(--group-pad-x) - 22rem);
+    right: var(--group-pad-x);
+    width: fit-content;
+    max-width: 28rem;
+  }
 }
 .chart-grid {
   width: 100%;
@@ -1482,7 +1509,8 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
   .group-summary-row {
     flex-wrap: wrap;
     gap: var(--space-8);
-    padding: var(--space-12) var(--space-16);
+    --group-pad-x: var(--space-16);
+    padding: var(--space-12) var(--group-pad-x);
   }
   .group-name {
     flex: 1 1 auto;
