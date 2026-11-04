@@ -152,7 +152,12 @@ const PANELS: Panel[] = [
       { system: "Lance", score: 1.9876533869960349 },
       { system: "Arrow", score: 5.590366300370603 }
     ],
-    systems: ARROW
+    systems: ARROW,
+    range: {
+      min: 0.5511849766517963,
+      max: 1.4641692632803334,
+      against: "Parquet+zstd"
+    }
   }
 ];
 
@@ -330,6 +335,18 @@ describe("panelsFrom", () => {
       system: "Parquet",
       score: null
     });
+  });
+
+  it("drops the size range when bench sends no usable bounds for Vortex", () => {
+    const gs = groups();
+    const vortex = group(gs, "Compression Size").summary.rankings?.find(
+      (r) => r.name === "vortex-file-compressed"
+    );
+    assert.ok(vortex);
+    vortex.maxRatio = "1.46";
+    const size = panelsFrom(gs, charts())?.[5];
+    assert.equal(size?.short, "File size");
+    assert.equal(size && "range" in size, false);
   });
 
   it("gives null when a group is missing, so the card never shows five panels", () => {
