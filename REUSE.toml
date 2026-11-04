@@ -52,8 +52,7 @@ path = [
   "src/assets/vortex_wordmark_dark_theme.svg",
   "public/bench/Vortex_Black_NoBG.svg",
   "public/bench/Vortex_White_NoBG.svg",
-  "public/bench/icon-dark.png",
-  "public/bench/icon-light.png",
+  "public/bench/favicon.ico",
 ]
 SPDX-FileCopyrightText = "Copyright the Vortex contributors"
 SPDX-License-Identifier = "CC-BY-4.0"

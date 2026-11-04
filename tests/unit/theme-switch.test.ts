@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   chooseTheme,
-  isThemeable,
   readChoice,
   saveChoice,
+  THEME_CHANGE,
   THEME_CHOICES
 } from "@/lib/theme";
 
@@ -36,11 +36,15 @@ describe("readChoice", () => {
     for (const c of THEME_CHOICES) assert.equal(readChoice(fakeStorage(c)), c);
   });
 
-  it("is Dark when the choice is unset, unknown or blocked", () => {
-    assert.equal(readChoice(fakeStorage(null)), "dark");
-    assert.equal(readChoice(fakeStorage("sepia")), "dark");
-    assert.equal(readChoice(fakeStorage("light", true)), "dark");
-    assert.equal(readChoice(null), "dark");
+  it("is System when the choice is unset, unknown or blocked", () => {
+    assert.equal(readChoice(fakeStorage(null)), "system");
+    assert.equal(readChoice(fakeStorage("sepia")), "system");
+    assert.equal(readChoice(fakeStorage("light", true)), "system");
+    assert.equal(readChoice(null), "system");
+  });
+
+  it("reads the shared cookie before storage", () => {
+    assert.equal(readChoice(fakeStorage("dark"), "vx-theme=light"), "light");
   });
 });
 
@@ -57,27 +61,33 @@ describe("saveChoice", () => {
   });
 });
 
-describe("isThemeable", () => {
-  it("is true for the blog index and its posts only", () => {
-    assert.equal(isThemeable("/blog"), true);
-    assert.equal(isThemeable("/blog/btrblocks-compressor"), true);
-    assert.equal(isThemeable("/"), false);
-    assert.equal(isThemeable("/blogroll"), false);
-    assert.equal(isThemeable(null), false);
-  });
-});
-
 describe("chooseTheme", () => {
-  function fakeWindow(stored: string | null, prefersDark: boolean) {
+  function fakeWindow(
+    stored: string | null,
+    prefersDark: boolean,
+    hostname = "vortex.dev"
+  ) {
     const localStorage = fakeStorage(stored);
     const root = { dataset: {} as Record<string, string> };
+    const events: { type: string; detail: unknown }[] = [];
+    const document = {
+      documentElement: root,
+      cookie: "",
+      dispatchEvent: (e: Event) => {
+        events.push({ type: e.type, detail: (e as CustomEvent).detail });
+        return true;
+      }
+    };
     return {
       localStorage,
       root,
+      document,
+      events,
       win: {
         localStorage,
         matchMedia: () => ({ matches: prefersDark }),
-        document: { documentElement: root }
+        location: { hostname, protocol: "https:" },
+        document
       }
     };
   }
@@ -100,9 +110,24 @@ describe("chooseTheme", () => {
     assert.equal(w.root.dataset.theme, "light");
   });
 
-  it("keeps a Dark-only page dark", () => {
-    const w = fakeWindow(null, false);
+  it("follows the choice on the homepage too", () => {
+    const w = fakeWindow(null, true);
     chooseTheme("/", "light", w.win);
-    assert.equal(w.root.dataset.theme, "dark");
+    assert.equal(w.root.dataset.theme, "light");
+  });
+
+  it("writes the cookie that shares the choice with docs, bench and the Explorer", () => {
+    const w = fakeWindow(null, true, "bench.vortex.dev");
+    chooseTheme("/", "light", w.win);
+    assert.equal(
+      w.document.cookie,
+      "vx-theme=light; path=/; max-age=31536000; samesite=lax; domain=vortex.dev; secure"
+    );
+  });
+
+  it("tells every switch on the page, so the header's and the Menu's agree", () => {
+    const w = fakeWindow(null, true);
+    chooseTheme("/blog", "dark", w.win);
+    assert.deepEqual(w.events, [{ type: THEME_CHANGE, detail: "dark" }]);
   });
 });

@@ -9,21 +9,19 @@ import { formatStars, getStarCount, REPO, REPO_URL } from "@/lib/github";
 import { HeaderMenu, HeaderNav, type HeaderPlace } from "./header-nav";
 
 /**
- * The design system's Header card, site variant: the wordmark, the nav and
- * the GitHub button, then on blog pages the ThemeSwitch, last in the end
- * group, and last the Menu button. The system's CSS shows the wordmark that
- * suits the theme, puts the links behind the Menu button below 800px (920px
- * with the switch), and drops the repository name on narrow phones. The button's name starts with its
- * visible text, as Lighthouse's label-content-name-mismatch requires.
+ * The design system's Header card, the one header every Vortex surface draws
+ * (the system's DECISIONS 35): the wordmark, the links, a surface's own
+ * `tools`, then the end group: the ThemeSwitch, the GitHub button, and on a
+ * narrow screen the Menu. The system's CSS keeps the shared items in the same
+ * place at a given width whatever the tools hold: below 1180px the GitHub
+ * button keeps its mark, below 960px the links go behind the Menu, and below
+ * 640px the switch and the GitHub button move to twin rows in the Menu's
+ * panel. The button's name starts with its visible text, as Lighthouse's
+ * label-content-name-mismatch requires.
  *
  * On bench, which is served from its own host, the wordmark and the site's
- * links point back to vortex.dev, and Bench is the current section. bench
- * takes the card's solid variant (`is-solid`), whose rules suit a tool's
- * tables better than the frame's dashes, and its tools variant (`has-tools`):
- * one sticky row with the page's h1, "Benchmarks", bench's controls (`tools`)
- * and its theme toggle (`theme`) in place of the ThemeSwitch, with the links
- * always behind the Menu button. On a phone the GitHub button and the toggle
- * move into the Menu's panel, the toggle as `themeRow`.
+ * links point back to vortex.dev, Bench is the current link, and bench's
+ * controls are the tools.
  *
  * bench renders on request, so its GitHub button waits for the star count
  * behind a Suspense boundary: a slow GitHub API delays only the count, never
@@ -31,14 +29,8 @@ import { HeaderMenu, HeaderNav, type HeaderPlace } from "./header-nav";
  */
 export async function Header({
   bench,
-  tools,
-  theme,
-  themeRow
-}: HeaderPlace & {
-  tools?: ReactNode;
-  theme?: ReactNode;
-  themeRow?: ReactNode;
-} = {}) {
+  tools
+}: HeaderPlace & { tools?: ReactNode } = {}) {
   const marks = (
     <>
       <img
@@ -60,19 +52,12 @@ export async function Header({
     </>
   );
   return (
-    <header
-      className={
-        bench ? "vx-header has-nav has-tools is-solid" : "vx-header has-nav"
-      }
-    >
+    <header className="vx-header">
       <div className="vx-header-start">
         {bench ? (
-          <>
-            <a href="https://vortex.dev" aria-label="Vortex home">
-              {marks}
-            </a>
-            <h1 className="vx-label vx-header-label">Benchmarks</h1>
-          </>
+          <a href="https://vortex.dev" aria-label="Vortex home">
+            {marks}
+          </a>
         ) : (
           <NextLink href="/" aria-label="Vortex home">
             {marks}
@@ -80,32 +65,33 @@ export async function Header({
         )}
       </div>
       <HeaderNav bench={bench} />
-      {bench && <div className="vx-header-tools">{tools}</div>}
+      {tools && <div className="vx-header-tools">{tools}</div>}
       <div className="vx-header-end">
-        {bench && theme}
+        <ThemeSwitch />
         {bench ? (
-          <Suspense fallback={<GithubButton bench stars={null} />}>
+          <Suspense fallback={<GithubButton stars={null} />}>
             <BenchGithubButton />
           </Suspense>
         ) : (
           <GithubButton stars={await getStarCount()} />
         )}
-        {!bench && <ThemeSwitch />}
         <HeaderMenu
           bench={bench}
           spill={
-            bench && (
-              <>
-                <a
-                  className="vx-label vx-nav-link vx-header-menu-spill"
-                  href={REPO_URL}
-                >
-                  <MarkGithub />
-                  GitHub
-                </a>
-                {themeRow}
-              </>
-            )
+            <>
+              <div className="vx-header-menu-spill">
+                <span className="vx-label">Theme</span>
+                <ThemeSwitch />
+              </div>
+              <a
+                className="vx-label vx-nav-link vx-header-menu-spill"
+                href={REPO_URL}
+                aria-label={`${REPO} on GitHub`}
+              >
+                GitHub
+                <MarkGithub />
+              </a>
+            </>
           }
         />
       </div>
@@ -114,20 +100,10 @@ export async function Header({
 }
 
 /** The GitHub button, with the repository's star count once it is known. */
-function GithubButton({
-  bench,
-  stars
-}: {
-  bench?: boolean;
-  stars: number | null;
-}) {
+function GithubButton({ stars }: { stars: number | null }) {
   return (
     <a
-      className={
-        bench
-          ? "vx-btn vx-btn-secondary is-mono vx-header-spill"
-          : "vx-btn vx-btn-secondary is-mono"
-      }
+      className="vx-btn vx-btn-secondary is-mono vx-header-github"
       href={REPO_URL}
       aria-label={
         stars === null
@@ -149,5 +125,5 @@ function GithubButton({
 
 /** bench's GitHub button, once the star count is read: the Suspense boundary's content. */
 async function BenchGithubButton() {
-  return <GithubButton bench stars={await getStarCount()} />;
+  return <GithubButton stars={await getStarCount()} />;
 }

@@ -18,8 +18,7 @@ vi.mock('@/styles/vortex.css', () => ({}));
 // The site's footer, as a stand-in that shows the props bench gives it. Each page renders the
 // header (BenchHeader), because the filter dropdown takes the page's data.
 vi.mock('@/components/layout/footer', () => ({
-  Footer: ({ origin, solid }: { origin: string; solid: boolean }) =>
-    createElement('footer', { 'data-origin': origin, 'data-solid': String(solid) }),
+  Footer: ({ origin }: { origin: string }) => createElement('footer', { 'data-origin': origin }),
 }));
 // next/font is a build step; its classes set the design system's --vx-face-* variables.
 vi.mock('@/lib/fonts', () => ({ FONT_CLASSES: 'face-sans face-mono' }));
@@ -31,13 +30,18 @@ vi.mock('next/headers', () => ({ headers: async () => requestHeaders }));
 const html = renderToStaticMarkup(await RootLayout({ children: createElement('main') }));
 
 /** Load the layout's markup in a browser-like document, scripts on or off. */
-function load(runScripts: boolean, theme?: string): Document {
+function load(runScripts: boolean, theme?: string, cookie?: string): Document {
   return new JSDOM(`<!DOCTYPE html>${html}`, {
     url: 'https://bench.vortex.dev/',
     ...(runScripts ? { runScripts: 'dangerously' as const } : {}),
     beforeParse(window) {
+      // jsdom has no matchMedia: an OS set to Dark.
+      Object.assign(window, { matchMedia: () => ({ matches: true }) });
       if (theme !== undefined) {
-        window.localStorage.setItem('bench-theme', theme);
+        window.localStorage.setItem('vx-theme', theme);
+      }
+      if (cookie !== undefined) {
+        window.document.cookie = cookie;
       }
     },
   }).window.document;
@@ -51,10 +55,15 @@ describe('RootLayout', () => {
     expect(load(true).documentElement.classList.contains('no-js')).toBe(false);
   });
 
-  it('still applies a stored theme before first paint', () => {
-    const doc = load(true, 'dark');
+  it('applies a stored theme before first paint', () => {
+    const doc = load(true, 'light');
     expect(doc.documentElement.classList.contains('js')).toBe(true);
-    expect(doc.documentElement.dataset.theme).toBe('dark');
+    expect(doc.documentElement.dataset.theme).toBe('light');
+  });
+
+  // The choice made on vortex.dev, the docs or the Explorer holds here (design system DECISIONS 37).
+  it('applies the choice that the vortex.dev cookie shares before storage', () => {
+    expect(load(true, 'dark', 'vx-theme=light').documentElement.dataset.theme).toBe('light');
   });
 
   it("self-hosts the system's faces, as the site does, with no request to Google Fonts", () => {
@@ -63,7 +72,8 @@ describe('RootLayout', () => {
   });
 
   it('follows the OS until a reader chooses a theme', () => {
-    expect(load(true).documentElement.dataset.theme).toBe('system');
+    expect(load(true).documentElement.dataset.theme).toBe('dark');
+    expect(load(true).documentElement.dataset.themeChoice).toBe('system');
     expect(load(false).documentElement.dataset.theme).toBe('system');
   });
 });
@@ -80,9 +90,9 @@ describe("the layout's skip link", () => {
 });
 
 describe("the layout's frame", () => {
-  it("puts every page above the site's footer, pointed at the site, with a solid rule", () => {
+  it("puts every page above the site's one footer, pointed at the site", () => {
     expect(html).toMatch(
-      /<div class="bench-frame"><main><\/main><footer data-origin="https:\/\/vortex.dev" data-solid="true"><\/footer><\/div>/,
+      /<div class="bench-frame"><main><\/main><footer data-origin="https:\/\/vortex.dev"><\/footer><\/div>/,
     );
   });
 });
@@ -92,27 +102,17 @@ describe("the layout's icons", () => {
     requestHeaders.set('host', host);
     try {
       const { icons } = await generateMetadata();
-      return JSON.stringify(icons).match(/"url":"[^"]*"|"apple":"[^"]*"/g);
+      return JSON.stringify(icons).match(/"url":"[^"]*"/g);
     } finally {
       requestHeaders.set('host', 'bench.vortex.dev');
     }
   };
 
   it('are at the root of bench.vortex.dev', async () => {
-    expect(await iconUrls('bench.vortex.dev')).toEqual([
-      '"url":"/icon-light.png"',
-      '"url":"/icon-dark.png"',
-      '"url":"/icon-dark.png"',
-      '"apple":"/icon-dark.png"',
-    ]);
+    expect(await iconUrls('bench.vortex.dev')).toEqual(['"url":"/favicon.ico"']);
   });
 
   it('are under /bench on any other host', async () => {
-    expect(await iconUrls('localhost:3000')).toEqual([
-      '"url":"/bench/icon-light.png"',
-      '"url":"/bench/icon-dark.png"',
-      '"url":"/bench/icon-dark.png"',
-      '"apple":"/bench/icon-dark.png"',
-    ]);
+    expect(await iconUrls('localhost:3000')).toEqual(['"url":"/bench/favicon.ico"']);
   });
 });

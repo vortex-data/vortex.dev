@@ -8,9 +8,8 @@ import { alt, contentType, size } from "./(site)/opengraph-image";
 // has no single layout to compose an unmatched URL's 404 from; this file
 // (next.config.mjs `experimental.globalNotFound`) is that page, prerendered
 // once like the site's 404 always was. bench's own unmatched paths never
-// reach it: `(bench)/bench/[...notFound]` catches them. bench has no
-// not-found.tsx, so Next.js answers those with its default 404 document,
-// which carries bench's metadata but not its layout.
+// reach it: `(bench)/bench/[...notFound]` catches them, and bench's
+// not-found.tsx draws the same body in bench's layout.
 //
 // The metadata merges as Next.js merges a page's into its layout's: each
 // top-level field of the 404's replaces the layout's. Next.js adds the

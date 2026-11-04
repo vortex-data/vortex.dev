@@ -207,7 +207,7 @@ describe("bench's stylesheet on the system's tokens", () => {
     ]);
   });
 
-  // The system's header (has-tools) sticks and holds the controls, so bench draws no toolbar.
+  // The system's one header sticks and holds the controls in its tools, so bench draws no toolbar.
   it("puts the controls on the system's sticky header, and draws no toolbar of its own", () => {
     expect(css).not.toMatch(/\.bench-toolbar[\s,{]|\.bench-title/);
     expect(lastValue(':root', '--toolbar-height')).toBe('64px');
@@ -218,7 +218,7 @@ describe("bench's stylesheet on the system's tokens", () => {
     expect(lastValue('.bench-frame:has(.group-nav-toggle)', 'padding-bottom')).toBe('3.5rem');
     // Below 1260px the buttons' words hide, but the Filters count stays in view.
     expect(css).toMatch(
-      /@media \(max-width: 1260px\) \{\s*\.bench-toolbar-controls \.vx-btn > span:not\(\.filter-badge\),/,
+      /@media \(max-width: 1260px\) \{\s*\.bench-toolbar-controls \.vx-btn > span:not\(\.filter-badge\) \{/,
     );
     // The header's buttons are the system's (vx-btn), and bench restyles none of them.
     expect(css).not.toMatch(

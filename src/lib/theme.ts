@@ -1,5 +1,5 @@
 import {
-  isThemeable as onThemeablePath,
+  readChoice,
   saveChoice,
   type ThemeChoice,
   themeBootstrap,
@@ -37,17 +37,11 @@ export const THEME_CHOICES = [
 ] as const satisfies readonly ThemeChoice[];
 
 /**
- * The paths that carry the ThemeSwitch: the blog index and its posts. Every
- * other page is Dark only. The design system's theme module takes the list.
+ * The event a switch fires on `document` when the reader picks a theme, so
+ * every switch on the page shows it: the header's and its twin in the Menu
+ * panel. The design system's theme module fires the same one.
  */
-export const THEMEABLE = ["/blog"] as const;
-
-const THEME_KEY = "vx-theme";
-
-/** Whether a page carries the ThemeSwitch. */
-export function isThemeable(pathname: string | null): boolean {
-  return pathname !== null && onThemeablePath(pathname, THEMEABLE);
-}
+export const THEME_CHANGE = "vx-theme:change";
 
 /**
  * The first statement of the first-paint script: it swaps the root's
@@ -94,12 +88,18 @@ export function probeWebgl(doc: Document = document): void {
 /**
  * The first-paint script for this site's paths: the `no-js` swap, the
  * homepage's WebGL probe, then the
- * design system's script, which sets `<html data-theme>` (Dark outside the
- * blog) and `data-theme-choice`, from which the system's CSS shows the
- * switch's choice pressed before hydration.
+ * design system's script, which sets `<html data-theme>` from the reader's
+ * choice (the `vx-theme` cookie that vortex.dev's subdomains share, else
+ * storage, else System) and `data-theme-choice`, from which the system's CSS
+ * shows the switch's choice pressed before hydration.
  */
-export const THEME_BOOTSTRAP =
-  NO_JS_SWAP + WEBGL_PROBE + themeBootstrap({ themeable: THEMEABLE });
+export const THEME_BOOTSTRAP = NO_JS_SWAP + WEBGL_PROBE + themeBootstrap();
+
+/**
+ * bench's first-paint script: the same `no-js` swap and theme, without the
+ * homepage's WebGL probe, which bench's own "/" does not need.
+ */
+export const BENCH_THEME_BOOTSTRAP = NO_JS_SWAP + themeBootstrap();
 
 /**
  * `win.localStorage`, or null where reading the property itself throws
@@ -120,24 +120,27 @@ function storageOf<S>(win: { readonly localStorage: S }): S | null {
  */
 const pageChoices = new WeakMap<object, ThemeChoice>();
 
+/** `doc.cookie`, or "" where there is none or reading it throws. */
+export function cookieOf(doc: { readonly cookie?: string }): string {
+  try {
+    return doc.cookie ?? "";
+  } catch {
+    return "";
+  }
+}
+
 /**
  * The reader's choice on this page if they made one (their latest action,
- * even when saving it failed), else the stored choice, else Dark.
+ * even when saving it failed), else the shared cookie's, else the stored
+ * choice, else System.
  */
 function currentChoice(win: {
   readonly localStorage: Pick<Storage, "getItem">;
   document: object;
 }): ThemeChoice {
-  let stored: string | null = null;
-  try {
-    stored = storageOf(win)?.getItem(THEME_KEY) ?? null;
-  } catch {
-    // Blocked storage: fall back to this page's choice.
-  }
   return (
     pageChoices.get(win.document) ??
-    THEME_CHOICES.find((c) => c === stored) ??
-    "dark"
+    readChoice(storageOf(win), cookieOf(win.document))
   );
 }
 
@@ -152,10 +155,7 @@ function apply(
 ): void {
   const { dataset } = root.documentElement;
   dataset.themeChoice = choice;
-  dataset.theme = themeFor(choice, prefersDark, {
-    path: pathname,
-    themeable: THEMEABLE
-  });
+  dataset.theme = themeFor(choice, prefersDark, { path: pathname });
 }
 
 /** What `applyRouteTheme` needs from `window`, so it can be tested without a DOM. */
@@ -170,9 +170,10 @@ export interface ThemeWindow {
 }
 
 /**
- * The ThemeSwitch's click: stores `choice` and sets `<html data-theme>` from
- * it at once. `applyRouteTheme`'s listener reads the stored choice again
- * when the OS changes, so System keeps following the OS afterwards.
+ * The ThemeSwitch's click: stores `choice` in the shared cookie and in
+ * storage, sets `<html data-theme>` from it at once, and tells every switch
+ * on the page (`THEME_CHANGE`). `applyRouteTheme`'s listener reads the choice
+ * again when the OS changes, so System keeps following the OS afterwards.
  */
 export function chooseTheme(
   pathname: string,
@@ -180,16 +181,29 @@ export function chooseTheme(
   win: {
     localStorage: Pick<Storage, "setItem">;
     matchMedia(query: string): { readonly matches: boolean };
-    document: Root;
+    location?: { readonly hostname: string; readonly protocol: string };
+    document: Root & {
+      cookie?: string;
+      dispatchEvent?(e: Event): boolean;
+    };
   }
 ): void {
   pageChoices.set(win.document, choice);
-  saveChoice(storageOf(win), choice);
+  saveChoice(storageOf(win), choice, {
+    jar: "cookie" in win.document ? (win.document as { cookie: string }) : null,
+    ...(win.location && {
+      hostname: win.location.hostname,
+      secure: win.location.protocol === "https:"
+    })
+  });
   apply(
     win.document,
     pathname,
     choice,
     win.matchMedia("(prefers-color-scheme: dark)").matches
+  );
+  win.document.dispatchEvent?.(
+    new CustomEvent(THEME_CHANGE, { detail: choice })
   );
 }
 

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { runInNewContext } from "node:vm";
-import { probeWebgl, THEME_BOOTSTRAP, THEMEABLE, themeFor } from "@/lib/theme";
+import { probeWebgl, THEME_BOOTSTRAP, themeFor } from "@/lib/theme";
 
 // Runs the inline first-paint script against a fake page and returns what it set on <html>.
 function boot(
@@ -9,7 +9,8 @@ function boot(
   stored: string | null,
   prefersDark: boolean,
   blocked = false,
-  webgl = true
+  webgl = true,
+  cookie = ""
 ) {
   const root = {
     className: "no-js __variable_a __variable_b",
@@ -18,6 +19,7 @@ function boot(
   runInNewContext(THEME_BOOTSTRAP, {
     document: {
       documentElement: root,
+      cookie,
       createElement: () => ({
         getContext: () =>
           webgl ? { getExtension: () => ({ loseContext() {} }) } : null
@@ -35,28 +37,31 @@ function boot(
   return Object.assign(root.dataset, { className: root.className });
 }
 
+// Every page follows the reader's choice, the homepage too, and no choice is System (design system
+// DECISIONS 37).
 const CASES: [string, string | null, boolean, "light" | "dark"][] = [
-  ["/", "light", false, "dark"],
-  ["/", "system", false, "dark"],
+  ["/", "light", false, "light"],
+  ["/", "system", false, "light"],
+  ["/", null, true, "dark"],
+  ["/", null, false, "light"],
   ["/blog", "light", true, "light"],
   ["/blog/btrblocks-compressor", "light", true, "light"],
   ["/blog", "dark", false, "dark"],
-  ["/blog", "system", false, "light"],
   ["/blog", "system", true, "dark"],
-  ["/blog", null, false, "dark"],
-  ["/blog", "sepia", false, "dark"],
-  ["/blogroll", "light", false, "dark"],
-  ["/no-such-page", "light", false, "dark"]
+  ["/blog", "sepia", false, "light"],
+  ["/no-such-page", "light", false, "light"]
 ];
 
 describe("themeFor", () => {
-  it("keeps every page Dark except the blog, which follows the reader's choice", () => {
+  it("follows the reader's choice on every page", () => {
     for (const [path, stored, prefersDark, want] of CASES) {
       assert.equal(
-        themeFor(stored ?? "dark", prefersDark, {
-          path,
-          themeable: THEMEABLE
-        }),
+        // An unknown stored value reads as System, as the bootstrap reads it.
+        themeFor(
+          ["light", "dark", "system"].includes(stored ?? "") ? (stored ?? "") : "system",
+          prefersDark,
+          { path }
+        ),
         want,
         `${path} ${stored} ${prefersDark}`
       );
@@ -75,13 +80,19 @@ describe("THEME_BOOTSTRAP", () => {
     }
   });
 
-  it("falls back to Dark when storage is blocked", () => {
-    assert.equal(boot("/blog", "light", false, true).theme, "dark");
+  it("falls back to System when storage is blocked", () => {
+    assert.equal(boot("/blog", "light", false, true).theme, "light");
+    assert.equal(boot("/blog", "light", true, true).theme, "dark");
+  });
+
+  it("reads the choice that the vortex.dev cookie shares across the subdomains first", () => {
+    assert.equal(boot("/", "dark", false, false, true, "vx-theme=light").theme, "light");
+    assert.equal(boot("/", "dark", false, true, true, "a=1; vx-theme=light").theme, "light");
   });
 
   it("records the choice, which the switch shows pressed before hydration", () => {
     assert.equal(boot("/blog", "system", true).themeChoice, "system");
-    assert.equal(boot("/blog", null, true).themeChoice, "dark");
+    assert.equal(boot("/blog", null, true).themeChoice, "system");
   });
 
   it("first swaps the root's no-js class for js, keeping its other classes", () => {

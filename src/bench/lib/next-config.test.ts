@@ -51,7 +51,7 @@ describe('next.config.mjs rewrites', () => {
     expect(await rewritten('bench.vortex.dev', '/')).toBe('/bench');
     expect(await rewritten('bench.vortex.dev', '/chart/qm.x')).toBe('/bench/chart/qm.x');
     expect(await rewritten('bench.vortex.dev', '/api/group/g')).toBe('/bench/api/group/g');
-    expect(await rewritten('bench.vortex.dev', '/icon-dark.png')).toBe('/bench/icon-dark.png');
+    expect(await rewritten('bench.vortex.dev', '/favicon.ico')).toBe('/bench/favicon.ico');
     expect(await rewritten('bench.vortex.dev', '/_next/static/chunks/a.js')).toBe(
       '/_next/static/chunks/a.js',
     );

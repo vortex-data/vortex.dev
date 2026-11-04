@@ -60,7 +60,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      data-theme="dark"
+      data-theme="system"
       suppressHydrationWarning
       className={`no-js ${FONT_CLASSES}`}
     >

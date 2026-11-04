@@ -114,6 +114,31 @@ main {
   flex: 1 0 auto;
 }
 
+/* The 404 (not-found.tsx): main hands its height to the shared Status card, as the site's does. */
+.bench-frame > main.bench-status {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+}
+
+/* The 404's mark, as on the site: with scripts the still symbol waits for the live mark, and shows
+ * only when the mark cannot draw. It is inverted in Light. */
+.js .ascii-mark-still {
+  visibility: hidden;
+}
+.js [data-mark-mode='static'] > .ascii-mark-still,
+.js [data-mark-mode='error'] > .ascii-mark-still {
+  visibility: visible;
+}
+:root[data-theme='light'] .ascii-mark-still {
+  filter: invert(1);
+}
+@media (prefers-color-scheme: light) {
+  :root[data-theme='system'] .ascii-mark-still {
+    filter: invert(1);
+  }
+}
+
 /* Room under the footer for the fixed Groups button (GroupNav), which would cover its mark. */
 .bench-frame:has(.group-nav-toggle) {
   padding-bottom: 3.5rem;
@@ -169,35 +194,8 @@ main {
   border-color: var(--ink);
 }
 
-/* While it shows its word, the toggle keeps one width for "Light" and "Dark". */
-@media (min-width: 1261px) {
-  .vx-header-end > .theme-toggle {
-    min-width: 5.5rem;
-  }
-}
-
 .btn-icon {
   flex: 0 0 auto;
-}
-
-.theme-icon-dark {
-  display: none;
-}
-
-.theme-toggle[data-next-theme='dark'] .theme-icon-light {
-  display: none;
-}
-
-.theme-toggle[data-next-theme='dark'] .theme-icon-dark {
-  display: block;
-}
-
-.theme-toggle[data-next-theme='light'] .theme-icon-light {
-  display: block;
-}
-
-.theme-toggle[data-next-theme='light'] .theme-icon-dark {
-  display: none;
 }
 
 .chart-card-title a {
@@ -1468,8 +1466,7 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
 /* Below 1260px the header's buttons keep their icons, and their words stay as their names, so
  * the controls fit on the header's row; the Filters count stays in view. */
 @media (max-width: 1260px) {
-  .bench-toolbar-controls .vx-btn > span:not(.filter-badge),
-  .theme-toggle-label {
+  .bench-toolbar-controls .vx-btn > span:not(.filter-badge) {
     position: absolute;
     width: 1px;
     height: 1px;
