@@ -1,8 +1,8 @@
-// The theme choice shared by docs, the blog and the Explorer (and bench once it adopts the
-// ThemeSwitch): light, dark or system.
-// It lives in localStorage["vx-theme"] and lands on <html data-theme>. The default is Dark.
-// The choice itself also lands on <html data-theme-choice>, so the switch can show it pressed
-// before its script runs.
+// The theme choice every surface shares (DECISIONS 37): light, dark or system. The default is System.
+// It lives in a vx-theme cookie on vortex.dev, so a choice made on the blog holds on docs, bench and
+// the Explorer too, and in localStorage["vx-theme"] as a fallback for hosts outside vortex.dev. It
+// lands on <html data-theme>. The choice itself also lands on <html data-theme-choice>, so the switch
+// can show it pressed before its script runs.
 //
 // A site whose other pages are Dark only passes `themeable`, a list of path prefixes: "/blog"
 // covers /blog and every page under it. Pages outside the list stay Dark whatever the choice.
@@ -10,6 +10,9 @@
 const KEY = "vx-theme";
 const CHOICES = ["light", "dark", "system"];
 const PLAIN_PATH = /^\/[\w.~\/-]*$/;
+const DEFAULT = "system";
+const YEAR = 31536000;
+const COOKIE = /(?:^|;\s*)vx-theme=([^;]*)/;
 
 // "/blog/" and "/blog" are one prefix. "/" stays "/".
 const trim = (prefix) => (prefix.length > 1 ? prefix.replace(/\/+$/, "") : prefix);
@@ -34,9 +37,11 @@ export function themeBootstrap({ themeable } = {}) {
     list = JSON.stringify(themeable.map(trim));
   }
   return (
-    `(function(){var r=document.documentElement,c="dark",t=${list},ok=!t;` +
+    `(function(){var r=document.documentElement,c="${DEFAULT}",v=null,t=${list},ok=!t;` +
     'if(t){var p=location.pathname;for(var i=0;i<t.length;i++)if(p===t[i]||p.indexOf(t[i]==="/"?"/":t[i]+"/")===0)ok=true;}' +
-    'try{var s=localStorage.getItem("vx-theme");if(s==="light"||s==="dark"||s==="system")c=s;}catch(e){}' +
+    'try{var k=/(?:^|;\\s*)vx-theme=(light|dark|system)(?:;|$)/.exec(document.cookie);if(k)v=k[1];}catch(e){}' +
+    'if(!v)try{var s=localStorage.getItem("vx-theme");if(s==="light"||s==="dark"||s==="system")v=s;}catch(e){}' +
+    'if(v)c=v;' +
     'r.dataset.themeChoice=c;var m=c;if(m==="system")m=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";' +
     'r.dataset.theme=ok?m:"dark";})();'
   );
@@ -45,20 +50,42 @@ export function themeBootstrap({ themeable } = {}) {
 /** The snippet for a site where every page follows the choice. */
 export const THEME_BOOTSTRAP = themeBootstrap();
 
-export function readChoice(storage) {
+/** The choice: the cookie's when it holds one, else this origin's storage, else System. */
+export function readChoice(storage, cookie = "") {
+  const c = COOKIE.exec(cookie ?? "")?.[1];
+  if (CHOICES.includes(c)) return c;
   try {
     const v = storage?.getItem(KEY);
-    return CHOICES.includes(v) ? v : "dark";
+    return CHOICES.includes(v) ? v : DEFAULT;
   } catch {
-    return "dark";
+    return DEFAULT;
   }
 }
 
-export function saveChoice(storage, choice) {
+/**
+ * The Set-Cookie text for `choice`: on vortex.dev and every subdomain when `hostname` is one of
+ * them, else on the host only (localhost, a preview deploy). Null for a value that is no choice.
+ */
+export function themeCookie(choice, hostname, secure) {
+  if (!CHOICES.includes(choice)) return null;
+  const shared = hostname === "vortex.dev" || hostname?.endsWith(".vortex.dev");
+  return `${KEY}=${choice}; path=/; max-age=${YEAR}; samesite=lax${shared ? "; domain=vortex.dev" : ""}${secure ? "; secure" : ""}`;
+}
+
+const page = () => (typeof document === "undefined" ? null : document);
+
+/** Writes the choice to storage and to the cookie. `jar` is document by default. */
+export function saveChoice(storage, choice, { jar = page(), hostname = globalThis.location?.hostname, secure = globalThis.location?.protocol === "https:" } = {}) {
   try {
     storage?.setItem(KEY, choice);
   } catch {
-    // Blocked storage only costs the memory of the choice.
+    // Blocked storage only costs this origin's copy of the choice.
+  }
+  const text = themeCookie(choice, hostname, secure);
+  try {
+    if (jar && text) jar.cookie = text;
+  } catch {
+    // A blocked cookie only costs the other surfaces' copy.
   }
 }
 
@@ -80,10 +107,19 @@ const store = () => {
   }
 };
 const dark = () => matchMedia("(prefers-color-scheme: dark)");
+const cookies = () => {
+  try {
+    return document.cookie;
+  } catch {
+    return "";
+  }
+};
+// Fired on document when a switch changes the choice, so every switch on the page shows it.
+const CHANGE = "vx-theme:change";
 
 // Sets data-theme and data-theme-choice from the stored choice. `themeable` and `path` (the
 // current page's by default) keep a page outside the list Dark.
-export function applyTheme(choice = readChoice(store()), { themeable, path = location.pathname } = {}) {
+export function applyTheme(choice = readChoice(store(), cookies()), { themeable, path = location.pathname } = {}) {
   const root = document.documentElement;
   root.dataset.themeChoice = choice;
   root.dataset.theme = themeFor(choice, dark().matches, { path, themeable });
@@ -92,26 +128,33 @@ export function applyTheme(choice = readChoice(store()), { themeable, path = loc
 
 // Wires a .vx-theme-switch: buttons carry data-choice and aria-pressed.
 // With { apply: false } it shows the current choice (the bootstrap's data-theme-choice, else the
-// theme) without changing it on load. `themeable` is the same list the bootstrap took. Returns a
-// function that removes the listeners.
+// theme) without changing it on load. `themeable` is the same list the bootstrap took. Every switch
+// on the page follows a change made in any of them (the header and its Menu panel both hold one).
+// Returns a function that removes the listeners.
 export function mountThemeSwitch(el, { apply = true, themeable } = {}) {
   const buttons = [...el.querySelectorAll("button[data-choice]")];
   const root = document.documentElement.dataset;
-  let choice = apply ? applyTheme(undefined, { themeable }) : CHOICES.includes(root.themeChoice) ? root.themeChoice : root.theme === "light" ? "light" : "dark";
+  let choice = apply ? applyTheme(undefined, { themeable }) : CHOICES.includes(root.themeChoice) ? root.themeChoice : DEFAULT;
   const press = () => buttons.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.choice === choice)));
   const onClick = (e) => {
     choice = e.currentTarget.dataset.choice;
     saveChoice(store(), choice);
     applyTheme(choice, { themeable });
+    document.dispatchEvent(new CustomEvent(CHANGE, { detail: choice }));
+  };
+  const onChange = (e) => {
+    if (CHOICES.includes(e.detail)) choice = e.detail;
     press();
   };
   const onOs = () => choice === "system" && applyTheme(choice, { themeable });
   const media = dark();
   for (const b of buttons) b.addEventListener("click", onClick);
+  document.addEventListener(CHANGE, onChange);
   media.addEventListener("change", onOs);
   press();
   return () => {
     for (const b of buttons) b.removeEventListener("click", onClick);
+    document.removeEventListener(CHANGE, onChange);
     media.removeEventListener("change", onOs);
   };
 }
