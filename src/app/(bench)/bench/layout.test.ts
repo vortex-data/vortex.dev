@@ -68,6 +68,17 @@ describe('RootLayout', () => {
   });
 });
 
+describe("the layout's skip link", () => {
+  it('is the first thing in the body, and names the main by a fragment that works on either base', () => {
+    const body = load(false).body;
+    const first = body.firstElementChild;
+    expect(first?.tagName).toBe('A');
+    expect(first?.className).toBe('vx-skip-link');
+    expect(first?.getAttribute('href')).toBe('#main');
+    expect(first?.textContent).toBe('Skip to content');
+  });
+});
+
 describe("the layout's frame", () => {
   it("puts every page above the site's footer, pointed at the site, with a solid rule", () => {
     expect(html).toMatch(

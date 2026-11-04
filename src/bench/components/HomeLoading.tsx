@@ -15,7 +15,7 @@ export function HomeLoading() {
   return (
     <>
       <BenchHeader />
-      <main className="summary-loading" aria-busy="true">
+      <main className="summary-loading" id="main" tabIndex={-1} aria-busy="true">
         <div className="summary-loading-panel" role="status" aria-live="polite">
           <span className="chart-spinner summary-loading-spinner" aria-hidden="true" />
           <h2>Loading benchmark summaries…</h2>

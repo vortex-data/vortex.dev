@@ -14,7 +14,7 @@ import {
 } from '@/bench/lib/group-filter';
 import { CheckIcon, LinkIcon } from '@/bench/components/icons';
 
-/** How long the copied-confirmation state stays visible, in milliseconds. */
+/** How long the copy's feedback (copied, or not copied) stays, in milliseconds. */
 const COPIED_FEEDBACK_MS = 1500;
 
 /**
@@ -74,13 +74,15 @@ export function groupPermalinkUrl(
  *
  * It leaves the address bar alone: the fragment there holds the page's open
  * groups (`lib/open-groups.ts`), not a single group's link. Where the browser
- * has no Clipboard API (plain-HTTP hosts) or refuses the write, nothing was
- * copied, so the control claims nothing.
+ * has no Clipboard API (older browsers, plain-HTTP hosts), a click follows the
+ * link as it does without JavaScript, because nothing can be copied. Where
+ * the browser refuses the write, its status says "Link not copied." for the
+ * same moment.
  *
- * The link lives inside the disclosure's `<summary>`. `preventDefault` stops
- * the navigation, so copying a link never leaves or scrolls the page, and
- * `stopPropagation` keeps the click from the summary, so it never collapses
- * the group.
+ * The link lives inside the disclosure's `<summary>`. When it copies,
+ * `preventDefault` stops the navigation, so copying a link never leaves or
+ * scrolls the page. `stopPropagation` keeps every click from the summary, so
+ * it never collapses the group.
  */
 export function GroupPermalink({
   anchor,
@@ -91,7 +93,8 @@ export function GroupPermalink({
   groupName: string;
   groupSlug: string;
 }) {
-  const [copied, setCopied] = useState(false);
+  // The last copy's outcome, shown for COPIED_FEEDBACK_MS: `null` at rest.
+  const [feedback, setFeedback] = useState<'copied' | 'refused' | null>(null);
   // False on the server and in the first client render, so both name a plain
   // link; true once mounted, when a click copies.
   const [copies, setCopies] = useState(false);
@@ -128,32 +131,21 @@ export function GroupPermalink({
     };
   }, []);
 
-  const showCopied = (): void => {
+  const show = (outcome: 'copied' | 'refused'): void => {
     if (!mountedRef.current) {
       return;
     }
-    setCopied(true);
+    setFeedback(outcome);
     if (timerRef.current !== null) {
       clearTimeout(timerRef.current);
     }
     timerRef.current = setTimeout(() => {
-      setCopied(false);
+      setFeedback(null);
       timerRef.current = null;
     }, COPIED_FEEDBACK_MS);
   };
 
-  const copy = (): void => {
-    const url = permalink();
-    // Older browsers and plain-HTTP hosts have no Clipboard API.
-    const clipboard = navigator.clipboard as Clipboard | undefined;
-    if (clipboard === undefined) {
-      return;
-    }
-    void clipboard.writeText(url).then(showCopied, () => {
-      // The browser refused the write: nothing was copied, so the control
-      // does not say otherwise.
-    });
-  };
+  const copied = feedback === 'copied';
 
   return (
     <a
@@ -169,24 +161,34 @@ export function GroupPermalink({
         if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
           return;
         }
-        // Copy instead of following the link, and keep the click from the
-        // <summary>, which would toggle the group.
-        e.preventDefault();
+        // Keep the click from the <summary>, which would toggle the group.
         e.stopPropagation();
-        copy();
+        // Older browsers and plain-HTTP hosts have no Clipboard API. Nothing
+        // can be copied, so the click follows the link.
+        const clipboard = navigator.clipboard as Clipboard | undefined;
+        if (clipboard === undefined) {
+          return;
+        }
+        // Copy instead of following the link.
+        e.preventDefault();
+        void clipboard.writeText(permalink()).then(
+          () => show('copied'),
+          () => show('refused'),
+        );
       }}
       onKeyDown={(e) => {
         // A link activates on Enter alone; Space also activated the button
-        // this control was. preventDefault stops Space scrolling the page.
+        // this control was, so it clicks the link: a copy, or the link
+        // followed. preventDefault stops Space scrolling the page.
         if (e.key === ' ') {
           e.preventDefault();
-          copy();
+          e.currentTarget.click();
         }
       }}
     >
       {copied ? <CheckIcon /> : <LinkIcon />}
       <span className="vx-sr-only" role="status">
-        {copied ? 'Link copied' : ''}
+        {feedback === 'copied' ? 'Link copied' : feedback === 'refused' ? 'Link not copied.' : ''}
       </span>
     </a>
   );

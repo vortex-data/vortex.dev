@@ -20,6 +20,7 @@ import {
   subscribeGlobalFilter,
   toggleGroupSeries,
 } from '@/bench/lib/chart-store';
+import { returnFocusToTrigger } from '@/bench/lib/panel-focus';
 
 /**
  * The per-group toolbar between a group's summary card and its chart grid, the
@@ -56,6 +57,7 @@ export function GroupToolbar({
   const [open, setOpen] = useState(false);
   const panelId = useId();
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   // Memoized on `groupSlug` so re-renders do not unsubscribe/re-subscribe the
   // group store (mirrors the chart island's subscriber).
@@ -75,6 +77,7 @@ export function GroupToolbar({
   );
 
   // Close on outside click and on Escape, mirroring the global dropdown.
+  // Escape returns focus to the trigger when the panel held it.
   useEffect(() => {
     if (!open) {
       return;
@@ -86,6 +89,7 @@ export function GroupToolbar({
     };
     const onKey = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') {
+        returnFocusToTrigger(dropdownRef.current, triggerRef.current);
         setOpen(false);
       }
     };
@@ -139,6 +143,7 @@ export function GroupToolbar({
           data-role="group-filter-trigger"
           aria-expanded={open}
           aria-controls={panelId}
+          ref={triggerRef}
           onClick={(e) => {
             e.stopPropagation();
             setOpen((o) => !o);

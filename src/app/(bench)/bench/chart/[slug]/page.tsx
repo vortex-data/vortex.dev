@@ -201,7 +201,7 @@ export default async function ChartPage({
         initialEngines={initialEngines}
         initialFormats={initialFormats}
       />
-      <main>
+      <main id="main" tabIndex={-1}>
         <p className="chart-meta">
           {'unit: '}
           <code>{unitKindLabel(chart.unit_kind)}</code>

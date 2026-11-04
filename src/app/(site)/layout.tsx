@@ -35,13 +35,22 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   // The design system's page frame (globals.css): header, main and footer in
-  // one --page-max column. Each section pads itself by --page-pad.
+  // one --page-max column. Each section pads itself by --page-pad. The skip
+  // link comes first, so it is the first tab stop; main takes focus from it
+  // (tabIndex -1), so the next Tab starts in the content.
   const content = (
-    <div className="site-frame">
-      <Header />
-      <main className="site-main">{children}</main>
-      <Footer />
-    </div>
+    <>
+      <a className="vx-skip-link" href="#main">
+        Skip to content
+      </a>
+      <div className="site-frame">
+        <Header />
+        <main className="site-main" id="main" tabIndex={-1}>
+          {children}
+        </main>
+        <Footer />
+      </div>
+    </>
   );
 
   // Dark is the server-rendered default; THEME_BOOTSTRAP corrects it before

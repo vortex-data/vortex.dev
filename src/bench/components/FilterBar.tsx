@@ -19,6 +19,7 @@ import {
 } from '@/bench/lib/chart-store';
 import { FilterIcon } from '@/bench/components/icons';
 import { flushUrlWrites, scheduleUrlWrite } from '@/bench/lib/url-writes';
+import { returnFocusToTrigger } from '@/bench/lib/panel-focus';
 
 /**
  * The global engine/format filter dropdown in the sticky header, the client
@@ -57,6 +58,7 @@ export function FilterBar({
   const [open, setOpen] = useState(false);
   const panelId = useId();
   const barRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   // Seed the tab-wide store from the server-provided universe + URL state.
   // Runs on mount (and again after a soft navigation re-mounts the header), so
@@ -112,6 +114,7 @@ export function FilterBar({
   }, []);
 
   // Close on outside click and on Escape, mirroring v3's document listeners.
+  // Escape returns focus to the trigger when the panel held it.
   useEffect(() => {
     if (!open) {
       return;
@@ -123,6 +126,7 @@ export function FilterBar({
     };
     const onKey = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') {
+        returnFocusToTrigger(barRef.current, triggerRef.current);
         setOpen(false);
       }
     };
@@ -156,6 +160,7 @@ export function FilterBar({
         data-role="filter-trigger"
         aria-expanded={open}
         aria-controls={panelId}
+        ref={triggerRef}
         onClick={(e) => {
           e.stopPropagation();
           setOpen((o) => !o);

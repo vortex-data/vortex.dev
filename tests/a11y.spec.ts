@@ -150,6 +150,21 @@ test.describe("bench @axe", () => {
     });
   }
 
+  // WCAG 2.4.1: the first tab stop skips bench's header to the page's main.
+  test("the skip link moves focus to the main content", async ({
+    page,
+    browserName
+  }) => {
+    test.skip(browserName !== "chromium", "Tab order is Chromium's");
+    await page.goto(at("/"));
+    const skip = page.getByRole("link", { name: "Skip to content" });
+    await page.keyboard.press("Tab");
+    await expect(skip).toBeFocused();
+    expect((await skip.boundingBox())?.width ?? 0).toBeGreaterThan(40);
+    await page.keyboard.press("Enter");
+    await expect(page.locator("main#main")).toBeFocused();
+  });
+
   test("an open group has no serious axe violations", async ({ page }) => {
     await page.goto(at("/"));
     const summary = page.locator(".group-summary").first();

@@ -89,6 +89,11 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
       </head>
       <body>
+        {/* The first tab stop. Each page's <main> has the id and takes focus
+            (tabIndex -1). A fragment-only href works on either base. */}
+        <a className="vx-skip-link" href="#main">
+          Skip to content
+        </a>
         <BenchBaseProvider base={base}>
           <div className="bench-frame">
             {children}
