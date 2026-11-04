@@ -229,14 +229,16 @@ export function resultsRow(panel, systems) {
 
 /**
  * The results table: one row per panel and a column per system, Vortex first in Blue, the best
- * figure in each row underlined, and the verdict against Parquet last. `read` is the date the
- * figures were read ("2 Nov 2026"), for the head; the foot keys the underline and links bench.
- * `icon` is the markup of the open_in_new icon that ends the source link, as every source line does.
+ * figure in each row underlined, and the verdict against Parquet last. The head names the source
+ * and the date the figures were read (`read`, "2 Nov 2026") on one line; the foot keys the
+ * underline. `icon` is the markup of the open_in_new icon that ends the
+ * source link, as every source line does.
  */
 export function renderResults(panels, { read, icon = "" } = {}) {
   const systems = resultsSystems(panels);
   const cls = (...c) => (c.filter(Boolean).length ? ` class="${c.filter(Boolean).join(" ")}"` : "");
-  const head = `<p class="vx-results-head"><span>File format benchmarks</span>${read ? `<span class="vx-results-read">read ${esc(read)}</span>` : ""}</p>`;
+  const when = read ? `<span aria-hidden="true">·</span><span>read ${esc(read)}</span>` : "";
+  const head = `<p class="vx-results-head"><span>File format benchmarks</span><span class="vx-results-src"><a class="vx-source vx-nav-link" href="https://bench.vortex.dev">bench.vortex.dev${icon}</a>${when}</span></p>`;
   const cols = `<tr><th scope="col">Benchmark</th>${systems.map((s) => `<th scope="col"${cls(isOurs(s) && "is-ours")}>${esc(s)}</th>`).join("")}<th scope="col" class="is-verdict">vs Parquet</th></tr>`;
   const body = panels
     .map((p) => {
@@ -247,6 +249,6 @@ export function renderResults(panels, { read, icon = "" } = {}) {
       return `<tr><th scope="row"${src}>${esc(row.name)}${srText}</th>${cells}<td class="is-verdict">${esc(row.verdict)}</td></tr>`;
     })
     .join("");
-  const foot = `<p class="vx-results-foot"><span>Underlined: the best in each row</span><a class="vx-source vx-nav-link" href="https://bench.vortex.dev">bench.vortex.dev${icon}</a></p>`;
+  const foot = `<p class="vx-results-foot"><span>Underlined: the best in each row</span></p>`;
   return `<section class="vx-frame vx-results" aria-label="Benchmark results">${head}<div class="vx-results-wrap"><table class="vx-results-table"><thead>${cols}</thead><tbody>${body}</tbody></table></div>${foot}</section>`;
 }

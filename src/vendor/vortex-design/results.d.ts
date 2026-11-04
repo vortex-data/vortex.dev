@@ -34,6 +34,7 @@ export type BenchPanel = {
   source?: PanelSource;
 };
 
+
 export type PanelSource = {
   /** Where the figures come from, briefly: "end to end, hot, on GH200, NDS-H SF10". */
   note: string;
@@ -139,5 +140,5 @@ export type ResultsRow = {
 /** One panel as a row of the results table, with a cell per name in `systems`. */
 export function resultsRow(panel: BenchPanel, systems: readonly string[]): ResultsRow;
 
-/** The results table as HTML. `read` is the date the figures were read, "2 Nov 2026"; `icon` is the open_in_new icon's markup, which ends the source link. */
+/** The results table as HTML. `read` is the date the figures were read, "2 Nov 2026", which the head prints after the source link; `icon` is the open_in_new icon's markup, which ends that link. */
 export function renderResults(panels: readonly BenchPanel[], options?: { read?: string; icon?: string }): string;

@@ -1,7 +1,7 @@
 /* Vortex design system base, copied by tools/site-styles.mjs.
    Edit the system, then run tools/site-styles.mjs; do not edit here.
    Made by: node tools/site-styles.mjs <site> --sections base,brand,site,docs,blog,focus --faces --vx-face --base
-   sha256 279b04a3a69a674b69363402659dcac31b4e7e64fbe1e91568c20c1382847064 */
+   sha256 7f7de2b97b16099662cddb9f80a900a2d8b4fdb967eef65bc47b8e773b540bf6 */
 
 /* Vortex base: a small reset for a site drawn with the system, such as vortex.dev after Tailwind
    left. Load it with the tokens and bundle.css. The components never depend on it: they draw the
@@ -28,6 +28,9 @@
     -webkit-tap-highlight-color: transparent;
     scrollbar-width: thin;
     scrollbar-color: var(--edge) var(--ground);
+    /* A stray wide element never scrolls the page sideways. clip, not hidden: hidden makes the
+       root a scroll container, and position: sticky stops working under it. */
+    overflow-x: clip;
   }
 
   body {
@@ -37,6 +40,8 @@
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    /* The root's clip, again on body: some engines scroll body, not the root. */
+    overflow-x: clip;
   }
 
   h1,

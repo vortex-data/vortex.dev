@@ -24,11 +24,8 @@ export default function ErrorPage({
   return (
     <div className="vx-status">
       <div className="vx-status-text">
-        <span className="vx-label vx-eyebrow">Error</span>
-        <h1 className="vx-h1">This page did not load.</h1>
-        <p className="vx-lede vx-status-sentence">
-          The error may be temporary.
-        </p>
+        <h1 className="vx-display-mono">This page did not load.</h1>
+        <p className="vx-status-sentence">The error may be temporary.</p>
         <div className="vx-btn-row">
           <button
             type="button"

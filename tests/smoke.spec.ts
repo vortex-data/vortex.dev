@@ -682,15 +682,21 @@ test.describe("theme switch", () => {
 });
 
 test.describe("404", () => {
-  test("an unknown path returns 404 with the headline, the links and the mark", async ({
+  test("an unknown path returns 404 with the code as its headline, the links and the mark", async ({
     page
   }) => {
     const res = await page.goto("/no-such-page");
     expect(res?.status()).toBe(404);
-    await expect(
-      page.getByRole("heading", { level: 1, name: "Page not found." })
-    ).toBeVisible();
     const main = page.locator("main");
+    // Writing › Site errors: the headline is the code, the sentence says what
+    // it means, and no eyebrow repeats it.
+    await expect(
+      main.getByRole("heading", { level: 1, name: "404" })
+    ).toHaveClass(/vx-status-code/);
+    await expect(main.locator(".vx-status-sentence")).toHaveText(
+      "Page not found."
+    );
+    await expect(main.locator(".vx-eyebrow")).toHaveCount(0);
     for (const [name, href] of [
       ["Go to the homepage", "/"],
       ["Read the docs", "https://docs.vortex.dev"],
