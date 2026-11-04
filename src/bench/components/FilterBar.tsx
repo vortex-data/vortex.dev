@@ -150,7 +150,7 @@ export function FilterBar({
       ref={barRef}
     >
       <button
-        className="control-btn filter-trigger"
+        className="vx-btn vx-btn-secondary is-mono filter-trigger"
         type="button"
         data-role="filter-trigger"
         aria-haspopup="true"

@@ -7,7 +7,7 @@ import { cache } from 'react';
 
 import { Chart } from '@/bench/components/Chart';
 import { Footer } from '@/bench/components/Footer';
-import { Header } from '@/bench/components/Header';
+import { BenchHeader } from '@/bench/components/BenchHeader';
 import {
   canonicalFilterCsv,
   parseFilterCsv,
@@ -196,7 +196,11 @@ export default async function ChartPage({
   const commitCount = chart.commits.length;
   return (
     <>
-      <Header universe={universe} initialEngines={initialEngines} initialFormats={initialFormats} />
+      <BenchHeader
+        universe={universe}
+        initialEngines={initialEngines}
+        initialFormats={initialFormats}
+      />
       <main>
         <p className="chart-meta">
           {'unit: '}

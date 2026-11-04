@@ -14,6 +14,13 @@ import RootLayout, { generateMetadata } from '@/app/(bench)/bench/layout';
 // PostCSS config through Vite.
 vi.mock('@/bench/styles/globals.css', () => ({}));
 vi.mock('@/styles/vortex-tokens.css', () => ({}));
+vi.mock('@/styles/vortex.css', () => ({}));
+// The site's footer, as a stand-in that shows the props bench gives it. Each page renders the
+// header (BenchHeader), because the filter dropdown takes the page's data.
+vi.mock('@/components/layout/footer', () => ({
+  Footer: ({ origin, solid }: { origin: string; solid: boolean }) =>
+    createElement('footer', { 'data-origin': origin, 'data-solid': String(solid) }),
+}));
 // next/font is a build step; its classes set the design system's --vx-face-* variables.
 vi.mock('@/lib/fonts', () => ({ FONT_CLASSES: 'face-sans face-mono face-display' }));
 
@@ -58,6 +65,14 @@ describe('RootLayout', () => {
   it('follows the OS until a reader chooses a theme', () => {
     expect(load(true).documentElement.dataset.theme).toBe('system');
     expect(load(false).documentElement.dataset.theme).toBe('system');
+  });
+});
+
+describe("the layout's frame", () => {
+  it("puts every page above the site's footer, pointed at the site, with a solid rule", () => {
+    expect(html).toMatch(
+      /<div class="bench-frame"><main><\/main><footer data-origin="https:\/\/vortex.dev" data-solid="true"><\/footer><\/div>/,
+    );
   });
 });
 

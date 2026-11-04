@@ -96,7 +96,10 @@ export function GroupSection({
       <details className="group-disclosure" suppressHydrationWarning>
         <summary className="group-summary">
           <span className="group-summary-row">
-            <span className="group-name">{group.name}</span>
+            {/* biome-ignore lint/a11y/useSemanticElements: an <h2> cannot sit in this <span> row, and as the row it would name the count and the headline too; the role puts the group between the page's h1 and the score panels' h3s. */}
+            <span className="group-name" role="heading" aria-level={2}>
+              {group.name}
+            </span>
             {group.description !== undefined && (
               <span
                 className="group-info-icon"

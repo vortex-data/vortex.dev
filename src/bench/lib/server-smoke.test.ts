@@ -99,15 +99,22 @@ describe.skipIf(!databaseAvailable || !BUILD_PRESENT)(
       await container.stop();
     });
 
-    it('serves the landing page with header chrome and collapsed groups, and no chart islands', async () => {
+    it("serves the landing page in the site's header, with the controls on its row and collapsed groups, and no chart islands", async () => {
       // The first request may miss the Data Cache, read slowly and stream the
       // loading view first (app/page.tsx); either way it fills the cache, so
       // the second takes the plain-HTML path asserted below.
       const first = await (await fetch(BASE)).text();
       expect(first).toContain('class="group-details"');
       const html = await (await fetch(BASE)).text();
-      // Header chrome (PR-4.4.b islands, server-rendered).
-      expect(html).toContain('data-role="nav-mobile-toggle"');
+      // The site's header and footer, with solid rules, and bench's title, controls and theme
+      // toggle on the header's row (server-rendered islands).
+      expect(html).toContain('<header class="vx-header has-nav has-tools is-solid">');
+      expect(html).toContain('<footer class="vx-footer is-solid">');
+      expect(html).toContain('<h1 class="vx-label vx-header-label">Benchmarks</h1>');
+      expect(html).toContain(
+        '<div class="vx-header-tools"><div class="bench-toolbar-controls" aria-label="Benchmark group controls">',
+      );
+      expect(html).toContain('class="vx-label vx-nav-link vx-header-menu-spill theme-toggle"');
       expect(html).toContain('data-role="theme-toggle"');
       expect(html).toContain('data-action="expand-all"');
       expect(html).toContain('data-role="global-filter-bar"');
@@ -125,9 +132,20 @@ describe.skipIf(!databaseAvailable || !BUILD_PRESENT)(
       // The groups are visible HTML: no Suspense boundary streams them into a
       // hidden segment that only React's inline script reveals, so a reader
       // without JavaScript sees them.
+      // The one boundary that may stream is the header's GitHub button, which
+      // waits for the star count; without JavaScript its fallback, the same
+      // button without the count, stays.
       expect(html).not.toContain('Loading benchmark summaries');
-      expect(html).not.toMatch(/<div hidden="?"? id="S:/);
-      expect(html).not.toContain('$RC(');
+      const segments = [...html.matchAll(/<div hidden="?"? id="S:[^"]*">([\s\S]*?)<\/div>/g)].map(
+        (m) => m[1] ?? '',
+      );
+      for (const segment of segments) {
+        expect(segment).toMatch(
+          /^<a class="vx-btn [^"]*vx-header-spill" href="https:\/\/github\.com\//,
+        );
+        expect(segment).not.toContain('data-group-slug');
+      }
+      expect(segments.length).toBeLessThanOrEqual(1);
       // The open-groups bootstrap precedes the first group and its finish
       // step follows the last, so each listed group opens before it paints.
       const bootstrap = html.indexOf('data-role="open-groups-bootstrap"');
@@ -220,10 +238,12 @@ describe.skipIf(!databaseAvailable || !BUILD_PRESENT)(
 
     it("links under /bench away from bench's own host", async () => {
       const html = await (await fetch(BASE)).text();
-      // The logo links to vortex.dev on every host; a group's permalink is bench's own link.
-      expect(html).toMatch(/<a [^>]*class="logo-link"[^>]*href="https:\/\/vortex\.dev"/);
+      // The wordmark links to vortex.dev on every host; a group's permalink is bench's own link.
+      expect(html).toContain('<a href="https://vortex.dev" aria-label="Vortex home">');
       expect(html).toMatch(/<a [^>]*class="group-permalink"[^>]*href="\/bench#/);
-      expect(html).toContain('src="/bench/Vortex_Black_NoBG.svg"');
+      expect(html).toMatch(
+        /<a class="vx-label vx-nav-link" href="\/bench" aria-current="page">Bench</,
+      );
       expect(html).toContain('href="/bench/icon-dark.png"');
     });
 
@@ -232,9 +252,12 @@ describe.skipIf(!databaseAvailable || !BUILD_PRESENT)(
       const landing = await getOnBenchHost('/');
       expect(landing.status).toBe(200);
       expect(landing.body).toContain('class="group-details"');
-      expect(landing.body).toMatch(/<a [^>]*class="logo-link"[^>]*href="https:\/\/vortex\.dev"/);
+      expect(landing.body).toContain('<a href="https://vortex.dev" aria-label="Vortex home">');
       expect(landing.body).toMatch(/<a [^>]*class="group-permalink"[^>]*href="\/#/);
-      expect(landing.body).toContain('src="/Vortex_Black_NoBG.svg"');
+      expect(landing.body).toMatch(
+        /<a class="vx-label vx-nav-link" href="\/" aria-current="page">Bench</,
+      );
+      expect(landing.body).toContain('href="https://vortex.dev/charter.pdf"');
       expect(landing.body).toContain('href="/icon-dark.png"');
       expect(landing.body).not.toMatch(/(href|src)="\/bench/);
       const chart = await getOnBenchHost(`/chart/${slug}`);

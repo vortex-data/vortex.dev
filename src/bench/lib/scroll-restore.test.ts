@@ -83,7 +83,7 @@ describe('scroll restore', () => {
 
   beforeEach(() => {
     document.body.innerHTML =
-      '<header class="sticky-header"></header>' +
+      '<header class="vx-header has-nav has-tools is-solid"></header>' +
       '<section class="group-details" id="tpc-h" data-group-slug="tpch">' +
       '<details class="group-disclosure" open><summary>TPC-H</summary>' +
       `<div class="chart-grid">${card('c1')}${card('c2')}${card('c3')}</div>` +
@@ -91,7 +91,7 @@ describe('scroll restore', () => {
       '<section class="group-details" id="ra" data-group-slug="ra">' +
       '<details class="group-disclosure"><summary>Random Access</summary></details>' +
       '</section>';
-    header = document.querySelector('header.sticky-header') as HTMLElement;
+    header = document.querySelector('header.vx-header') as HTMLElement;
     c1 = byId('c1');
     c2 = byId('c2');
     c3 = byId('c3');

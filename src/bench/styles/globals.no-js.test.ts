@@ -34,12 +34,4 @@ describe('the stylesheet without JavaScript', () => {
       /border-bottom:\s*0/,
     );
   });
-
-  it('shows the mobile nav in the header row, since no script can open its panel', () => {
-    const mobile = css.match(/@media\s*\(max-width:\s*768px\)\s*\{(?:[^{}]|\{[^{}]*\})*\}/g);
-    expect(mobile).not.toBeNull();
-    const declarations = rule(mobile!.join('\n'), '.no-js .nav-controls');
-    expect(declarations).toMatch(/display:\s*flex/);
-    expect(declarations).toMatch(/position:\s*static/);
-  });
 });

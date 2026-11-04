@@ -34,8 +34,16 @@ const valueOf = (selector: string, prop: string) =>
 const ROLES = new Set([...tokens.matchAll(/^\s*--([a-z0-9-]+):/gm)].map((m) => m[1]));
 
 // bench's own values, which the system has no role for: the tooltip (black in Light, raised in
-// Dark), the green and red of a better or worse result with the text on that red, and the shadow.
-const OWN = new Set(['--tooltip-bg', '--tooltip-fg', '--good', '--bad', '--on-bad', '--shadow-md']);
+// Dark), the green and red of a better or worse result with the text on that red, and the height
+// of the sticky header.
+const OWN = new Set([
+  '--tooltip-bg',
+  '--tooltip-fg',
+  '--good',
+  '--bad',
+  '--on-bad',
+  '--toolbar-height',
+]);
 
 describe("bench's stylesheet on the system's tokens", () => {
   it('loads the tokens before globals.css, and has no skin layer', () => {
@@ -59,16 +67,14 @@ describe("bench's stylesheet on the system's tokens", () => {
     expect(defined.length).toBeGreaterThan(0);
     for (const name of defined) {
       expect(ROLES.has(name.slice(2)), `${name} redefines a token`).toBe(false);
-      expect(OWN.has(name) || name === '--header-height', `${name} is not one of bench's own`).toBe(
-        true,
-      );
+      expect(OWN.has(name), `${name} is not one of bench's own`).toBe(true);
     }
   });
 
   it('reads every variable it uses from the tokens or from its own', () => {
     const used = new Set([...css.matchAll(/var\(--([a-z0-9-]+)/g)].map((m) => m[1]));
     for (const name of used) {
-      expect(ROLES.has(name) || OWN.has(`--${name}`) || name === 'header-height', name).toBe(true);
+      expect(ROLES.has(name) || OWN.has(`--${name}`), name).toBe(true);
     }
   });
 
@@ -120,14 +126,96 @@ describe("bench's stylesheet on the system's tokens", () => {
     }
   });
 
-  it('sets the title and toolbar buttons as mono labels, mutes ranks, and squares the badges', () => {
-    for (const sel of ['.site-title', '.control-btn']) {
-      expect(valueOf(sel, 'font-family'), sel).toBe('var(--font-mono)');
-    }
+  it('sets the header buttons as mono labels, mutes ranks, and squares the badges', () => {
+    expect(valueOf('.control-btn', 'font-family')).toBe('var(--font-mono)');
     expect(valueOf('.score-rank', 'color')).toBe('var(--ink-muted)');
-    expect(valueOf('.site-title', 'color')).toBe('var(--ink-muted)');
     for (const sel of ['.filter-badge', '.group-count']) {
       expect(valueOf(sel, 'border-radius'), sel).toBe('2px');
     }
+  });
+
+  // The system's label voice has no capitals and no tracking.
+  it('writes every label in sentence case, untracked', () => {
+    expect(decls.filter((d) => d.prop === 'text-transform').map((d) => d.sel)).toEqual([]);
+    for (const d of decls.filter((x) => x.prop === 'letter-spacing')) {
+      expect(d.value, d.sel).not.toMatch(/^0\.0[0-9]+em$/);
+    }
+  });
+
+  // impeccable flags body text under 12px and functional text under 11px. The score tables'
+  // footnotes and the compression table's "vs" labels were 11.5px and 10.9px.
+  it('sets the score footnotes and column groups at 12px or more', () => {
+    for (const sel of ['.scores-explanation', '.compression-size-group']) {
+      const sizes = decls
+        .filter((d) => selectorsOf(d).some((s) => s.endsWith(sel)) && d.prop === 'font-size')
+        .map((d) => d.value);
+      expect(sizes.length, sel).toBeGreaterThan(0);
+      for (const v of sizes)
+        expect(Number.parseFloat(v), `${sel} ${v}`).toBeGreaterThanOrEqual(0.75);
+    }
+  });
+
+  // Cards and popovers stand on their borders, as the system's do. Only the tooltips, which sit
+  // over a chart's lines, keep a shadow.
+  it('draws no shadows but on the tooltips', () => {
+    expect(decls.filter((d) => d.prop === 'box-shadow').map((d) => d.sel)).toEqual([
+      '[data-tooltip].group-info-icon::after',
+      '.chart-tooltip-host',
+    ]);
+  });
+
+  // The system's header (has-tools) sticks and holds the controls, so bench draws no toolbar.
+  it("puts the controls on the system's sticky header, and draws no toolbar of its own", () => {
+    expect(css).not.toMatch(/\.bench-toolbar[\s,{]|\.bench-title/);
+    expect(valueOf(':root', '--toolbar-height')).toBe('64px');
+    // `hidden` on the root would make body a scroll container that never scrolls, and the
+    // header would stick to it, not to the window; `clip` clips without one.
+    expect(valueOf('body', 'overflow-x')).toBe('clip');
+    // The fixed Groups button needs room under the footer, or it covers the footer's mark.
+    expect(valueOf('.bench-frame:has(.group-nav-toggle)', 'padding-bottom')).toBe('3.5rem');
+    // Below 1260px the buttons' words hide, but the Filters count stays in view.
+    expect(css).toMatch(
+      /@media \(max-width: 1260px\) \{\s*\.bench-toolbar-controls \.vx-btn > span:not\(\.filter-badge\),/,
+    );
+    // The header's buttons are the system's (vx-btn), and bench restyles none of them.
+    expect(css).not.toMatch(
+      /\.vx-header[^{}]*\.(control-btn|vx-btn)\b[^{}]*\{[^}]*(background|border|font|height)/,
+    );
+    // At 320px the controls keep room before the Menu button.
+    expect(css).toMatch(
+      /@media \(max-width: 400px\) \{\s*\.vx-header-tools \.vx-btn \{\s*padding-inline: 0\.4rem;/,
+    );
+    expect(valueOf('main', 'padding')).toBe('1rem var(--page-pad)');
+    expect(css).not.toMatch(/sticky-header|site-title|repo-link|nav-controls|logo-link/);
+  });
+
+  // The groups speak in the system's mono voice, as the header's label does, and Blue marks
+  // Vortex's rows only: the other formats' scores are in ink-body.
+  it('sets group names and scores in mono, with Blue only on Vortex', () => {
+    for (const sel of ['.group-name', '.scores-title', '.score-item']) {
+      expect(valueOf(sel, 'font-family'), sel).toBe('var(--font-mono)');
+    }
+    // Will's B (2026-11-03): weight 400 at 13px read too thin, Light most of all.
+    expect(valueOf('.group-name', 'font-weight')).toBe('600');
+    expect(valueOf('.scores-title', 'font-size')).toBe('13px');
+    expect(valueOf('.scores-title', 'color')).toBe('var(--ink-body)');
+    expect(valueOf('.score-item', 'font-size')).toBe('14px');
+    expect(valueOf('.score-series', 'font-weight')).toBe('500');
+    expect(valueOf('.score-value', 'color')).toBe('var(--ink-body)');
+    expect(
+      decls.some(
+        (d) =>
+          d.sel.includes('.is-ours') &&
+          d.sel.includes('.score-value') &&
+          d.value === 'var(--accent-ink)',
+      ),
+    ).toBe(true);
+    // On a phone 20px pushes the group's icons onto lines of their own, so one rule sets 17px.
+    expect(
+      decls
+        .filter((d) => selectorsOf(d).includes('.group-name') && d.prop === 'font-size')
+        .map((d) => d.value),
+    ).toEqual(['20px', '17px']);
+    expect(css).toMatch(/@media \(max-width: 640px\) \{\s*\.group-name \{\s*font-size: 17px;/);
   });
 });

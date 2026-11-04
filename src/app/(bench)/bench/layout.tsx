@@ -8,10 +8,13 @@ import { BenchBaseProvider } from '@/bench/components/BenchBase';
 import { benchPath } from '@/bench/lib/base-path';
 import { requestBenchBase } from '@/bench/lib/request-base';
 import { BENCH_DESCRIPTION, BENCH_URL, openGraph } from '@/bench/lib/site-files';
+import { Footer } from '@/components/layout/footer';
 import { FONT_CLASSES } from '@/lib/fonts';
 
-// The Vortex design system's colour roles and scales, which globals.css reads.
+// The Vortex design system's colour roles and scales, which globals.css reads,
+// and its components, for the site's header and footer.
 import '@/styles/vortex-tokens.css';
+import '@/styles/vortex.css';
 import '@/bench/styles/globals.css';
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -67,7 +70,10 @@ const THEME_BOOTSTRAP =
  * pre-paint theme bootstrap, and the design system's faces, self-hosted as the
  * site's are (`lib/fonts.ts`). It also hands the client
  * components the base of bench's paths for the request's host
- * ([`BenchBaseProvider`], `lib/base-path.ts`).
+ * ([`BenchBaseProvider`], `lib/base-path.ts`). Every page renders the site's
+ * header with bench's controls on its row ([`BenchHeader`]) and sits above
+ * the site's footer, whose links point back to vortex.dev, because bench is
+ * served from its own host.
  */
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const base = await requestBenchBase();
@@ -82,7 +88,12 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
       </head>
       <body>
-        <BenchBaseProvider base={base}>{children}</BenchBaseProvider>
+        <BenchBaseProvider base={base}>
+          <div className="bench-frame">
+            {children}
+            <Footer origin="https://vortex.dev" solid />
+          </div>
+        </BenchBaseProvider>
       </body>
     </html>
   );

@@ -24,6 +24,14 @@ describe('Chart (server-rendered card markup)', () => {
     );
   });
 
+  // Under the page's h1 (the header's "Benchmarks"): an h3 under its group's h2 on the
+  // landing page, the page's h2 on the chart page, which has no group.
+  it('titles the card one level below its group, or h2 without one', () => {
+    expect(html).toContain('<h3 class="chart-card-title">');
+    const alone = renderToStaticMarkup(<Chart slug="ra.eyJhIjoxfQ" name="gnomad" index={0} />);
+    expect(alone).toContain('<h2 class="chart-card-title">');
+  });
+
   it('renders the title permalink and the hidden downsample badge inside it', () => {
     expect(html).toContain('href="/chart/ra.eyJhIjoxfQ"');
     expect(html).toContain('data-role="downsample-badge"');
