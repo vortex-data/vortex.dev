@@ -39,7 +39,7 @@ describe('groupPermalinkUrl', () => {
       origin: 'https://bench.vortex.dev',
       pathname: '/',
       search:
-        '?engine=duckdb&group=old&hide=old-series&show=old-shown&hide-engine=old&hide-format=old',
+        '?engine=duckdb&group=old&hide=old-series&show=old-shown&hide-engine=old&hide-format=old&show-engine=old&show-format=old',
     };
     expect(
       groupPermalinkUrl(
@@ -49,11 +49,13 @@ describe('groupPermalinkUrl', () => {
           shownSeries: ['lance'],
           hiddenEngines: ['duckdb'],
           hiddenFormats: ['vortex', 'parquet'],
+          shownEngines: ['datafusion'],
+          shownFormats: ['lance'],
         },
         loc,
       ),
     ).toBe(
-      'https://bench.vortex.dev/?engine=duckdb&group=random-access&hide=a&hide=z+series&show=lance&hide-engine=duckdb&hide-format=parquet&hide-format=vortex#random-access',
+      'https://bench.vortex.dev/?engine=duckdb&group=random-access&hide=a&hide=z+series&show=lance&hide-engine=duckdb&hide-format=parquet&hide-format=vortex&show-engine=datafusion&show-format=lance#random-access',
     );
   });
 });

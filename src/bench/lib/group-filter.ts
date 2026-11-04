@@ -16,17 +16,27 @@ export const HIDDEN_ENGINE_PARAM = 'hide-engine';
 /** Repeated query parameter containing one format the group's Format row hides. */
 export const HIDDEN_FORMAT_PARAM = 'hide-format';
 
+/** Repeated query parameter containing one engine the group's Engine row shows
+ * over the global filter. */
+export const SHOWN_ENGINE_PARAM = 'show-engine';
+
+/** Repeated query parameter containing one format the group's Format row shows
+ * over the global filter. */
+export const SHOWN_FORMAT_PARAM = 'show-format';
+
 /**
- * One group's filter choices, one list per row of its filter dropdown. A
- * permalink carries the Engine and Format rows' choices as they are, not as
- * the series they hide now, so they also hide the series of charts that load
- * later.
+ * One group's filter choices: for each row of its filter dropdown, what it
+ * hides and what it shows over the global filter. A permalink carries the
+ * Engine and Format rows' choices as engines and formats, not as the series
+ * they cover now, so they also apply to the series of charts that load later.
  */
 export interface GroupFilterChoices {
   hiddenSeries: readonly string[];
   shownSeries: readonly string[];
   hiddenEngines: readonly string[];
   hiddenFormats: readonly string[];
+  shownEngines: readonly string[];
+  shownFormats: readonly string[];
 }
 
 interface GroupFilter extends GroupFilterChoices {
@@ -39,6 +49,8 @@ export const NO_GROUP_FILTER_CHOICES: GroupFilterChoices = {
   shownSeries: [],
   hiddenEngines: [],
   hiddenFormats: [],
+  shownEngines: [],
+  shownFormats: [],
 };
 
 /** The non-empty values of one repeated query parameter, without repeats. */
@@ -58,14 +70,19 @@ export function parseGroupFilter(
     return null;
   }
 
+  // A value both hidden and shown is shown, as a series is.
   const shownSeries = repeated(params, SHOWN_SERIES_PARAM);
+  const shownEngines = repeated(params, SHOWN_ENGINE_PARAM);
+  const shownFormats = repeated(params, SHOWN_FORMAT_PARAM);
+  const hidden = (name: string, shown: string[]) =>
+    repeated(params, name).filter((value) => !shown.includes(value));
   return {
     groupAnchor,
-    hiddenSeries: repeated(params, HIDDEN_SERIES_PARAM).filter(
-      (value) => !shownSeries.includes(value),
-    ),
+    hiddenSeries: hidden(HIDDEN_SERIES_PARAM, shownSeries),
     shownSeries,
-    hiddenEngines: repeated(params, HIDDEN_ENGINE_PARAM),
-    hiddenFormats: repeated(params, HIDDEN_FORMAT_PARAM),
+    hiddenEngines: hidden(HIDDEN_ENGINE_PARAM, shownEngines),
+    hiddenFormats: hidden(HIDDEN_FORMAT_PARAM, shownFormats),
+    shownEngines,
+    shownFormats,
   };
 }

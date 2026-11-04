@@ -140,6 +140,8 @@ export function Chart({ slug, name, index, groupSlug, initialPayload }: ChartIsl
     groupState.shownSeries,
     groupState.hiddenEngines,
     groupState.hiddenFormats,
+    groupState.shownEngines,
+    groupState.shownFormats,
   ]);
 
   // Broadcast the per-group Y override to non-sticky charts; `null` (the

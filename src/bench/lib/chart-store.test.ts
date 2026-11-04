@@ -120,12 +120,16 @@ describe('per-group store', () => {
       shownSeries: ['lance', 'lance'],
       hiddenEngines: ['datafusion', 'datafusion'],
       hiddenFormats: ['parquet'],
+      shownEngines: ['duckdb'],
+      shownFormats: ['lance', 'parquet'],
     });
     const snap = getGroupSnapshot(slug);
     expect(snap.hiddenSeries).toEqual(['b', 'a']);
     expect(snap.shownSeries).toEqual(['lance']);
     expect(snap.hiddenEngines).toEqual(['datafusion']);
-    expect(snap.hiddenFormats).toEqual(['parquet']);
+    expect(snap.hiddenFormats).toEqual([]);
+    expect(snap.shownEngines).toEqual(['duckdb']);
+    expect(snap.shownFormats).toEqual(['lance', 'parquet']);
     expect(snap.knownSeries).toEqual({ a: { engine: 'duckdb' } });
   });
 
@@ -213,10 +217,28 @@ describe('per-group store', () => {
 
     expect(visibleSeries(slug)).toEqual([]);
     applyGroupMacro(slug, 'format', 'lance');
-    expect(getGroupSnapshot(slug).shownSeries.sort()).toEqual(['datafusion:lance', 'duckdb:lance']);
+    expect(getGroupSnapshot(slug).shownFormats).toEqual(['lance']);
+    expect(getGroupSnapshot(slug).shownSeries).toEqual([]);
     expect(visibleSeries(slug)).toEqual(['datafusion:lance', 'duckdb:lance']);
     applyGroupMacro(slug, 'format', 'lance');
-    expect(getGroupSnapshot(slug).shownSeries).toEqual([]);
+    expect(getGroupSnapshot(slug).shownFormats).toEqual([]);
+    expect(getGroupSnapshot(slug).hiddenFormats).toEqual(['lance']);
+    expect(visibleSeries(slug)).toEqual([]);
+  });
+
+  // The Format row keeps a format it turned on over the global filter as a
+  // format, so it also shows that format's series in charts that load later.
+  it('shows a format turned on over the global filter in charts that load later', () => {
+    const slug = 'group-global-macro-later';
+    const universe = { ...UNIVERSE, formats: [...UNIVERSE.formats, 'lance'] };
+    initGlobalFilter(universe, null, null);
+    noteGroupSeries(slug, { 'datafusion:lance': { engine: 'datafusion', format: 'lance' } });
+    applyGroupMacro(slug, 'format', 'lance');
+    noteGroupSeries(slug, { 'duckdb:lance': { engine: 'duckdb', format: 'lance' } });
+    expect(visibleSeries(slug)).toEqual(['datafusion:lance', 'duckdb:lance']);
+
+    clearGroupFilterRow(slug, 'format');
+    expect(getGroupSnapshot(slug).shownFormats).toEqual([]);
     expect(visibleSeries(slug)).toEqual([]);
   });
 

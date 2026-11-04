@@ -16,9 +16,10 @@ import { getGlobalFilterSnapshot, type GlobalFilterSnapshot } from './global-fil
  *
  * The group's filter dropdown has three rows, and each keeps its own choices,
  * so each row's "all" chip clears only its own: the Engine row's in
- * `hiddenEngines`, the Format row's in `hiddenFormats`, and the Series row's
- * in `hiddenSeries` and `shownSeries`. A series choice wins over an engine or
- * format choice, which wins over the global filter.
+ * `hiddenEngines` and `shownEngines`, the Format row's in `hiddenFormats` and
+ * `shownFormats`, and the Series row's in `hiddenSeries` and `shownSeries`. A
+ * series choice wins over an engine or format choice, which wins over the
+ * global filter. A hidden engine or format wins over a shown one.
  */
 export interface GroupSnapshot {
   /** Dataset labels the user has toggled off in the Series row. */
@@ -30,6 +31,10 @@ export interface GroupSnapshot {
   hiddenEngines: string[];
   /** Formats the user has turned off in the Format row. */
   hiddenFormats: string[];
+  /** Engines the user has turned on in the Engine row over the global filter. */
+  shownEngines: string[];
+  /** Formats the user has turned on in the Format row over the global filter. */
+  shownFormats: string[];
   /** The group-level Y override; `null` means "no override; defer to charts". */
   groupY: 'linear' | 'log' | null;
   /** Series labels (with engine/format tags) surfaced by hydrated charts. */
@@ -48,6 +53,8 @@ const EMPTY_GROUP: GroupSnapshot = {
   shownSeries: [],
   hiddenEngines: [],
   hiddenFormats: [],
+  shownEngines: [],
+  shownFormats: [],
   groupY: null,
   knownSeries: {},
   emptyCharts: [],
@@ -103,17 +110,26 @@ export function initGroupFilter(slug: string, choices: GroupFilterChoices): void
   const hiddenSeries = [...new Set(choices.hiddenSeries)].filter(
     (label) => !shownSeries.includes(label),
   );
-  const hiddenEngines = [...new Set(choices.hiddenEngines)];
-  const hiddenFormats = [...new Set(choices.hiddenFormats)];
-  if (
-    sameList(prev.hiddenSeries, hiddenSeries) &&
-    sameList(prev.shownSeries, shownSeries) &&
-    sameList(prev.hiddenEngines, hiddenEngines) &&
-    sameList(prev.hiddenFormats, hiddenFormats)
-  ) {
+  const shownEngines = [...new Set(choices.shownEngines)];
+  const shownFormats = [...new Set(choices.shownFormats)];
+  const hiddenEngines = [...new Set(choices.hiddenEngines)].filter(
+    (value) => !shownEngines.includes(value),
+  );
+  const hiddenFormats = [...new Set(choices.hiddenFormats)].filter(
+    (value) => !shownFormats.includes(value),
+  );
+  const next = {
+    hiddenSeries,
+    shownSeries,
+    hiddenEngines,
+    hiddenFormats,
+    shownEngines,
+    shownFormats,
+  };
+  if ((Object.keys(next) as (keyof typeof next)[]).every((key) => sameList(prev[key], next[key]))) {
     return;
   }
-  setGroupSnapshot(slug, { ...prev, hiddenSeries, shownSeries, hiddenEngines, hiddenFormats });
+  setGroupSnapshot(slug, { ...prev, ...next });
 }
 
 /** The shared empty snapshot, for islands that have no enclosing group. */
@@ -132,17 +148,29 @@ function groupRowsHide(snapshot: GroupSnapshot, tag: Tag): boolean {
   );
 }
 
+/** Whether the group's Engine or Format row shows a series with this tag over
+ * the global filter. */
+function groupRowsShow(snapshot: GroupSnapshot, tag: Tag): boolean {
+  return (
+    (tag?.engine !== undefined && snapshot.shownEngines.includes(tag.engine)) ||
+    (tag?.format !== undefined && snapshot.shownFormats.includes(tag.format))
+  );
+}
+
 /**
  * A series' visibility before the Series row's choices: hidden when the
- * group's Engine or Format row hides its tag, and otherwise as the global
- * filter has it.
+ * group's Engine or Format row hides its tag, shown when one of them shows
+ * it, and otherwise as the global filter has it.
  */
 export function groupDefaultVisible(
   snapshot: GroupSnapshot,
   tag: Tag,
   global: GlobalFilterSnapshot = getGlobalFilterSnapshot(),
 ): boolean {
-  return !groupRowsHide(snapshot, tag) && seriesPassesFilter(tag, global.active, global.universe);
+  return (
+    !groupRowsHide(snapshot, tag) &&
+    (groupRowsShow(snapshot, tag) || seriesPassesFilter(tag, global.active, global.universe))
+  );
 }
 
 /** Effective visibility: the Series row's choice, else the group's other rows
@@ -187,7 +215,9 @@ export function groupMacroIsActive(
     return false;
   }
   const ownRow: GroupSnapshot =
-    dim === 'engine' ? { ...snapshot, hiddenFormats: [] } : { ...snapshot, hiddenEngines: [] };
+    dim === 'engine'
+      ? { ...snapshot, hiddenFormats: [], shownFormats: [] }
+      : { ...snapshot, hiddenEngines: [], shownEngines: [] };
   return seriesMatching(snapshot, dim, value).some((label) =>
     groupSeriesIsVisible(ownRow, label, global),
   );
@@ -225,10 +255,11 @@ export function toggleGroupSeries(slug: string, label: string): void {
 
 /**
  * Apply an Engine or Format chip click. A chip that is on (see
- * [`groupMacroIsActive`]) turns off: its row hides every series it covers. A
- * chip that is off turns on: its row stops hiding them, and the series it
- * covers that the global filter hides, and the other row does not, show
- * through a Series override. Either way the click replaces the Series row's
+ * [`groupMacroIsActive`]) turns off: its row hides the engine or format. A
+ * chip that is off turns on: its row stops hiding it, and shows it over the
+ * global filter when the global filter hides a series it covers. The row keeps
+ * the engine or format itself, so the choice also applies to the series of
+ * charts that load later. Either way the click replaces the Series row's
  * choices for the series the chip covers. A chip that covers no known series
  * is inert.
  */
@@ -238,26 +269,23 @@ export function applyGroupMacro(slug: string, dim: 'engine' | 'format', value: s
   if (matching.length === 0) {
     return;
   }
-  const key = dim === 'engine' ? 'hiddenEngines' : 'hiddenFormats';
+  const hiddenKey = dim === 'engine' ? 'hiddenEngines' : 'hiddenFormats';
+  const shownKey = dim === 'engine' ? 'shownEngines' : 'shownFormats';
   const turnOff = groupMacroIsActive(prev, dim, value);
   const covered = new Set(matching);
-  const next: GroupSnapshot = {
+  const without = (list: string[]) => list.filter((v) => v !== value);
+  const global = getGlobalFilterSnapshot();
+  const globalHidesOne = matching.some(
+    (label) => !seriesPassesFilter(prev.knownSeries[label], global.active, global.universe),
+  );
+  setGroupSnapshot(slug, {
     ...prev,
     hiddenSeries: prev.hiddenSeries.filter((label) => !covered.has(label)),
     shownSeries: prev.shownSeries.filter((label) => !covered.has(label)),
-    [key]: turnOff ? [...prev[key], value] : prev[key].filter((v) => v !== value),
-  };
-  if (!turnOff) {
-    next.shownSeries = [
-      ...next.shownSeries,
-      ...matching.filter(
-        (label) =>
-          !groupRowsHide(next, next.knownSeries[label]) &&
-          !groupDefaultVisible(next, next.knownSeries[label]),
-      ),
-    ];
-  }
-  setGroupSnapshot(slug, next);
+    [hiddenKey]: turnOff ? [...without(prev[hiddenKey]), value] : without(prev[hiddenKey]),
+    [shownKey]:
+      !turnOff && globalHidesOne ? [...without(prev[shownKey]), value] : without(prev[shownKey]),
+  });
 }
 
 /**
@@ -269,10 +297,10 @@ export function clearGroupFilterRow(slug: string, row: 'engine' | 'format' | 'se
   const prev = groupStore(slug).snapshot;
   switch (row) {
     case 'engine':
-      setGroupSnapshot(slug, { ...prev, hiddenEngines: [] });
+      setGroupSnapshot(slug, { ...prev, hiddenEngines: [], shownEngines: [] });
       return;
     case 'format':
-      setGroupSnapshot(slug, { ...prev, hiddenFormats: [] });
+      setGroupSnapshot(slug, { ...prev, hiddenFormats: [], shownFormats: [] });
       return;
     case 'series':
       setGroupSnapshot(slug, { ...prev, hiddenSeries: [], shownSeries: [] });
@@ -297,6 +325,8 @@ export function resetGroup(slug: string): void {
     shownSeries: [],
     hiddenEngines: [],
     hiddenFormats: [],
+    shownEngines: [],
+    shownFormats: [],
     groupY: null,
     showEmptyCharts: false,
   });

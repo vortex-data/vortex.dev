@@ -13,6 +13,8 @@ import {
   HIDDEN_ENGINE_PARAM,
   HIDDEN_FORMAT_PARAM,
   HIDDEN_SERIES_PARAM,
+  SHOWN_ENGINE_PARAM,
+  SHOWN_FORMAT_PARAM,
   SHOWN_SERIES_PARAM,
 } from '@/bench/lib/group-filter';
 import { CheckIcon, LinkIcon } from '@/bench/components/icons';
@@ -24,8 +26,8 @@ const COPIED_FEEDBACK_MS = 1500;
  * Build the shareable URL for a group: the landing page with the group's
  * human-readable anchor (see `lib/anchor.ts`) as the fragment, so the link
  * opens that one group whatever else is open now. When the group's filter has
- * choices, repeated `hide`, `show`, `hide-engine` and `hide-format` parameters
- * preserve each row's, and a `group` parameter carries the same readable
+ * choices, repeated `hide`, `show`, `hide-engine`, `hide-format`,
+ * `show-engine` and `show-format` parameters preserve each row's, and a `group` parameter carries the same readable
  * anchor. The Engine and Format rows go as engines and formats, not as the
  * series they hide now, so they also hide the series of charts that have not
  * loaded yet. Other query parameters,
@@ -53,6 +55,8 @@ export function groupPermalinkUrl(
     [SHOWN_SERIES_PARAM, choices.shownSeries],
     [HIDDEN_ENGINE_PARAM, choices.hiddenEngines],
     [HIDDEN_FORMAT_PARAM, choices.hiddenFormats],
+    [SHOWN_ENGINE_PARAM, choices.shownEngines],
+    [SHOWN_FORMAT_PARAM, choices.shownFormats],
   ];
   url.searchParams.delete(GROUP_FILTER_PARAM);
   for (const [name] of params) {

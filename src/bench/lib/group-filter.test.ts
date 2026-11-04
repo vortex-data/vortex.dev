@@ -19,6 +19,8 @@ describe('parseGroupFilter', () => {
       shownSeries: ['lance'],
       hiddenEngines: [],
       hiddenFormats: [],
+      shownEngines: [],
+      shownFormats: [],
     });
   });
 
@@ -27,7 +29,9 @@ describe('parseGroupFilter', () => {
       parseGroupFilter({
         group: 'tpc-h-nvme-sf-1',
         'hide-engine': ['datafusion', 'datafusion'],
-        'hide-format': 'parquet',
+        'hide-format': ['parquet', 'lance'],
+        'show-format': 'lance',
+        'show-engine': 'duckdb',
       }),
     ).toEqual({
       groupAnchor: 'tpc-h-nvme-sf-1',
@@ -35,6 +39,8 @@ describe('parseGroupFilter', () => {
       shownSeries: [],
       hiddenEngines: ['datafusion'],
       hiddenFormats: ['parquet'],
+      shownEngines: ['duckdb'],
+      shownFormats: ['lance'],
     });
   });
 
@@ -45,6 +51,8 @@ describe('parseGroupFilter', () => {
       shownSeries: ['lance'],
       hiddenEngines: [],
       hiddenFormats: [],
+      shownEngines: [],
+      shownFormats: [],
     });
   });
 
