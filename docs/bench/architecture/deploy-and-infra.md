@@ -127,7 +127,10 @@ then a CDN HIT on bench.vortex.dev once it serves this commit (skipped until the
   its secret from the `VERCEL_AUTOMATION_BYPASS_SECRET` repository secret.
 - A `bench-keep-warm` scheduled workflow pings the production deployment so the RDS
   connection pool and Data Cache stay warm between visits, and the Vercel cron in
-  `vercel.json` calls `/bench/api/health` every two minutes.
+  `vercel.json` calls `/bench/api/health` every two minutes. With `CRON_SECRET` set on
+  the Vercel project, only those two callers make the route query the database: Vercel
+  sends the secret with the cron, and the workflow sends the same value from the
+  `BENCH_CRON_SECRET` repository secret.
 
 ### Required merge check
 

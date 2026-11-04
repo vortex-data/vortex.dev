@@ -7,9 +7,12 @@
 # generated client-side from the OIDC-assumed schema role.
 #
 # Trigger is `workflow_dispatch` ONLY: an operator runs it manually from main
-# (optionally `dry_run` for a status-only preview). The AWS role trusts exactly
-# `repo:vortex-data/vortex.dev:ref:refs/heads/main` (see infra/provision.sh
-# and its test), so a run from any other ref fails at the credentials step.
+# (optionally `dry_run` for a status-only preview). The job runs in the
+# `bench-production` environment: its deployment branch policy admits only main,
+# and a required reviewer approves each run before the job starts. The AWS role
+# trusts exactly `repo:vortex-data/vortex.dev:environment:bench-production` (see
+# infra/provision.sh and its test), so a job outside that environment fails at
+# the credentials step.
 #
 # Bootstrap: CI can only IAM-auth as `migrator`; the FIRST apply must be run once by
 # the RDS master user out-of-band to create the `migrator` role + grant ledger access.
@@ -39,6 +42,7 @@ jobs:
   apply:
     name: Apply schema migrations
     runs-on: ubuntu-24.04
+    environment: bench-production
     timeout-minutes: 15
     defaults:
       run:
