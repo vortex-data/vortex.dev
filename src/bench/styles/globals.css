@@ -1789,6 +1789,10 @@ a.site-footer-sha:hover code {
 .chart-window-chip[data-state='error']:not(:disabled):active {
   background: color-mix(in srgb, var(--bad) 22%, transparent);
 }
+/* The inline retry on a failed chart sits on the error panel, so its press takes the panel's ink. */
+.chart-error-retry:active {
+  background: color-mix(in srgb, var(--on-bad) 22%, transparent);
+}
 
 /* ----------------------------------------------------------------------
  * Methodology page

@@ -246,6 +246,7 @@ describe("bench's stylesheet on the system's tokens", () => {
       '.group-docs-link',
       '.group-nav-link',
       '.chart-window-chip',
+      '.chart-error-retry',
     ];
     const pressed = decls.filter((d) => d.sel.includes(':active'));
     for (const control of controls) {
