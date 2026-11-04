@@ -1,7 +1,7 @@
 /* Vortex design system components (sections: base, brand, site, docs, blog, focus), copied by tools/site-styles.mjs.
    Edit the system, then run tools/site-styles.mjs; do not edit here.
    Made by: node tools/site-styles.mjs <site> --sections base,brand,site,docs,blog,focus --faces --vx-face --base
-   sha256 fb6c0c6af2bd6581d81a8c33bb12f13db8b84afa68bb91e95328cc2df7163e74 */
+   sha256 30e1a1ced1d777cf746586d8c635b4d15e6b08ad61a8726287a8533adf0c8437 */
 
 /* ------------------------------------------------------------------ base */
 /* Every component sizes with border-box, so it draws the same under a site's reset or none. */
@@ -336,7 +336,8 @@
 .vx-status-text > * { margin: 0; }
 /* The homepage's voice: a mono headline (vx-display-mono) and a mono sentence at the standfirst's size. */
 .vx-status-sentence { font: 400 16px/1.6 var(--font-mono); color: var(--ink-body); }
-.vx-status-code { font: 400 16px/1.6 var(--font-mono); color: var(--ink-muted); }
+/* The 404's headline is its code: mono at the display size, so the page has one large thing to read. */
+.vx-status-code { font: 500 64px/0.98 var(--font-mono); letter-spacing: -0.04em; color: var(--ink); }
 /* The mark's cell has a height to fill. Its host is never taller than 9/10 of the cell's width. */
 .vx-status-mark { position: relative; min-height: 0; container-type: size; }
 .vx-status-mark > * { position: absolute; inset: 0; height: min(100cqh, 90cqw); margin: auto 0; }
@@ -572,6 +573,7 @@
 @media (max-width: 640px) {
   .vx-display-mono { font-size: 28px; }
 }
+@media (max-width: 640px) { .vx-status-code { font-size: 48px; } }
 
 /* The results table: every system's figure for each benchmark, in a frame. Vortex's column is Blue,
    the best figure in each row is underlined, as a model card marks its best score, and the last
@@ -629,7 +631,8 @@
 @media (max-width: 400px) {
   .vx-tabs-list button { padding-inline: var(--space-4); }
 }
-.vx-tabs-list button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--ink); }
+/* A selected tab is the one place outside Vortex's data that takes Blue: Blue also marks a selection. */
+.vx-tabs-list button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
 .vx-tabs-code { display: flex; align-items: flex-start; gap: var(--space-12); padding: var(--space-12) var(--space-16); }
 /* Every panel shares one grid cell and only the selected one shows, so the block is always the
    tallest panel's height and switching tabs never moves the page. */
