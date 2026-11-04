@@ -10,8 +10,7 @@
     ":separateMultipleMajorReleases",
     ":configMigration",
     "schedule:earlyMondays",
-    "helpers:pinGitHubActionDigests",
-    "customManagers:githubActionsVersions"
+    "helpers:pinGitHubActionDigests"
   ],
   "lockFileMaintenance": {
     "enabled": true,
@@ -37,6 +36,17 @@
       "allowedVersions": "<27"
     },
     {
+      "description": "A Node major moves .nvmrc and engines.node, which Vercel resolves for production. Approve it on the Dependency Dashboard only after Vercel offers that major, and raise @types/node's cap with it.",
+      "matchDepNames": ["node"],
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboardApproval": true
+    },
+    {
+      "description": "three moves with the design system: src/vendor/vortex-design/ascii-mark.js names the same version for its CDN copy. Update both when the system is resynced.",
+      "matchPackageNames": ["three"],
+      "enabled": false
+    },
+    {
       "groupName": "Next.js",
       "matchPackageNames": ["next", "@next/**"]
     },
@@ -51,13 +61,7 @@
     },
     {
       "groupName": "MDX content pipeline",
-      "matchPackageNames": [
-        "@mdx-js/**",
-        "react-markdown",
-        "remark-**",
-        "rehype-**",
-        "velite"
-      ]
+      "matchPackageNames": ["rehype-**", "remark-**", "velite"]
     },
     {
       "groupName": "Analytics",
@@ -71,6 +75,11 @@
       "matchManagers": ["github-actions"],
       "groupName": "GitHub Actions",
       "addLabels": ["github-actions"]
+    },
+    {
+      "description": "One Bun version everywhere: package.json's packageManager and the workflows' bun-version move in one PR. This rule comes after the GitHub Actions group so that it wins.",
+      "matchDepNames": ["bun"],
+      "groupName": "Bun"
     },
     {
       "description": "Keep bench's updates apart from the marketing site's: the packages only bench uses, and bench's workflows.",
