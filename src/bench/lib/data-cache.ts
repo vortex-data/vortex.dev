@@ -56,7 +56,7 @@ const CACHE_OPTIONS = { tags: [BENCH_DATA_TAG], revalidate: DATA_CACHE_BACKSTOP_
  * code can serve payloads the old code computed until the next ingest.
  * It is independent of the producer-facing benchmark schema version.
  */
-const GROUP_PAYLOAD_CACHE_VERSION = 'v10';
+const GROUP_PAYLOAD_CACHE_VERSION = 'v11';
 
 // The default last-100 group bundle, keyed by group slug. The slug is the cache
 // key (an `unstable_cache` argument), so one wrapper covers every group. A
