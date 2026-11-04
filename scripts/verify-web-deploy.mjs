@@ -121,7 +121,9 @@ export async function verifyDeployment(
   });
   if (groups === 'protected') return 'protected';
   const group = groups.groups.find((item) => item.charts?.length);
-  const groupPath = `/api/group/${encodeURIComponent(group.slug)}?n=1`;
+  // The smallest window bench serves (`COMMIT_WINDOW_RUNGS` in src/bench/lib/window.ts). Any
+  // other numeric window redirects to its rung, and the check expects a 200.
+  const groupPath = `/api/group/${encodeURIComponent(group.slug)}?n=25`;
   const groupBody = await json(groupPath, (body) => {
     assert.ok(Array.isArray(body.charts) && body.charts.length > 0);
     chart(body.charts[0]);

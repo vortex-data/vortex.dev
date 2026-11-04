@@ -17,7 +17,13 @@ function fixture(overrides = {}) {
       return Response.json({ status: 'ok', build_sha: SHA, schema_version: 1 });
     if (path === '/api/groups')
       return Response.json({ groups: [{ slug: 'group', charts: [{ slug: 'chart' }] }] });
-    if (path === '/api/group/group') return Response.json({ charts: [chart] });
+    if (path === '/api/group/group') {
+      // Like the route, redirect a window that is not one bench serves.
+      const n = url.searchParams.get('n');
+      if (n !== null && !['25', '50', '100', '200', '500', '1000', 'all'].includes(n))
+        return new Response(null, { status: 308, headers: { location: '?n=25' } });
+      return Response.json({ charts: [chart] });
+    }
     if (path === '/api/chart/chart')
       return Response.json(chart, {
         headers: { 'x-vercel-cache': hits.get(path) > 1 ? 'HIT' : 'MISS' },
