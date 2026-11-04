@@ -20,12 +20,12 @@ import '@/bench/styles/globals.css';
 export async function generateMetadata(): Promise<Metadata> {
   const base = await requestBenchBase();
   return {
-    title: 'Vortex Benchmarks',
+    title: 'Benchmarks | Vortex',
     description: BENCH_DESCRIPTION,
     // The canonical and Open Graph URLs are bench's public ones, written out
     // in full. No `metadataBase`: it would also resolve the icons' paths, which
     // belong to the host serving the page, against bench.vortex.dev.
-    openGraph: openGraph('Vortex Benchmarks', BENCH_DESCRIPTION, `${BENCH_URL}/`),
+    openGraph: openGraph('Benchmarks | Vortex', BENCH_DESCRIPTION, `${BENCH_URL}/`),
     // Theme-aware favicons, ported from `render.rs::favicon_links`: the black
     // sigil on light-mode tabs, the white sigil on dark-mode tabs, with the dark
     // sigil as the unmediated fallback (and the apple-touch icon). The files are

@@ -37,6 +37,10 @@ describe('groupAnchors', () => {
     ]);
   });
 
+  it('keeps the anchor a renamed group had, so shared links still land on it', () => {
+    expect(groupAnchor('Polar Signals Profiling')).toBe('polarsignals-profiling');
+  });
+
   it('keeps the full production group list collision-free', () => {
     const names = [
       'Compression',
@@ -55,7 +59,7 @@ describe('groupAnchors', () => {
       'TPC-DS (S3) (SF=100)',
       'Random Access',
       'Statistical and Population Genetics',
-      'PolarSignals Profiling',
+      'Polar Signals Profiling',
       'fineweb [nvme]',
       'fineweb [s3]',
       'appian [nvme]',

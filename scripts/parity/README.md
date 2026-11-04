@@ -120,7 +120,7 @@ JSON path with both values:
 ```text
 /api/group/{slug}?n=50: body differs $.charts[3].series["datafusion:parquet"][41]: 1.25 != 1.26
 /api/chart/{slug}?n=100: cache-control "public, s-maxage=300, stale-while-revalidate=3600" != "no-store"
-/chart/{slug}: title "TPC-H Q1 - Vortex Benchmarks" != "Vortex Benchmarks"
+/chart/{slug}: title "TPC-H Q1 | Vortex" != "Benchmarks | Vortex"
 ```
 
 When two bodies parse to the same JSON but differ in bytes, the line gives the byte offset and the

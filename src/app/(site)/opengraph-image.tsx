@@ -1,13 +1,17 @@
-import { OG_CONTENT_TYPE, OG_SIZE, renderOgImage } from "@/lib/og";
+import { siteName } from "@/lib/constants";
+import { OG_CONTENT_TYPE, OG_SIZE, renderOgCard } from "@/lib/og";
 
-export const alt = "Vortex — an extensible, SOTA columnar file format";
+export const alt = "Vortex. Fast, small, open: pick three.";
 export const size = OG_SIZE;
 export const contentType = OG_CONTENT_TYPE;
 
+// The homepage's headline and standfirst, in the homepage's mono voice.
 export default function OgImage() {
-  return renderOgImage({
-    title: "An extensible, SOTA columnar file format",
-    description:
-      "Tools for working with compressed Apache Arrow arrays in-memory, on-disk, and over-the-wire."
+  return renderOgCard({
+    seed: "home",
+    eyebrow: siteName,
+    title: ["Fast, small, open:", "pick three."],
+    face: "mono",
+    foot: "An open-source columnar file format for fast scans, random access, and compression."
   });
 }

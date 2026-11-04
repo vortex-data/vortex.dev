@@ -28,7 +28,7 @@ function seriesTitle(item: SeriesRanking, coverageUnit: string): string {
   const label = displaySeriesLabel(item.name);
   return item.measured >= item.total
     ? label
-    : `${label} - measured in ${item.measured} of ${item.total} ${coverageUnit}; the rest scored by the missing-series penalty`;
+    : `${label} · measured in ${item.measured} of ${item.total} ${coverageUnit} · the rest scored by the missing-series penalty`;
 }
 
 /**

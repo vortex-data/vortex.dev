@@ -1252,16 +1252,16 @@ describe('groupNameQuery v2-name special-cases (PR-5.0.5, no DB)', () => {
     const name = groupNameQuery('statpopgen', null, null, 'nvme');
     expect(name).toBe('Statistical and Population Genetics');
     expect(groupDescription(name)).toBe(
-      'A suite of Statistical and Population genetics queries using the gnomAD dataset',
+      'A suite of statistical and population genetics queries using the gnomAD dataset',
     );
   });
 
   it('maps polarsignals to its v2 name and attaches the profiling description', () => {
     // Same null scale_factor as statpopgen in production.
     const name = groupNameQuery('polarsignals', null, null, 'nvme');
-    expect(name).toBe('PolarSignals Profiling');
+    expect(name).toBe('Polar Signals Profiling');
     expect(groupDescription(name)).toBe(
-      'Profiling data benchmark modeled on PolarSignals/Parca, exercising scan-layer ' +
+      'Profiling data benchmark modeled on Polar Signals/Parca, exercising scan-layer ' +
         'performance with projection and filter pushdown on deeply nested schemas',
     );
   });

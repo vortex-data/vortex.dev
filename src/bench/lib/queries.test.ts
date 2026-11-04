@@ -344,7 +344,7 @@ describe.skipIf(!databaseAvailable)('chartPayload (testcontainers Postgres)', ()
 describe('compareGroupSortKey canonical group ordering (no DB)', () => {
   it('orders NVMe and S3 Random Access directly before Clickbench', () => {
     const sorted = [
-      'PolarSignals Profiling',
+      'Polar Signals Profiling',
       'Random Access (S3)',
       'Random Access (NVMe)',
       'Clickbench',
@@ -355,7 +355,7 @@ describe('compareGroupSortKey canonical group ordering (no DB)', () => {
       'Random Access (NVMe)',
       'Random Access (S3)',
       'Clickbench',
-      'PolarSignals Profiling',
+      'Polar Signals Profiling',
     ]);
     expect(sorted.indexOf('Random Access (S3)') + 1).toBe(sorted.indexOf('Clickbench'));
   });
@@ -376,10 +376,10 @@ describe('compareGroupSortKey canonical group ordering (no DB)', () => {
       'fineweb [s3]',
       'appian [nvme]',
       'fineweb [nvme]',
-      'PolarSignals Profiling',
+      'Polar Signals Profiling',
     ].sort(compareGroupSortKey);
     expect(sorted).toEqual([
-      'PolarSignals Profiling',
+      'Polar Signals Profiling',
       'fineweb [nvme]',
       'fineweb [s3]',
       'appian [nvme]',

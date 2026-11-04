@@ -12,7 +12,7 @@ import { GroupNav, jumpToGroup, type GroupNavItem } from '@/bench/components/Gro
 
 const GROUPS: GroupNavItem[] = [
   { name: 'Random Access', slug: 'random_access.abc' },
-  { name: 'PolarSignals Profiling', slug: 'qmg.polar' },
+  { name: 'Polar Signals Profiling', slug: 'qmg.polar' },
 ];
 
 describe('GroupNav markup', () => {
@@ -25,7 +25,7 @@ describe('GroupNav markup', () => {
     expect(html).not.toContain('group-nav-panel--open');
     expect(html).toContain('id="group-nav-panel"');
     expect(html).toContain('>Random Access</button>');
-    expect(html).toContain('>PolarSignals Profiling</button>');
+    expect(html).toContain('>Polar Signals Profiling</button>');
   });
 
   it('marks the whole menu as needing JavaScript, since neither its toggle nor its entries work without it', () => {
@@ -49,7 +49,7 @@ describe('jumpToGroup', () => {
     document.body.innerHTML = `
       <div id="group-nav-panel"></div>
       <section id="polarsignals-profiling" data-group-slug="qmg.polar">
-        <details class="group-disclosure"><summary>PolarSignals</summary></details>
+        <details class="group-disclosure"><summary>Polar Signals</summary></details>
       </section>
       <section id="random-access" data-group-slug="random_access.abc">
         <details class="group-disclosure"><summary>Random Access</summary></details>
@@ -139,7 +139,7 @@ describe('GroupNav jump-menu clicks', () => {
     (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
     document.body.innerHTML = `
       <section id="polarsignals-profiling" data-group-slug="qmg.polar">
-        <details class="group-disclosure" open><summary>PolarSignals</summary></details>
+        <details class="group-disclosure" open><summary>Polar Signals</summary></details>
       </section>
       <section id="random-access" data-group-slug="random_access.abc">
         <details class="group-disclosure"><summary>Random Access</summary></details>

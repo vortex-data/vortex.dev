@@ -28,17 +28,17 @@ export async function generateMetadata({
 
   if (!post) {
     return {
-      title: "Post Not Found | Vortex Blog"
+      title: "Post not found | Vortex"
     };
   }
 
   const description = post.excerpt || `Read "${post.title}" on the Vortex blog`;
 
   return {
-    title: `${post.title} | Vortex Blog`,
+    title: `${post.title} | Vortex`,
     description,
     openGraph: {
-      title: `${post.title} | Vortex Blog`,
+      title: `${post.title} | Vortex`,
       description,
       siteName,
       url: `${baseUrl}/blog/${slug}`,

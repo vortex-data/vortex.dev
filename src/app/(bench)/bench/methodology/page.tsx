@@ -8,7 +8,7 @@ import { BenchHeader } from '@/bench/components/BenchHeader';
 import { METHODOLOGY } from '@/bench/lib/methodology';
 import { BENCH_URL, openGraph } from '@/bench/lib/site-files';
 
-const TITLE = 'Methodology - Vortex Benchmarks';
+const TITLE = 'Methodology | Vortex';
 const DESCRIPTION =
   'How the Vortex benchmarks run: the machines, storage, engines, and formats, how each ' +
   'result is measured, and how the summaries are scored.';

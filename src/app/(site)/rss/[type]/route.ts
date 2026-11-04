@@ -11,7 +11,6 @@ export async function GET(
   // JSON Feed marks a link item (`external_url`). In RSS and Atom a link item
   // reads as our own post, so the three feeds would disagree.
   const posts = getAllPosts();
-  const date = new Date();
 
   const feed = new Feed({
     title: "Vortex Blog",
@@ -19,7 +18,9 @@ export async function GET(
     id: baseUrl,
     link: baseUrl,
     favicon: `${baseUrl}/favicon.ico`,
-    copyright: `All rights reserved ${date.getFullYear()}, Vortex`,
+    // The posts are CC-BY-4.0 (REUSE.toml), and the project is a Series of
+    // LF Projects, LLC.
+    copyright: "CC-BY-4.0, Vortex a Series of LF Projects, LLC",
     generator: "rss feed",
     feedLinks: {
       rss2: `${baseUrl}/rss/feed.xml`,
