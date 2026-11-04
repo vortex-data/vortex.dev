@@ -70,9 +70,13 @@ describe("LogoBanner", () => {
   it("has a pause toggle after its label, not pressed at first", () => {
     const html = renderToStaticMarkup(<LogoBanner />);
     const head = html.match(
-      /<span class="vx-label">Ecosystem<\/span>(<button[\s\S]*?<\/button>)<div class="vx-logos-strip">/
+      /<span class="vx-label" id="[^"]+">Ecosystem<\/span>(<button[\s\S]*?<\/button>)<div class="vx-logos-strip">/
     )?.[1];
     assert.ok(head, "the control sits between the label and the strip");
+    // The region takes its name from the visible label.
+    const id = html.match(/<span class="vx-label" id="([^"]+)">Ecosystem/)?.[1];
+    assert.ok(id);
+    assert.match(html, new RegExp(`<section[^>]*aria-labelledby="${id}"`));
     assert.match(head, /^<button class="vx-logos-pause"/);
     assert.match(head, /type="button"/);
     assert.match(head, /aria-pressed="false"/);

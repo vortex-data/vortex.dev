@@ -10,8 +10,8 @@ const COPIED = "Copied";
 const SELECTED = "Selected. Press Ctrl+C or Command+C to copy.";
 
 /**
- * The design system's InstallTabs card: five tabs over one command block,
- * Rust first. The tabs are one tab stop (the arrow keys, Home and End move
+ * The design system's InstallTabs card: a tab for each install path over one
+ * command block, Rust first, and Spark last when its version is known. The tabs are one tab stop (the arrow keys, Home and End move
  * between them). The copy button writes the selected tab's commands without
  * their prompts and shows `check` for 1.5s. If there is no clipboard, or the
  * browser refuses it, the button selects the text and the status tells a

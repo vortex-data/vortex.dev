@@ -1,7 +1,5 @@
 import { blog } from "#site/content";
 
-export type BlogPost = (typeof blog)[number];
-
 export type BlogPostMeta = (typeof blog)[number];
 
 export function getAllPosts(): BlogPostMeta[] {
@@ -10,7 +8,7 @@ export function getAllPosts(): BlogPostMeta[] {
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 }
 
-export function getPostBySlug(slug: string): BlogPost | null {
+export function getPostBySlug(slug: string): BlogPostMeta | null {
   const post = blog.find((p) => p.slugAsParams === slug);
   if (!post?.published) return null;
 
