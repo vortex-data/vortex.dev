@@ -7,6 +7,7 @@ import {
   canonicalHistory,
   chartAriaLabel,
   chartHasRecentData,
+  chartUnitLabel,
   chartPriority,
   clampRangeWindow,
   collectAllValues,
@@ -48,7 +49,7 @@ import {
   truncate,
   visibleRange,
 } from './chart-format';
-import type { ChartResponse, CommitPoint } from './queries';
+import type { ChartResponse, CommitPoint, UnitKind } from './queries';
 import { defined } from '@/lib/defined';
 
 function commit(sha: string): CommitPoint {
@@ -624,6 +625,27 @@ describe('pickDisplayUnit', () => {
     expect(pickDisplayUnit('future_unit', [1])).toEqual(IDENTITY_UNIT);
     // No usable values: time picks the smallest unit (ns).
     expect(pickDisplayUnit('time_ns', [])).toMatchObject({ suffix: 'ns' });
+  });
+});
+
+// The chart page's meta line names the unit its chart's axis is drawn in.
+describe('chartUnitLabel', () => {
+  const chart = (unit_kind: UnitKind, values: number[]) => ({
+    unit_kind,
+    series: { vortex: values, parquet: [null, ...values] },
+  });
+
+  it("names the axis's display unit, not the stored one", () => {
+    expect(chartUnitLabel(chart('time_ns', [4e6, 6e6]))).toBe('ms');
+    expect(chartUnitLabel(chart('time_ns', [4e3]))).toBe('µs');
+    expect(chartUnitLabel(chart('time_ns', [400]))).toBe('ns');
+    expect(chartUnitLabel(chart('bytes', [3e9]))).toBe('GB');
+    expect(chartUnitLabel(chart('throughput_mb_s', [100]))).toBe('MB/s');
+  });
+
+  it('names a dimensionless kind, whose axis has no unit', () => {
+    expect(chartUnitLabel(chart('ratio', [1.5]))).toBe('ratio');
+    expect(chartUnitLabel(chart('count', [3]))).toBe('count');
   });
 });
 

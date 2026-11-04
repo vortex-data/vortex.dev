@@ -8,6 +8,7 @@ import {
   escapeHtml,
   firstLine,
   formatDisplayValue,
+  higherIsBetter,
   IDENTITY_UNIT,
   predecessorValue,
   shortDate,
@@ -49,6 +50,8 @@ export function externalTooltipHandler(state: CardState, host: HTMLDivElement | 
     const idx = firstDp.dataIndex;
     const commit = state.payload?.commits?.[idx] ?? null;
     const displayUnit = state.displayUnit ?? IDENTITY_UNIT;
+    // A rise is a gain on a throughput chart and a loss on every other one.
+    const riseIsBetter = higherIsBetter(state.payload?.unit_kind);
 
     // Build one row per dataset from each series' `rawData` so the tooltip
     // shows raw measurements even when LTTB nulled out `dataset.data[idx]`.
@@ -71,12 +74,13 @@ export function externalTooltipHandler(state: CardState, host: HTMLDivElement | 
         let deltaHtml = '';
         if (prevRaw !== null && prevRaw !== 0) {
           const pct = ((raw - prevRaw) / prevRaw) * 100;
+          const better = riseIsBetter ? pct > 0 : pct < 0;
           const cls =
-            pct > 0
-              ? 'tt-delta tt-delta--worse'
-              : pct < 0
+            pct === 0
+              ? 'tt-delta'
+              : better
                 ? 'tt-delta tt-delta--better'
-                : 'tt-delta';
+                : 'tt-delta tt-delta--worse';
           const sign = pct > 0 ? '+' : '';
           deltaHtml = `<span class="${cls}">${sign}${pct.toFixed(1)}%</span>`;
         }

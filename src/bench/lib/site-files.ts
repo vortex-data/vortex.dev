@@ -15,6 +15,7 @@
 
 import { groupAnchor, groupAnchors } from '@/bench/lib/anchor';
 import { groupDocUrl } from '@/bench/lib/benchmark-docs';
+import { higherIsBetter } from '@/bench/lib/chart-format';
 import { formatCompressionSizeRatio, formatThroughput, formatTimeNs } from '@/bench/lib/format';
 import { groupHeadline, headlineText } from '@/bench/lib/headline';
 import { METHODOLOGY, SCORES } from '@/bench/lib/methodology';
@@ -80,7 +81,7 @@ export function chartDescription(chart: ChartResponse, kind: ChartKind): string 
     const value = values.findLast((v): v is number => v !== null && Number.isFinite(v));
     return value === undefined ? [] : [{ name, value }];
   });
-  const sign = chart.unit_kind === 'throughput_mb_s' ? -1 : 1;
+  const sign = higherIsBetter(chart.unit_kind) ? -1 : 1;
   latest.sort((a, b) => sign * (a.value - b.value));
   const commit = chart.commits.at(-1);
   const values = latest

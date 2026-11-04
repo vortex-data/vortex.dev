@@ -10,9 +10,9 @@ import { Footer } from '@/bench/components/Footer';
 import { BenchHeader } from '@/bench/components/BenchHeader';
 import {
   canonicalFilterCsv,
+  chartUnitLabel,
   parseFilterCsv,
   singleSearchParam,
-  unitKindLabel,
 } from '@/bench/lib/chart-format';
 import { cachedDefaultChartPayload, cachedFilterUniverse } from '@/bench/lib/data-cache';
 import { chartPayload, type ChartResponse } from '@/bench/lib/queries';
@@ -204,7 +204,7 @@ export default async function ChartPage({
       <main>
         <p className="chart-meta">
           {'unit: '}
-          <code>{unitKindLabel(chart.unit_kind)}</code>
+          <code>{chartUnitLabel(chart)}</code>
           {' · '}
           {seriesCount} series · {commitCount} commit{commitCount !== 1 ? 's' : ''}
         </p>
