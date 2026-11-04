@@ -9,24 +9,27 @@ const read = (path: string) =>
 describe("the site's copy of the design system styles", () => {
   const tokens = read("src/styles/vortex-tokens.css");
 
-  it("names a font family only in the three --font-* tokens", () => {
+  it("names a font family only in the --font-sans and --font-mono tokens", () => {
     // A literal name would skip next/font's metrics-matched fallback face and shift layout on swap.
     assert.doesNotMatch(
       tokens,
       /font-family:\s*("Funnel Display"|Geist|"Geist Mono")/
     );
-    for (const role of ["display", "sans", "mono"]) {
+    for (const role of ["sans", "mono"]) {
       assert.match(
         tokens,
         new RegExp(`--font-${role}: var\\(--vx-face-`),
         role
       );
     }
+    // The heading role follows the sans face: the system has two faces.
+    assert.match(tokens, /--font-display: var\(--font-sans\);/);
   });
 
   it("gets each --vx-face-* variable from next/font, on both root layouts", () => {
     const fonts = read("src/lib/fonts.ts");
-    for (const face of ["display", "sans", "mono"]) {
+    assert.doesNotMatch(fonts, /Funnel|--vx-face-display/);
+    for (const face of ["sans", "mono"]) {
       assert.match(fonts, new RegExp(`variable: "--vx-face-${face}"`), face);
     }
     for (const layout of [
