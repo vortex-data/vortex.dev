@@ -17,6 +17,7 @@ import {
   takeOpenGroupsBootstrap,
 } from '@/bench/lib/open-groups';
 import type { NavigationKind, SavedScroll } from '@/bench/lib/scroll-restore';
+import { defined } from '@/lib/defined';
 
 // Three groups in page order, as the landing page renders them.
 const GROUPS = [
@@ -335,7 +336,7 @@ describe('LandingState', () => {
       // 123 toggles, 50 ms apart, as a visitor holding Enter makes; each group
       // is toggled an odd number of times, so ends open.
       for (let i = 0; i < 123; i++) {
-        const { anchor } = GROUPS[i % 3]!;
+        const { anchor } = defined(GROUPS[i % 3]);
         await toggle(anchor, !disclosure(anchor).open);
         act(() => {
           vi.advanceTimersByTime(50);
@@ -628,7 +629,7 @@ describe('LandingState', () => {
           'bench-scroll:/',
           JSON.stringify({ kind: 'group', slug: 'qm.click', offset: 40 }),
         );
-        place(document.getElementById('clickbench')!, 900);
+        place(defined(document.getElementById('clickbench')), 900);
         window.history.scrollRestoration = 'auto';
         await mount('/');
         await nextFrame();
@@ -645,7 +646,7 @@ describe('LandingState', () => {
         'bench-scroll:/',
         JSON.stringify({ kind: 'group', slug: 'qm.click', offset: 40 }),
       );
-      place(document.getElementById('clickbench')!, 900);
+      place(defined(document.getElementById('clickbench')), 900);
       window.history.scrollRestoration = 'manual';
       await mount('/');
       await nextFrame();

@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Chart } from '@/bench/components/Chart';
 import { resetGroup, resetPayloadCache, setGroupY } from '@/bench/lib/chart-store';
+import { defined } from '@/lib/defined';
 
 // Chart.js never actually constructs in this suite; the loader resolves to a
 // throwing stub so any unexpected construction fails loudly. The lifecycle
@@ -105,7 +106,7 @@ describe('Chart island lifecycle (StrictMode effect replay)', () => {
     );
     expect(bundleFetches).toHaveLength(1);
     expect(signals).toHaveLength(1);
-    expect(signals[0]!.aborted).toBe(false);
+    expect(defined(signals[0]).aborted).toBe(false);
   });
 
   it('replays a pre-existing group-Y override on mount (store outlives mounts)', async () => {

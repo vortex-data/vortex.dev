@@ -12,6 +12,7 @@ import { GroupBody } from '@/bench/components/GroupBody';
 import { FETCH_TIMEOUT_MS } from '@/bench/lib/chart-format';
 import { PAGE_LEAVE_GRACE_MS } from '@/bench/lib/page-leave';
 import { bundleQueue, hydrationQueue, resetPayloadCache } from '@/bench/lib/chart-store';
+import { defined } from '@/lib/defined';
 
 vi.mock('@/bench/lib/chart-js', () => ({
   loadChartJs: () => new Promise(() => {}),
@@ -153,8 +154,8 @@ describe('PR-5.0.95 landing-page lazy hydration', () => {
   it('only intersecting (in-viewport) cards hydrate on group open', async () => {
     await renderGroup(5);
     await act(async () => {
-      MockIO.instances[0]!.fire(true);
-      MockIO.instances[1]!.fire(true);
+      defined(MockIO.instances[0]).fire(true);
+      defined(MockIO.instances[1]).fire(true);
       await Promise.resolve();
       await Promise.resolve();
     });
@@ -165,7 +166,7 @@ describe('PR-5.0.95 landing-page lazy hydration', () => {
     await renderGroup(5);
     expect(windowFetchCount()).toBe(0);
     await act(async () => {
-      MockIO.instances[4]!.fire(true);
+      defined(MockIO.instances[4]).fire(true);
       await Promise.resolve();
       await Promise.resolve();
     });
@@ -176,8 +177,8 @@ describe('PR-5.0.95 landing-page lazy hydration', () => {
     const scheduleSpy = vi.spyOn(hydrationQueue, 'schedule');
     await renderGroup(5);
     await act(async () => {
-      MockIO.instances[0]!.fire(true);
-      MockIO.instances[3]!.fire(true);
+      defined(MockIO.instances[0]).fire(true);
+      defined(MockIO.instances[3]).fire(true);
       await Promise.resolve();
     });
     const priorities = scheduleSpy.mock.calls.map((c) => c[1]);
@@ -202,7 +203,7 @@ describe('PR-5.0.95 landing-page lazy hydration', () => {
     await renderGroup(2);
     // Fire card 0's initial observer so it hydrates before close.
     await act(async () => {
-      MockIO.instances[0]!.fire(true);
+      defined(MockIO.instances[0]).fire(true);
       await Promise.resolve();
       await Promise.resolve();
     });
@@ -232,7 +233,7 @@ describe('PR-5.0.95 landing-page lazy hydration', () => {
     // last one to trigger card 1's fetch.
     const fetchCountBeforeRefire = windowFetchCount();
     await act(async () => {
-      MockIO.instances[MockIO.instances.length - 1]!.fire(true);
+      defined(MockIO.instances[MockIO.instances.length - 1]).fire(true);
       await Promise.resolve();
       await Promise.resolve();
     });
@@ -271,7 +272,7 @@ describe('PR-5.0.95 landing-page lazy hydration', () => {
       // Fire card 0's observer. Its `?n=100` task is queued behind the blockers
       // (all concurrency slots are taken); no fetch runs yet.
       await act(async () => {
-        MockIO.instances[0]!.fire(true);
+        defined(MockIO.instances[0]).fire(true);
         await Promise.resolve();
       });
       const scheduledAfterOpen = scheduleSpy.mock.calls.length;
@@ -290,7 +291,7 @@ describe('PR-5.0.95 landing-page lazy hydration', () => {
       await act(async () => {
         details.open = true;
         details.dispatchEvent(new Event('toggle'));
-        MockIO.instances[MockIO.instances.length - 1]!.fire(true);
+        defined(MockIO.instances[MockIO.instances.length - 1]).fire(true);
         await Promise.resolve();
       });
 
@@ -327,18 +328,18 @@ describe('PR-5.0.95 landing-page lazy hydration', () => {
     });
     await renderGroup(2);
     await act(async () => {
-      MockIO.instances[0]!.fire(true);
+      defined(MockIO.instances[0]).fire(true);
       await Promise.resolve();
     });
     expect(signals.length).toBe(1);
-    expect(signals[0]!.aborted).toBe(false);
+    expect(defined(signals[0]).aborted).toBe(false);
     const details = container.querySelector('details.group-disclosure') as HTMLDetailsElement;
     await act(async () => {
       details.open = false;
       details.dispatchEvent(new Event('toggle'));
       await Promise.resolve();
     });
-    expect(signals[0]!.aborted).toBe(true);
+    expect(defined(signals[0]).aborted).toBe(true);
     expect(MockIO.instances.every((io) => io.disconnected)).toBe(true);
   });
 });
@@ -446,12 +447,12 @@ describe('PR-5.0.97 group-bundle hydration', () => {
     });
     expect(bundleFetchCount()).toBe(1);
     await act(async () => {
-      MockIO.instances[0]!.fire(true);
+      defined(MockIO.instances[0]).fire(true);
       await Promise.resolve();
     });
     // Firing the IO disconnects it and drives construction (Chart.js load is a
     // parked stub here, so the observable construction signal is the disconnect).
-    expect(MockIO.instances[0]!.disconnected).toBe(true);
+    expect(defined(MockIO.instances[0]).disconnected).toBe(true);
     expect(chartFetchCount()).toBe(0);
   });
 
@@ -481,8 +482,8 @@ describe('PR-5.0.97 group-bundle hydration', () => {
       });
       await renderGroup(3);
       await act(async () => {
-        MockIO.instances[0]!.fire();
-        MockIO.instances[1]!.fire();
+        defined(MockIO.instances[0]).fire();
+        defined(MockIO.instances[1]).fire();
         await vi.advanceTimersByTimeAsync(FETCH_TIMEOUT_MS);
       });
       expect(container.querySelectorAll('[data-role="fetch-retry"]')).toHaveLength(2);
@@ -491,15 +492,15 @@ describe('PR-5.0.97 group-bundle hydration', () => {
 
       // A later card sees the same failure without starting another request.
       await act(async () => {
-        MockIO.instances[2]!.fire();
+        defined(MockIO.instances[2]).fire();
         await vi.advanceTimersByTimeAsync(FETCH_TIMEOUT_MS * 2);
       });
       expect(container.querySelectorAll('[data-role="fetch-retry"]')).toHaveLength(3);
       expect(bundleFetchCount()).toBe(1);
       const retries = container.querySelectorAll<HTMLButtonElement>('[data-role="fetch-retry"]');
       await act(async () => {
-        retries[0]!.click();
-        retries[1]!.click();
+        defined(retries[0]).click();
+        defined(retries[1]).click();
       });
       expect(bundleFetchCount()).toBe(2);
       expect(chartFetchCount()).toBe(0);
@@ -522,8 +523,8 @@ describe('PR-5.0.97 group-bundle hydration', () => {
     });
     await renderGroup(2);
     await act(async () => {
-      MockIO.instances[0]!.fire();
-      MockIO.instances[1]!.fire();
+      defined(MockIO.instances[0]).fire();
+      defined(MockIO.instances[1]).fire();
       await vi.advanceTimersByTimeAsync(0);
     });
     expect(bundleFetchCount()).toBe(1);
@@ -564,14 +565,14 @@ describe('PR-5.0.97 group-bundle hydration', () => {
       await Promise.resolve();
     });
     expect(signals.length).toBe(1);
-    expect(signals[0]!.aborted).toBe(false);
+    expect(defined(signals[0]).aborted).toBe(false);
     const details = container.querySelector('details.group-disclosure') as HTMLDetailsElement;
     await act(async () => {
       details.open = false;
       details.dispatchEvent(new Event('toggle'));
       await Promise.resolve();
     });
-    expect(signals[0]!.aborted).toBe(true);
+    expect(defined(signals[0]).aborted).toBe(true);
   });
 
   it('GroupBody mounts islands only while open; they share one bundle, and closing aborts it', async () => {
@@ -637,7 +638,7 @@ describe('PR-5.0.97 group-bundle hydration', () => {
     });
     // Closed: the islands are gone and the bundle is aborted.
     expect(container.querySelectorAll('.chart-card')).toHaveLength(0);
-    expect(signals[0]!.aborted).toBe(true);
+    expect(defined(signals[0]).aborted).toBe(true);
   });
 
   it('reopen AFTER the bundle succeeded issues ZERO new fetches (cache hit)', async () => {
@@ -688,8 +689,8 @@ describe('PR-5.0.97 group-bundle hydration', () => {
     // The per-chart fallback only fires once a card is intersected (construction
     // is IO-gated). Fire both observers; only `s1` (uncovered) must refetch.
     await act(async () => {
-      MockIO.instances[0]!.fire(true);
-      MockIO.instances[1]!.fire(true);
+      defined(MockIO.instances[0]).fire(true);
+      defined(MockIO.instances[1]).fire(true);
       await Promise.resolve();
       await Promise.resolve();
       await Promise.resolve();
@@ -715,9 +716,9 @@ describe('PR-5.0.97 group-bundle hydration', () => {
     expect(bundleFetchCount()).toBe(1);
     // Every card intersecting after the 404 falls back to its own per-chart fetch.
     await act(async () => {
-      MockIO.instances[0]!.fire(true);
-      MockIO.instances[1]!.fire(true);
-      MockIO.instances[2]!.fire(true);
+      defined(MockIO.instances[0]).fire(true);
+      defined(MockIO.instances[1]).fire(true);
+      defined(MockIO.instances[2]).fire(true);
       await Promise.resolve();
       await Promise.resolve();
       await Promise.resolve();
@@ -751,7 +752,7 @@ describe('PR-5.0.97 group-bundle hydration', () => {
     // Fire the card's observer so it calls `ensureInitialPayload` and begins
     // awaiting the still-pending bundle.
     await act(async () => {
-      MockIO.instances[0]!.fire(true);
+      defined(MockIO.instances[0]).fire(true);
       await Promise.resolve();
     });
     expect(bundleFetchCount()).toBe(1);
@@ -817,8 +818,8 @@ describe('PR-5.0.97 group-bundle hydration', () => {
     await renderGroup(2);
     // Let the eager bundle fetch settle as a 404, then let each island fall back.
     await act(async () => {
-      MockIO.instances[0]!.fire(true);
-      MockIO.instances[1]!.fire(true);
+      defined(MockIO.instances[0]).fire(true);
+      defined(MockIO.instances[1]).fire(true);
       await Promise.resolve();
       await Promise.resolve();
       await Promise.resolve();

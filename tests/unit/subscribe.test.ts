@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { afterEach, beforeEach, describe, it } from "node:test";
 import { NextRequest } from "next/server";
 import { POST } from "@/app/(site)/api/subscribe/route";
+import { defined } from "@/lib/defined";
 
 const ORIGIN = "https://vortex.dev";
 
@@ -70,7 +71,10 @@ describe("POST /api/subscribe", () => {
     assert.equal(res.status, 200);
     assert.deepEqual(await res.json(), { success: true });
     assert.equal(resendCalls.length, 1);
-    assert.equal(JSON.parse(resendCalls[0]!.body).email, "ada@example.com");
+    assert.equal(
+      JSON.parse(defined(resendCalls[0]).body).email,
+      "ada@example.com"
+    );
   });
 
   it("answers an existing contact as it answers a new one", async () => {

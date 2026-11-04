@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { SCHEMA_VERSION } from './schema-version';
+import { defined } from '@/lib/defined';
 
 // Anchored declaration for the in-repo SCHEMA_VERSION lockstep site. The
 // canonical contract lives in `CONTRACT.md`; this test reads the doc at test
@@ -33,7 +34,7 @@ function versionFromFile(relPath: string, regex: RegExp, label: string): number 
         `moved — update this consistency check and CONTRACT.md together.`,
     );
   }
-  return Number.parseInt(match[1]!, 10);
+  return Number.parseInt(defined(match[1]), 10);
 }
 
 describe('SCHEMA_VERSION', () => {

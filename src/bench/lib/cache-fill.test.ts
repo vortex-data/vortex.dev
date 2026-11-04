@@ -23,6 +23,7 @@ import {
   retryGroupCacheFill,
   withGroupCacheFillLock,
 } from '@/bench/lib/cache-fill';
+import { defined } from '@/lib/defined';
 
 /** A fill that runs until the test settles it. */
 function deferredFill(value: string): {
@@ -64,11 +65,11 @@ describe('group cache fill lock', () => {
     await expect(withGroupCacheFillLock('groups', fill)).resolves.toBe('groups');
 
     expect(fill).toHaveBeenCalledOnce();
-    expect(query.mock.calls[0]![0]).toContain('pg_try_advisory_lock');
-    expect(query.mock.calls[1]![0]).toContain('pg_advisory_unlock');
-    expect(query.mock.calls[0]![1]).toEqual(query.mock.calls[1]![1]);
+    expect(defined(query.mock.calls[0])[0]).toContain('pg_try_advisory_lock');
+    expect(defined(query.mock.calls[1])[0]).toContain('pg_advisory_unlock');
+    expect(defined(query.mock.calls[0])[1]).toEqual(defined(query.mock.calls[1])[1]);
     expect(release).toHaveBeenCalledOnce();
-    expect(release.mock.calls[0]![0]).toBeUndefined();
+    expect(defined(release.mock.calls[0])[0]).toBeUndefined();
     expect(client.listenerCount('error')).toBe(0);
   });
 
@@ -78,8 +79,8 @@ describe('group cache fill lock', () => {
     await withGroupCacheFillLock('group-charts:a', async () => 'a');
     await withGroupCacheFillLock('group-charts:b', async () => 'b');
 
-    const lockA = query.mock.calls[0]![1];
-    const lockB = query.mock.calls[2]![1];
+    const lockA = defined(query.mock.calls[0])[1];
+    const lockB = defined(query.mock.calls[2])[1];
     expect(lockA).toEqual([0x62656e63, cacheFillLockId('group-charts:a')]);
     expect(lockB).toEqual([0x62656e63, cacheFillLockId('group-charts:b')]);
     expect(lockA).not.toEqual(lockB);
@@ -108,7 +109,7 @@ describe('group cache fill lock', () => {
       }),
     ).rejects.toBe(failure);
 
-    expect(query.mock.calls[1]![0]).toContain('pg_advisory_unlock');
+    expect(defined(query.mock.calls[1])[0]).toContain('pg_advisory_unlock');
     expect(release).toHaveBeenCalledOnce();
   });
 
@@ -180,14 +181,14 @@ describe('group cache fills in one process', () => {
     await settle();
     // The third waits for a slot without taking a connection.
     expect(connect).toHaveBeenCalledTimes(2);
-    expect(fills[2]!.fill).not.toHaveBeenCalled();
+    expect(defined(fills[2]).fill).not.toHaveBeenCalled();
 
-    fills[0]!.finish();
+    defined(fills[0]).finish();
     await settle();
     expect(connect).toHaveBeenCalledTimes(3);
 
-    fills[1]!.finish();
-    fills[2]!.finish();
+    defined(fills[1]).finish();
+    defined(fills[2]).finish();
     await expect(Promise.all(results)).resolves.toEqual(['a', 'b', 'c']);
   });
 

@@ -285,7 +285,7 @@ async function seededCommitsInWindow(
      ORDER BY timestamp ASC, commit_sha ASC
   `;
   const rows = (await getPool().query<SeededCommitRow>(text, params.values)).rows;
-  const totalCommits = rows.length > 0 ? rows[0]!.total_commits : 0;
+  const totalCommits = rows[0]?.total_commits ?? 0;
   const commits: CommitPoint[] = rows.map((row) => ({
     sha: row.commit_sha,
     timestamp: row.ts_text,
@@ -1078,18 +1078,18 @@ function payloadsFromRows(
   for (const row of rows) {
     totals[row.ord - 1] = row.total_commits;
     if (row.commit_sha !== null) {
-      rowsByChart[row.ord - 1]!.push(row);
+      rowsByChart[row.ord - 1]?.push(row);
     }
   }
   return charts.map((key, i) => {
-    const total = totals[i]!;
+    const total = totals[i] ?? 0;
     if (total === 0) {
       return null;
     }
     const history = historyFor(total, window);
     const acc = new SeriesAccumulator();
     acc.seedCommits(commits.slice(commits.length - history.loaded_commits));
-    for (const row of rowsByChart[i]!) {
+    for (const row of rowsByChart[i] ?? []) {
       recordRow(acc, key.k, row);
     }
     return acc.finish(chartDisplayName(key), chartUnitKind(key), history);
@@ -1616,17 +1616,12 @@ async function mapWithConcurrency<T, R>(
   fn: (item: T, index: number) => Promise<R>,
 ): Promise<R[]> {
   const results = new Array<R>(items.length);
-  let next = 0;
+  // Every worker pulls from this one iterator, so each item runs exactly once.
+  const queue = items.entries();
   const workerCount = Math.max(1, Math.min(limit, items.length));
   const workers = Array.from({ length: workerCount }, async () => {
-    for (;;) {
-      // `next++` is atomic here: single-threaded JS guarantees no await runs
-      // between the read and the increment.
-      const i = next++;
-      if (i >= items.length) {
-        return;
-      }
-      results[i] = await fn(items[i]!, i);
+    for (const [i, item] of queue) {
+      results[i] = await fn(item, i);
     }
   });
   await Promise.all(workers);

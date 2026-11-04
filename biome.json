@@ -64,9 +64,9 @@
       },
       "style": {
         "useImportType": "error",
-        "noNonNullAssertion": "off",
         "noParameterAssign": "error",
-        "noDescendingSpecificity": "error"
+        "noDescendingSpecificity": "error",
+        "noNonNullAssertion": "error"
       },
       "correctness": {
         "noUnusedVariables": {

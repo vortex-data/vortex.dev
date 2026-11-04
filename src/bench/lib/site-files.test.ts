@@ -14,6 +14,7 @@ import {
   sitemapXml,
   summaryLines,
 } from '@/bench/lib/site-files';
+import { defined } from '@/lib/defined';
 
 const VX = 'vortex-file-compressed';
 
@@ -97,7 +98,7 @@ describe('chartSeriesLabel', () => {
 
 describe('summaryLines', () => {
   it('gives a query ranking with its time and coverage', () => {
-    expect(summaryLines(groups[1]!.summary!).slice(2)).toEqual([
+    expect(summaryLines(defined(defined(groups[1]).summary)).slice(2)).toEqual([
       '1. DuckDB on Vortex: 1.00x the fastest, total 3.66 s (all 43 queries)',
       '2. DataFusion on Parquet: 1.60x the fastest, total 5.00 s ' +
         '(40 of 43 queries; each missing one scored with a penalty)',
@@ -105,7 +106,7 @@ describe('summaryLines', () => {
   });
 
   it('gives write and scan throughput against Parquet', () => {
-    const lines = summaryLines(groups[0]!.summary!);
+    const lines = summaryLines(defined(defined(groups[0]).summary));
     expect(lines).toContain('1. Vortex: 2.04x Parquet, 1970 MB/s');
     expect(lines).toContain('1. Vortex: 5.18x Parquet, 51.09 GB/s');
   });

@@ -27,6 +27,7 @@ import {
   syncOpenFragment,
   takeOpenGroupsBootstrap,
 } from '@/bench/lib/open-groups';
+import { defined } from '@/lib/defined';
 
 /** Fake the write scheduler's timers and its clock, `performance.now()`. */
 function useFakeClock(): void {
@@ -256,7 +257,7 @@ describe('the open groups on the page', () => {
       // 123 toggles, 50 ms apart: six seconds of fast clicking, which leaves
       // each group toggled an odd number of times, so open.
       for (let i = 0; i < 123; i++) {
-        toggle(GROUPS[i % 3]!.anchor);
+        toggle(defined(GROUPS[i % 3]).anchor);
         vi.advanceTimersByTime(50);
       }
       expect(replace).toHaveBeenCalledTimes(1);
@@ -275,14 +276,16 @@ describe('the open groups on the page', () => {
         });
         const start = Date.now();
         for (let i = 0; Date.now() - start < 10_000; i++) {
-          toggle(GROUPS[i % 3]!.anchor);
+          toggle(defined(GROUPS[i % 3]).anchor);
           vi.advanceTimersByTime(interval);
         }
         vi.advanceTimersByTime(OPEN_FRAGMENT_SYNC_DELAY_MS);
 
         expect(writes.length).toBeGreaterThan(0);
         for (let i = 1; i < writes.length; i++) {
-          expect(writes[i]! - writes[i - 1]!).toBeGreaterThanOrEqual(OPEN_FRAGMENT_SYNC_DELAY_MS);
+          expect(defined(writes[i]) - defined(writes[i - 1])).toBeGreaterThanOrEqual(
+            OPEN_FRAGMENT_SYNC_DELAY_MS,
+          );
         }
         // At most 34 writes in 10 seconds: with Next.js's extra call per write,
         // 68 calls, below Safari's 100.

@@ -160,7 +160,9 @@ async function checkSitemap(): Promise<string[]> {
     fail("sitemap.xml", `content-type=${r.ctype}`);
     return [];
   }
-  const locs = [...r.body.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]!);
+  const locs = [...r.body.matchAll(/<loc>([^<]+)<\/loc>/g)].flatMap((m) =>
+    m[1] ? [m[1]] : []
+  );
   const required = ["/", "/blog"];
   const paths = locs.map((l) => l.replace(/^https?:\/\/[^/]+/, "") || "/");
   const missing = required.filter((p) => !paths.includes(p));

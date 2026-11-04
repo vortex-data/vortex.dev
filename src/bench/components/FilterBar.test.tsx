@@ -11,6 +11,7 @@ import { FilterBar } from '@/bench/components/FilterBar';
 import { parseFilterCsv, seriesPassesFilter } from '@/bench/lib/chart-format';
 import { getGlobalFilterSnapshot } from '@/bench/lib/chart-store';
 import { resetUrlWrites, URL_WRITE_DELAY_MS } from '@/bench/lib/url-writes';
+import { defined } from '@/lib/defined';
 
 /** Fake the write scheduler's timers and its clock, `performance.now()`. */
 function useFakeClock(): void {
@@ -53,9 +54,9 @@ describe('global filter URL round trips', () => {
 
   async function click(dim: string, value: string): Promise<void> {
     await act(async () => {
-      container
-        .querySelector<HTMLButtonElement>(`[data-filter="${dim}"][data-value="${value}"]`)!
-        .click();
+      defined(
+        container.querySelector<HTMLButtonElement>(`[data-filter="${dim}"][data-value="${value}"]`),
+      ).click();
     });
   }
 

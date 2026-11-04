@@ -6,6 +6,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { defined } from '@/lib/defined';
 
 const css = readFileSync(join(__dirname, 'globals.css'), 'utf8');
 
@@ -20,7 +21,7 @@ describe('PR-5.0.95 spinner CSS', () => {
       /@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{(?:[^{}]|\{[^{}]*\})*\}/g,
     );
     expect(reduced).not.toBeNull();
-    expect(reduced!.join('\n')).toMatch(/\.chart-spinner[\s\S]*animation:\s*none/);
+    expect(defined(reduced).join('\n')).toMatch(/\.chart-spinner[\s\S]*animation:\s*none/);
   });
 });
 
@@ -38,7 +39,7 @@ describe('PR-5.0.97 chart-placeholder CSS', () => {
       /@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{(?:[^{}]|\{[^{}]*\})*\}/g,
     );
     expect(reduced).not.toBeNull();
-    const block = reduced!.join('\n');
+    const block = defined(reduced).join('\n');
     expect(block).toMatch(/\.chart-placeholder\s+\.chart-spinner/);
     expect(block).toMatch(/animation:\s*none/);
   });
@@ -48,7 +49,7 @@ describe('PR-5.0.97 chart-placeholder CSS', () => {
       /@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{(?:[^{}]|\{[^{}]*\})*\}/g,
     );
     expect(reduced).not.toBeNull();
-    const block = reduced!.join('\n');
+    const block = defined(reduced).join('\n');
     // The ring and label must stay visible; display:none is forbidden here.
     expect(block).not.toMatch(/\.chart-placeholder[\s\S]*display\s*:\s*none/);
     expect(block).not.toMatch(/\.chart-placeholder-text[\s\S]*display\s*:\s*none/);

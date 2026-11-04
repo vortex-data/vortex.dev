@@ -278,8 +278,7 @@ export async function seedChartFixture(pool: Pool): Promise<void> {
       [sha, ts, msg, TREE_SHA, commitUrl(sha)],
     );
   }
-  for (let i = 0; i < COMMITS.length; i += 1) {
-    const sha = COMMITS[i]![0];
+  for (const [i, [sha]] of COMMITS.entries()) {
     const bias = i * 50_000;
     // query_measurements: Q1 has two engine/format series, Q2 has one.
     const qm: ReadonlyArray<readonly [number, string, string, number]> = [
