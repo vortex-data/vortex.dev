@@ -3,12 +3,17 @@
 #
 # Check bench on each production deployment of the app. The `vortex` Vercel
 # project builds and deploys the app (the marketing site and bench) through its
-# git integration, which reports every deployment to GitHub. When a production
-# deployment is ready, this runs scripts/verify-web-deploy.mjs against bench's
-# paths under /bench on that deployment's own URL: the build commit in
-# /api/health, a representative group and chart, and the landing and chart
-# pages. It probes the deployment's URL, so it checks the deployment it was
-# told about.
+# git integration, which records each deployment as a GitHub deployment. On
+# each push to main, this waits for that commit's production deployment, then
+# runs scripts/verify-web-deploy.mjs against bench's paths under /bench on that
+# deployment's own URL: the build commit in /api/health, a representative
+# group and chart, and the landing and chart pages. It probes the deployment's
+# URL, so it checks the deployment of this commit.
+#
+# It runs on push, not on `deployment_status`: `on:` cannot filter that event
+# by environment, so each preview deployment started a run that skipped the
+# job and showed "Bench: verify production deploy" as a skipped check on every
+# pull request.
 #
 # The CDN check (a cache HIT on a repeated landing page and chart API request)
 # runs on BENCH_SITE_BASE_URL, bench.vortex.dev, because production caches only
@@ -24,32 +29,66 @@
 name: Bench Verify Deploy
 
 on:
-  deployment_status:
+  push:
+    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
+  deployments: read
 
 concurrency:
-  group: bench-verify-deploy-${{ github.event.deployment.id }}
+  group: bench-verify-deploy-${{ github.sha }}
   cancel-in-progress: false
 
 jobs:
   verify:
     name: "Bench: verify production deploy"
-    # Only Vercel's own production deployments, once they succeed. Vercel
-    # names the environment "Production", or "Production – <project>" when a
-    # repository has several projects.
-    if: >-
-      github.event.deployment_status.state == 'success' &&
-      github.event.deployment_status.creator.login == 'vercel[bot]' &&
-      startsWith(github.event.deployment.environment, 'Production')
+    # Only main deploys to production; a manual run on another branch would
+    # wait for a deployment that never comes.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 30
     steps:
+      # Vercel's git integration records the production deployment of each
+      # push to main as a GitHub deployment in the "Production" environment
+      # ("Production – <project>" when a repository has several projects), and
+      # its success status holds the deployment's URL. A build takes a few
+      # minutes. The lighthouse.yml jobs wait for a commit's preview the same
+      # way (.github/actions/preview-proxy).
+      - name: Wait for the Vercel production deployment
+        id: deployment
+        timeout-minutes: 21
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+        # No `set -e`: a failed API call is retried on the next pass.
+        run: |
+          deployments="repos/${GITHUB_REPOSITORY}/deployments"
+          for _ in $(seq 1 80); do
+            id="$(gh api "${deployments}?sha=${SHA}" \
+              --jq 'map(select(.creator.login == "vercel[bot]" and (.environment | startswith("Production"))))[0].id // empty')"
+            if [ -n "${id}" ]; then
+              read -r state url < <(gh api "${deployments}/${id}/statuses" \
+                --jq '.[0] | "\(.state) \(.environment_url // "")"')
+              case "${state}" in
+                success)
+                  echo "Production deployment: ${url}"
+                  echo "url=${url}" >> "$GITHUB_OUTPUT"
+                  exit 0 ;;
+                failure | error)
+                  echo "::error::The Vercel production deployment of ${SHA} failed."
+                  exit 1 ;;
+              esac
+            fi
+            sleep 15
+          done
+          echo "::error::No Vercel production deployment of ${SHA} after 20 minutes."
+          exit 1
+
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
-          ref: ${{ github.event.deployment.sha }}
           persist-credentials: false
 
       - name: Setup Node
@@ -60,8 +99,8 @@ jobs:
       - name: Verify bench on the deployment
         timeout-minutes: 4
         env:
-          DEPLOY_URL: ${{ github.event.deployment_status.environment_url }}
-          EXPECTED_SHA: ${{ github.event.deployment.sha }}
+          DEPLOY_URL: ${{ steps.deployment.outputs.url }}
+          EXPECTED_SHA: ${{ github.sha }}
           VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
           # bench.vortex.dev, where the CDN check runs. Unset, the check is skipped.
           CDN_URL: ${{ vars.BENCH_SITE_BASE_URL }}
