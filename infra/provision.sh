@@ -44,7 +44,8 @@
 #   9. Creates three GitHub Actions OIDC IAM roles trusted to
 #      `token.actions.githubusercontent.com`, each scoped to one instance dbuser:
 #        - `GitHubBenchmarkSchemaRole`: `rds-db:connect` on the `migrator`
-#          Postgres user (schema deploys; migration 002 in PR-1.3). One branch.
+#          Postgres user (schema deploys; migration 002 in PR-1.3). One GitHub
+#          environment, `bench-production`, which only `main` can deploy to.
 #        - `GitHubBenchmarkIngestRole`: `rds-db:connect` on the `bench_ingest`
 #          Postgres user (Phase-2 CI dual-write ingest; migration 004 in PR-2.1).
 #          One branch.
@@ -98,7 +99,7 @@ readonly SCHEMA_ROLE_NAME="${SCHEMA_ROLE_NAME:-GitHubBenchmarkSchemaRole}"
 readonly INGEST_ROLE_NAME="${INGEST_ROLE_NAME:-GitHubBenchmarkIngestRole}"
 readonly READ_ROLE_NAME="${READ_ROLE_NAME:-GitHubBenchmarkReadRole}"
 readonly SCHEMA_GITHUB_REPO="${SCHEMA_GITHUB_REPO:-vortex-data/vortex.dev}"
-readonly SCHEMA_GITHUB_BRANCH="${SCHEMA_GITHUB_BRANCH:-main}"
+readonly SCHEMA_GITHUB_ENVIRONMENT="${SCHEMA_GITHUB_ENVIRONMENT:-bench-production}"
 readonly INGEST_GITHUB_REPO="${INGEST_GITHUB_REPO:-vortex-data/vortex}"
 readonly INGEST_GITHUB_BRANCH="${INGEST_GITHUB_BRANCH:-develop}"
 readonly READ_GITHUB_REPO="${READ_GITHUB_REPO:-vortex-data/vortex}"
@@ -566,10 +567,11 @@ ensure_oidc_provider() {
     OIDC_PROVIDER_ARN="$provider_arn"
 }
 
-# Exact subjects deliberately exclude PRs, tags, and retired migration branches.
-# Reprovisioning replaces trust with this declared policy, including on existing roles.
+# One exact subject, `repo:<repo>:<context>`, deliberately excludes PRs, tags, and
+# retired migration branches. Reprovisioning replaces trust with this declared
+# policy, including on existing roles.
 github_trust_policy() {
-    jq -n --arg account "$TARGET_ACCOUNT" --arg repo "$1" --arg branch "$2" '{
+    jq -n --arg account "$TARGET_ACCOUNT" --arg subject "repo:$1:$2" '{
       Version: "2012-10-17",
       Statement: [{
         Effect: "Allow",
@@ -577,10 +579,18 @@ github_trust_policy() {
         Action: "sts:AssumeRoleWithWebIdentity",
         Condition: {StringEquals: {
           "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
-          "token.actions.githubusercontent.com:sub": ("repo:" + $repo + ":ref:refs/heads/" + $branch)
+          "token.actions.githubusercontent.com:sub": $subject
         }}
       }]
     }'
+}
+
+# A job that names a GitHub environment gets the subject
+# `repo:<repo>:environment:<name>`, with no ref. The schema deploy runs in
+# `bench-production`, whose deployment branch policy admits only `main` and whose
+# reviewers approve each run, so the environment stands in for the branch.
+schema_trust_policy() {
+    github_trust_policy "$SCHEMA_GITHUB_REPO" "environment:$SCHEMA_GITHUB_ENVIRONMENT"
 }
 
 # The read role can only SELECT, so it trusts every branch and the repository's
@@ -609,7 +619,7 @@ ensure_schema_role() {
     ensure_oidc_provider
 
     local trust_policy
-    trust_policy=$(github_trust_policy "$SCHEMA_GITHUB_REPO" "$SCHEMA_GITHUB_BRANCH")
+    trust_policy=$(schema_trust_policy)
 
     if SCHEMA_ROLE_ARN=$(aws iam get-role --role-name "$SCHEMA_ROLE_NAME" \
             --query 'Role.Arn' --output text 2>/dev/null); then
@@ -661,7 +671,7 @@ ensure_ingest_role() {
     ensure_oidc_provider
 
     local trust_policy
-    trust_policy=$(github_trust_policy "$INGEST_GITHUB_REPO" "$INGEST_GITHUB_BRANCH")
+    trust_policy=$(github_trust_policy "$INGEST_GITHUB_REPO" "ref:refs/heads/$INGEST_GITHUB_BRANCH")
 
     if INGEST_ROLE_ARN=$(aws iam get-role --role-name "$INGEST_ROLE_NAME" \
             --query 'Role.Arn' --output text 2>/dev/null); then
@@ -823,11 +833,12 @@ EOF
 
 main() {
     [ -z "${GITHUB_REPO+x}" ] || die "GITHUB_REPO was replaced by SCHEMA_GITHUB_REPO, INGEST_GITHUB_REPO and READ_GITHUB_REPO."
+    [ -z "${SCHEMA_GITHUB_BRANCH+x}" ] || die "SCHEMA_GITHUB_BRANCH was replaced by SCHEMA_GITHUB_ENVIRONMENT."
     if [ "$#" -gt 0 ]; then
         if [ "$#" -eq 2 ] && [ "$1" = "--print-trust" ]; then
             case "$2" in
-                schema) github_trust_policy "$SCHEMA_GITHUB_REPO" "$SCHEMA_GITHUB_BRANCH" ;;
-                ingest) github_trust_policy "$INGEST_GITHUB_REPO" "$INGEST_GITHUB_BRANCH" ;;
+                schema) schema_trust_policy ;;
+                ingest) github_trust_policy "$INGEST_GITHUB_REPO" "ref:refs/heads/$INGEST_GITHUB_BRANCH" ;;
                 read) github_read_trust_policy "$READ_GITHUB_REPO" ;;
                 *) die "Expected schema, ingest or read." ;;
             esac

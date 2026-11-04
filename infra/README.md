@@ -369,12 +369,20 @@ it had no client connections from 2026-05-31 to 2026-10-28.
 
 ## OIDC trust inputs
 
-`SCHEMA_GITHUB_REPO` and `SCHEMA_GITHUB_BRANCH` default to `vortex-data/vortex.dev` and
-`main`; `INGEST_GITHUB_REPO` and `INGEST_GITHUB_BRANCH` default to `vortex-data/vortex` and
-`develop`. Each role trusts only that one `refs/heads/<branch>` subject with the
+`INGEST_GITHUB_REPO` and `INGEST_GITHUB_BRANCH` default to `vortex-data/vortex` and `develop`,
+and the ingest role trusts only that one `ref:refs/heads/<branch>` subject with the
 `sts.amazonaws.com` audience. PRs, tags, environments, other branches and the former
-`vortex-data/benchmarks-website` repository are excluded. Manual schema deploys must select `main`.
-The old shared `GITHUB_REPO` input is rejected to prevent an ambiguous role assignment.
+`vortex-data/benchmarks-website` repository are excluded.
+
+`SCHEMA_GITHUB_REPO` and `SCHEMA_GITHUB_ENVIRONMENT` default to `vortex-data/vortex.dev` and
+`bench-production`, and the schema role trusts only the subject
+`repo:<repo>:environment:<environment>`. A job that names an environment gets that subject with no
+ref, so the environment carries the branch rule: `bench-production` admits only `main` (its
+deployment branch policy), and its required reviewers approve each run before the job gets a token.
+Keep both settings on the environment. Manual schema deploys must select `main`.
+
+The old shared `GITHUB_REPO` input and the old `SCHEMA_GITHUB_BRANCH` input are rejected, so a
+stale input cannot assign a role the wrong subject.
 
 The read role is the exception. `READ_GITHUB_REPO` defaults to `vortex-data/vortex`, and the role
 trusts `repo:<repo>:ref:refs/heads/*` and `repo:<repo>:pull_request`, so a benchmark run on a PR
