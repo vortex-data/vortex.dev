@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ListIcon } from '@/bench/components/icons';
 
 import { openAndScrollTo, syncOpenFragment } from '@/bench/lib/open-groups';
+import { returnFocusToTrigger } from '@/bench/lib/panel-focus';
 
 /**
  * A group entry for the jump menu: its display name and the `data-group-slug`
@@ -18,14 +19,14 @@ export interface GroupNavItem {
 }
 
 /**
- * Open and scroll to the landing-page section for `slug`.
+ * Open, scroll to, and focus the landing-page section for `slug`.
  *
  * Finds the group's `<section data-group-slug>` and hands it to
  * [`openAndScrollTo`] (`lib/open-groups.ts`), which opens its
  * `<details class="group-disclosure">` (setting `open` fires the native
  * `toggle` event that mounts the group's body) and scrolls it into view,
- * smoothly unless the visitor prefers reduced motion. Returns `true` when the
- * section was found.
+ * smoothly unless the visitor prefers reduced motion. It then moves focus to
+ * the group's `<summary>`. Returns `true` when the section was found.
  *
  * Exported so the menu's jump behavior is unit-testable without rendering.
  */
@@ -37,6 +38,10 @@ export function jumpToGroup(slug: string, doc: Document = document): boolean {
     return false;
   }
   openAndScrollTo(section, doc);
+  // Focus follows the jump, as it follows an in-page link: the group's
+  // <summary> takes it, so the next Tab moves on inside that group. Without
+  // scrolling, so the focus does not cut the smooth scroll short.
+  section.querySelector<HTMLElement>('summary')?.focus({ preventScroll: true });
   return true;
 }
 
@@ -52,7 +57,10 @@ export function jumpToGroup(slug: string, doc: Document = document): boolean {
  *
  * Toggle-driven (not hover) so it works on touch and keyboard, mirroring the
  * header's hamburger nav ([`Header`]): `aria-expanded` / `aria-controls` on the
- * toggle, with outside-click and Escape closing the panel. Renders nothing when
+ * toggle, with outside-click and Escape closing the panel. Escape returns
+ * focus to the toggle when the panel held it, and a jump moves focus to the
+ * group, so focus never stays in the hidden panel (the WAI-ARIA disclosure
+ * pattern). Renders nothing when
  * there are no groups. Without JavaScript neither the toggle nor the entries
  * work, so the whole menu carries `data-requires-js` and is hidden.
  */
@@ -74,6 +82,7 @@ export function GroupNav({ groups }: { groups: GroupNavItem[] }) {
     };
     const onKey = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') {
+        returnFocusToTrigger(panelRef.current, toggleRef.current);
         setOpen(false);
       }
     };
@@ -125,6 +134,9 @@ export function GroupNav({ groups }: { groups: GroupNavItem[] }) {
                   // `hashchange`, so the jump does not scroll twice.
                   if (jumpToGroup(group.slug)) {
                     syncOpenFragment(window);
+                  } else {
+                    // No group to take focus: keep it off the closing panel.
+                    toggleRef.current?.focus();
                   }
                   setOpen(false);
                 }}

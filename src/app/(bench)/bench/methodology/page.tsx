@@ -29,7 +29,7 @@ export default function MethodologyPage() {
   return (
     <>
       <BenchHeader />
-      <main>
+      <main id="main" tabIndex={-1}>
         <article className="methodology">
           <h2>Methodology</h2>
           <p>

@@ -244,26 +244,82 @@ describe('GroupPermalink click behavior', () => {
     expect(link.className).not.toContain('group-permalink--copied');
   });
 
-  it.each(['missing', 'rejected'])(
-    'does not claim a copy the browser refused (%s)',
-    async (clipboard) => {
-      Object.defineProperty(navigator, 'clipboard', {
-        value:
-          clipboard === 'missing'
-            ? undefined
-            : {
-                writeText: () => Promise.reject(new DOMException('denied', 'NotAllowedError')),
-              },
-        configurable: true,
-      });
-      const { link } = mount();
+  it('follows the link where the browser has no Clipboard API', async () => {
+    Object.defineProperty(navigator, 'clipboard', { value: undefined, configurable: true });
+    const { link, details } = mount();
 
+    const event = await click(link);
+
+    expect(event.defaultPrevented).toBe(false);
+    expect(link.className).not.toContain('group-permalink--copied');
+    expect(link.querySelector('[role="status"]')?.textContent).toBe('');
+    expect(details.open).toBe(false);
+  });
+
+  it('keeps the link wording where the browser has no Clipboard API', () => {
+    Object.defineProperty(navigator, 'clipboard', { value: undefined, configurable: true });
+    const { link } = mount();
+    expect(link.getAttribute('aria-label')).toBe('Link to Random Access');
+    expect(link.getAttribute('title')).toBe('Link to this group');
+  });
+
+  // FilterBar makes a pending filter write in a capturing click listener,
+  // after the pointerdown that last set the href.
+  it('follows the URL as it is at the click where the browser has no Clipboard API', async () => {
+    Object.defineProperty(navigator, 'clipboard', { value: undefined, configurable: true });
+    const { link } = mount();
+    act(() => {
+      link.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    });
+    expect(link.getAttribute('href')).toBe('/#random-access');
+    const flush = (): void => {
+      window.history.replaceState(null, '', '/?engine=duckdb');
+    };
+    document.addEventListener('click', flush, true);
+    try {
       await click(link);
+    } finally {
+      document.removeEventListener('click', flush, true);
+    }
+    expect(link.getAttribute('href')).toBe('/?engine=duckdb#random-access');
+  });
 
-      expect(link.className).not.toContain('group-permalink--copied');
-      expect(link.querySelector('[role="status"]')?.textContent).toBe('');
-    },
-  );
+  it('follows the link on Space where the browser has no Clipboard API', async () => {
+    Object.defineProperty(navigator, 'clipboard', { value: undefined, configurable: true });
+    const { link } = mount();
+    const clicks: MouseEvent[] = [];
+    link.addEventListener('click', (e) => clicks.push(e));
+    const event = new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true });
+
+    await act(async () => {
+      link.dispatchEvent(event);
+    });
+
+    // Space activates the link as Enter does, and does not scroll the page.
+    expect(event.defaultPrevented).toBe(true);
+    expect(clicks).toHaveLength(1);
+    expect(clicks[0]?.defaultPrevented).toBe(false);
+  });
+
+  it('says the link was not copied when the browser refuses the write', async () => {
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: () => Promise.reject(new DOMException('denied', 'NotAllowedError')) },
+      configurable: true,
+    });
+    const { link } = mount();
+
+    const event = await click(link);
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(link.className).not.toContain('group-permalink--copied');
+    expect(link.querySelector('[role="status"]')?.textContent).toBe('Link not copied.');
+
+    // The message clears after the feedback window, as the copied state does.
+    act(() => {
+      vi.advanceTimersByTime(2000);
+    });
+    expect(link.querySelector('[role="status"]')?.textContent).toBe('');
+  });
 
   it('copies the current group-local series filter', async () => {
     const { link } = mount();

@@ -1555,3 +1555,37 @@ test.describe("heading anchors", () => {
       .toBe("1");
   });
 });
+
+// WCAG 2.4.1: a "Skip to content" link is the first tab stop on every page.
+// It shows only while it has focus, and it moves focus to the page's main,
+// with or without JavaScript, so the next Tab starts in the content.
+test.describe("skip link", () => {
+  for (const js of [true, false]) {
+    test(`skips the header to the main content ${js ? "with" : "without"} JavaScript`, async ({
+      browser,
+      browserName
+    }) => {
+      test.skip(browserName !== "chromium", "Tab order is Chromium's");
+      const context = await browser.newContext({ javaScriptEnabled: js });
+      const page = await context.newPage();
+      await page.goto("/blog");
+      const skip = page.getByRole("link", { name: "Skip to content" });
+      const width = async () => (await skip.boundingBox())?.width ?? 0;
+      expect(await width()).toBeLessThanOrEqual(1);
+      await page.keyboard.press("Tab");
+      await expect(skip).toBeFocused();
+      expect(await width()).toBeGreaterThan(40);
+      await page.keyboard.press("Enter");
+      await expect(page.locator("main#main")).toBeFocused();
+      expect(await width()).toBeLessThanOrEqual(1);
+      await page.keyboard.press("Tab");
+      const inMain = await page.evaluate(
+        () =>
+          document.querySelector("main")?.contains(document.activeElement) ??
+          false
+      );
+      expect(inMain).toBe(true);
+      await context.close();
+    });
+  }
+});

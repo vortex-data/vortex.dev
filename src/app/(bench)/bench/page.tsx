@@ -133,7 +133,7 @@ function HomeContent({ data: [params, groups, universe] }: { data: LandingData }
         initialFormats={initialFormats}
       />
       <GroupNav groups={groups.map((group) => ({ name: group.name, slug: group.slug }))} />
-      <main>
+      <main id="main" tabIndex={-1}>
         {groups.length === 0 ? (
           <p className="empty">No data ingested yet.</p>
         ) : (

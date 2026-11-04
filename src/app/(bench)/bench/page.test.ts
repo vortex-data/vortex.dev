@@ -103,7 +103,8 @@ describe('the landing page', () => {
     const note = html.indexOf(
       '<noscript><p class="no-script no-script--lead">These summaries are complete without JavaScript. The charts need it.</p></noscript>',
     );
-    expect(note).toBeGreaterThan(html.indexOf('<main>'));
+    expect(html).toContain('<main id="main" tabindex="-1">');
+    expect(note).toBeGreaterThan(html.indexOf('<main id="main"'));
     expect(note).toBeLessThan(html.indexOf('class="group-details"'));
   });
 

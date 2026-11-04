@@ -246,6 +246,65 @@ describe('LandingState', () => {
     expect(scrollSpy.mock.contexts[0]).toBe(document.getElementById('random-access'));
   });
 
+  // The loading view's main, which the skip link focused, is replaced when
+  // the groups arrive, and focus falls to the body.
+  it('gives focus to the new main when the skip link named it and focus fell to the body', async () => {
+    const main = document.createElement('main');
+    main.id = 'main';
+    main.tabIndex = -1;
+    document.body.appendChild(main);
+    await mount('/#main');
+    expect(document.activeElement).toBe(main);
+  });
+
+  it('leaves focus alone when the reader has moved it, or the fragment names no skip target', async () => {
+    const main = document.createElement('main');
+    main.id = 'main';
+    main.tabIndex = -1;
+    document.body.appendChild(main);
+    const summary = defined(document.querySelector<HTMLElement>('summary'));
+    summary.tabIndex = 0;
+    summary.focus();
+    await mount('/#main');
+    expect(document.activeElement).toBe(summary);
+    await act(async () => {
+      root?.unmount();
+    });
+    summary.blur();
+    await mount('/#clickbench');
+    expect(document.activeElement).toBe(document.body);
+  });
+
+  // A fragment jump would add a `#main` history entry, which the hashchange
+  // handler then rewrites to the open groups, so Back would seem to do
+  // nothing.
+  it('moves focus to main on a skip link click without adding a history entry', async () => {
+    const main = document.createElement('main');
+    main.id = 'main';
+    main.tabIndex = -1;
+    const skip = document.createElement('a');
+    skip.className = 'vx-skip-link';
+    skip.href = '#main';
+    document.body.prepend(skip);
+    document.body.appendChild(main);
+    await mount('/#clickbench');
+    const length = window.history.length;
+
+    const click = new MouseEvent('click', { bubbles: true, cancelable: true });
+    skip.dispatchEvent(click);
+    expect(click.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(main);
+    expect(window.location.hash).toBe('#clickbench');
+    expect(window.history.length).toBe(length);
+
+    // A modified click is left to the browser.
+    main.blur();
+    const modified = new MouseEvent('click', { bubbles: true, cancelable: true, metaKey: true });
+    skip.dispatchEvent(modified);
+    expect(modified.defaultPrevented).toBe(false);
+    expect(document.activeElement).not.toBe(main);
+  });
+
   it('ignores a malformed fragment', async () => {
     await mount('/#%E0%A4%A');
     await flush();

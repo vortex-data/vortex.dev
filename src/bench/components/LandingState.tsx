@@ -57,6 +57,11 @@ function chartLinkSelector(chartPath: string): string {
  *   the new fragment, then opens what it lists, rewrites the fragment to the
  *   whole open set (a group that was already open fires no `toggle`, so
  *   nothing else would) and scrolls to the first listed group.
+ * - **Skip target.** A plain click on the skip link moves focus to main
+ *   without the fragment jump, which would add a history entry that the
+ *   fragment writer then rewrites. If the skip link focused the loading
+ *   view's main, the first mount gives focus to the main that replaced it
+ *   ([`refocusSkipTarget`]).
  * - **Scroll** (`lib/scroll-restore.ts`). While no group is open, the page
  *   keeps `history.scrollRestoration = 'auto'`: the collapsed list is as tall
  *   before hydration as after, so the browser's own restoration lands right,
@@ -95,6 +100,10 @@ export function LandingState(): null {
   useEffect(() => {
     let active = true;
     const { history } = window;
+    if (firstRun.current === undefined) {
+      // Before the first run rewrites the fragment.
+      refocusSkipTarget(document, window.location.hash);
+    }
     // Before anything here changes it: on a reload or Back, the mode the
     // history entry kept, which the browser has just used.
     firstRun.current ??= openOnFirstRun();
@@ -183,8 +192,34 @@ export function LandingState(): null {
       syncOpenFragment(window);
       scrollToGroupAfter(groupBodiesReady(openGroupSlugs(document)).mounted, listedNow[0]);
     };
+    // The skip link's fragment jump would add a `#main` history entry, which
+    // `onHashChange` rewrites to the open groups, so the first Back would seem
+    // to do nothing. Move focus here instead, and scroll as the jump does.
+    // Without JavaScript the fragment does the same.
+    const onSkipLink = (event: MouseEvent): void => {
+      if (
+        event.defaultPrevented ||
+        event.button !== 0 ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey
+      ) {
+        return;
+      }
+      const link = (event.target as Element | null)?.closest?.('a.vx-skip-link');
+      const main = document.getElementById('main');
+      if (!link || main === null) {
+        return;
+      }
+      event.preventDefault();
+      cancelRestore();
+      main.focus({ preventScroll: true });
+      main.scrollIntoView({ block: 'start' });
+    };
     document.addEventListener('toggle', onToggle, true);
     document.addEventListener('click', onClick, true);
+    document.addEventListener('click', onSkipLink);
     document.addEventListener('visibilitychange', onVisibilityChange);
     window.addEventListener('pagehide', saveOnLeave);
     window.addEventListener('hashchange', onHashChange);
@@ -196,6 +231,7 @@ export function LandingState(): null {
       cancelOpenFragmentSync(window);
       document.removeEventListener('toggle', onToggle, true);
       document.removeEventListener('click', onClick, true);
+      document.removeEventListener('click', onSkipLink);
       document.removeEventListener('visibilitychange', onVisibilityChange);
       window.removeEventListener('pagehide', saveOnLeave);
       window.removeEventListener('hashchange', onHashChange);
@@ -203,6 +239,20 @@ export function LandingState(): null {
     };
   }, [chartLink]);
   return null;
+}
+/**
+ * When the landing page's data is slow, the skip link can focus the loading
+ * view's main ([`HomeLoading`]). The groups replace that main with their own,
+ * and focus falls to the body, so the next Tab would start at the top of the
+ * page again. If the fragment still names the skip target and nothing holds
+ * focus, give focus to the new main. Without the loading view the skip link's
+ * main stays, keeps focus, and this does nothing.
+ */
+function refocusSkipTarget(doc: Document, hash: string): void {
+  const active = doc.activeElement;
+  if (hash === '#main' && (active === null || active === doc.body)) {
+    doc.getElementById('main')?.focus({ preventScroll: true });
+  }
 }
 /** What [`LandingState`]'s first run found: the saved position, the listed
  * groups that are open, whether the reader moved before hydration, and the
