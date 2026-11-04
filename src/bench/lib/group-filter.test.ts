@@ -17,6 +17,24 @@ describe('parseGroupFilter', () => {
       groupAnchor: 'random-access',
       hiddenSeries: ['a', 'b'],
       shownSeries: ['lance'],
+      hiddenEngines: [],
+      hiddenFormats: [],
+    });
+  });
+
+  it('parses the Engine and Format rows', () => {
+    expect(
+      parseGroupFilter({
+        group: 'tpc-h-nvme-sf-1',
+        'hide-engine': ['datafusion', 'datafusion'],
+        'hide-format': 'parquet',
+      }),
+    ).toEqual({
+      groupAnchor: 'tpc-h-nvme-sf-1',
+      hiddenSeries: [],
+      shownSeries: [],
+      hiddenEngines: ['datafusion'],
+      hiddenFormats: ['parquet'],
     });
   });
 
@@ -25,6 +43,8 @@ describe('parseGroupFilter', () => {
       groupAnchor: 'random-access',
       hiddenSeries: [],
       shownSeries: ['lance'],
+      hiddenEngines: [],
+      hiddenFormats: [],
     });
   });
 

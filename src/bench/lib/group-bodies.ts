@@ -2,6 +2,7 @@
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
 import { initGroupFilter } from '@/bench/lib/chart-store';
+import type { GroupFilterChoices } from '@/bench/lib/group-filter';
 
 /**
  * Page-load bookkeeping for the landing page's group bodies ([`GroupBody`]).
@@ -79,20 +80,16 @@ export function groupBodiesReady(groupSlugs: readonly string[]): GroupBodiesRead
 }
 
 /**
- * Seed one group's series overrides from the page URL ([`initGroupFilter`]),
+ * Seed one group's filter rows from the page URL ([`initGroupFilter`]),
  * the first time per group per page load. A body that closes and reopens, or
  * remounts, must not overwrite what the user has changed since.
  */
-export function seedGroupFilterOnce(
-  groupSlug: string,
-  hiddenSeries: readonly string[],
-  shownSeries: readonly string[],
-): void {
+export function seedGroupFilterOnce(groupSlug: string, choices: GroupFilterChoices): void {
   if (seededGroups.has(groupSlug)) {
     return;
   }
   seededGroups.add(groupSlug);
-  initGroupFilter(groupSlug, hiddenSeries, shownSeries);
+  initGroupFilter(groupSlug, choices);
 }
 
 /** Forget every note, wait and seed. TEST-ONLY: production never resets within

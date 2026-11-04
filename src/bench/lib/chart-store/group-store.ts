@@ -2,6 +2,7 @@
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
 import { seriesPassesFilter, seriesPassesGroupFilter } from '@/bench/lib/chart-format';
+import type { GroupFilterChoices } from '@/bench/lib/group-filter';
 import type { SeriesTag } from '@/bench/lib/queries';
 
 import { getGlobalFilterSnapshot, type GlobalFilterSnapshot } from './global-filter';
@@ -91,24 +92,28 @@ export function getGroupSnapshot(slug: string): GroupSnapshot {
   return groupStore(slug).snapshot;
 }
 
-/** Seed one group's local series overrides from the current page URL. */
-export function initGroupFilter(
-  slug: string,
-  hiddenSeries: readonly string[],
-  shownSeries: readonly string[] = [],
-): void {
+function sameList(a: readonly string[], b: readonly string[]): boolean {
+  return a.length === b.length && a.every((value, index) => value === b[index]);
+}
+
+/** Seed one group's filter rows from the current page URL. */
+export function initGroupFilter(slug: string, choices: GroupFilterChoices): void {
   const prev = groupStore(slug).snapshot;
-  const nextShown = [...new Set(shownSeries)];
-  const nextHidden = [...new Set(hiddenSeries)].filter((label) => !nextShown.includes(label));
+  const shownSeries = [...new Set(choices.shownSeries)];
+  const hiddenSeries = [...new Set(choices.hiddenSeries)].filter(
+    (label) => !shownSeries.includes(label),
+  );
+  const hiddenEngines = [...new Set(choices.hiddenEngines)];
+  const hiddenFormats = [...new Set(choices.hiddenFormats)];
   if (
-    prev.hiddenSeries.length === nextHidden.length &&
-    prev.hiddenSeries.every((label, index) => label === nextHidden[index]) &&
-    prev.shownSeries.length === nextShown.length &&
-    prev.shownSeries.every((label, index) => label === nextShown[index])
+    sameList(prev.hiddenSeries, hiddenSeries) &&
+    sameList(prev.shownSeries, shownSeries) &&
+    sameList(prev.hiddenEngines, hiddenEngines) &&
+    sameList(prev.hiddenFormats, hiddenFormats)
   ) {
     return;
   }
-  setGroupSnapshot(slug, { ...prev, hiddenSeries: nextHidden, shownSeries: nextShown });
+  setGroupSnapshot(slug, { ...prev, hiddenSeries, shownSeries, hiddenEngines, hiddenFormats });
 }
 
 /** The shared empty snapshot, for islands that have no enclosing group. */
@@ -154,21 +159,6 @@ export function groupSeriesIsVisible(
   );
 }
 
-/**
- * Every series the group hides, sorted: the Series row's hidden series, and
- * each known series that the Engine or Format row hides and the Series row
- * does not show. A permalink names series, so it carries this list.
- */
-export function groupHiddenSeries(snapshot: GroupSnapshot): string[] {
-  const hidden = new Set(snapshot.hiddenSeries);
-  for (const [label, tag] of Object.entries(snapshot.knownSeries)) {
-    if (groupRowsHide(snapshot, tag) && !snapshot.shownSeries.includes(label)) {
-      hidden.add(label);
-    }
-  }
-  return [...hidden].sort();
-}
-
 /** The known series whose `dim` tag is `value`. */
 function seriesMatching(
   snapshot: GroupSnapshot,
@@ -182,8 +172,9 @@ function seriesMatching(
 
 /**
  * Whether an Engine or Format chip is on: its row does not hide it, and at
- * least one series it covers shows. It reads its own row only, so turning a
- * format off leaves every engine chip on.
+ * least one series it covers shows when the other row hides nothing. It reads
+ * its own row only, so turning a format off leaves every engine chip on, even
+ * an engine whose every series has that format.
  */
 export function groupMacroIsActive(
   snapshot: GroupSnapshot,
@@ -192,11 +183,13 @@ export function groupMacroIsActive(
   global: GlobalFilterSnapshot = getGlobalFilterSnapshot(),
 ): boolean {
   const hidden = dim === 'engine' ? snapshot.hiddenEngines : snapshot.hiddenFormats;
-  return (
-    !hidden.includes(value) &&
-    seriesMatching(snapshot, dim, value).some((label) =>
-      groupSeriesIsVisible(snapshot, label, global),
-    )
+  if (hidden.includes(value)) {
+    return false;
+  }
+  const ownRow: GroupSnapshot =
+    dim === 'engine' ? { ...snapshot, hiddenFormats: [] } : { ...snapshot, hiddenEngines: [] };
+  return seriesMatching(snapshot, dim, value).some((label) =>
+    groupSeriesIsVisible(ownRow, label, global),
   );
 }
 

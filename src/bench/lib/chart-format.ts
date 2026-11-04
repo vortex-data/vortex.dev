@@ -578,14 +578,19 @@ export function pickDisplayUnit(
 
 /**
  * The unit a chart's y-axis is drawn in, for the chart page's meta line: the
- * display unit [`pickDisplayUnit`] picks from the payload's values (`ms` for
- * a chart stored in nanoseconds), or the kind's own word for a dimensionless
- * kind, whose axis has no unit.
+ * display unit's suffix (`ms` for a chart stored in nanoseconds), or the
+ * kind's own word for a dimensionless kind, whose axis has no unit.
  */
+export function displayUnitLabel(unit: DisplayUnit, unitKind: UnitKind): string {
+  return unit.suffix || unitKindLabel(unitKind);
+}
+
+/** [`displayUnitLabel`] for the unit [`pickDisplayUnit`] picks from a payload's
+ * values, as the chart does when it first draws them. */
 export function chartUnitLabel(chart: Pick<ChartResponse, 'unit_kind' | 'series'>): string {
-  return (
-    pickDisplayUnit(chart.unit_kind, collectAllValues(chart)).suffix ||
-    unitKindLabel(chart.unit_kind)
+  return displayUnitLabel(
+    pickDisplayUnit(chart.unit_kind, collectAllValues(chart)),
+    chart.unit_kind,
   );
 }
 

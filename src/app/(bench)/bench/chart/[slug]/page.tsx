@@ -6,6 +6,7 @@ import { notFound, permanentRedirect, redirect } from 'next/navigation';
 import { cache } from 'react';
 
 import { Chart } from '@/bench/components/Chart';
+import { ChartUnit } from '@/bench/components/ChartUnit';
 import { Footer } from '@/bench/components/Footer';
 import { BenchHeader } from '@/bench/components/BenchHeader';
 import {
@@ -204,7 +205,7 @@ export default async function ChartPage({
       <main>
         <p className="chart-meta">
           {'unit: '}
-          <code>{chartUnitLabel(chart)}</code>
+          <ChartUnit slug={slug} initial={chartUnitLabel(chart)} />
           {' · '}
           {seriesCount} series · {commitCount} commit{commitCount !== 1 ? 's' : ''}
         </p>

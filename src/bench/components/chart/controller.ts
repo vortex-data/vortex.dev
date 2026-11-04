@@ -10,6 +10,7 @@ import {
   commitDateLabel,
   decimateSeries,
   DEFAULT_VISIBLE,
+  displayUnitLabel,
   FETCH_N,
   FETCH_TIMEOUT_MS,
   HOVER_DWELL_MS,
@@ -41,6 +42,7 @@ import {
   noteChartRecentData,
   noteGroupSeries,
   retryGroupBundle,
+  setChartUnitLabel,
   subscribeGroupBundleRetry,
 } from '@/bench/lib/chart-store';
 import { unlessPageLeft } from '@/bench/lib/page-leave';
@@ -595,6 +597,7 @@ export class ChartController {
       // Lock the display unit for the lifetime of this loaded payload; it is
       // recomputed only when `replaceChartPayload` swaps in the wider window.
       state.displayUnit = pickDisplayUnit(payload.unit_kind, collectAllValues(payload));
+      setChartUnitLabel(this.slug, displayUnitLabel(state.displayUnit, payload.unit_kind));
 
       const labels = payload.commits.map(commitDateLabel);
       const datasets = buildDatasets(payload, effectiveTheme());
@@ -766,6 +769,7 @@ export class ChartController {
     // surface older commits with a different magnitude, and moving the y-axis
     // once at the refetch boundary beats leaving the chart on a stale unit.
     state.displayUnit = pickDisplayUnit(payload.unit_kind, collectAllValues(payload));
+    setChartUnitLabel(this.slug, displayUnitLabel(state.displayUnit, payload.unit_kind));
     const yAxis = chart.options.scales?.y;
     if (yAxis && 'title' in yAxis && yAxis.title) {
       yAxis.title.display = state.displayUnit.axisLabel !== '';

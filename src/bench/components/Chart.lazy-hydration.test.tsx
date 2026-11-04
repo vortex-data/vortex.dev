@@ -13,6 +13,7 @@ import { FETCH_TIMEOUT_MS } from '@/bench/lib/chart-format';
 import { PAGE_LEAVE_GRACE_MS } from '@/bench/lib/page-leave';
 import { bundleQueue, hydrationQueue, resetPayloadCache } from '@/bench/lib/chart-store';
 import { defined } from '@/lib/defined';
+import { NO_GROUP_FILTER_CHOICES } from '@/bench/lib/group-filter';
 
 vi.mock('@/bench/lib/chart-js', () => ({
   loadChartJs: () => new Promise(() => {}),
@@ -607,8 +608,7 @@ describe('PR-5.0.97 group-bundle hydration', () => {
           ]}
           startIndex={0}
           universe={{ engines: [], formats: [] }}
-          initialHiddenSeries={[]}
-          initialShownSeries={[]}
+          initialFilter={NO_GROUP_FILTER_CHOICES}
         />,
       );
     });

@@ -26,6 +26,7 @@ import {
 import { groupBodiesReady, resetGroupBodies } from '@/bench/lib/group-bodies';
 import { takeOpenGroupsBootstrap } from '@/bench/lib/open-groups';
 import type { Group } from '@/bench/lib/queries';
+import { NO_GROUP_FILTER_CHOICES } from '@/bench/lib/group-filter';
 
 // The real island is covered by the `Chart.*` suites; here a bare card stands
 // in for it, so the body's own mount, fetch and abort behavior is all that runs.
@@ -49,8 +50,7 @@ const PROPS: GroupBodyProps = {
   ],
   startIndex: 5,
   universe: { engines: ['datafusion', 'duckdb'], formats: ['parquet', 'vortex'] },
-  initialHiddenSeries: ['duckdb:parquet'],
-  initialShownSeries: [],
+  initialFilter: { ...NO_GROUP_FILTER_CHOICES, hiddenSeries: ['duckdb:parquet'] },
 };
 
 function jsonResponse(body: unknown): Response {
@@ -76,7 +76,7 @@ describe('GroupBody', () => {
     (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
     resetPayloadCache();
     resetGroupBodies();
-    initGroupFilter('g', [], []);
+    initGroupFilter('g', NO_GROUP_FILTER_CHOICES);
     urls = [];
     signals = [];
     responders = [];

@@ -21,5 +21,6 @@
 
 export * from './queues';
 export * from './bundles';
+export * from './chart-unit';
 export * from './global-filter';
 export * from './group-store';

@@ -6,9 +6,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useBenchPath } from '@/bench/components/BenchBase';
-import { getGroupSnapshot, groupHiddenSeries } from '@/bench/lib/chart-store';
+import { getGroupSnapshot } from '@/bench/lib/chart-store';
 import {
   GROUP_FILTER_PARAM,
+  type GroupFilterChoices,
+  HIDDEN_ENGINE_PARAM,
+  HIDDEN_FORMAT_PARAM,
   HIDDEN_SERIES_PARAM,
   SHOWN_SERIES_PARAM,
 } from '@/bench/lib/group-filter';
@@ -20,9 +23,12 @@ const COPIED_FEEDBACK_MS = 1500;
 /**
  * Build the shareable URL for a group: the landing page with the group's
  * human-readable anchor (see `lib/anchor.ts`) as the fragment, so the link
- * opens that one group whatever else is open now. When the group has local
- * series overrides, repeated `hide` and `show` parameters preserve them and a
- * `group` parameter carries the same readable anchor. Other query parameters,
+ * opens that one group whatever else is open now. When the group's filter has
+ * choices, repeated `hide`, `show`, `hide-engine` and `hide-format` parameters
+ * preserve each row's, and a `group` parameter carries the same readable
+ * anchor. The Engine and Format rows go as engines and formats, not as the
+ * series they hide now, so they also hide the series of charts that have not
+ * loaded yet. Other query parameters,
  * such as the global engine and format filters, stay unchanged.
  * [`GroupSection`] stamps the anchor as the section's `id`, so the fragment
  * names a real element on the page. On load, the pre-paint script
@@ -38,21 +44,26 @@ const COPIED_FEEDBACK_MS = 1500;
  */
 export function groupPermalinkUrl(
   anchor: string,
-  hiddenSeries: readonly string[],
-  shownSeries: readonly string[],
+  choices: GroupFilterChoices,
   loc: Pick<Location, 'origin' | 'pathname' | 'search'>,
 ): string {
   const url = new URL(`${loc.origin}${loc.pathname}${loc.search}`);
+  const params: [string, readonly string[]][] = [
+    [HIDDEN_SERIES_PARAM, choices.hiddenSeries],
+    [SHOWN_SERIES_PARAM, choices.shownSeries],
+    [HIDDEN_ENGINE_PARAM, choices.hiddenEngines],
+    [HIDDEN_FORMAT_PARAM, choices.hiddenFormats],
+  ];
   url.searchParams.delete(GROUP_FILTER_PARAM);
-  url.searchParams.delete(HIDDEN_SERIES_PARAM);
-  url.searchParams.delete(SHOWN_SERIES_PARAM);
-  if (hiddenSeries.length > 0 || shownSeries.length > 0) {
+  for (const [name] of params) {
+    url.searchParams.delete(name);
+  }
+  if (params.some(([, values]) => values.length > 0)) {
     url.searchParams.set(GROUP_FILTER_PARAM, anchor);
-    for (const label of [...new Set(hiddenSeries)].sort()) {
-      url.searchParams.append(HIDDEN_SERIES_PARAM, label);
-    }
-    for (const label of [...new Set(shownSeries)].sort()) {
-      url.searchParams.append(SHOWN_SERIES_PARAM, label);
+    for (const [name, values] of params) {
+      for (const value of [...new Set(values)].sort()) {
+        url.searchParams.append(name, value);
+      }
     }
   }
   return `${url.origin}${url.pathname}${url.search}#${encodeURIComponent(anchor)}`;
@@ -102,13 +113,7 @@ export function GroupPermalink({
   const path = useBenchPath();
   const [href, setHref] = useState(path(`/#${encodeURIComponent(anchor)}`));
   const permalink = useCallback((): string => {
-    const snapshot = getGroupSnapshot(groupSlug);
-    return groupPermalinkUrl(
-      anchor,
-      groupHiddenSeries(snapshot),
-      snapshot.shownSeries,
-      window.location,
-    );
+    return groupPermalinkUrl(anchor, getGroupSnapshot(groupSlug), window.location);
   }, [anchor, groupSlug]);
   const refreshHref = useCallback((): void => {
     setHref(permalink().slice(window.location.origin.length));

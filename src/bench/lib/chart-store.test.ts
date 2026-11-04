@@ -12,9 +12,9 @@ import {
   getCachedPayload,
   getGlobalFilterSnapshot,
   getGroupSnapshot,
-  groupHiddenSeries,
   groupSeriesIsVisible,
   hydrationQueue,
+  groupMacroIsActive,
   initGlobalFilter,
   initGroupFilter,
   noteChartRecentData,
@@ -28,6 +28,7 @@ import {
   toggleGlobalFilterValue,
   toggleGroupSeries,
 } from './chart-store';
+import { NO_GROUP_FILTER_CHOICES } from '@/bench/lib/group-filter';
 
 // The stores are module-scope singletons (one per tab, one per test file run);
 // each describe block uses its own group slug so state does not leak between
@@ -114,10 +115,17 @@ describe('per-group store', () => {
   it('restores a URL filter without discarding hydrated series metadata', () => {
     const slug = 'group-url-filter';
     noteGroupSeries(slug, { a: { engine: 'duckdb' } });
-    initGroupFilter(slug, ['b', 'a', 'b'], ['lance', 'lance']);
+    initGroupFilter(slug, {
+      hiddenSeries: ['b', 'a', 'b'],
+      shownSeries: ['lance', 'lance'],
+      hiddenEngines: ['datafusion', 'datafusion'],
+      hiddenFormats: ['parquet'],
+    });
     const snap = getGroupSnapshot(slug);
     expect(snap.hiddenSeries).toEqual(['b', 'a']);
     expect(snap.shownSeries).toEqual(['lance']);
+    expect(snap.hiddenEngines).toEqual(['datafusion']);
+    expect(snap.hiddenFormats).toEqual(['parquet']);
     expect(snap.knownSeries).toEqual({ a: { engine: 'duckdb' } });
   });
 
@@ -212,6 +220,26 @@ describe('per-group store', () => {
     expect(visibleSeries(slug)).toEqual([]);
   });
 
+  // A chip reads its own row, so the Format row cannot turn an Engine chip off,
+  // even for an engine whose every series has the format it hides.
+  it("keeps an engine's chip on when the Format row hides all its series", () => {
+    const slug = 'group-chip-own-row';
+    noteGroupSeries(slug, {
+      'datafusion:parquet': { engine: 'datafusion', format: 'parquet' },
+      'duckdb:parquet': { engine: 'duckdb', format: 'parquet' },
+      'duckdb:vortex': { engine: 'duckdb', format: 'vortex' },
+    });
+    applyGroupMacro(slug, 'format', 'parquet');
+    expect(groupMacroIsActive(getGroupSnapshot(slug), 'engine', 'datafusion')).toBe(true);
+
+    applyGroupMacro(slug, 'engine', 'datafusion');
+    expect(groupMacroIsActive(getGroupSnapshot(slug), 'engine', 'datafusion')).toBe(false);
+    expect(getGroupSnapshot(slug).hiddenEngines).toEqual(['datafusion']);
+
+    clearGroupFilterRow(slug, 'format');
+    expect(visibleSeries(slug)).toEqual(['duckdb:parquet', 'duckdb:vortex']);
+  });
+
   // The Engine, Format and Series rows of a group's filter are independent:
   // each row's "all" chip turns its own row back on and leaves the others.
   describe("each row's all chip", () => {
@@ -260,17 +288,13 @@ describe('per-group store', () => {
     });
   });
 
-  // A permalink names series, so it lists every series a row hides.
-  it('lists the series that any row hides', () => {
-    const slug = 'group-hidden-list';
+  // A permalink carries the rows' choices, so an engine choice from a link
+  // also hides the series of a chart that loads afterwards.
+  it('hides the series of later charts by a seeded engine choice', () => {
+    const slug = 'group-seeded-engine';
+    initGroupFilter(slug, { ...NO_GROUP_FILTER_CHOICES, hiddenEngines: ['datafusion'] });
     noteGroupSeries(slug, FOUR_SERIES);
-    applyGroupMacro(slug, 'engine', 'datafusion');
-    toggleGroupSeries(slug, 'duckdb:vortex');
-    expect(groupHiddenSeries(getGroupSnapshot(slug))).toEqual([
-      'datafusion:parquet',
-      'datafusion:vortex',
-      'duckdb:vortex',
-    ]);
+    expect(visibleSeries(slug)).toEqual(['duckdb:parquet', 'duckdb:vortex']);
   });
 
   it('resets the filter and Y override but keeps known series', () => {

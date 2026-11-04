@@ -17,18 +17,19 @@ import {
   resetGroup,
   toggleGroupSeries,
 } from '@/bench/lib/chart-store';
+import { NO_GROUP_FILTER_CHOICES } from '@/bench/lib/group-filter';
 
 describe('groupPermalinkUrl', () => {
   it('joins origin, pathname, and the readable anchor fragment', () => {
     const loc = { origin: 'https://bench.vortex.dev', pathname: '/' };
-    expect(groupPermalinkUrl('random-access', [], [], { ...loc, search: '' })).toBe(
-      'https://bench.vortex.dev/#random-access',
-    );
+    expect(
+      groupPermalinkUrl('random-access', NO_GROUP_FILTER_CHOICES, { ...loc, search: '' }),
+    ).toBe('https://bench.vortex.dev/#random-access');
   });
 
   it('percent-encodes fragment-hostile anchor characters defensively', () => {
     const loc = { origin: 'https://bench.vortex.dev', pathname: '/' };
-    expect(groupPermalinkUrl('a#b c', [], [], { ...loc, search: '' })).toBe(
+    expect(groupPermalinkUrl('a#b c', NO_GROUP_FILTER_CHOICES, { ...loc, search: '' })).toBe(
       'https://bench.vortex.dev/#a%23b%20c',
     );
   });
@@ -37,10 +38,22 @@ describe('groupPermalinkUrl', () => {
     const loc = {
       origin: 'https://bench.vortex.dev',
       pathname: '/',
-      search: '?engine=duckdb&group=old&hide=old-series&show=old-shown',
+      search:
+        '?engine=duckdb&group=old&hide=old-series&show=old-shown&hide-engine=old&hide-format=old',
     };
-    expect(groupPermalinkUrl('random-access', ['z series', 'a'], ['lance'], loc)).toBe(
-      'https://bench.vortex.dev/?engine=duckdb&group=random-access&hide=a&hide=z+series&show=lance#random-access',
+    expect(
+      groupPermalinkUrl(
+        'random-access',
+        {
+          hiddenSeries: ['z series', 'a'],
+          shownSeries: ['lance'],
+          hiddenEngines: ['duckdb'],
+          hiddenFormats: ['vortex', 'parquet'],
+        },
+        loc,
+      ),
+    ).toBe(
+      'https://bench.vortex.dev/?engine=duckdb&group=random-access&hide=a&hide=z+series&show=lance&hide-engine=duckdb&hide-format=parquet&hide-format=vortex#random-access',
     );
   });
 });
@@ -90,7 +103,7 @@ describe('GroupPermalink click behavior', () => {
     vi.useRealTimers();
     Reflect.deleteProperty(navigator, 'clipboard');
     window.history.replaceState(null, '', '/');
-    initGroupFilter('random_access', [], []);
+    initGroupFilter('random_access', NO_GROUP_FILTER_CHOICES);
     resetGroup('random_access');
   });
 
@@ -262,9 +275,9 @@ describe('GroupPermalink click behavior', () => {
     ]);
   });
 
-  // A permalink names series, so an engine or format the group's filter hides
-  // reaches it as the series that engine or format covers.
-  it('copies the series an engine or format choice hides', async () => {
+  // The engine goes into the link as an engine, so it also hides the series of
+  // charts that have not loaded yet when someone opens the link.
+  it('copies an engine or format choice as that engine or format', async () => {
     const { link } = mount();
     noteGroupSeries('random_access', {
       'datafusion:parquet': { engine: 'datafusion', format: 'parquet' },
@@ -275,7 +288,7 @@ describe('GroupPermalink click behavior', () => {
     await click(link);
 
     expect(copiedText).toEqual([
-      `${window.location.origin}/?group=random-access&hide=datafusion%3Aparquet#random-access`,
+      `${window.location.origin}/?group=random-access&hide-engine=datafusion#random-access`,
     ]);
   });
 
