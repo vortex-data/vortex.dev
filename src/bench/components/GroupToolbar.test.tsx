@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 
 import { GroupToolbar } from '@/bench/components/GroupToolbar';
 import {
+  applyGroupMacro,
   initGlobalFilter,
   noteChartRecentData,
   noteGroupSeries,
@@ -95,5 +96,30 @@ describe('GroupToolbar cascading filters', () => {
     toggleGroupSeries(slug, 'lance');
     html = renderToStaticMarkup(<GroupToolbar groupSlug={slug} universe={universe} />);
     expect(html).toMatch(/data-group-filter="series" data-value="lance" aria-pressed="true"/);
+  });
+});
+
+// Each row's chips show that row's choice: turning Parquet off leaves every
+// engine chip on, though each engine then has a hidden series.
+describe('GroupToolbar filter rows', () => {
+  it("shows each row's own choices", () => {
+    const slug = 'toolbar-independent-rows';
+    initGlobalFilter(UNIVERSE, null, null);
+    noteGroupSeries(slug, {
+      'datafusion:parquet': { engine: 'datafusion', format: 'parquet' },
+      'datafusion:vortex': { engine: 'datafusion', format: 'vortex' },
+      'duckdb:parquet': { engine: 'duckdb', format: 'parquet' },
+      'duckdb:vortex': { engine: 'duckdb', format: 'vortex' },
+    });
+    applyGroupMacro(slug, 'format', 'parquet');
+
+    const html = renderToStaticMarkup(<GroupToolbar groupSlug={slug} universe={UNIVERSE} />);
+    expect(html).toMatch(/data-group-filter="engine" data-value="datafusion" aria-pressed="true"/);
+    expect(html).toMatch(/data-group-filter="engine" data-value="duckdb" aria-pressed="true"/);
+    expect(html).toMatch(/data-group-filter="format" data-value="parquet" aria-pressed="false"/);
+    expect(html).toMatch(/data-group-filter="format" data-value="vortex" aria-pressed="true"/);
+    expect(html).toMatch(
+      /data-group-filter="series" data-value="duckdb:parquet" aria-pressed="false"/,
+    );
   });
 });

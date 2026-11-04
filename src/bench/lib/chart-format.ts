@@ -404,9 +404,19 @@ export function singleSearchParam(v: string | string[] | undefined): string | nu
   return typeof v === 'string' ? v : null;
 }
 
+/**
+ * Whether a larger value is the better result for a wire `unit_kind`.
+ * Throughput is best high; times and sizes, the units bench charts today, are
+ * best low. The chart tooltip colours each delta by it, and the chart page's
+ * description ranks series by it.
+ */
+export function higherIsBetter(unitKind: UnitKind | string | undefined): boolean {
+  return unitKind === 'throughput_mb_s';
+}
+
 /** The short human label for a wire `unit_kind`, ported from the Rust
- * `UnitKind::label` (used by the chart permalink page's meta line). */
-export function unitKindLabel(unitKind: UnitKind): string {
+ * `UnitKind::label`. */
+function unitKindLabel(unitKind: UnitKind): string {
   switch (unitKind) {
     case 'time_ns':
       return 'ns';
@@ -564,6 +574,24 @@ export function pickDisplayUnit(
     return { multiplier: 1, suffix: '', axisLabel: '', decimals: unitKind === 'count' ? 0 : 2 };
   }
   return IDENTITY_UNIT;
+}
+
+/**
+ * The unit a chart's y-axis is drawn in, for the chart page's meta line: the
+ * display unit's suffix (`ms` for a chart stored in nanoseconds), or the
+ * kind's own word for a dimensionless kind, whose axis has no unit.
+ */
+export function displayUnitLabel(unit: DisplayUnit, unitKind: UnitKind): string {
+  return unit.suffix || unitKindLabel(unitKind);
+}
+
+/** [`displayUnitLabel`] for the unit [`pickDisplayUnit`] picks from a payload's
+ * values, as the chart does when it first draws them. */
+export function chartUnitLabel(chart: Pick<ChartResponse, 'unit_kind' | 'series'>): string {
+  return displayUnitLabel(
+    pickDisplayUnit(chart.unit_kind, collectAllValues(chart)),
+    chart.unit_kind,
+  );
 }
 
 /**

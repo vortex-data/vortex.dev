@@ -15,6 +15,7 @@ import {
   noteGroupBodyOpen,
   seedGroupFilterOnce,
 } from '@/bench/lib/group-bodies';
+import type { GroupFilterChoices } from '@/bench/lib/group-filter';
 import type { ChartLink } from '@/bench/lib/queries';
 
 /** Props for one group's body. */
@@ -27,10 +28,8 @@ export interface GroupBodyProps {
   startIndex: number;
   /** Engine and format values for the toolbar's macro chips. */
   universe: FilterUniverse;
-  /** Series the page URL hides in this group (`?group=…&hide=…`). */
-  initialHiddenSeries: string[];
-  /** Series the page URL shows in this group (`?group=…&show=…`). */
-  initialShownSeries: string[];
+  /** The filter choices the page URL gives this group (`?group=…&hide=…`). */
+  initialFilter: GroupFilterChoices;
 }
 
 /**
@@ -58,8 +57,7 @@ export function GroupBody({
   charts,
   startIndex,
   universe,
-  initialHiddenSeries,
-  initialShownSeries,
+  initialFilter,
 }: GroupBodyProps) {
   const base = useBenchBase();
   const ref = useRef<HTMLDivElement>(null);
@@ -67,11 +65,11 @@ export function GroupBody({
   // effect below opens it before paint when the disclosure is already open.
   const [open, setOpen] = useState(false);
 
-  // Restore a shared group permalink's series overrides, once per page load,
+  // Restore a shared group permalink's filter choices, once per page load,
   // so a remount never overwrites the user's later changes.
   useEffect(() => {
-    seedGroupFilterOnce(groupSlug, initialHiddenSeries, initialShownSeries);
-  }, [groupSlug, initialHiddenSeries, initialShownSeries]);
+    seedGroupFilterOnce(groupSlug, initialFilter);
+  }, [groupSlug, initialFilter]);
 
   useLayoutEffect(() => {
     const details = ref.current

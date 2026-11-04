@@ -10,6 +10,7 @@ import {
   commitDateLabel,
   decimateSeries,
   DEFAULT_VISIBLE,
+  displayUnitLabel,
   FETCH_N,
   FETCH_TIMEOUT_MS,
   HOVER_DWELL_MS,
@@ -22,7 +23,6 @@ import {
   PAN_THROTTLE_MS,
   pickDisplayUnit,
   rangeTouchesUnloadedHistory,
-  seriesPassesFilter,
   seriesPassesGroupFilter,
   throttle,
   visibleRange,
@@ -37,10 +37,12 @@ import {
   getCachedPayload,
   getGlobalFilterSnapshot,
   getGroupSnapshot,
+  groupDefaultVisible,
   hydrationQueue,
   noteChartRecentData,
   noteGroupSeries,
   retryGroupBundle,
+  setChartUnitLabel,
   subscribeGroupBundleRetry,
 } from '@/bench/lib/chart-store';
 import { unlessPageLeft } from '@/bench/lib/page-leave';
@@ -595,6 +597,7 @@ export class ChartController {
       // Lock the display unit for the lifetime of this loaded payload; it is
       // recomputed only when `replaceChartPayload` swaps in the wider window.
       state.displayUnit = pickDisplayUnit(payload.unit_kind, collectAllValues(payload));
+      setChartUnitLabel(this.slug, displayUnitLabel(state.displayUnit, payload.unit_kind));
 
       const labels = payload.commits.map(commitDateLabel);
       const datasets = buildDatasets(payload, effectiveTheme());
@@ -766,6 +769,7 @@ export class ChartController {
     // surface older commits with a different magnitude, and moving the y-axis
     // once at the refetch boundary beats leaving the chart on a stale unit.
     state.displayUnit = pickDisplayUnit(payload.unit_kind, collectAllValues(payload));
+    setChartUnitLabel(this.slug, displayUnitLabel(state.displayUnit, payload.unit_kind));
     const yAxis = chart.options.scales?.y;
     if (yAxis && 'title' in yAxis && yAxis.title) {
       yAxis.title.display = state.displayUnit.axisLabel !== '';
@@ -1004,8 +1008,8 @@ export class ChartController {
       }
       // `dataset.hidden` directly (not `setDatasetVisibility`) so the legend
       // stays in sync; the visibility map is a separate channel.
-      const globalVisible = seriesPassesFilter(ds.benchMeta, global.active, global.universe);
-      ds.hidden = !seriesPassesGroupFilter(group, ds.label ?? '', globalVisible);
+      const defaultVisible = groupDefaultVisible(group, ds.benchMeta, global);
+      ds.hidden = !seriesPassesGroupFilter(group, ds.label ?? '', defaultVisible);
     }
     chart.update('none');
     this.syncLatestValues();

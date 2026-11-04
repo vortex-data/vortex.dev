@@ -14,7 +14,7 @@ import { OpenGroupsScript } from '@/bench/components/OpenGroupsScript';
 import { groupAnchor, groupAnchors } from '@/bench/lib/anchor';
 import { type FilterUniverse, parseFilterCsv, singleSearchParam } from '@/bench/lib/chart-format';
 import { cachedFilterUniverse, cachedGroups } from '@/bench/lib/data-cache';
-import { parseGroupFilter } from '@/bench/lib/group-filter';
+import { NO_GROUP_FILTER_CHOICES, parseGroupFilter } from '@/bench/lib/group-filter';
 import type { Group } from '@/bench/lib/queries';
 import { settlesWithin } from '@/bench/lib/settles-within';
 import { BENCH_URL, datasetJsonLd } from '@/bench/lib/site-files';
@@ -127,6 +127,7 @@ function HomeContent({ data: [params, groups, universe] }: { data: LandingData }
   return (
     <>
       <BenchHeader
+        groupControls={groups.length > 0}
         universe={universe}
         initialEngines={initialEngines}
         initialFormats={initialFormats}
@@ -167,11 +168,10 @@ function HomeContent({ data: [params, groups, universe] }: { data: LandingData }
                     anchor={anchors[i] ?? groupAnchor(group.name)}
                     startIndex={startIndex}
                     universe={universe}
-                    initialHiddenSeries={
-                      ownsInitialFilter ? (initialGroupFilter?.hiddenSeries ?? []) : []
-                    }
-                    initialShownSeries={
-                      ownsInitialFilter ? (initialGroupFilter?.shownSeries ?? []) : []
+                    initialFilter={
+                      ownsInitialFilter && initialGroupFilter !== null
+                        ? initialGroupFilter
+                        : NO_GROUP_FILTER_CHOICES
                     }
                   />
                 );

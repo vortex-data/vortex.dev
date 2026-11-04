@@ -17,6 +17,30 @@ describe('parseGroupFilter', () => {
       groupAnchor: 'random-access',
       hiddenSeries: ['a', 'b'],
       shownSeries: ['lance'],
+      hiddenEngines: [],
+      hiddenFormats: [],
+      shownEngines: [],
+      shownFormats: [],
+    });
+  });
+
+  it('parses the Engine and Format rows', () => {
+    expect(
+      parseGroupFilter({
+        group: 'tpc-h-nvme-sf-1',
+        'hide-engine': ['datafusion', 'datafusion'],
+        'hide-format': ['parquet', 'lance'],
+        'show-format': 'lance',
+        'show-engine': 'duckdb',
+      }),
+    ).toEqual({
+      groupAnchor: 'tpc-h-nvme-sf-1',
+      hiddenSeries: [],
+      shownSeries: [],
+      hiddenEngines: ['datafusion'],
+      hiddenFormats: ['parquet'],
+      shownEngines: ['duckdb'],
+      shownFormats: ['lance'],
     });
   });
 
@@ -25,6 +49,10 @@ describe('parseGroupFilter', () => {
       groupAnchor: 'random-access',
       hiddenSeries: [],
       shownSeries: ['lance'],
+      hiddenEngines: [],
+      hiddenFormats: [],
+      shownEngines: [],
+      shownFormats: [],
     });
   });
 

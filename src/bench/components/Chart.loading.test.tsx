@@ -8,7 +8,8 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Chart } from '@/bench/components/Chart';
-import { FETCH_TIMEOUT_MS } from '@/bench/lib/chart-format';
+import { ChartUnit } from '@/bench/components/ChartUnit';
+import { chartUnitLabel, FETCH_TIMEOUT_MS } from '@/bench/lib/chart-format';
 import { PAGE_LEAVE_GRACE_MS } from '@/bench/lib/page-leave';
 import { fullHistoryQueue } from '@/bench/lib/chart-store';
 import { loadChartJs } from '@/bench/lib/chart-js';
@@ -198,6 +199,72 @@ describe('Chart opt-in full-history loading', () => {
     });
     expect(chip?.dataset.state).toBe('complete');
     expect(chip?.textContent).toBe('all 3,572');
+  });
+
+  // The chart page's meta line names the axis's unit, so it follows the axis
+  // when the full history's older values need a larger unit.
+  it('the chart page unit follows the axis when full history loads', async () => {
+    class StubChart {
+      data: { labels: unknown[]; datasets: unknown[] };
+      options: Record<string, unknown>;
+      constructor(
+        _canvas: HTMLCanvasElement,
+        config: {
+          data: { labels: unknown[]; datasets: unknown[] };
+          options: Record<string, unknown>;
+        },
+      ) {
+        this.data = { labels: config.data.labels ?? [], datasets: config.data.datasets ?? [] };
+        this.options = config.options ?? {};
+      }
+      isDatasetVisible(): boolean {
+        return true;
+      }
+      update(): void {}
+      destroy(): void {}
+    }
+    vi.mocked(loadChartJs).mockResolvedValueOnce(StubChart as never);
+    let resolveFull: (r: Response) => void = () => {};
+    responders.push({
+      match: (u) => u.includes('n=all'),
+      respond: () =>
+        new Promise<Response>((res) => {
+          resolveFull = res;
+        }),
+    });
+    const slug = 'qm.eyJrIjoidW5pdCJ9';
+    const unitHost = document.createElement('p');
+    container.after(unitHost);
+    const unitRoot = createRoot(unitHost);
+    await act(async () => {
+      unitRoot.render(<ChartUnit slug={slug} initial="ns" />);
+    });
+    const chip = await renderOpenGroup(slug);
+    await act(async () => {
+      for (let i = 0; i < 10; i++) {
+        await Promise.resolve();
+      }
+    });
+    expect(unitHost.textContent).toBe('ns');
+
+    const full = completePayload(3572);
+    full.series['vortex/nvme'] = full.series['vortex/nvme'].map((v) => v * 1_000_000);
+    await act(async () => {
+      chip?.click();
+      await Promise.resolve();
+    });
+    await act(async () => {
+      resolveFull(jsonResponse(full));
+      for (let i = 0; i < 4; i++) {
+        await Promise.resolve();
+      }
+    });
+    expect(unitHost.textContent).toBe(chartUnitLabel(full as never));
+    expect(unitHost.textContent).not.toBe('ns');
+    await act(async () => {
+      unitRoot.unmount();
+    });
+    unitHost.remove();
   });
 
   it('a failed full fetch surfaces a retry affordance', async () => {

@@ -134,7 +134,15 @@ export function Chart({ slug, name, index, groupSlug, initialPayload }: ChartIsl
   // biome-ignore lint/correctness/useExhaustiveDependencies: the filter state is the trigger; `applyFilters` reads the stores itself
   useEffect(() => {
     controllerRef.current?.applyFilters();
-  }, [globalFilter, groupState.hiddenSeries, groupState.shownSeries]);
+  }, [
+    globalFilter,
+    groupState.hiddenSeries,
+    groupState.shownSeries,
+    groupState.hiddenEngines,
+    groupState.hiddenFormats,
+    groupState.shownEngines,
+    groupState.shownFormats,
+  ]);
 
   // Broadcast the per-group Y override to non-sticky charts; `null` (the
   // resting default and the post-Reset state) reverts to linear.

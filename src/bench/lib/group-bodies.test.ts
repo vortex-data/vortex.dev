@@ -12,6 +12,7 @@ import {
   resetGroupBodies,
   seedGroupFilterOnce,
 } from './group-bodies';
+import { NO_GROUP_FILTER_CHOICES } from '@/bench/lib/group-filter';
 
 /** Drain every pending microtask (and promise chain) before asserting. */
 function flush(): Promise<void> {
@@ -123,15 +124,15 @@ describe('groupBodiesReady', () => {
 describe('seedGroupFilterOnce', () => {
   beforeEach(() => {
     resetGroupBodies();
-    initGroupFilter('g', [], []);
+    initGroupFilter('g', NO_GROUP_FILTER_CHOICES);
   });
 
   it("seeds a group's filter once per page load", () => {
-    seedGroupFilterOnce('g', ['a'], []);
+    seedGroupFilterOnce('g', { ...NO_GROUP_FILTER_CHOICES, hiddenSeries: ['a'] });
     expect(getGroupSnapshot('g').hiddenSeries).toEqual(['a']);
 
     toggleGroupSeries('g', 'a');
-    seedGroupFilterOnce('g', ['a'], []);
+    seedGroupFilterOnce('g', { ...NO_GROUP_FILTER_CHOICES, hiddenSeries: ['a'] });
     expect(getGroupSnapshot('g').hiddenSeries).toEqual([]);
   });
 });

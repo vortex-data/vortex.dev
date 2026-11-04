@@ -7,13 +7,14 @@ import {
   abortGroupBundle,
   applyGroupMacro,
   chartIsHiddenAsEmpty,
-  clearGroupSeriesFilter,
+  clearGroupFilterRow,
   ensureGroupBundle,
   getCachedPayload,
   getGlobalFilterSnapshot,
   getGroupSnapshot,
   groupSeriesIsVisible,
   hydrationQueue,
+  groupMacroIsActive,
   initGlobalFilter,
   initGroupFilter,
   noteChartRecentData,
@@ -27,6 +28,7 @@ import {
   toggleGlobalFilterValue,
   toggleGroupSeries,
 } from './chart-store';
+import { NO_GROUP_FILTER_CHOICES } from '@/bench/lib/group-filter';
 
 // The stores are module-scope singletons (one per tab, one per test file run);
 // each describe block uses its own group slug so state does not leak between
@@ -34,6 +36,22 @@ import {
 // would.
 
 const UNIVERSE = { engines: ['datafusion', 'duckdb'], formats: ['parquet', 'vortex'] };
+
+/** Every pairing of `UNIVERSE`'s engines and formats. */
+const FOUR_SERIES = {
+  'datafusion:parquet': { engine: 'datafusion', format: 'parquet' },
+  'datafusion:vortex': { engine: 'datafusion', format: 'vortex' },
+  'duckdb:parquet': { engine: 'duckdb', format: 'parquet' },
+  'duckdb:vortex': { engine: 'duckdb', format: 'vortex' },
+};
+
+/** The group's known series that show, sorted. */
+function visibleSeries(slug: string): string[] {
+  const snapshot = getGroupSnapshot(slug);
+  return Object.keys(snapshot.knownSeries)
+    .filter((label) => groupSeriesIsVisible(snapshot, label))
+    .sort();
+}
 
 describe('global filter store', () => {
   it('seeds every chip active with no URL allowlist', () => {
@@ -97,10 +115,21 @@ describe('per-group store', () => {
   it('restores a URL filter without discarding hydrated series metadata', () => {
     const slug = 'group-url-filter';
     noteGroupSeries(slug, { a: { engine: 'duckdb' } });
-    initGroupFilter(slug, ['b', 'a', 'b'], ['lance', 'lance']);
+    initGroupFilter(slug, {
+      hiddenSeries: ['b', 'a', 'b'],
+      shownSeries: ['lance', 'lance'],
+      hiddenEngines: ['datafusion', 'datafusion'],
+      hiddenFormats: ['parquet'],
+      shownEngines: ['duckdb'],
+      shownFormats: ['lance', 'parquet'],
+    });
     const snap = getGroupSnapshot(slug);
     expect(snap.hiddenSeries).toEqual(['b', 'a']);
     expect(snap.shownSeries).toEqual(['lance']);
+    expect(snap.hiddenEngines).toEqual(['datafusion']);
+    expect(snap.hiddenFormats).toEqual([]);
+    expect(snap.shownEngines).toEqual(['duckdb']);
+    expect(snap.shownFormats).toEqual(['lance', 'parquet']);
     expect(snap.knownSeries).toEqual({ a: { engine: 'duckdb' } });
   });
 
@@ -152,15 +181,29 @@ describe('per-group store', () => {
       'duckdb:vortex': { engine: 'duckdb', format: 'vortex' },
       'datafusion:vortex': { engine: 'datafusion', format: 'vortex' },
     });
-    // All duckdb series visible: the macro hides them all.
+    const visible = () => visibleSeries(slug);
+    // A shown engine: the macro hides every series it matches.
     applyGroupMacro(slug, 'engine', 'duckdb');
-    expect(getGroupSnapshot(slug).hiddenSeries.sort()).toEqual(['duckdb:parquet', 'duckdb:vortex']);
-    // Any match hidden: the macro shows them all.
+    expect(getGroupSnapshot(slug).hiddenEngines).toEqual(['duckdb']);
+    expect(visible()).toEqual(['datafusion:vortex']);
+    // A hidden engine: the macro shows them again.
     applyGroupMacro(slug, 'engine', 'duckdb');
-    expect(getGroupSnapshot(slug).hiddenSeries).toEqual([]);
+    expect(getGroupSnapshot(slug).hiddenEngines).toEqual([]);
+    expect(visible()).toEqual(['datafusion:vortex', 'duckdb:parquet', 'duckdb:vortex']);
     // A macro with no matching series is inert.
+    const snap = getGroupSnapshot(slug);
     applyGroupMacro(slug, 'engine', 'unknown-engine');
+    expect(getGroupSnapshot(slug)).toBe(snap);
+  });
+
+  it('lets a macro replace the series picks it covers', () => {
+    const slug = 'group-macro-over-series';
+    noteGroupSeries(slug, FOUR_SERIES);
+    toggleGroupSeries(slug, 'duckdb:vortex');
+    applyGroupMacro(slug, 'engine', 'duckdb');
+    applyGroupMacro(slug, 'engine', 'duckdb');
     expect(getGroupSnapshot(slug).hiddenSeries).toEqual([]);
+    expect(visibleSeries(slug)).toEqual(Object.keys(FOUR_SERIES).sort());
   });
 
   it('uses a macro to restore every match hidden by the global default', () => {
@@ -172,35 +215,123 @@ describe('per-group store', () => {
       'duckdb:lance': { engine: 'duckdb', format: 'lance' },
     });
 
+    expect(visibleSeries(slug)).toEqual([]);
     applyGroupMacro(slug, 'format', 'lance');
-    expect(getGroupSnapshot(slug).shownSeries.sort()).toEqual(['datafusion:lance', 'duckdb:lance']);
-    applyGroupMacro(slug, 'format', 'lance');
+    expect(getGroupSnapshot(slug).shownFormats).toEqual(['lance']);
     expect(getGroupSnapshot(slug).shownSeries).toEqual([]);
-    expect(getGroupSnapshot(slug).hiddenSeries.sort()).toEqual([
-      'datafusion:lance',
-      'duckdb:lance',
-    ]);
+    expect(visibleSeries(slug)).toEqual(['datafusion:lance', 'duckdb:lance']);
+    applyGroupMacro(slug, 'format', 'lance');
+    expect(getGroupSnapshot(slug).shownFormats).toEqual([]);
+    expect(getGroupSnapshot(slug).hiddenFormats).toEqual(['lance']);
+    expect(visibleSeries(slug)).toEqual([]);
   });
 
-  it('clears the series filter via the "*" chip without touching Y', () => {
-    const slug = 'group-clear';
-    toggleGroupSeries(slug, 'a');
-    setGroupY(slug, 'log');
-    clearGroupSeriesFilter(slug);
-    expect(getGroupSnapshot(slug).hiddenSeries).toEqual([]);
-    expect(getGroupSnapshot(slug).shownSeries).toEqual([]);
-    expect(getGroupSnapshot(slug).groupY).toBe('log');
+  // The Format row keeps a format it turned on over the global filter as a
+  // format, so it also shows that format's series in charts that load later.
+  it('shows a format turned on over the global filter in charts that load later', () => {
+    const slug = 'group-global-macro-later';
+    const universe = { ...UNIVERSE, formats: [...UNIVERSE.formats, 'lance'] };
+    initGlobalFilter(universe, null, null);
+    noteGroupSeries(slug, { 'datafusion:lance': { engine: 'datafusion', format: 'lance' } });
+    applyGroupMacro(slug, 'format', 'lance');
+    noteGroupSeries(slug, { 'duckdb:lance': { engine: 'duckdb', format: 'lance' } });
+    expect(visibleSeries(slug)).toEqual(['datafusion:lance', 'duckdb:lance']);
+
+    clearGroupFilterRow(slug, 'format');
+    expect(getGroupSnapshot(slug).shownFormats).toEqual([]);
+    expect(visibleSeries(slug)).toEqual([]);
+  });
+
+  // A chip reads its own row, so the Format row cannot turn an Engine chip off,
+  // even for an engine whose every series has the format it hides.
+  it("keeps an engine's chip on when the Format row hides all its series", () => {
+    const slug = 'group-chip-own-row';
+    noteGroupSeries(slug, {
+      'datafusion:parquet': { engine: 'datafusion', format: 'parquet' },
+      'duckdb:parquet': { engine: 'duckdb', format: 'parquet' },
+      'duckdb:vortex': { engine: 'duckdb', format: 'vortex' },
+    });
+    applyGroupMacro(slug, 'format', 'parquet');
+    expect(groupMacroIsActive(getGroupSnapshot(slug), 'engine', 'datafusion')).toBe(true);
+
+    applyGroupMacro(slug, 'engine', 'datafusion');
+    expect(groupMacroIsActive(getGroupSnapshot(slug), 'engine', 'datafusion')).toBe(false);
+    expect(getGroupSnapshot(slug).hiddenEngines).toEqual(['datafusion']);
+
+    clearGroupFilterRow(slug, 'format');
+    expect(visibleSeries(slug)).toEqual(['duckdb:parquet', 'duckdb:vortex']);
+  });
+
+  // The Engine, Format and Series rows of a group's filter are independent:
+  // each row's "all" chip turns its own row back on and leaves the others.
+  describe("each row's all chip", () => {
+    /** A group with datafusion, Parquet, and duckdb:vortex turned off, one per row. */
+    function filtered(slug: string): void {
+      noteGroupSeries(slug, FOUR_SERIES);
+      applyGroupMacro(slug, 'engine', 'datafusion');
+      applyGroupMacro(slug, 'format', 'parquet');
+      toggleGroupSeries(slug, 'duckdb:vortex');
+      expect(visibleSeries(slug)).toEqual([]);
+    }
+
+    it('in the Engine row shows the engines and keeps the format and series choices', () => {
+      const slug = 'group-all-engine';
+      filtered(slug);
+      clearGroupFilterRow(slug, 'engine');
+      expect(visibleSeries(slug)).toEqual(['datafusion:vortex']);
+      expect(getGroupSnapshot(slug).hiddenFormats).toEqual(['parquet']);
+      expect(getGroupSnapshot(slug).hiddenSeries).toEqual(['duckdb:vortex']);
+    });
+
+    it('in the Format row shows the formats and keeps the engine and series choices', () => {
+      const slug = 'group-all-format';
+      filtered(slug);
+      clearGroupFilterRow(slug, 'format');
+      expect(visibleSeries(slug)).toEqual(['duckdb:parquet']);
+      expect(getGroupSnapshot(slug).hiddenEngines).toEqual(['datafusion']);
+    });
+
+    it('in the Series row clears the series choices and keeps the engine and format ones', () => {
+      const slug = 'group-all-series';
+      filtered(slug);
+      clearGroupFilterRow(slug, 'series');
+      expect(visibleSeries(slug)).toEqual(['duckdb:vortex']);
+      expect(getGroupSnapshot(slug).hiddenEngines).toEqual(['datafusion']);
+      expect(getGroupSnapshot(slug).hiddenFormats).toEqual(['parquet']);
+    });
+
+    it('leaves Y alone', () => {
+      const slug = 'group-all-y';
+      toggleGroupSeries(slug, 'a');
+      setGroupY(slug, 'log');
+      clearGroupFilterRow(slug, 'series');
+      expect(getGroupSnapshot(slug).hiddenSeries).toEqual([]);
+      expect(getGroupSnapshot(slug).groupY).toBe('log');
+    });
+  });
+
+  // A permalink carries the rows' choices, so an engine choice from a link
+  // also hides the series of a chart that loads afterwards.
+  it('hides the series of later charts by a seeded engine choice', () => {
+    const slug = 'group-seeded-engine';
+    initGroupFilter(slug, { ...NO_GROUP_FILTER_CHOICES, hiddenEngines: ['datafusion'] });
+    noteGroupSeries(slug, FOUR_SERIES);
+    expect(visibleSeries(slug)).toEqual(['duckdb:parquet', 'duckdb:vortex']);
   });
 
   it('resets the filter and Y override but keeps known series', () => {
     const slug = 'group-reset';
-    noteGroupSeries(slug, { s1: {} });
+    noteGroupSeries(slug, { s1: { engine: 'duckdb', format: 'vortex' } });
     toggleGroupSeries(slug, 's1');
+    applyGroupMacro(slug, 'engine', 'duckdb');
+    applyGroupMacro(slug, 'format', 'vortex');
     setGroupY(slug, 'log');
     resetGroup(slug);
     const snap = getGroupSnapshot(slug);
     expect(snap.hiddenSeries).toEqual([]);
     expect(snap.shownSeries).toEqual([]);
+    expect(snap.hiddenEngines).toEqual([]);
+    expect(snap.hiddenFormats).toEqual([]);
     expect(snap.groupY).toBeNull();
     expect(Object.keys(snap.knownSeries)).toEqual(['s1']);
   });

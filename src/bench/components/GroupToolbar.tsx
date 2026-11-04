@@ -9,9 +9,10 @@ import { FilterIcon } from '@/bench/components/icons';
 import { DEFAULT_VISIBLE, type FilterUniverse } from '@/bench/lib/chart-format';
 import {
   applyGroupMacro,
-  clearGroupSeriesFilter,
+  clearGroupFilterRow,
   getGlobalFilterSnapshot,
   getGroupSnapshot,
+  groupMacroIsActive,
   groupSeriesIsVisible,
   resetGroup,
   setGroupY,
@@ -165,7 +166,6 @@ export function GroupToolbar({
             groupSlug={groupSlug}
             snapshot={snapshot}
             globalSnapshot={globalSnapshot}
-            knownSeries={snapshot.knownSeries}
           />
           <MacroRow
             label="Format"
@@ -174,7 +174,6 @@ export function GroupToolbar({
             groupSlug={groupSlug}
             snapshot={snapshot}
             globalSnapshot={globalSnapshot}
-            knownSeries={snapshot.knownSeries}
           />
           <div className="global-filter-row group-series-row">
             <span className="global-filter-label">Series</span>
@@ -184,7 +183,7 @@ export function GroupToolbar({
               data-group-filter="series"
               data-value="*"
               aria-pressed="false"
-              onClick={() => clearGroupSeriesFilter(groupSlug)}
+              onClick={() => clearGroupFilterRow(groupSlug, 'series')}
             >
               all
             </button>
@@ -246,9 +245,10 @@ export function GroupToolbar({
 
 /**
  * An engine/format macro row inside the per-group filter panel. A macro chip is
- * active iff at least one known series matches this tag AND every match is
- * currently visible; with no matching series the chip is inert and renders
- * inactive so the dropdown does not falsely advertise irrelevant filters.
+ * active when its row does not hide it and at least one series it covers shows
+ * ([`groupMacroIsActive`]); with no matching series the chip is inert and
+ * renders inactive so the dropdown does not falsely advertise irrelevant
+ * filters. The row's "all" chip clears this row's choices only.
  */
 function MacroRow({
   label,
@@ -257,7 +257,6 @@ function MacroRow({
   groupSlug,
   snapshot,
   globalSnapshot,
-  knownSeries,
 }: {
   label: string;
   dim: 'engine' | 'format';
@@ -265,7 +264,6 @@ function MacroRow({
   groupSlug: string;
   snapshot: ReturnType<typeof getGroupSnapshot>;
   globalSnapshot: ReturnType<typeof getGlobalFilterSnapshot>;
-  knownSeries: Record<string, { engine?: string; format?: string }>;
 }) {
   return (
     <div className="global-filter-row group-macro-row">
@@ -276,15 +274,12 @@ function MacroRow({
         data-group-filter={dim}
         data-value="*"
         aria-pressed="false"
-        onClick={() => clearGroupSeriesFilter(groupSlug)}
+        onClick={() => clearGroupFilterRow(groupSlug, dim)}
       >
         all
       </button>
       {universe.map((value) => {
-        const matching = Object.keys(knownSeries).filter((l) => knownSeries[l]?.[dim] === value);
-        const isActive =
-          matching.length > 0 &&
-          matching.every((value) => groupSeriesIsVisible(snapshot, value, globalSnapshot));
+        const isActive = groupMacroIsActive(snapshot, dim, value, globalSnapshot);
         return (
           <button
             key={value}

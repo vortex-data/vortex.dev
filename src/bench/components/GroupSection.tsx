@@ -10,11 +10,9 @@ import { InfoIcon } from '@/bench/components/icons';
 import { SummaryCard } from '@/bench/components/SummaryCard';
 import { groupDocUrl } from '@/bench/lib/benchmark-docs';
 import type { FilterUniverse } from '@/bench/lib/chart-format';
+import { type GroupFilterChoices, NO_GROUP_FILTER_CHOICES } from '@/bench/lib/group-filter';
 import { groupHeadline } from '@/bench/lib/headline';
 import type { Group } from '@/bench/lib/queries';
-
-const NO_INITIAL_HIDDEN_SERIES: string[] = [];
-const NO_INITIAL_SHOWN_SERIES: string[] = [];
 
 /**
  * One group's landing-page section, the server-component port of
@@ -68,15 +66,13 @@ export function GroupSection({
   anchor,
   startIndex,
   universe,
-  initialHiddenSeries = NO_INITIAL_HIDDEN_SERIES,
-  initialShownSeries = NO_INITIAL_SHOWN_SERIES,
+  initialFilter = NO_GROUP_FILTER_CHOICES,
 }: {
   group: Group;
   anchor: string;
   startIndex: number;
   universe: FilterUniverse;
-  initialHiddenSeries?: string[];
-  initialShownSeries?: string[];
+  initialFilter?: GroupFilterChoices;
 }) {
   const chartCount = group.charts.length;
   // The info blurb's long form: the benchmark's explainer doc in the monorepo,
@@ -140,8 +136,7 @@ export function GroupSection({
         charts={group.charts}
         startIndex={startIndex}
         universe={universe}
-        initialHiddenSeries={initialHiddenSeries}
-        initialShownSeries={initialShownSeries}
+        initialFilter={initialFilter}
       />
     </section>
   );
