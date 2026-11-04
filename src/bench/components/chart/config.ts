@@ -61,6 +61,15 @@ function themeColor(name: string, fallback: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
 }
 
+/** The drag selection's colour: the theme's `--wash`, which differs between Light and Dark. */
+const dragWash = () => themeColor('--wash', 'transparent');
+
+/** Re-reads `--wash` into a drawn chart's drag selection, after a theme change. */
+export function applyDragWash(chart: ChartJs): void {
+  const drag = chart.options.plugins?.zoom?.zoom?.drag;
+  if (drag) drag.backgroundColor = dragWash();
+}
+
 /** The Chart.js config for one card's line chart, built once at construction. */
 export function lineChartConfig(input: {
   Chart: typeof ChartJs;
@@ -198,7 +207,7 @@ export function lineChartConfig(input: {
             wheel: { enabled: false },
             // The selection is the system's neutral wash: Blue names Vortex,
             // and a zoom region is not Vortex.
-            drag: { enabled: true, backgroundColor: themeColor('--wash', 'transparent') },
+            drag: { enabled: true, backgroundColor: dragWash() },
             mode: 'x',
             onZoom: (ctx) => onZoom(ctx.chart),
           },

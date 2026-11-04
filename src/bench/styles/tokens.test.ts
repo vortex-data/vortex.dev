@@ -169,5 +169,11 @@ describe("bench's stylesheet on the system's tokens", () => {
       expect(own.length, control).toBeGreaterThan(0);
       for (const d of own) expect(d.value, `${control} ${d.prop}`).not.toMatch(/translate|scale/);
     }
+    // The window chip is clickable in two states: "windowed" loads the full history, and "error"
+    // retries it.
+    for (const state of ['windowed', 'error']) {
+      const sel = `.chart-window-chip[data-state='${state}']:not(:disabled):active`;
+      expect(valueOf(sel, 'background'), sel).toBeDefined();
+    }
   });
 });

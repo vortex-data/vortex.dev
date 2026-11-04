@@ -53,7 +53,7 @@ import {
   setSliderBounds,
   setSliderFromRange,
 } from './card-dom';
-import { lineChartConfig } from './config';
+import { applyDragWash, lineChartConfig } from './config';
 import { benchDatasets, buildDatasets, recolorDatasets } from './datasets';
 import { attachWheelPan, bindRangeStrip } from './pan-zoom';
 import type { CardCallbacks, CardElements, CardState } from './types';
@@ -132,6 +132,7 @@ export class ChartController {
       return;
     }
     recolorDatasets(benchDatasets(chart), effectiveTheme());
+    applyDragWash(chart);
     chart.update('none');
   }
 

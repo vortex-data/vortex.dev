@@ -1,7 +1,7 @@
 /* Vortex design system components (sections: base, brand, site, docs, blog, focus), copied by tools/site-styles.mjs.
    Edit the system, then run tools/site-styles.mjs; do not edit here.
    Made by: node tools/site-styles.mjs <site> --sections base,brand,site,docs,blog,focus --faces --vx-face --base
-   sha256 1c65bdc5db09e0dcd06ae01640117184a151b9eb010afad7daf595f24dc81307 */
+   sha256 fb6c0c6af2bd6581d81a8c33bb12f13db8b84afa68bb91e95328cc2df7163e74 */
 
 /* ------------------------------------------------------------------ base */
 /* Every component sizes with border-box, so it draws the same under a site's reset or none. */
@@ -149,11 +149,12 @@
   color: var(--ink);
   border-color: var(--ink);
 }
-.vx-logos-pause:active { background: var(--edge); }
 .vx-logos-pause[aria-pressed="true"] {
   background: var(--surface);
   color: var(--ink);
 }
+/* After the pressed rule, so a press shows when the banner is already paused. */
+.vx-logos-pause:active { background: var(--edge); }
 .vx-logos-pause svg {
   grid-area: 1 / 1;
   width: 16px;

@@ -2020,6 +2020,10 @@ a.site-footer-sha:hover code {
 .chart-window-chip[data-state='windowed']:not(:disabled):active {
   background: color-mix(in srgb, var(--accent-ink) 22%, transparent);
 }
+/* The error state is the retry button, so it shows a press too. */
+.chart-window-chip[data-state='error']:not(:disabled):active {
+  background: color-mix(in srgb, var(--bad) 22%, transparent);
+}
 
 /* ----------------------------------------------------------------------
  * Methodology page
