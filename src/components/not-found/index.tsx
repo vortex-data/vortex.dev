@@ -4,7 +4,7 @@ import { AsciiMark } from "@/components/ascii-mark";
 /**
  * The 404's body, the same on every surface (the design system's DECISIONS
  * 36): the Status card with the mark. The words follow Writing › Site errors.
- * It follows the reader's theme, and the mark draws in Light too. `origin` is
+ * The pages that render it keep it Dark whatever the theme (`DarkOnly`). `origin` is
  * the site's, for a page served from another host (bench), where the site's
  * paths are not this host's.
  */

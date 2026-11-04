@@ -157,7 +157,9 @@ describe.skipIf(!databaseAvailable || !BUILD_PRESENT)(
       // The root follows the OS until a reader chooses, and carries the faces.
       expect(html).toContain('localStorage.getItem("vx-theme")');
       expect(html).toContain('<html lang="en" data-theme="system" class="no-js ');
-      expect(html).toContain('<fieldset class="vx-theme-switch" aria-label="Theme" data-requires-js="true">');
+      expect(html).toContain(
+        '<fieldset class="vx-theme-switch" aria-label="Theme" data-requires-js="true">',
+      );
     });
 
     it('serves the chart permalink page with its page title and meta line', async () => {
@@ -183,6 +185,10 @@ describe.skipIf(!databaseAvailable || !BUILD_PRESENT)(
     it('returns 404 HTML for an unknown chart slug', async () => {
       const r = await fetch(`${BASE}/chart/ra.unknown-slug`);
       expect(r.status).toBe(404);
+      // The site's 404 title, not bench's own (DECISIONS 36: one 404 everywhere).
+      const html = await r.text();
+      expect(html).toContain('<title>Page not found | Vortex</title>');
+      expect(html).not.toContain('<meta property="og:url"');
     });
 
     it('serves the chart API the islands fetch from', async () => {

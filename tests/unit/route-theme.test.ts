@@ -37,11 +37,30 @@ describe("applyRouteTheme", () => {
     assert.equal(w.listeners.size, 0);
   });
 
-  it("follows the OS on the homepage too, which is no longer Dark only", () => {
-    const w = fakeWindow("system", true);
+  it("keeps a page that the root locks Dark (the homepage, the 404) Dark, whatever the choice", () => {
+    const w = fakeWindow("light", false);
+    w.root.dataset.themeLock = "dark";
     applyRouteTheme("/", w.win);
+    assert.equal(w.root.dataset.theme, "dark");
+    assert.equal(w.root.dataset.themeChoice, "light");
+    w.setOs(true);
     w.setOs(false);
-    assert.equal(w.root.dataset.theme, "light");
+    assert.equal(w.root.dataset.theme, "dark");
+  });
+});
+
+describe("chooseTheme on a page locked Dark", () => {
+  it("saves and shows the choice, and keeps the page Dark", () => {
+    const w = fakeWindow(null, false);
+    w.root.dataset.themeLock = "dark";
+    const saved: string[] = [];
+    chooseTheme("/", "light", {
+      ...w.win,
+      localStorage: { setItem: (_: string, v: string) => saved.push(v) }
+    });
+    assert.deepEqual(saved, ["light"]);
+    assert.equal(w.root.dataset.themeChoice, "light");
+    assert.equal(w.root.dataset.theme, "dark");
   });
 });
 

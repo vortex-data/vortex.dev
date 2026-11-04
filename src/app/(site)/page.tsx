@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { AsciiMark } from "@/components/ascii-mark";
+import { DarkOnly } from "@/components/dark-only";
 import { InstallTabs } from "@/components/install-tabs";
 import { LogoBanner } from "@/components/logo-banner";
 import { ResultsTable } from "@/components/results-table";
@@ -47,6 +48,7 @@ export default async function Home() {
   ]);
   return (
     <div className={styles.home}>
+      <DarkOnly />
       <script
         type="application/ld+json"
         // biome-ignore lint/security/noDangerouslySetInnerHtml: JSON-LD from our own data; jsonLdScript escapes every <.

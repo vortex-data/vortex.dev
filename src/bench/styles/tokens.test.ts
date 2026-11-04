@@ -216,9 +216,12 @@ describe("bench's stylesheet on the system's tokens", () => {
     expect(lastValue('body', 'overflow-x')).toBe('clip');
     // The fixed Groups button needs room under the footer, or it covers the footer's mark.
     expect(lastValue('.bench-frame:has(.group-nav-toggle)', 'padding-bottom')).toBe('3.5rem');
-    // Below 1260px the buttons' words hide, but the Filters count stays in view.
+    // The site's frame: one --page-max column for the header, main and footer.
+    expect(lastValue('.bench-frame', 'max-width')).toBe('var(--page-max)');
+    expect(lastValue('.bench-frame', 'margin-inline')).toBe('auto');
+    // Below 1440px the buttons' words hide, but the Filters count stays in view.
     expect(css).toMatch(
-      /@media \(max-width: 1260px\) \{\s*\.bench-toolbar-controls \.vx-btn > span:not\(\.filter-badge\) \{/,
+      /@media \(max-width: 1440px\) \{\s*\.bench-toolbar-controls \.vx-btn > span:not\(\.filter-badge\) \{/,
     );
     // The header's buttons are the system's (vx-btn), and bench restyles none of them.
     expect(css).not.toMatch(

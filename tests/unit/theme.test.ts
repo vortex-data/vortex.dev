@@ -1,7 +1,13 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { runInNewContext } from "node:vm";
-import { probeWebgl, THEME_BOOTSTRAP, themeFor } from "@/lib/theme";
+import {
+  DARK_LOCK_SCRIPT,
+  probeWebgl,
+  SITE_THEMEABLE,
+  THEME_BOOTSTRAP,
+  themeFor
+} from "@/lib/theme";
 
 // Runs the inline first-paint script against a fake page and returns what it set on <html>.
 function boot(
@@ -37,30 +43,33 @@ function boot(
   return Object.assign(root.dataset, { className: root.className });
 }
 
-// Every page follows the reader's choice, the homepage too, and no choice is System (design system
-// DECISIONS 37).
+// The blog follows the reader's choice, and no choice is System (design system DECISIONS 37). The
+// homepage and every other path, the 404 among them, stay Dark whatever the choice.
 const CASES: [string, string | null, boolean, "light" | "dark"][] = [
-  ["/", "light", false, "light"],
-  ["/", "system", false, "light"],
+  ["/", "light", false, "dark"],
+  ["/", "system", false, "dark"],
   ["/", null, true, "dark"],
-  ["/", null, false, "light"],
+  ["/", null, false, "dark"],
   ["/blog", "light", true, "light"],
   ["/blog/btrblocks-compressor", "light", true, "light"],
   ["/blog", "dark", false, "dark"],
   ["/blog", "system", true, "dark"],
+  ["/blog", null, false, "light"],
   ["/blog", "sepia", false, "light"],
-  ["/no-such-page", "light", false, "light"]
+  ["/no-such-page", "light", false, "dark"]
 ];
 
 describe("themeFor", () => {
-  it("follows the reader's choice on every page", () => {
+  it("follows the reader's choice on the blog, and keeps the other pages Dark", () => {
     for (const [path, stored, prefersDark, want] of CASES) {
       assert.equal(
         // An unknown stored value reads as System, as the bootstrap reads it.
         themeFor(
-          ["light", "dark", "system"].includes(stored ?? "") ? (stored ?? "") : "system",
+          ["light", "dark", "system"].includes(stored ?? "")
+            ? (stored ?? "")
+            : "system",
           prefersDark,
-          { path }
+          { path, themeable: SITE_THEMEABLE }
         ),
         want,
         `${path} ${stored} ${prefersDark}`
@@ -86,8 +95,14 @@ describe("THEME_BOOTSTRAP", () => {
   });
 
   it("reads the choice that the vortex.dev cookie shares across the subdomains first", () => {
-    assert.equal(boot("/", "dark", false, false, true, "vx-theme=light").theme, "light");
-    assert.equal(boot("/", "dark", false, true, true, "a=1; vx-theme=light").theme, "light");
+    assert.equal(
+      boot("/blog", "dark", false, false, true, "vx-theme=light").theme,
+      "light"
+    );
+    assert.equal(
+      boot("/blog", "dark", false, true, true, "a=1; vx-theme=light").theme,
+      "light"
+    );
   });
 
   it("records the choice, which the switch shows pressed before hydration", () => {
@@ -149,5 +164,22 @@ describe("THEME_BOOTSTRAP", () => {
 
   it("is a constant that builds no code from values", () => {
     assert.ok(!THEME_BOOTSTRAP.includes("${"));
+  });
+});
+
+describe("DARK_LOCK_SCRIPT", () => {
+  it("locks the page Dark before the rest of the page paints", () => {
+    const root = {
+      dataset: { theme: "light", themeChoice: "light" } as Record<
+        string,
+        string
+      >
+    };
+    runInNewContext(DARK_LOCK_SCRIPT, { document: { documentElement: root } });
+    assert.deepEqual(root.dataset, {
+      theme: "dark",
+      themeChoice: "light",
+      themeLock: "dark"
+    });
   });
 });

@@ -94,13 +94,16 @@ a:hover {
   display: none !important;
 }
 
-/* The frame lets bench's pages span the window, as the header and footer do, so every edge lines
- * up at page-pad. The header is sticky, with bench's controls on its row (the system's has-tools),
- * and --toolbar-height is its height. */
+/* The site's page frame (src/app/(site)/globals.css): the header, main and footer share one
+ * --page-max column, so on a wide screen the header sits where it does on the site, and every edge
+ * lines up at page-pad inside it. The header is sticky, with bench's controls in its tools, and
+ * --toolbar-height is its height. */
 .bench-frame {
   display: flex;
   flex-direction: column;
+  max-width: var(--page-max);
   min-height: 100dvh;
+  margin-inline: auto;
 }
 
 main {
@@ -122,16 +125,14 @@ main {
 }
 
 /* The 404's mark, as on the site: with scripts the still symbol waits for the live mark, and shows
- * only when the mark cannot draw. It is inverted in Light. */
+ * only when the mark cannot draw. The 404 is Dark with scripts (DarkOnly); with none the root stays
+ * "system", so in a light OS the symbol is inverted. */
 .js .ascii-mark-still {
   visibility: hidden;
 }
 .js [data-mark-mode='static'] > .ascii-mark-still,
 .js [data-mark-mode='error'] > .ascii-mark-still {
   visibility: visible;
-}
-:root[data-theme='light'] .ascii-mark-still {
-  filter: invert(1);
 }
 @media (prefers-color-scheme: light) {
   :root[data-theme='system'] .ascii-mark-still {
@@ -1463,9 +1464,10 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
 /* ----------------------------------------------------------------------
  * Mobile
  * ---------------------------------------------------------------------- */
-/* Below 1260px the header's buttons keep their icons, and their words stay as their names, so
- * the controls fit on the header's row; the Filters count stays in view. */
-@media (max-width: 1260px) {
+/* Below 1440px the header's buttons keep their icons, and their words stay as their names, so
+ * the controls fit on the header's row beside the site's links, the theme switch and the GitHub
+ * button; the Filters count stays in view. */
+@media (max-width: 1440px) {
   .bench-toolbar-controls .vx-btn > span:not(.filter-badge) {
     position: absolute;
     width: 1px;
