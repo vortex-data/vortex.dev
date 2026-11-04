@@ -41,6 +41,21 @@ test('verifies a matching build and populated read paths after CDN warmup', asyn
     'verified',
   );
 });
+test('accepts the build identity alone, which health returns without the cron secret', async () => {
+  const fetcher = fixture({
+    '/api/health': () => Response.json({ build_sha: SHA, schema_version: 1 }),
+  });
+  assert.equal(
+    await verifyDeployment('https://bench.test', SHA, 'production', fetcher, noSleep),
+    'verified',
+  );
+});
+test('rejects a deployment whose database check fails', async () => {
+  const fetcher = fixture({
+    '/api/health': () => Response.json({ status: 'error', build_sha: SHA, schema_version: 1 }),
+  });
+  await assert.rejects(verifyDeployment('https://bench.test', SHA, 'production', fetcher, noSleep));
+});
 test('rejects an older healthy deployment', async () => {
   await assert.rejects(
     verifyDeployment('https://bench.test', 'c'.repeat(40), 'production', fixture(), noSleep),

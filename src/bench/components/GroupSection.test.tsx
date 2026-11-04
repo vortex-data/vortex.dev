@@ -71,7 +71,23 @@ describe('GroupSection', () => {
     expect(html).toContain('id="random-access"');
     // The disclosure is collapsed by default (no `open` attribute on the tag).
     expect(html).toContain('<details class="group-disclosure">');
-    expect(html).toContain('<span class="group-name">Random Access</span>');
+    expect(html).toContain('>Random Access</span>');
+  });
+
+  // The page's h1 is the toolbar's "Benchmarks", and each score panel's title is an h3; the
+  // group's name is the level between them. A real <h2> cannot sit in the summary row, a <span>.
+  it("marks the group's name as a level-2 heading, between the page's h1 and the panels' h3s", () => {
+    const html = renderToStaticMarkup(
+      <GroupSection
+        group={RANDOM_ACCESS}
+        anchor="random-access"
+        startIndex={5}
+        universe={UNIVERSE}
+      />,
+    );
+    expect(html).toContain(
+      '<span class="group-name" role="heading" aria-level="2">Random Access</span>',
+    );
   });
 
   it('renders the description info-icon and a pluralized chart count', () => {

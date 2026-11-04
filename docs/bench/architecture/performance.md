@@ -87,7 +87,8 @@ gap, which is the dominant cost on this site. Two crons keep the hot path warm:
 
 - **The warmer — a Vercel-native cron, `*/2 * * * *` on `/bench/api/health`**
   ([`vercel.json`](../../../vercel.json)), bench's `/api/health`. It runs one
-  `SELECT 1`, so each ping checks connectivity and warms one pooled Postgres connection
+  `SELECT 1` (Vercel sends the cron `CRON_SECRET`, which the route requires for
+  the query once the project sets it), so each ping checks connectivity and warms one pooled Postgres connection
   without scanning benchmark tables. The pool uses a **5-second** idle timeout
   (`BENCH_DB_IDLE_TIMEOUT_MS`, default `5000`, in
   [`src/bench/lib/db.ts`](../../../src/bench/lib/db.ts)). Its

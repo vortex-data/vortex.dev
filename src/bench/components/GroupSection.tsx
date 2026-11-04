@@ -91,17 +91,15 @@ export function GroupSection({
       data-group-name={group.name}
       data-group-slug={group.slug}
     >
-      {/* The group's heading, for screen readers' heading list: the page's
-          h1, then a group, then its cards' h3s, with no level skipped. The
-          summary below shows the name, and a heading inside a summary is
-          lost, because a summary is a button. */}
-      <h2 className="visually-hidden">{group.name}</h2>
       {/* The pre-paint script (`OpenGroupsScript`) may add `open` to this
           element before hydration, when the URL fragment lists the group. */}
       <details className="group-disclosure" suppressHydrationWarning>
         <summary className="group-summary">
           <span className="group-summary-row">
-            <span className="group-name">{group.name}</span>
+            {/* biome-ignore lint/a11y/useSemanticElements: an <h2> cannot sit in this <span> row, and as the row it would name the count and the headline too; the role puts the group between the page's h1 and the score panels' h3s. */}
+            <span className="group-name" role="heading" aria-level={2}>
+              {group.name}
+            </span>
             {group.description !== undefined && (
               <span
                 className="group-info-icon"

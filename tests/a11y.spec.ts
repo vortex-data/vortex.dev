@@ -100,7 +100,12 @@ test.describe("site @axe", () => {
  * them out of the row, which changes its layout, so it waits for its own PR.
  */
 const BENCH_KNOWN: Known[] = [
-  { id: "nested-interactive", target: /(^|[ >])summary(\.group-summary)?$/ }
+  // axe names a summary by its tag, or by its class under the group's id
+  // (`#compression > .group-disclosure > .group-summary`).
+  {
+    id: "nested-interactive",
+    target: /(^|[ >])(summary(\.group-summary)?|\.group-summary)$/
+  }
 ];
 
 test.describe("bench @axe", () => {

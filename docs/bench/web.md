@@ -71,7 +71,11 @@ warmth:
 - The data routes (`/api/groups`, `/api/group/*`, `/api/chart/*`) set
   `Cache-Control: public, s-maxage=300, stale-while-revalidate=3600` on success responses
   (`src/bench/lib/cache.ts`); error responses omit the header so they are never CDN-cached. `/api/health`
-  is deliberately uncached so the liveness probe always reflects the live database.
+  is deliberately uncached so the liveness probe always reflects the live database. Once the Vercel
+  project sets `CRON_SECRET`, the probe runs its `SELECT 1` only for a request that sends
+  `Authorization: Bearer <CRON_SECRET>`: Vercel's cron does, and `bench-keep-warm.yml` sends it from
+  the `BENCH_CRON_SECRET` repository secret. Any other caller gets the build SHA and schema version
+  alone, so it cannot make the route query the database.
   The crawler files (`/robots.txt`, `/sitemap.xml`, `/llms.txt`, from `src/bench/lib/site-files.ts`)
   set the same header.
 - The HTML pages (`/`, `/methodology` and `/chart/:slug`) cannot set response headers from a server component,

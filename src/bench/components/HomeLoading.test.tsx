@@ -2,9 +2,13 @@
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { HomeLoading } from '@/bench/components/HomeLoading';
+
+// The header reads the request's host, which a render outside Next.js has not got; the server
+// smoke test checks the real one.
+vi.mock('@/bench/components/BenchHeader', () => ({ BenchHeader: () => null }));
 
 describe('HomeLoading', () => {
   const html = renderToStaticMarkup(<HomeLoading />);

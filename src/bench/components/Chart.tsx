@@ -387,6 +387,10 @@ export function Chart({ slug, name, index, groupSlug, initialPayload }: ChartIsl
     };
   }, [error, retryable]);
 
+  // One level below the group's h2 on the landing page; on the chart page, which has no
+  // group, the card is the page's h2, under the header's h1.
+  const Title = groupSlug === undefined ? 'h2' : 'h3';
+
   return (
     <section
       className="chart-card"
@@ -395,7 +399,7 @@ export function Chart({ slug, name, index, groupSlug, initialPayload }: ChartIsl
       hidden={hiddenAsEmpty}
       ref={cardRef}
     >
-      <h3 className="chart-card-title">
+      <Title className="chart-card-title">
         <a href={benchPath(base, `/chart/${slug}`)}>{name}</a>
         <span
           className="chart-badge chart-badge--downsampled"
@@ -411,7 +415,7 @@ export function Chart({ slug, name, index, groupSlug, initialPayload }: ChartIsl
           ref={chipRef}
           onClick={() => controllerRef.current?.onWindowChipClick()}
         />
-      </h3>
+      </Title>
       {/* Without JavaScript nothing draws the chart, so its controls and its
           canvas carry `data-requires-js` and are hidden (globals.css); the
           title link and the page's `<noscript>` note remain. */}
