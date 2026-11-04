@@ -1,7 +1,7 @@
 /* Vortex design system components (sections: base, brand, site, blog, tables, focus), copied by tools/site-styles.mjs.
    Edit the system, then run tools/site-styles.mjs; do not edit here.
    Made by: node tools/site-styles.mjs <site> --sections base,brand,site,blog,tables,focus --faces --vx-face --base
-   sha256 a0859dc7ce0a1f624614edfd9304b5d6d9089d466865b3524f05ebe70ebbb23c */
+   sha256 e117b58b1c9a603708746a0738653bb14b390ddc81835e0c5b7f27a64bd04ec2 */
 
 /* ------------------------------------------------------------------ base */
 /* Every component sizes with border-box, so it draws the same under a site's reset or none. */
@@ -784,6 +784,8 @@ html:has(.vx-header.has-tools) { scroll-padding-top: calc(var(--space-64) + var(
 }
 .vx-callout-icon { width: 20px; height: 20px; margin-top: 1px; fill: var(--ink); }
 .vx-callout-title { margin: 0 0 2px; font-weight: 600; color: var(--ink); }
+.vx-callout.is-warning .vx-callout-icon { fill: var(--warn-ink); }
+.vx-callout.is-warning .vx-callout-title { color: var(--warn-ink); }
 .vx-callout-body { margin: 0; }
 .vx-callout-body + .vx-callout-body { margin-top: var(--space-8); }
 
