@@ -50,7 +50,7 @@ describe("shikiTheme", () => {
     }
   });
 
-  it("maps the CodeBlock card's four roles", () => {
+  it("maps each of the CodeBlock card's roles", () => {
     const colour = (scope: string) => ruleFor(scope)?.settings.foreground;
     for (const [scope, want] of [
       ["keyword.control.rust", "keyword"],
@@ -58,7 +58,9 @@ describe("shikiTheme", () => {
       ["keyword.other.DML.sql", "keyword"],
       ["entity.name.function.rust", "function"],
       ["entity.name.function.macro.rust", "function"],
-      ["entity.name.type.primitive.rust", "function"],
+      ["entity.name.type.primitive.rust", "type"],
+      ["entity.name.type.struct.rust", "type"],
+      ["support.type.primitive.ts", "type"],
       ["string.quoted.double.rust", "string"],
       ["punctuation.definition.string.begin.rust", "string"],
       ["constant.numeric.decimal.rust", "string"],
