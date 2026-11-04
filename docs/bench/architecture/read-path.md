@@ -90,7 +90,7 @@ constant-time.
 | `GET /api/groups` | all groups + their chart links (structure only) |
 | `GET /api/group/{slug}` | one group with every chart's payload inlined |
 | `GET /api/chart/{slug}` | one chart's payload |
-| `GET /api/health` | database liveness via `SELECT 1`, build SHA, and schema version (200/503, never cached) |
+| `GET /api/health` | build SHA and schema version, plus database liveness via `SELECT 1` (200/503) for the Vercel cron and the keep-warm workflow, which send `CRON_SECRET`; never cached |
 
 The `?n=` query parameter selects the commit window: `?n=all` is uncapped;
 a numeric value snaps up to the next rung of `COMMIT_WINDOW_RUNGS` (25, 50, 100,

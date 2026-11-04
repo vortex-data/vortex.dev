@@ -105,8 +105,10 @@ export async function verifyDeployment(
     }
   }
 
+  // Without the cron secret, health reports the build alone and runs no database check; the
+  // group and chart requests below are what prove the database answers.
   const health = await json('/api/health', (body) => {
-    assert.equal(body.status, 'ok');
+    if ('status' in body) assert.equal(body.status, 'ok');
     assert.equal(body.build_sha, sha, 'Health reports a different build');
     assert.ok(Number.isInteger(body.schema_version));
   });
