@@ -42,11 +42,6 @@
       "dependencyDashboardApproval": true
     },
     {
-      "description": "three moves with the design system: src/vendor/vortex-design/ascii-mark.js names the same version for its CDN copy. A routine update waits for approval on the Dependency Dashboard; approve it after the ASCII mark renders on the preview, and move the system's version with it. A security fix opens its PR at once, because Renovate's vulnerabilityAlerts forces dependencyDashboardApproval off.",
-      "matchPackageNames": ["three"],
-      "dependencyDashboardApproval": true
-    },
-    {
       "groupName": "Next.js",
       "matchPackageNames": ["next", "@next/**"]
     },
