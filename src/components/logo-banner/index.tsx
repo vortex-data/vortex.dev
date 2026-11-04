@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { PauseFillIcon, PauseIcon } from "@/components/icons";
 import { copiesNeeded } from "@/vendor/vortex-design/ascii-core.js";
 import { LOGOS } from "./logos";
@@ -22,6 +22,7 @@ const FIRST_COPIES = 2;
  * (globals.css).
  */
 export function LogoBanner({ className }: { className?: string | undefined }) {
+  const labelId = useId();
   const strip = useRef<HTMLDivElement>(null);
   const first = useRef<HTMLDivElement>(null);
   const [copies, setCopies] = useState(FIRST_COPIES);
@@ -49,9 +50,11 @@ export function LogoBanner({ className }: { className?: string | undefined }) {
   return (
     <section
       className={className ? `${className} vx-logos` : "vx-logos"}
-      aria-label="Ecosystem"
+      aria-labelledby={labelId}
     >
-      <span className="vx-label">Ecosystem</span>
+      <span className="vx-label" id={labelId}>
+        Ecosystem
+      </span>
       {/* A toggle: the CSS reads aria-pressed, so the name stays the same. */}
       <button
         className="vx-logos-pause"

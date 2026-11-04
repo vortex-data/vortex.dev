@@ -92,7 +92,6 @@ export function bindRangeStrip(
     }
     stripWindow.style.left = `${leftPct}%`;
     stripWindow.style.width = `${widthPct}%`;
-    strip.setAttribute('aria-valuenow', String(Math.round(leftPct)));
   };
 
   const setRange = (rawMin: number, rawMax: number): void => {

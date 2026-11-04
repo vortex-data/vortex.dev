@@ -14,4 +14,4 @@ export function saveChoice(storage: Pick<Storage, "setItem"> | null | undefined,
 export function resolveTheme(choice: string, prefersDark: boolean): Theme;
 export function themeFor(choice: string, prefersDark: boolean, options?: { path?: string; themeable?: Themeable }): Theme;
 export function applyTheme(choice?: ThemeChoice, options?: { path?: string; themeable?: Themeable }): ThemeChoice;
-export function mountThemeSwitch(el: Element, options?: { apply?: boolean; themeable?: Themeable }): void;
+export function mountThemeSwitch(el: Element, options?: { apply?: boolean; themeable?: Themeable }): () => void;

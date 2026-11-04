@@ -7,6 +7,8 @@ const TITLE = "Page not found | Vortex";
 // says only "Page not found." under its code, because this would repeat it.
 const SENTENCE = "There is no page at this address.";
 
+// No canonical and no og:url: a missing page is not the homepage. Without
+// `alternates`, the layout's RSS links stay.
 export const metadata: Metadata = {
   title: TITLE,
   applicationName: "Vortex",
@@ -15,12 +17,8 @@ export const metadata: Metadata = {
     title: TITLE,
     description: SENTENCE,
     siteName: "Vortex",
-    url: "https://vortex.dev",
     type: "website",
     locale: "en_US"
-  },
-  alternates: {
-    canonical: "https://vortex.dev"
   }
 };
 

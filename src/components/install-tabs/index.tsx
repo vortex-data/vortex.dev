@@ -6,13 +6,17 @@ import { copyText, installTabs } from "@/lib/install";
 import { nextIndex } from "@/lib/roving";
 
 const DONE_MS = 1500;
+const COPIED = "Copied";
+const SELECTED = "Selected. Press Ctrl+C or Command+C to copy.";
 
 /**
- * The design system's InstallTabs card: five tabs over one command block,
- * Rust first. The tabs are one tab stop (the arrow keys, Home and End move
+ * The design system's InstallTabs card: a tab for each install path over one
+ * command block, Rust first, and Spark last when its version is known. The tabs are one tab stop (the arrow keys, Home and End move
  * between them). The copy button writes the selected tab's commands without
- * their prompts, shows `check` for 1.5s, and selects the text instead if the
- * clipboard is refused. `sparkVersion` is from `getSparkVersion`.
+ * their prompts and shows `check` for 1.5s. If there is no clipboard, or the
+ * browser refuses it, the button selects the text and the status tells a
+ * screen reader to copy it. A second copy restarts the 1.5s. `sparkVersion` is
+ * from `getSparkVersion`.
  *
  * Without JavaScript neither the tabs nor the copy button can work, so both
  * carry `data-requires-js` and hide, and every panel shows, stacked under its
@@ -21,7 +25,7 @@ const DONE_MS = 1500;
 export function InstallTabs({ sparkVersion }: { sparkVersion: string | null }) {
   const tabs = installTabs(sparkVersion);
   const [active, setActive] = useState(0);
-  const [done, setDone] = useState(false);
+  const [status, setStatus] = useState("");
   const id = useId();
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const panelRefs = useRef<(HTMLPreElement | null)[]>([]);
@@ -42,14 +46,20 @@ export function InstallTabs({ sparkVersion }: { sparkVersion: string | null }) {
     const tab = tabs[active];
     const panel = panelRefs.current[active];
     if (!tab || !panel) return;
-    const select = () => window.getSelection()?.selectAllChildren(panel);
-    const ok = () => {
-      setDone(true);
+    // The status holds its message for 1.5s after the last copy, then clears.
+    const say = (text: string) => {
       clearTimeout(timer.current);
-      timer.current = setTimeout(() => setDone(false), DONE_MS);
+      setStatus(text);
+      timer.current = setTimeout(() => setStatus(""), DONE_MS);
+    };
+    const select = () => {
+      window.getSelection()?.selectAllChildren(panel);
+      say(SELECTED);
     };
     if (navigator.clipboard)
-      navigator.clipboard.writeText(copyText(tab)).then(ok, select);
+      navigator.clipboard
+        .writeText(copyText(tab))
+        .then(() => say(COPIED), select);
     else select();
   };
 
@@ -110,7 +120,7 @@ export function InstallTabs({ sparkVersion }: { sparkVersion: string | null }) {
         </div>
         <button
           type="button"
-          className={done ? "vx-copy is-done" : "vx-copy"}
+          className={status === COPIED ? "vx-copy is-done" : "vx-copy"}
           aria-label="Copy to clipboard"
           data-requires-js
           onClick={copy}
@@ -119,7 +129,7 @@ export function InstallTabs({ sparkVersion }: { sparkVersion: string | null }) {
           <CheckIcon className="is-check" />
         </button>
         <span className="vx-sr-only" role="status">
-          {done ? "Copied" : ""}
+          {status}
         </span>
       </div>
     </div>

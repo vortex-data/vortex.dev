@@ -3,7 +3,7 @@
 
 'use client';
 
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
 
 import { FilterIcon } from '@/bench/components/icons';
 import { DEFAULT_VISIBLE, type FilterUniverse } from '@/bench/lib/chart-format';
@@ -54,6 +54,7 @@ export function GroupToolbar({
   universe: FilterUniverse;
 }) {
   const [open, setOpen] = useState(false);
+  const panelId = useId();
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Memoized on `groupSlug` so re-renders do not unsubscribe/re-subscribe the
@@ -136,8 +137,8 @@ export function GroupToolbar({
           className="control-btn filter-trigger group-filter-trigger"
           type="button"
           data-role="group-filter-trigger"
-          aria-haspopup="true"
           aria-expanded={open}
+          aria-controls={panelId}
           onClick={(e) => {
             e.stopPropagation();
             setOpen((o) => !o);
@@ -154,6 +155,7 @@ export function GroupToolbar({
         <div
           className="filter-panel group-filter-panel"
           data-role="group-filter-panel"
+          id={panelId}
           hidden={!open}
         >
           <MacroRow

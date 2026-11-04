@@ -62,7 +62,7 @@ const NO_JS_SWAP =
  * On the homepage only, before first paint: whether the browser can give the
  * ASCII mark a WebGL context. The root gets `webgl` or `no-webgl`, and with
  * `no-webgl` the page lays out without the mark from the first frame
- * (src/app/page.module.css), so it does not jump when the mark later reports
+ * (src/app/(site)/page.module.css), so it does not jump when the mark later reports
  * that it cannot draw. The probe's context is released at once, so the mark
  * can make its own. A link from another page renders the homepage with no
  * new document, so `probeWebgl` does the same then.

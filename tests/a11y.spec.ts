@@ -85,12 +85,25 @@ test.describe("site @axe", () => {
     await expectNoSeriousViolations(page, `/blog/${postSlug}`);
   });
 
-  test("the blog in the dark theme has no serious axe violations", async ({
+  // The blog is Dark unless the reader chose Light, whatever the OS asks, so
+  // the Light theme is audited with the reader's stored choice.
+  test("the blog in the light theme has no serious axe violations", async ({
     page
   }) => {
-    await page.emulateMedia({ colorScheme: "dark" });
+    await page.addInitScript(() => localStorage.setItem("vx-theme", "light"));
     await page.goto("/blog");
-    await expectNoSeriousViolations(page, "/blog (dark)");
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+    await expectNoSeriousViolations(page, "/blog (light)");
+  });
+
+  test("a blog post in the light theme has no serious axe violations", async ({
+    page
+  }) => {
+    test.skip(!postSlug, "no published post on /blog");
+    await page.addInitScript(() => localStorage.setItem("vx-theme", "light"));
+    await page.goto(`/blog/${postSlug}`);
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+    await expectNoSeriousViolations(page, `/blog/${postSlug} (light)`);
   });
 });
 

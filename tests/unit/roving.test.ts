@@ -25,4 +25,9 @@ describe("nextIndex", () => {
     assert.equal(nextIndex("Enter", 1, 5, "horizontal"), null);
     assert.equal(nextIndex("Tab", 1, 5, "horizontal"), null);
   });
+
+  it("gives null for every key in an empty group", () => {
+    for (const key of ["Home", "End", "ArrowRight", "ArrowLeft"])
+      assert.equal(nextIndex(key, 0, 0, "horizontal"), null);
+  });
 });

@@ -35,6 +35,21 @@ const THREE_URL = "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module
  * leaves the page: it stops the loop, removes the listeners and frees the WebGL context.
  */
 export async function mountAsciiMark(host, opts = {}) {
+  const cleanups = [];
+  const destroy = () => {
+    while (cleanups.length) cleanups.pop()();
+  };
+  // A step that throws part-way (a lost WebGL context, a bad three.js) must not leave the observer,
+  // the canvas, or the context alive: the caller never gets destroy() from a rejected promise.
+  try {
+    return await mount(host, opts, cleanups, destroy);
+  } catch (err) {
+    destroy();
+    throw err;
+  }
+}
+
+async function mount(host, opts, cleanups, destroy) {
   const hostCss = getComputedStyle(host);
   const o = {
     font: hostCss.getPropertyValue("--font-mono").trim() || '"Geist Mono", ui-monospace, monospace',
@@ -48,10 +63,6 @@ export async function mountAsciiMark(host, opts = {}) {
     threeUrl: THREE_URL,
     exposure: 2.5,
     ...opts,
-  };
-  const cleanups = [];
-  const destroy = () => {
-    while (cleanups.length) cleanups.pop()();
   };
   // The palette for the host's scheme, read again whenever a data-theme changes on the page.
   let inks, field, brush, light;
@@ -136,6 +147,8 @@ export async function mountAsciiMark(host, opts = {}) {
   geometry.setIndex(new THREE.BufferAttribute(g.indices, 1));
   const material = new THREE.MeshStandardMaterial({ color: "#ffffff", metalness: 0, roughness: 0.6, flatShading: true });
   const mesh = new THREE.Mesh(geometry, material);
+  // The render target, made at the first resize. Declared before the cleanup that frees it.
+  let target = null;
   cleanups.push(() => {
     geometry.dispose();
     material.dispose();
@@ -159,7 +172,6 @@ export async function mountAsciiMark(host, opts = {}) {
   let cw = 0;
   let W = 0;
   let H = 0;
-  let target = null;
   // The grid reads the render back from the GPU. Where three.js has an async read (WebGL2's pixel
   // pack buffer and a fence), the page never waits for the GPU after the first frame: the grid
   // draws from the newest read that has landed. Elsewhere, and for the still frame under reduced

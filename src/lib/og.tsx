@@ -11,26 +11,19 @@ export const OG_CONTENT_TYPE = "image/png";
 export function renderOgImage(props: {
   title: string;
   description?: string | undefined;
-  eyebrow?: string | undefined;
 }) {
   return new ImageResponse(
-    <OgCard
-      title={props.title}
-      description={props.description}
-      eyebrow={props.eyebrow}
-    />,
+    <OgCard title={props.title} description={props.description} />,
     OG_SIZE
   );
 }
 
 function OgCard({
   title,
-  description,
-  eyebrow
+  description
 }: {
   title: string;
   description?: string | undefined;
-  eyebrow?: string | undefined;
 }) {
   return (
     <div
@@ -58,12 +51,6 @@ function OgCard({
         }}
       >
         <span>{siteName}</span>
-        {eyebrow ? (
-          <>
-            <span style={{ color: "rgba(255,255,255,0.3)" }}>/</span>
-            <span>{eyebrow}</span>
-          </>
-        ) : null}
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: "28px" }}>
         <div

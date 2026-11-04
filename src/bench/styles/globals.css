@@ -198,25 +198,8 @@ main {
   display: none;
 }
 
-.page-header {
-  border-bottom: 1px solid var(--line);
-  background: var(--ground);
-  padding: var(--space-16) var(--space-32);
-  width: 100%;
-}
-.page-header h1 {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-}
-.chart-card-title a,
-.page-header h1 a {
+.chart-card-title a {
   color: var(--ink);
-}
-.page-header .subtitle {
-  margin: var(--space-4) 0 0;
-  color: var(--ink-muted);
-  font-size: 0.875rem;
 }
 
 .empty {
@@ -291,8 +274,9 @@ main {
   border-radius: var(--radius-card);
   background: var(--surface);
   overflow: hidden;
-  /* Offset jump targets (GroupNav) so a jumped-to group title clears the sticky header. */
-  scroll-margin-top: calc(var(--toolbar-height) + 0.75rem);
+  /* The system's scroll-padding-top (64px + 8px) keeps a jumped-to group (GroupNav) clear of the
+     sticky header. This adds 4px, so the title sits 12px below the header. */
+  scroll-margin-top: var(--space-4);
   transition: border-color 0.2s ease;
 }
 .group-disclosure {
@@ -302,10 +286,7 @@ main {
   list-style: none;
   cursor: pointer;
   display: block;
-  /* Elevated surface - v2's `.benchmark-header` uses `--bg-secondary`
-   * (`#1a1a1a` in dark mode); `--card-bg` is the v3 alias for that
-   * elevated colour. Using `--code-bg` here flattened the disclosure
-   * bar against the page in dark mode. */
+  /* The card's surface, one step up from the page's ground. */
   background: var(--surface);
   border-radius: var(--radius-card) var(--radius-card) 0 0;
   user-select: none;
@@ -436,18 +417,6 @@ main {
 .group-docs-link:focus-visible {
   color: var(--ink);
   background: var(--line);
-}
-/* Screen-reader-only text (the permalink's copied announcement). */
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
-  border: 0;
 }
 /*
  * The small ⓘ next to a group title that surfaces the editorial blurb on
@@ -1612,7 +1581,7 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
 /* ----------------------------------------------------------------------
  * Footer
  * ----------------------------------------------------------------------
- * Emitted by `html::render::site_footer` at the bottom of every page. The
+ * bench's Footer component, above the system's footer on every page. The
  * `build <sha>` text links the short SHA to the matching commit on
  * GitHub so the rendered page is always traceable to a source revision.
  * Kept small + muted so it sits below the content without competing.

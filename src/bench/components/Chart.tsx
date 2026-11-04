@@ -477,18 +477,13 @@ export function Chart({ slug, name, index, groupSlug, initialPayload }: ChartIsl
           ref={canvasRef}
         />
       </div>
-      {/* The aria value attributes track the window's left edge as a percent
-          of the full history; the strip render keeps aria-valuenow current. */}
-      {/* biome-ignore lint/a11y/useFocusableInteractive: the strip is pointer-driven and has no key handling, so a tabIndex would add a dead tab stop. */}
+      {/* The strip is pointer-driven, with no keys, so it is hidden from
+          assistive tech: the "Show" range input above sets the same window. */}
       <div
         className="chart-range-strip"
         data-chart-index={index}
         data-role="range-strip"
-        aria-label="Visible commit range"
-        role="slider"
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-valuenow={100}
+        aria-hidden="true"
         data-requires-js
         ref={stripRef}
       >

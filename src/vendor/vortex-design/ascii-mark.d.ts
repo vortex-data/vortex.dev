@@ -1,4 +1,4 @@
-// Types for the design system's ascii-mark.js, from its JSDoc.
+// Types for ascii-mark.js, shipped beside it.
 
 export type AsciiMarkOptions = {
   /** The character grid's font, as for CanvasRenderingContext2D.font. */
@@ -11,18 +11,14 @@ export type AsciiMarkOptions = {
   lean?: boolean;
   /** The symbol image for the static mode. */
   fallbackSrc?: string | null;
+  /** "static" draws the still symbol whatever the browser can do. */
+  mode?: "auto" | "static";
   /** A three.js module the site bundles. */
   three?: unknown;
   threeUrl?: string;
   exposure?: number;
 };
 
-export type AsciiMark = {
-  mode: "live" | "reduced" | "static";
-  destroy(): void;
-};
+export type AsciiMark = { mode: "live" | "reduced" | "static"; destroy(): void };
 
-export function mountAsciiMark(
-  host: HTMLElement,
-  opts?: AsciiMarkOptions
-): Promise<AsciiMark>;
+export function mountAsciiMark(host: HTMLElement, opts?: AsciiMarkOptions): Promise<AsciiMark>;

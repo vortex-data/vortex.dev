@@ -156,6 +156,43 @@ describe("rehypeTables", () => {
     assert.equal((wrap.children[0] as HastElement).tagName, "table");
   });
 
+  it("names each region after the heading above it", () => {
+    const tree = run(
+      rehypeTables,
+      root(
+        table(),
+        el("h2", [text("Sizes")], { id: "sizes" }),
+        table(),
+        el("h3", [text("Speeds")], { id: "speeds" }),
+        el("p", [text("Read times.")]),
+        table()
+      )
+    );
+    const [first, , second, , , third] = tree.children as HastElement[];
+    assert.equal(first?.properties.ariaLabel, "Table");
+    assert.equal(first?.properties.ariaLabelledBy, undefined);
+    assert.equal(second?.properties.ariaLabelledBy, "sizes");
+    assert.equal(second?.properties.ariaLabel, undefined);
+    assert.equal(third?.properties.ariaLabelledBy, "speeds");
+  });
+
+  it("does not name a region after a heading inside an earlier element", () => {
+    const tree = run(
+      rehypeTables,
+      root(
+        el("h2", [text("Sizes")], { id: "sizes" }),
+        el("blockquote", [el("h3", [text("Aside")], { id: "aside" })]),
+        table(),
+        el("blockquote", [el("h4", [text("Inner")], { id: "inner" }), table()])
+      )
+    );
+    const [, quote, outer, nested] = tree.children as HastElement[];
+    assert.equal(quote?.tagName, "blockquote");
+    assert.equal(outer?.properties.ariaLabelledBy, "sizes");
+    const inner = nested?.children[1] as HastElement;
+    assert.equal(inner.properties.ariaLabelledBy, "inner");
+  });
+
   it("right-aligns a column whose every cell is a number, and marks a Total row", () => {
     const tree = run(rehypeTables, root(table()));
     const t = (tree.children[0] as HastElement).children[0] as HastElement;

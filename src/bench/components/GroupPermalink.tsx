@@ -185,7 +185,7 @@ export function GroupPermalink({
       }}
     >
       {copied ? <CheckIcon /> : <LinkIcon />}
-      <span className="visually-hidden" role="status">
+      <span className="vx-sr-only" role="status">
         {copied ? 'Link copied' : ''}
       </span>
     </a>

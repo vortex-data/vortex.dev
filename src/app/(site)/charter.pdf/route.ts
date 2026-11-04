@@ -18,7 +18,9 @@ export async function GET() {
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition": 'inline; filename="charter.pdf"',
-        "Cache-Control": "public, max-age=31536000, immutable"
+        // The URL has no version, so an amended charter must reach readers
+        // within a day.
+        "Cache-Control": "public, max-age=86400"
       }
     });
   } catch (error) {

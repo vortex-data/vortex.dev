@@ -16,6 +16,8 @@ export function nextIndex(
   count: number,
   orientation: Orientation
 ): number | null {
+  // An empty group has nowhere to move.
+  if (count <= 0) return null;
   if (key === "Home") return 0;
   if (key === "End") return count - 1;
   const step = KEYS[orientation][key];

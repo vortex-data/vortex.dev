@@ -8,7 +8,6 @@ import { WarningIcon } from "@/components/icons";
 
 interface MDXRendererProps {
   code: string;
-  components?: Record<string, React.ComponentType>;
 }
 
 const compileMDXComponent = (code: string) => {
@@ -16,10 +15,10 @@ const compileMDXComponent = (code: string) => {
   return fn({ ...runtime }).default;
 };
 
-export function MDXRenderer({ code, components }: MDXRendererProps) {
+export function MDXRenderer({ code }: MDXRendererProps) {
   try {
     const Component = compileMDXComponent(code);
-    return <Component components={{ ...mdxComponents, ...components }} />;
+    return <Component components={mdxComponents} />;
   } catch (error) {
     console.error("Error rendering MDX:", error);
     return (

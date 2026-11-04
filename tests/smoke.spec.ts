@@ -1191,7 +1191,8 @@ test.describe("logo banner under reduced motion", () => {
       await page.goto("/");
       // The first set holds every logo; the loop's copies are hidden here.
       const set = page
-        .locator('section[aria-label="Ecosystem"] .vx-logos-set')
+        .getByRole("region", { name: "Ecosystem" })
+        .locator(".vx-logos-set")
         .first();
       expect(await set.locator("img").count()).toBeGreaterThanOrEqual(16);
       // An "In proposal" tag hangs past its logo, so the tags are checked too.

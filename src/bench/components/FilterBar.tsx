@@ -3,7 +3,7 @@
 
 'use client';
 
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
 
 import {
   displayFormat,
@@ -55,6 +55,7 @@ export function FilterBar({
   initialFormats: string[] | null;
 }) {
   const [open, setOpen] = useState(false);
+  const panelId = useId();
   const barRef = useRef<HTMLDivElement>(null);
 
   // Seed the tab-wide store from the server-provided universe + URL state.
@@ -153,8 +154,8 @@ export function FilterBar({
         className="vx-btn vx-btn-secondary is-mono filter-trigger"
         type="button"
         data-role="filter-trigger"
-        aria-haspopup="true"
         aria-expanded={open}
+        aria-controls={panelId}
         onClick={(e) => {
           e.stopPropagation();
           setOpen((o) => !o);
@@ -168,7 +169,7 @@ export function FilterBar({
           </span>
         )}
       </button>
-      <div className="filter-panel" data-role="filter-panel" hidden={!open}>
+      <div className="filter-panel" data-role="filter-panel" id={panelId} hidden={!open}>
         <FilterRow
           label="Engine"
           dim="engine"

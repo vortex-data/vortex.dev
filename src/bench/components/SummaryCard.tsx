@@ -152,7 +152,7 @@ export function SummaryCard({ summary }: { summary?: Summary | undefined }) {
                       className={rowClass('compression-size-parquet-row', item.name)}
                       key={item.name}
                     >
-                      <span className="visually-hidden">
+                      <span className="vx-sr-only">
                         {`${displayFormat(item.name)}: minimum ${minRatio}, mean ${meanRatio}, maximum ${maxRatio}`}
                       </span>
                       <span aria-hidden="true" className="score-runtime compression-size-value">

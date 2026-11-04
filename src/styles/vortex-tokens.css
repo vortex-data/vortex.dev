@@ -1,7 +1,7 @@
 /* Vortex design system tokens, copied by tools/site-styles.mjs.
    Edit the system, then run tools/site-styles.mjs; do not edit here.
-   Made by: node tools/site-styles.mjs <site> --sections base,brand,site,docs,blog,focus --faces --vx-face --base
-   sha256 dc8f10294effa17b406d34b60d88a02770caf3c65a634d7185ba843009fe75aa */
+   Made by: node tools/site-styles.mjs <site> --sections base,brand,site,blog,tables,focus --faces --vx-face --base
+   sha256 0c19f1b05e81282363f609d0a883c212e3d849cd6e0aa8687866d15858b3790d */
 :root, [data-theme="dark"] {
   --white: #ffffff;
   --grey-50: #fcfcf9;
@@ -163,9 +163,15 @@
   --control-md: 32px;
   --control-sm: 28px;
   --app-row: 36px;
+  --vx-motion: 150ms ease-out;
   --font-display: var(--vx-face-display, "Funnel Display"), var(--vx-face-sans, Geist), sans-serif;
   --font-sans: var(--vx-face-sans, Geist), system-ui, sans-serif;
   --font-mono: var(--vx-face-mono, "Geist Mono"), ui-monospace, monospace;
+}
+@media (max-width: 640px) {
+  :root {
+    --page-pad: 16px;
+  }
 }
 .vx-display { font-family: var(--font-display); font-size: 64px; line-height: 0.98; font-weight: 500; letter-spacing: -0.02em; }
 .vx-h1 { font-family: var(--font-display); font-size: 48px; line-height: 1.05; font-weight: 500; letter-spacing: -0.02em; }

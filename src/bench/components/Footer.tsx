@@ -18,7 +18,9 @@ export function Footer() {
   const shortSha = fullSha.slice(0, 7);
   const commitUrl = `https://github.com/vortex-data/vortex.dev/commit/${fullSha}`;
   return (
-    <footer className="site-footer">
+    // A div, not a footer: the system's Footer below it is the page's one
+    // contentinfo landmark.
+    <div className="site-footer">
       <MethodologyLink />
       <span aria-hidden="true"> · </span>
       <span className="site-footer-label">build </span>
@@ -29,6 +31,6 @@ export function Footer() {
           <code>{shortSha}</code>
         </a>
       )}
-    </footer>
+    </div>
   );
 }
