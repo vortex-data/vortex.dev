@@ -1,16 +1,14 @@
 #!/usr/bin/env bash
 # Print a pull request comment, in Markdown, from Lighthouse reports:
 #
-#   LINKS_JSON='{"<url>": "<report url>", …}' \
-#     scripts/lighthouse-comment.sh "<title>" [lhr-*.json …]
+#   scripts/lighthouse-comment.sh "<title>" [lhr-*.json …]
 #
-# The reports default to .lighthouseci/lhr-*.json. LINKS_JSON is the
-# treosh/lighthouse-ci-action's `links` output (links.json), merged across
-# CI's Lighthouse jobs. The config collects three runs per URL and asserts
-# on the best one, so the table shows each URL's best run by performance,
-# the run the check is judged by. `group_by(.url)` also keeps row order
-# deterministic. The linked report is the one the action uploads for that
-# URL and may be a different run.
+# The reports default to .lighthouseci/lhr-*.json. The config collects three
+# runs per URL and asserts on the best one, so the table shows each URL's
+# best run by performance, the run the check is judged by. `group_by(.url)`
+# also keeps row order deterministic. The full reports are not published:
+# the footer links to the workflow run, whose `lighthouse-*` artifacts hold
+# them.
 #
 # Each cell follows Lighthouse's own scoring buckets: 🟢 ≥90, 🟡 50–89,
 # 🔴 <50. A threshold below the 🟢 cutoff lets a cell pass and still show 🟡,
@@ -23,9 +21,9 @@ if [ "$#" -eq 0 ]; then set -- .lighthouseci/lhr-*.json; fi
 
 echo "## 🔦 ${title}"
 echo ''
-echo '| URL | Perf | A11y | Best practices | SEO | Report |'
-echo '|---|:---:|:---:|:---:|:---:|---|'
-jq -s --argjson links "${LINKS_JSON}" -r '
+echo '| URL | Perf | A11y | Best practices | SEO |'
+echo '|---|:---:|:---:|:---:|:---:|'
+jq -s -r '
   def emo(s): if s >= 90 then "🟢" elif s >= 50 then "🟡" else "🔴" end;
   def cell(s): emo(s) + " " + (s | tostring);
   map({
@@ -42,10 +40,9 @@ jq -s --argjson links "${LINKS_JSON}" -r '
       + " | " + cell(.perf)
       + " | " + cell(.a11y)
       + " | " + cell(.bp)
-      + " | " + cell(.seo)
-      + " | [report](" + ($links[.url] // "#") + ") |"
+      + " | " + cell(.seo) + " |"
     )
   | join("\n")
 ' "$@"
 echo ''
-echo "_Run [\`${GITHUB_RUN_ID}\`](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}) · $(date -u +'%Y-%m-%d %H:%M UTC')_"
+echo "_Run [\`${GITHUB_RUN_ID}\`](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}) · full reports in the run's \`lighthouse-*\` artifacts · $(date -u +'%Y-%m-%d %H:%M UTC')_"

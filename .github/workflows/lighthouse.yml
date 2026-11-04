@@ -87,8 +87,9 @@ jobs:
           curl -s -o /dev/null -w "%{http_code} %{time_total}s ${path}\n" "${PROXY}${path}"
 
       # The action runs Lighthouse against the page, asserts the thresholds
-      # and uploads the reports to temporary public storage. Threshold
-      # rationale lives in lighthouserc.cjs.
+      # and writes the reports to .lighthouseci/. They stay out of
+      # Lighthouse's public report storage, because the pages come from the
+      # protected preview. Threshold rationale lives in lighthouserc.cjs.
       - name: Lighthouse CI
         if: steps.page.outputs.path != ''
         uses: treosh/lighthouse-ci-action@3e7e23fb74242897f95c0ba9cabad3d0227b9b18  # v12
@@ -99,11 +100,9 @@ jobs:
         with:
           configPath: ./lighthouserc.cjs
           uploadArtifacts: false
-          temporaryPublicStorage: true
 
-      # The reports and the action's links.json, for the report job's
-      # comment, and for anyone who wants the full reports. Uploaded when the
-      # assertions fail too.
+      # The reports, for the report job's comment and for anyone who wants
+      # the full reports. Uploaded when the assertions fail too.
       - name: Upload the reports
         if: always() && steps.page.outputs.path != ''
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
@@ -233,10 +232,6 @@ jobs:
           shopt -s nullglob
           reports=(reports/*/lhr-*.json)
           if [ "${#reports[@]}" -eq 0 ]; then exit 0; fi
-          links=(reports/*/links.json)
-          LINKS_JSON='{}'
-          if [ "${#links[@]}" -gt 0 ]; then LINKS_JSON="$(jq -s 'add' "${links[@]}")"; fi
-          export LINKS_JSON
           {
             echo 'body<<COMMENT_EOF'
             scripts/lighthouse-comment.sh 'Lighthouse audit' "${reports[@]}"

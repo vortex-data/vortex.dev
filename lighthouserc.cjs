@@ -162,8 +162,11 @@ module.exports = {
         }
       ]
     },
+    // Reports stay on disk, in .lighthouseci/: CI saves them as workflow
+    // artifacts, and nothing goes to Lighthouse's public report storage.
     upload: {
-      target: "temporary-public-storage"
+      target: "filesystem",
+      outputDir: ".lighthouseci"
     }
   }
 };
