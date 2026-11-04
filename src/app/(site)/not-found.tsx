@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { DarkOnly } from "@/components/dark-only";
 import { NotFoundStatus } from "@/components/not-found";
 
 const TITLE = "Page not found | Vortex";
@@ -22,12 +21,7 @@ export const metadata: Metadata = {
   }
 };
 
-/** The 404 page: the body every surface shares (`NotFoundStatus`), Dark whatever the theme. */
+/** The 404 page: the body every surface shares (`NotFoundStatus`). */
 export default function NotFound() {
-  return (
-    <>
-      <DarkOnly />
-      <NotFoundStatus />
-    </>
-  );
+  return <NotFoundStatus />;
 }

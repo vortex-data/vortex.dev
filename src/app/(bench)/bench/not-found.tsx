@@ -4,7 +4,6 @@
 import type { Metadata } from 'next';
 
 import { BenchHeader } from '@/bench/components/BenchHeader';
-import { DarkOnly } from '@/components/dark-only';
 import { NotFoundStatus } from '@/components/not-found';
 
 const TITLE = 'Page not found | Vortex';
@@ -23,13 +22,11 @@ export const metadata: Metadata = {
  * bench's 404, for the paths the catch-all route hands to `notFound()`: the
  * site's 404 body, in bench's layout under the shared header, with a 404
  * status. Its links point back to vortex.dev, because bench is served from its
- * own host. It is Dark whatever the theme, as the site's is: `DarkOnly` comes
- * first, so the header paints Dark too.
+ * own host.
  */
 export default function BenchNotFound() {
   return (
     <>
-      <DarkOnly />
       <BenchHeader />
       <main id="main" tabIndex={-1} className="bench-status">
         <NotFoundStatus origin="https://vortex.dev" />

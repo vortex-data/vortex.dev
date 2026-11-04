@@ -125,14 +125,16 @@ main {
 }
 
 /* The 404's mark, as on the site: with scripts the still symbol waits for the live mark, and shows
- * only when the mark cannot draw. The 404 is Dark with scripts (DarkOnly); with none the root stays
- * "system", so in a light OS the symbol is inverted. */
+ * only when the mark cannot draw. It is inverted in Light. */
 .js .ascii-mark-still {
   visibility: hidden;
 }
 .js [data-mark-mode='static'] > .ascii-mark-still,
 .js [data-mark-mode='error'] > .ascii-mark-still {
   visibility: visible;
+}
+:root[data-theme='light'] .ascii-mark-still {
+  filter: invert(1);
 }
 @media (prefers-color-scheme: light) {
   :root[data-theme='system'] .ascii-mark-still {
