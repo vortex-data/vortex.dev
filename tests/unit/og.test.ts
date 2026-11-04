@@ -24,7 +24,7 @@ describe("a post's Open Graph image", () => {
       new URL("../../src/lib/og.tsx", import.meta.url),
       "utf8"
     );
-    for (const f of ["FunnelDisplay-Medium.ttf", "GeistMono-Regular.ttf"]) {
+    for (const f of ["Geist-Medium.ttf", "GeistMono-Regular.ttf"]) {
       assert.ok(og.includes(f), f);
       assert.ok(
         readFileSync(new URL(`../../src/lib/og-assets/${f}`, import.meta.url))
@@ -32,6 +32,7 @@ describe("a post's Open Graph image", () => {
         f
       );
     }
-    assert.match(og, /fontFamily: "Funnel Display"/);
+    assert.match(og, /fontFamily: "Geist"/);
+    assert.doesNotMatch(og, /Funnel/);
   });
 });
