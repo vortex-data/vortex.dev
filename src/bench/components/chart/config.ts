@@ -55,6 +55,12 @@ const crosshairPlugin: Plugin<'line'> = {
   },
 };
 
+/** A token's value from the page's theme, or `fallback` outside a browser. */
+function themeColor(name: string, fallback: string): string {
+  if (typeof document === 'undefined') return fallback;
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
+}
+
 /** The Chart.js config for one card's line chart, built once at construction. */
 export function lineChartConfig(input: {
   Chart: typeof ChartJs;
@@ -190,7 +196,9 @@ export function lineChartConfig(input: {
         zoom: {
           zoom: {
             wheel: { enabled: false },
-            drag: { enabled: true, backgroundColor: 'rgba(37, 99, 235, 0.10)' },
+            // The selection is the system's neutral wash: Blue names Vortex,
+            // and a zoom region is not Vortex.
+            drag: { enabled: true, backgroundColor: themeColor('--wash', 'transparent') },
             mode: 'x',
             onZoom: (ctx) => onZoom(ctx.chart),
           },

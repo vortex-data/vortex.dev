@@ -1,7 +1,7 @@
 /* Vortex design system components (sections: base, brand, site, docs, blog, focus), copied by tools/site-styles.mjs.
    Edit the system, then run tools/site-styles.mjs; do not edit here.
    Made by: node tools/site-styles.mjs <site> --sections base,brand,site,docs,blog,focus --faces --vx-face --base
-   sha256 0da296463d0bf982ee4cf0230b0b73d497e368e449e213593bf078a5f9e0e7fb */
+   sha256 1c65bdc5db09e0dcd06ae01640117184a151b9eb010afad7daf595f24dc81307 */
 
 /* ------------------------------------------------------------------ base */
 /* Every component sizes with border-box, so it draws the same under a site's reset or none. */
@@ -149,6 +149,7 @@
   color: var(--ink);
   border-color: var(--ink);
 }
+.vx-logos-pause:active { background: var(--edge); }
 .vx-logos-pause[aria-pressed="true"] {
   background: var(--surface);
   color: var(--ink);
@@ -310,11 +311,16 @@
   transition: background-color var(--vx-motion), border-color var(--vx-motion);
 }
 .vx-btn svg { width: 16px; height: 16px; fill: currentColor; }
-.vx-btn[disabled], .vx-btn[aria-disabled="true"] { opacity: 0.45; cursor: default; }
+/* Disabled: no fill, a line border, and muted text, so it reads as off in more than one way. */
+.vx-btn[disabled], .vx-btn[aria-disabled="true"] { background: transparent; border-color: var(--line); color: var(--ink-muted); cursor: not-allowed; }
 .vx-btn-primary { background: var(--primary); color: var(--on-primary); }
 .vx-btn-secondary { border-color: var(--edge); }
 .vx-btn-secondary:hover { border-color: var(--ink); }
 .vx-btn-ghost:hover { background: var(--raised); }
+/* Pressed: one step past hover, in place. */
+.vx-btn-primary:active:not([disabled], [aria-disabled="true"]) { background: color-mix(in srgb, var(--primary) 82%, var(--ground)); }
+.vx-btn-secondary:active:not([disabled], [aria-disabled="true"]) { background: var(--raised); }
+.vx-btn-ghost:active:not([disabled], [aria-disabled="true"]) { background: var(--edge); }
 .vx-btn.is-mono { padding: 0 var(--space-12); font: 400 13px/1 var(--font-mono); }
 .vx-btn-count { display: inline-flex; align-items: center; gap: var(--space-4); padding-left: var(--space-12); border-left: 1px solid var(--edge); color: var(--ink-muted); }
 /* Buttons side by side, primary first, wrapping onto a second row on a phone. */
@@ -358,7 +364,7 @@
 .vx-field::placeholder { color: var(--ink-muted); opacity: 1; }
 .vx-field:hover { border-color: var(--ink); }
 .vx-field[aria-invalid="true"] { border-color: var(--error-ink); }
-.vx-field:disabled { opacity: 0.45; cursor: default; }
+.vx-field:disabled { background: transparent; border-color: var(--line); color: var(--ink-muted); cursor: not-allowed; }
 .vx-field-row { display: flex; gap: var(--space-8); max-width: 440px; }
 .vx-field-row > .vx-field { flex: 1 1 auto; min-width: 0; }
 .vx-field-error { margin: var(--space-8) 0 0; color: var(--error-ink); }
@@ -633,6 +639,7 @@
 .vx-prompt { color: var(--ink-muted); user-select: none; }
 .vx-copy { all: unset; cursor: pointer; color: var(--ink-muted); padding: 2px; }
 .vx-copy:hover { color: var(--ink); }
+.vx-copy:active { background: var(--wash); }
 .vx-copy svg { width: 16px; height: 16px; fill: currentColor; display: block; }
 .vx-copy .is-check, .vx-copy.is-done .is-copy { display: none; }
 .vx-copy.is-done .is-check { display: block; }
@@ -1024,7 +1031,10 @@
 .vx-prose td,
 .vx-table td { padding: var(--space-8) var(--space-12) var(--space-8) 0; border-bottom: 1px solid var(--line); }
 .vx-prose .is-num,
-.vx-table .is-num { text-align: right; font-family: var(--font-mono); font-size: 13px; white-space: nowrap; }
+.vx-table .is-num { text-align: right; white-space: nowrap; }
+/* The figures are mono at 13px; the column's head keeps the heads' 11px. */
+.vx-prose td.is-num,
+.vx-table td.is-num { font-family: var(--font-mono); font-size: 13px; }
 .vx-prose tr.is-total td,
 .vx-table tr.is-total td { color: var(--ink); font-weight: 600; border-bottom: 0; }
 /* Data tables: every cell in mono, rows at app height, and column names keep their case. */

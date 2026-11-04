@@ -91,6 +91,11 @@ export function GroupSection({
       data-group-name={group.name}
       data-group-slug={group.slug}
     >
+      {/* The group's heading, for screen readers' heading list: the page's
+          h1, then a group, then its cards' h3s, with no level skipped. The
+          summary below shows the name, and a heading inside a summary is
+          lost, because a summary is a button. */}
+      <h2 className="visually-hidden">{group.name}</h2>
       {/* The pre-paint script (`OpenGroupsScript`) may add `open` to this
           element before hydration, when the URL fragment lists the group. */}
       <details className="group-disclosure" suppressHydrationWarning>

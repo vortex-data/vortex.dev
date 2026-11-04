@@ -46,7 +46,8 @@ body {
   padding: 0;
   width: 100%;
   min-width: 0;
-  overflow-x: hidden;
+  /* clip, not hidden: hidden makes a scroll container, and position: sticky stops under it. */
+  overflow-x: clip;
   background: var(--ground);
   color: var(--ink);
   /* The system's faces, self-hosted by next/font (src/lib/fonts.ts). Each
@@ -105,7 +106,6 @@ a:hover {
   height: var(--header-height);
   border-bottom: 1px solid var(--line);
   background: rgba(245, 246, 247, 0.95);
-  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.08);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
 }
@@ -113,18 +113,15 @@ a:hover {
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) .sticky-header {
     background: rgba(26, 26, 26, 0.95);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
   }
 }
 
 :root[data-theme='dark'] .sticky-header {
   background: rgba(26, 26, 26, 0.95);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
 }
 
 :root[data-theme='light'] .sticky-header {
   background: rgba(245, 246, 247, 0.95);
-  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.08);
 }
 
 .header-content {
@@ -137,10 +134,10 @@ a:hover {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1.5rem;
+  gap: var(--space-24);
   width: 100%;
   height: 100%;
-  padding: 0 2rem;
+  padding: 0 var(--space-32);
 }
 
 .header-left,
@@ -155,7 +152,7 @@ a:hover {
 
 .header-left {
   min-width: 0;
-  gap: 0.75rem;
+  gap: var(--space-12);
 }
 
 .header-center {
@@ -170,12 +167,12 @@ a:hover {
 
 .header-right {
   justify-content: flex-end;
-  gap: 0.75rem;
+  gap: var(--space-12);
   margin-left: auto;
 }
 
 .nav-controls {
-  gap: 0.75rem;
+  gap: var(--space-12);
   min-width: 0;
 }
 
@@ -235,7 +232,7 @@ a:hover {
 
 .site-title {
   display: none;
-  margin: 0 0 0 1.5rem;
+  margin: 0 0 0 var(--space-24);
   color: var(--ink);
   font-size: 1.5rem;
   font-weight: 500;
@@ -257,7 +254,7 @@ a:hover {
   gap: 0.45rem;
   min-height: 36px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--radius-card);
   background: var(--surface);
   color: var(--ink);
   font: inherit;
@@ -274,7 +271,7 @@ a:hover {
 }
 
 .control-btn {
-  padding: 0.5rem 1.25rem;
+  padding: var(--space-8) var(--space-20);
   cursor: pointer;
 }
 
@@ -283,7 +280,6 @@ a:hover {
   border-color: var(--accent-ink);
   background: var(--ground);
   color: var(--accent-ink);
-  box-shadow: 0 1px 3px rgba(16, 16, 16, 0.08);
   text-decoration: none;
   transform: translateY(-1px);
 }
@@ -317,7 +313,7 @@ a:hover {
 }
 
 .repo-link {
-  padding: 0.5rem 1rem;
+  padding: var(--space-8) var(--space-16);
   font-weight: 500;
 }
 
@@ -328,19 +324,19 @@ a:hover {
 .page-header {
   border-bottom: 1px solid var(--line);
   background: var(--ground);
-  padding: 1rem 2rem;
+  padding: var(--space-16) var(--space-32);
   width: 100%;
 }
 .page-header h1 {
   margin: 0;
-  font-size: 1.25rem;
+  font-size: 18px;
   font-weight: 600;
 }
 .page-header h1 a {
   color: var(--ink);
 }
 .page-header .subtitle {
-  margin: 0.25rem 0 0;
+  margin: var(--space-4) 0 0;
   color: var(--ink-muted);
   font-size: 0.875rem;
 }
@@ -349,7 +345,7 @@ main {
   width: 100%;
   max-width: none;
   margin: 0;
-  padding: 2rem;
+  padding: var(--space-32);
 }
 
 @media (min-width: 1600px) {
@@ -360,7 +356,7 @@ main {
 
 @media (min-width: 1920px) {
   main {
-    padding: 3rem 5rem;
+    padding: var(--space-48) var(--space-80);
   }
 }
 
@@ -381,15 +377,15 @@ main {
   width: min(28rem, 100%);
   padding: 2.5rem;
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: var(--radius-card);
   background: var(--surface);
   box-shadow: var(--shadow-md);
   text-align: center;
 }
 
 .summary-loading-panel h2 {
-  margin: 1rem 0 0.25rem;
-  font-size: 1.25rem;
+  margin: var(--space-16) 0 var(--space-4);
+  font-size: 18px;
 }
 
 .summary-loading-panel p {
@@ -399,7 +395,7 @@ main {
 }
 
 .summary-loading-panel noscript p {
-  margin-top: 0.75rem;
+  margin-top: var(--space-12);
 }
 
 .chart-spinner.summary-loading-spinner {
@@ -411,9 +407,9 @@ main {
 .group-details {
   width: 100%;
   max-width: none;
-  margin-bottom: 3rem;
+  margin-bottom: var(--space-48);
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: var(--radius-card);
   background: var(--surface);
   overflow: hidden;
   /* Offset jump targets (GroupNav) so a jumped-to group title clears the sticky header. */
@@ -434,15 +430,15 @@ main {
    * elevated colour. Using `--code-bg` here flattened the disclosure
    * bar against the page in dark mode. */
   background: var(--surface);
-  border-radius: 12px 12px 0 0;
+  border-radius: var(--radius-card) var(--radius-card) 0 0;
   user-select: none;
 }
 .group-summary-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.75rem;
-  padding: 1rem 2rem;
+  gap: var(--space-12);
+  padding: var(--space-16) var(--space-32);
   border-bottom: 1px solid var(--line);
   transition: background-color 0.2s ease;
 }
@@ -512,7 +508,7 @@ main {
   height: 1.5rem;
   padding: 0;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-card);
   background: transparent;
   color: var(--ink-muted);
   text-decoration: none;
@@ -546,7 +542,7 @@ main {
   width: 1.5rem;
   height: 1.5rem;
   padding: 0;
-  border-radius: 6px;
+  border-radius: var(--radius-card);
   color: var(--ink-muted);
   text-decoration: none;
   flex-shrink: 0;
@@ -588,7 +584,7 @@ main {
   width: 1.25rem;
   height: 1.25rem;
   border-radius: 50%;
-  font-size: 0.95rem;
+  font-size: 14px;
   line-height: 1;
   color: var(--ink-muted);
   cursor: help;
@@ -620,13 +616,13 @@ main {
   position: absolute;
   top: calc(100% + 0.5rem);
   left: 0;
-  padding: 0.5rem 0.75rem;
+  padding: var(--space-8) var(--space-12);
   background: var(--tooltip-bg);
   color: var(--tooltip-fg);
   font-size: 0.8rem;
   font-weight: 400;
   line-height: 1.35;
-  border-radius: 6px;
+  border-radius: var(--radius-card);
   max-width: min(28rem, 90vw);
   width: max-content;
   white-space: normal;
@@ -638,7 +634,7 @@ main {
     visibility 0.15s ease;
   pointer-events: none;
   z-index: 10;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+  box-shadow: var(--shadow-md);
 }
 [data-tooltip].group-info-icon:hover::after,
 [data-tooltip].group-info-icon:focus-visible::after {
@@ -646,7 +642,7 @@ main {
   visibility: visible;
 }
 .group-body > .chart-grid {
-  padding: 1.25rem;
+  padding: var(--space-20);
   /* Page-level surface behind the chart cards. v2's `.benchmark-graphs`
    * uses `--bg-color` (`#101010` in dark mode); `--page-bg` is the v3
    * alias for the page colour. Using `--bg` here made the grid behind
@@ -659,7 +655,7 @@ main {
   /* Elevated surface, same role as v2's `.benchmark-scores-summary`
    * which uses `--bg-secondary`. */
   background: var(--surface);
-  padding: 0.75rem 2rem;
+  padding: var(--space-12) var(--space-32);
   margin: 0;
 }
 
@@ -700,12 +696,12 @@ main {
 
 .chart-meta + .benchmark-scores-summary {
   border: 1px solid var(--line);
-  border-radius: 8px;
-  margin-bottom: 1rem;
+  border-radius: var(--radius-card);
+  margin-bottom: var(--space-16);
 }
 
 .scores-title {
-  margin: 0 0 0.5rem;
+  margin: 0 0 var(--space-8);
   color: var(--ink-muted);
   font-size: 0.75rem;
   font-weight: 600;
@@ -715,7 +711,7 @@ main {
 
 .scores-list {
   column-count: 1;
-  column-gap: 1.25rem;
+  column-gap: var(--space-20);
 }
 
 .scores-list--split {
@@ -734,8 +730,8 @@ main {
 
 .compression-scores-panel + .compression-scores-panel {
   border-left: 1px solid var(--line);
-  padding-left: 1.25rem;
-  margin-left: 1.25rem;
+  padding-left: var(--space-20);
+  margin-left: var(--space-20);
 }
 
 .compression-scores-list {
@@ -758,8 +754,8 @@ main {
 
 .random-access-scores-panel + .random-access-scores-panel {
   border-left: 1px solid var(--line);
-  padding-left: 1.25rem;
-  margin-left: 1.25rem;
+  padding-left: var(--space-20);
+  margin-left: var(--space-20);
 }
 
 .random-access-scores-list {
@@ -778,21 +774,21 @@ main {
 
 .compression-size-parquet-panel {
   border-left: 1px solid var(--line);
-  padding-left: 1.25rem;
-  margin-left: 1.25rem;
+  padding-left: var(--space-20);
+  margin-left: var(--space-20);
 }
 
 .compression-size-arrow-header,
 .score-item.compression-size-arrow-row {
   display: grid;
   grid-template-columns: 2.25rem minmax(0, 1fr) 7rem;
-  column-gap: 1rem;
+  column-gap: var(--space-16);
 }
 
 .compression-size-arrow-header,
 .compression-size-parquet-header {
   grid-template-rows: auto auto;
-  row-gap: 0.25rem;
+  row-gap: var(--space-4);
   padding: 0.1rem 0 0.3rem;
 }
 
@@ -817,7 +813,7 @@ main {
 .compression-size-parquet-row {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  column-gap: 1rem;
+  column-gap: var(--space-16);
 }
 
 .compression-size-parquet-header .compression-size-group {
@@ -863,8 +859,8 @@ main {
 .score-item {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.25rem 0;
+  gap: var(--space-8);
+  padding: var(--space-4) 0;
   font-size: 0.875rem;
   break-inside: avoid;
 }
@@ -891,7 +887,7 @@ main {
 .score-metrics {
   display: inline-flex;
   align-items: baseline;
-  gap: 0.75rem;
+  gap: var(--space-12);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -945,7 +941,7 @@ main {
   min-width: 1.25rem;
   height: 1.25rem;
   padding: 0 0.4rem;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   background: var(--accent);
   color: var(--on-accent);
   font-size: 0.7rem;
@@ -960,12 +956,12 @@ main {
   z-index: 1100;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--space-8);
   min-width: 22rem;
   max-width: min(90vw, 36rem);
-  padding: 0.75rem 0.85rem;
+  padding: var(--space-12) 0.85rem;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--radius-card);
   background: var(--surface);
   box-shadow: var(--shadow-md);
 }
@@ -993,7 +989,7 @@ main {
   min-height: 24px;
   padding: 0.1rem 0.6rem;
   border: 1px solid var(--line);
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   background: var(--surface);
   color: var(--ink);
   font-size: 0.78rem;
@@ -1019,12 +1015,12 @@ main {
 .toolbar--card {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.4rem 0.75rem;
+  gap: 0.4rem var(--space-12);
   align-items: center;
-  padding: 0.4rem 0.5rem;
-  margin-bottom: 0.5rem;
+  padding: 0.4rem var(--space-8);
+  margin-bottom: var(--space-8);
   border: 1px solid var(--line);
-  border-radius: 4px;
+  border-radius: var(--radius-control);
   background: var(--surface);
   font-size: 0.78rem;
 }
@@ -1032,7 +1028,7 @@ main {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.25rem;
+  gap: var(--space-4);
 }
 .toolbar-label {
   color: var(--ink-muted);
@@ -1046,9 +1042,9 @@ main {
   align-items: center;
   justify-content: center;
   min-height: 24px;
-  padding: 0.1rem 0.5rem;
+  padding: 0.1rem var(--space-8);
   border: 1px solid var(--raised);
-  border-radius: 3px;
+  border-radius: var(--radius-control);
   background: var(--raised);
   color: var(--ink-muted);
   font-size: 0.78rem;
@@ -1085,15 +1081,15 @@ main {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.35rem 0.75rem;
-  padding: 0.4rem 1.25rem;
+  gap: 0.35rem var(--space-12);
+  padding: 0.4rem var(--space-20);
   border-bottom: 1px solid var(--line);
   background: var(--surface);
   font-size: 0.78rem;
 }
 .group-toolbar-y {
   flex: 0 0 auto;
-  gap: 0.25rem;
+  gap: var(--space-4);
 }
 .group-filter-dropdown {
   position: relative;
@@ -1103,7 +1099,7 @@ main {
 }
 .group-filter-trigger {
   min-height: 28px;
-  padding: 0.25rem 0.85rem;
+  padding: var(--space-4) 0.85rem;
   font-size: 0.78rem;
 }
 .group-filter-panel {
@@ -1117,9 +1113,9 @@ main {
   gap: 0.6rem;
   min-width: 24rem;
   max-width: min(90vw, 42rem);
-  padding: 0.75rem 0.85rem;
+  padding: var(--space-12) 0.85rem;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--radius-card);
   background: var(--surface);
   box-shadow: var(--shadow-md);
 }
@@ -1145,7 +1141,7 @@ main {
   min-height: 24px;
   padding: 0.1rem 0.6rem;
   border: 1px solid var(--line);
-  border-radius: 3px;
+  border-radius: var(--radius-control);
   background: var(--surface);
   color: var(--ink-muted);
   font: inherit;
@@ -1169,12 +1165,12 @@ main {
 .chart-meta {
   color: var(--ink-muted);
   font-size: 0.875rem;
-  margin: 0 0 0.75rem;
+  margin: 0 0 var(--space-12);
 }
 .chart-meta code {
   background: var(--ground);
   padding: 0.1rem 0.35rem;
-  border-radius: 3px;
+  border-radius: var(--radius-control);
   font-size: 0.85em;
 }
 
@@ -1184,10 +1180,10 @@ main {
   max-width: none;
   position: relative;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--radius-card);
   background: var(--surface);
-  padding: 1.25rem;
-  margin-bottom: 1rem;
+  padding: var(--space-20);
+  margin-bottom: var(--space-16);
   transition: box-shadow 0.2s ease;
 }
 .chart-card:hover {
@@ -1202,11 +1198,11 @@ main {
 }
 .chart-card-title {
   margin: 0 0 0.4rem;
-  font-size: 0.95rem;
+  font-size: 14px;
   font-weight: 500;
   display: flex;
   align-items: baseline;
-  gap: 0.5rem;
+  gap: var(--space-8);
   flex-wrap: wrap;
 }
 .chart-card-title a {
@@ -1225,7 +1221,7 @@ main {
   font-weight: 500;
   letter-spacing: 0.02em;
   padding: 0.1rem 0.45rem;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   background: var(--ground);
   color: var(--ink-muted);
   border: 1px solid var(--line);
@@ -1248,7 +1244,7 @@ main {
   letter-spacing: 0.02em;
   line-height: 1.4;
   padding: 0.1rem 0.45rem;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   background: var(--ground);
   color: var(--ink-muted);
   border: 1px solid var(--line);
@@ -1284,7 +1280,7 @@ main {
   max-width: none;
   display: grid;
   grid-template-columns: 1fr;
-  gap: 1rem;
+  gap: var(--space-16);
 }
 
 .chart-wrap {
@@ -1301,7 +1297,7 @@ main {
 @media (min-width: 1200px) {
   .chart-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 1.5rem;
+    gap: var(--space-24);
   }
 
   .chart-wrap {
@@ -1336,7 +1332,7 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
   inset: 0;
   background: var(--ground);
   border: 1px solid var(--line);
-  border-radius: 3px;
+  border-radius: var(--radius-control);
   overflow: hidden;
 }
 .chart-range-strip-window {
@@ -1390,17 +1386,17 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
 }
 
 .no-script {
-  margin-top: 1rem;
-  padding: 0.75rem 1rem;
+  margin-top: var(--space-16);
+  padding: var(--space-12) var(--space-16);
   border: 1px solid var(--line);
-  border-radius: 4px;
+  border-radius: var(--radius-control);
   background: var(--ground);
   color: var(--ink-muted);
   font-size: 0.875rem;
 }
 /* The landing page's note opens `<main>`, above the first group. */
 .no-script--lead {
-  margin: 0 0 1.5rem;
+  margin: 0 0 var(--space-24);
 }
 
 /* Per-card loading + error indicators (lazy-fetch on details toggle). */
@@ -1410,8 +1406,8 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
   top: 0.5rem;
   right: 0.75rem;
   font-size: 0.75rem;
-  padding: 0.15rem 0.5rem;
-  border-radius: 4px;
+  padding: 0.15rem var(--space-8);
+  border-radius: var(--radius-control);
   pointer-events: none;
   z-index: 5;
 }
@@ -1433,7 +1429,7 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
+  gap: var(--space-8);
   color: var(--ink-muted);
   background: color-mix(in srgb, var(--ground) 60%, transparent);
   font-size: 0.8rem;
@@ -1498,7 +1494,7 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
   color: var(--on-bad);
   background: transparent;
   border: 1px solid currentColor;
-  border-radius: 4px;
+  border-radius: var(--radius-control);
   padding: 0 0.35rem;
 }
 
@@ -1521,19 +1517,19 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
   z-index: 20;
   background: var(--tooltip-bg);
   color: var(--tooltip-fg);
-  border-radius: 6px;
-  padding: 0.5rem 0.65rem;
+  border-radius: var(--radius-card);
+  padding: var(--space-8) var(--space-12);
   font-size: 0.8rem;
   line-height: 1.35;
   max-width: 22rem;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  box-shadow: var(--shadow-md);
   /* default offset; chart-init.js flips horizontally near the right edge */
   transform: translate(12px, 12px);
   transition: opacity 80ms;
 }
 .tt-title {
   font-weight: 600;
-  margin-bottom: 0.25rem;
+  margin-bottom: var(--space-4);
   font-variant-numeric: tabular-nums;
 }
 .tt-rows {
@@ -1598,14 +1594,14 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
     --header-height: 56px;
   }
   .header-content {
-    gap: 0.5rem;
-    padding: 0 0.5rem;
+    gap: var(--space-8);
+    padding: 0 var(--space-8);
   }
   .site-logo {
     height: 16px;
   }
   .header-left {
-    gap: 0.5rem;
+    gap: var(--space-8);
   }
   .header-center {
     position: static;
@@ -1638,12 +1634,12 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
     display: none;
     flex-direction: column;
     align-items: stretch;
-    gap: 0.5rem;
+    gap: var(--space-8);
     position: absolute;
     top: var(--header-height);
     left: 0;
     right: 0;
-    padding: 0.75rem 1rem;
+    padding: var(--space-12) var(--space-16);
     border-bottom: 1px solid var(--line);
     background: var(--surface);
     box-shadow: var(--shadow-md);
@@ -1681,7 +1677,7 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
   .control-btn,
   .repo-link {
     min-height: 32px;
-    border-radius: 6px;
+    border-radius: var(--radius-card);
     font-size: 0.75rem;
   }
   .control-btn {
@@ -1697,19 +1693,19 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
     display: none;
   }
   main {
-    padding: 1rem;
+    padding: var(--space-16);
   }
   .group-details {
-    margin-bottom: 1.5rem;
-    border-radius: 8px;
+    margin-bottom: var(--space-24);
+    border-radius: var(--radius-card);
   }
   .group-summary {
-    border-radius: 8px 8px 0 0;
+    border-radius: var(--radius-card) var(--radius-card) 0 0;
   }
   .group-summary-row {
     flex-wrap: wrap;
-    gap: 0.5rem;
-    padding: 0.75rem 1rem;
+    gap: var(--space-8);
+    padding: var(--space-12) var(--space-16);
   }
   .group-name {
     flex: 1 1 auto;
@@ -1719,21 +1715,21 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
   }
   .group-count {
     flex: 0 0 auto;
-    font-size: 0.65rem;
+    font-size: 11px;
   }
   .group-headline {
     flex-basis: 100%;
     margin-left: 0;
   }
   .group-body > .chart-grid {
-    padding: 0.75rem;
+    padding: var(--space-12);
   }
   .benchmark-scores-summary {
-    padding: 0.6rem 1rem;
+    padding: 0.6rem var(--space-16);
   }
   .group-toolbar {
-    padding: 0.4rem 0.75rem;
-    gap: 0.35rem 0.5rem;
+    padding: 0.4rem var(--space-12);
+    gap: 0.35rem var(--space-8);
   }
   .group-filter-panel {
     min-width: 0;
@@ -1752,7 +1748,7 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
   }
   .toolbar-btn {
     min-height: 32px;
-    padding: 0.25rem 0.6rem;
+    padding: var(--space-4) 0.6rem;
     font-size: 0.85rem;
   }
   .scores-list {
@@ -1764,9 +1760,9 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
   .compression-scores-panel + .compression-scores-panel {
     border-top: 1px solid var(--line);
     border-left: 0;
-    padding-top: 0.75rem;
+    padding-top: var(--space-12);
     padding-left: 0;
-    margin-top: 0.75rem;
+    margin-top: var(--space-12);
     margin-left: 0;
   }
   .random-access-scores {
@@ -1775,9 +1771,9 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
   .random-access-scores-panel + .random-access-scores-panel {
     border-top: 1px solid var(--line);
     border-left: 0;
-    padding-top: 0.75rem;
+    padding-top: var(--space-12);
     padding-left: 0;
-    margin-top: 0.75rem;
+    margin-top: var(--space-12);
     margin-left: 0;
   }
   .score-item {
@@ -1807,7 +1803,7 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
   }
   .chart-grid {
     grid-template-columns: 1fr;
-    gap: 0.5rem;
+    gap: var(--space-8);
   }
   .chart-wrap {
     height: 350px;
@@ -1826,7 +1822,7 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
  * Kept small + muted so it sits below the content without competing.
  */
 .site-footer {
-  padding: 1.5rem 2rem 2rem;
+  padding: var(--space-24) var(--space-32) var(--space-32);
   text-align: center;
   color: var(--ink-muted);
   font-size: 0.75rem;
@@ -1879,12 +1875,13 @@ a.site-footer-sha:hover code {
   z-index: 901;
   display: flex;
   flex-direction: column;
-  width: min(18rem, calc(100vw - 2rem));
+  /* 100%, not 100vw: a fixed box's 100% is the viewport without its scrollbar. */
+  width: min(18rem, calc(100% - 2rem));
   max-height: calc(100vh - var(--header-height) - 5rem);
-  padding: 0.75rem;
+  padding: var(--space-12);
   overflow-y: auto;
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: var(--radius-card);
   background: var(--surface);
   box-shadow: var(--shadow-md);
   /* Hidden until toggled; fade + slide up from the bottom-left toggle. */
@@ -1905,7 +1902,7 @@ a.site-footer-sha:hover code {
 
 .group-nav-heading {
   margin: 0 0 0.4rem;
-  padding: 0 0.5rem;
+  padding: 0 var(--space-8);
   color: var(--ink-muted);
   font-size: 0.75rem;
   font-weight: 600;
@@ -1925,9 +1922,9 @@ a.site-footer-sha:hover code {
 .group-nav-link {
   display: block;
   width: 100%;
-  padding: 0.4rem 0.5rem;
+  padding: 0.4rem var(--space-8);
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--radius-card);
   background: transparent;
   color: var(--ink);
   font: inherit;
@@ -1961,10 +1958,10 @@ a.site-footer-sha:hover code {
 .group-details,
 .summary-loading-panel,
 .chart-card {
-  border-radius: 6px;
+  border-radius: var(--radius-card);
 }
 .group-summary {
-  border-radius: 6px 6px 0 0;
+  border-radius: var(--radius-card) var(--radius-card) 0 0;
 }
 .control-btn,
 .repo-link,
@@ -1979,7 +1976,7 @@ a.site-footer-sha:hover code {
 .group-permalink,
 .group-docs-link,
 .filter-chip {
-  border-radius: 4px;
+  border-radius: var(--radius-control);
 }
 .site-title,
 .control-btn {
@@ -1998,7 +1995,30 @@ a.site-footer-sha:hover code {
 }
 .filter-badge,
 .group-count {
+  /* Square badges, on purpose: 2px, under the control radius. */
   border-radius: 2px;
+}
+
+/* A press shows, as on the system's buttons: an outlined control fills one step up, a filled one
+ * darkens toward the ground. A press never moves a control, so it also cancels the hover lift. */
+.control-btn:active,
+.repo-link:active,
+.toolbar-btn:active,
+.filter-chip:active,
+.group-toolbar-reset:active,
+.group-toolbar-empty-toggle:active,
+.group-filter-trigger:active,
+.group-permalink:active,
+.group-docs-link:active,
+.group-nav-link:active {
+  background: var(--raised);
+  transform: none;
+}
+.filter-chip--active:active {
+  background: color-mix(in srgb, var(--accent) 82%, var(--ground));
+}
+.chart-window-chip[data-state='windowed']:not(:disabled):active {
+  background: color-mix(in srgb, var(--accent-ink) 22%, transparent);
 }
 
 /* ----------------------------------------------------------------------
@@ -2010,14 +2030,14 @@ a.site-footer-sha:hover code {
 }
 
 .methodology h2 {
-  margin: 0 0 1rem;
+  margin: 0 0 var(--space-16);
 }
 
 .methodology h3 {
-  margin: 2rem 0 0.5rem;
+  margin: var(--space-32) 0 var(--space-8);
   font-size: 1rem;
 }
 
 .methodology p {
-  margin: 0 0 0.75rem;
+  margin: 0 0 var(--space-12);
 }
