@@ -1,7 +1,7 @@
 /* Vortex design system components (sections: base, brand, site, blog, tables, focus), copied by tools/site-styles.mjs.
    Edit the system, then run tools/site-styles.mjs; do not edit here.
    Made by: node tools/site-styles.mjs <site> --sections base,brand,site,blog,tables,focus --faces --vx-face --base
-   sha256 16fed5f4159e58febf8bc60fb391300657ed4b2f0bb75852ebb925b8bc294b3f */
+   sha256 a0859dc7ce0a1f624614edfd9304b5d6d9089d466865b3524f05ebe70ebbb23c */
 
 /* ------------------------------------------------------------------ base */
 /* Every component sizes with border-box, so it draws the same under a site's reset or none. */
@@ -847,10 +847,10 @@ html:has(.vx-header.has-tools) { scroll-padding-top: calc(var(--space-64) + var(
 .vx-post-row::after { content: ""; position: absolute; right: var(--space-12); bottom: 0; left: var(--space-12); border-bottom: 1px solid var(--line); }
 .vx-post-row:hover { background: var(--wash); }
 .vx-post-row-meta { grid-row: span 2; display: grid; align-content: start; gap: var(--space-4); padding-top: var(--space-4); }
-.vx-post-row-title { margin: 0; }
+.vx-post-row-title { margin: 0; text-wrap: balance; }
 /* The measure token: 54ch of Geist (a ch is its zero, wider than most letters) holds about 72
    characters of prose. */
-.vx-post-row-excerpt { max-width: var(--measure); margin: 0; color: var(--ink-muted); }
+.vx-post-row-excerpt { max-width: var(--measure); margin: 0; color: var(--ink-muted); text-wrap: pretty; }
 @container (max-width: 560px) {
   .vx-post-row { grid-template-columns: minmax(0, 1fr); }
   .vx-post-row-meta { grid-row: auto; display: flex; flex-wrap: wrap; gap: var(--space-4) var(--space-12); padding-top: 0; }
