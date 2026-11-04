@@ -1,7 +1,7 @@
 /* Vortex design system tokens, copied by tools/site-styles.mjs.
    Edit the system, then run tools/site-styles.mjs; do not edit here.
    Made by: node tools/site-styles.mjs <site> --sections base,brand,site,docs,blog,focus --faces --vx-face --base
-   sha256 1fd4dafd2d7d59e47e17af930ab1b1d3908eb12c8941954e66b4c8d20f4a6349 */
+   sha256 dc8f10294effa17b406d34b60d88a02770caf3c65a634d7185ba843009fe75aa */
 :root, [data-theme="dark"] {
   --white: #ffffff;
   --grey-50: #fcfcf9;
@@ -39,7 +39,7 @@
   --primary: var(--grey-50);
   --on-primary: var(--black);
   --on-accent: var(--white);
-  --focus-ring: var(--accent);
+  --focus-ring: var(--accent-ink);
   --error-ink: #f26a6b;
   --syntax-plain: var(--grey-400);
   --syntax-keyword: var(--green);
@@ -79,7 +79,7 @@
   --primary: var(--black);
   --on-primary: var(--white);
   --on-accent: var(--white);
-  --focus-ring: var(--accent);
+  --focus-ring: var(--accent-ink);
   --error-ink: #c42b2e;
   --syntax-plain: var(--grey-600);
   --syntax-keyword: #0b7538;
@@ -117,7 +117,7 @@
     --primary: var(--black);
     --on-primary: var(--white);
     --on-accent: var(--white);
-    --focus-ring: var(--accent);
+    --focus-ring: var(--accent-ink);
     --error-ink: #c42b2e;
     --syntax-plain: var(--grey-600);
     --syntax-keyword: #0b7538;
