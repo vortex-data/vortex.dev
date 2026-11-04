@@ -1,7 +1,7 @@
 /* Vortex design system tokens, copied by tools/site-styles.mjs.
    Edit the system, then run tools/site-styles.mjs; do not edit here.
    Made by: node tools/site-styles.mjs <site> --sections base,brand,site,blog,tables,focus --faces --vx-face --base
-   sha256 0c19f1b05e81282363f609d0a883c212e3d849cd6e0aa8687866d15858b3790d */
+   sha256 bc548874946fb5a4c2dcd0a7d31446b38ef81bba86ca56268214600c39893b8c */
 :root, [data-theme="dark"] {
   --white: #ffffff;
   --grey-50: #fcfcf9;
@@ -41,10 +41,11 @@
   --on-accent: var(--white);
   --focus-ring: var(--accent-ink);
   --error-ink: #f26a6b;
-  --syntax-plain: var(--grey-400);
-  --syntax-keyword: var(--green);
-  --syntax-function: var(--orange);
-  --syntax-string: var(--white);
+  --syntax-plain: var(--grey-300);
+  --syntax-keyword: var(--blue-soft);
+  --syntax-function: #c9a8f5;
+  --syntax-type: #6fcfd6;
+  --syntax-string: #f2a0c2;
   --syntax-comment: var(--grey-450);
   --chart-vortex: var(--accent);
   --chart-muted: var(--grey-600);
@@ -82,9 +83,10 @@
   --focus-ring: var(--accent-ink);
   --error-ink: #c42b2e;
   --syntax-plain: var(--grey-600);
-  --syntax-keyword: #0b7538;
-  --syntax-function: #a8460f;
-  --syntax-string: var(--black);
+  --syntax-keyword: var(--blue);
+  --syntax-function: #6d24b5;
+  --syntax-type: #0a6b75;
+  --syntax-string: #a8205b;
   --syntax-comment: var(--grey-500);
   --chart-vortex: var(--accent);
   --chart-muted: var(--grey-300);
@@ -120,9 +122,10 @@
     --focus-ring: var(--accent-ink);
     --error-ink: #c42b2e;
     --syntax-plain: var(--grey-600);
-    --syntax-keyword: #0b7538;
-    --syntax-function: #a8460f;
-    --syntax-string: var(--black);
+    --syntax-keyword: var(--blue);
+    --syntax-function: #6d24b5;
+    --syntax-type: #0a6b75;
+    --syntax-string: #a8205b;
     --syntax-comment: var(--grey-500);
     --chart-vortex: var(--accent);
     --chart-muted: var(--grey-300);
@@ -164,7 +167,7 @@
   --control-sm: 28px;
   --app-row: 36px;
   --vx-motion: 150ms ease-out;
-  --font-display: var(--vx-face-display, "Funnel Display"), var(--vx-face-sans, Geist), sans-serif;
+  --font-display: var(--font-sans);
   --font-sans: var(--vx-face-sans, Geist), system-ui, sans-serif;
   --font-mono: var(--vx-face-mono, "Geist Mono"), ui-monospace, monospace;
 }

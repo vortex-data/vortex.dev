@@ -19,13 +19,13 @@ export const OG_COVER_COLOURS = {
   accent: "#2f63ff" // --accent in Dark (blue-bright)
 } as const;
 
-// The faces as Google Fonts ships them, except that the Geist Mono file has
+// The faces as the Geist project ships them, except that the Geist Mono file has
 // no GSUB table: satori's parser cannot read its contextual alternates. The
 // paths are literal, so the build traces only these two files.
 let ogFonts: Promise<{ display: Buffer; mono: Buffer }> | undefined;
 function loadOgFonts() {
   ogFonts ??= Promise.all([
-    readFile(join(process.cwd(), "src/lib/og-assets/FunnelDisplay-Medium.ttf")),
+    readFile(join(process.cwd(), "src/lib/og-assets/Geist-Medium.ttf")),
     readFile(join(process.cwd(), "src/lib/og-assets/GeistMono-Regular.ttf"))
   ]).then(([display, mono]) => ({ display, mono }));
   return ogFonts;
@@ -42,9 +42,9 @@ const OG_COVER = { width: 792, height: 408, clear: 384 } as const;
 /**
  * An Open Graph card in the design system's parts: a Cover, drawn from
  * `seed`, on the right, and on the left an eyebrow in Geist Mono over a title
- * and a foot line. A post's card sets its title in Funnel Display, the
- * blog's editorial voice. The homepage's card sets it in Geist Mono, the
- * voice of the homepage's headline. Each entry in `title` starts a new line.
+ * and a foot line. A post's card sets its title in Geist, the blog's
+ * headline face. The homepage's card sets it in Geist Mono, the voice of the
+ * homepage's headline. Each entry in `title` starts a new line.
  */
 export async function renderOgCard(props: {
   seed: string;
@@ -139,7 +139,7 @@ export async function renderOgCard(props: {
               flexDirection: "column",
               ...(props.face === "display"
                 ? {
-                    fontFamily: "Funnel Display",
+                    fontFamily: "Geist",
                     fontSize: titleLength > 32 ? 60 : 68,
                     fontWeight: 500,
                     lineHeight: 1.04,
@@ -173,7 +173,7 @@ export async function renderOgCard(props: {
     {
       ...OG_SIZE,
       fonts: [
-        { name: "Funnel Display", data: display, weight: 500, style: "normal" },
+        { name: "Geist", data: display, weight: 500, style: "normal" },
         { name: "Geist Mono", data: mono, weight: 400, style: "normal" }
       ]
     }

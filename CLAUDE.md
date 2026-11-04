@@ -50,7 +50,7 @@ This is a Next.js 16 marketing website for Vortex, a columnar file format, drawn
 - **Design system**: `src/styles/vortex-tokens.css` and `src/styles/vortex.css` are copies of the Vortex design system's styles (change the system, not the copies), and the markup uses its `vx-` classes
 - **ASCII mark**: `src/components/ascii-mark` mounts the system's renderer (`src/vendor/vortex-design/`) on the homepage and the 404, with the static symbol as its fallback
 - **Themes**: Dark only, except the blog, which carries the ThemeSwitch (`src/lib/theme.ts`)
-- **Custom Fonts**: Geist, Geist Mono and Funnel Display, self-hosted through `next/font`
+- **Custom Fonts**: Geist and Geist Mono, self-hosted through `next/font`
 
 ### Component Structure
 

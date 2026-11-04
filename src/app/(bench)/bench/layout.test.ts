@@ -22,7 +22,7 @@ vi.mock('@/components/layout/footer', () => ({
     createElement('footer', { 'data-origin': origin, 'data-solid': String(solid) }),
 }));
 // next/font is a build step; its classes set the design system's --vx-face-* variables.
-vi.mock('@/lib/fonts', () => ({ FONT_CLASSES: 'face-sans face-mono face-display' }));
+vi.mock('@/lib/fonts', () => ({ FONT_CLASSES: 'face-sans face-mono' }));
 
 // The layout reads the request's host for the base of bench's paths.
 const requestHeaders = vi.hoisted(() => new Headers({ host: 'bench.vortex.dev' }));
@@ -58,7 +58,7 @@ describe('RootLayout', () => {
   });
 
   it("self-hosts the system's faces, as the site does, with no request to Google Fonts", () => {
-    expect(load(false).documentElement.className).toBe('no-js face-sans face-mono face-display');
+    expect(load(false).documentElement.className).toBe('no-js face-sans face-mono');
     expect(html).not.toMatch(/googleapis|gstatic/);
   });
 
