@@ -43,8 +43,10 @@ jobs:
       # Excluded hosts block automated requests, so they fail when the page is
       # there: LinkedIn answers 999, and the ACM Digital Library (doi.org
       # 10.1145) answers 403. The action passes the job's GitHub token, which
-      # raises GitHub's rate limit. lychee skips a file whose extension is not
-      # in --extensions, even a file named here, and its default list has no
+      # raises GitHub's rate limit. lychee 0.24.2 checks a file named here
+      # whatever its extension (the run counts 106 links with or without
+      # --extensions). The flag names `ts` anyway, because lychee's default
+      # extension list, which filters what it finds in directories, has no
       # `ts`.
       - name: Check links
         uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8  # v2.9.0
