@@ -167,8 +167,8 @@ export function openGroupsFromHash(doc: Document, hash: string): string[] {
 
 /**
  * Open a group section's disclosure and scroll the section to the top of the
- * viewport (its `scroll-margin-top` keeps the title clear of the sticky
- * header). Setting `open` fires the native `toggle` event, which mounts the
+ * viewport (the page's `scroll-padding-top` keeps the title clear of the
+ * sticky header). Setting `open` fires the native `toggle` event, which mounts the
  * group's body. A click asked for this, so it scrolls smoothly, unless the
  * visitor prefers reduced motion.
  */

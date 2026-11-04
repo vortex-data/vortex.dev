@@ -274,8 +274,9 @@ main {
   border-radius: var(--radius-card);
   background: var(--surface);
   overflow: hidden;
-  /* Offset jump targets (GroupNav) so a jumped-to group title clears the sticky header. */
-  scroll-margin-top: calc(var(--toolbar-height) + 0.75rem);
+  /* The system's scroll-padding-top (64px + 8px) keeps a jumped-to group (GroupNav) clear of the
+     sticky header. This adds 4px, so the title sits 12px below the header. */
+  scroll-margin-top: var(--space-4);
   transition: border-color 0.2s ease;
 }
 .group-disclosure {
