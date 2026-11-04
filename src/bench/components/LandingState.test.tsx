@@ -246,6 +246,35 @@ describe('LandingState', () => {
     expect(scrollSpy.mock.contexts[0]).toBe(document.getElementById('random-access'));
   });
 
+  // The loading view's main, which the skip link focused, is replaced when
+  // the groups arrive, and focus falls to the body.
+  it('gives focus to the new main when the skip link named it and focus fell to the body', async () => {
+    const main = document.createElement('main');
+    main.id = 'main';
+    main.tabIndex = -1;
+    document.body.appendChild(main);
+    await mount('/#main');
+    expect(document.activeElement).toBe(main);
+  });
+
+  it('leaves focus alone when the reader has moved it, or the fragment names no skip target', async () => {
+    const main = document.createElement('main');
+    main.id = 'main';
+    main.tabIndex = -1;
+    document.body.appendChild(main);
+    const summary = defined(document.querySelector<HTMLElement>('summary'));
+    summary.tabIndex = 0;
+    summary.focus();
+    await mount('/#main');
+    expect(document.activeElement).toBe(summary);
+    await act(async () => {
+      root?.unmount();
+    });
+    summary.blur();
+    await mount('/#clickbench');
+    expect(document.activeElement).toBe(document.body);
+  });
+
   it('ignores a malformed fragment', async () => {
     await mount('/#%E0%A4%A');
     await flush();

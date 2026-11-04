@@ -57,6 +57,9 @@ function chartLinkSelector(chartPath: string): string {
  *   the new fragment, then opens what it lists, rewrites the fragment to the
  *   whole open set (a group that was already open fires no `toggle`, so
  *   nothing else would) and scrolls to the first listed group.
+ * - **Skip target.** If the skip link focused the loading view's main, the
+ *   first mount gives focus to the main that replaced it
+ *   ([`refocusSkipTarget`]).
  * - **Scroll** (`lib/scroll-restore.ts`). While no group is open, the page
  *   keeps `history.scrollRestoration = 'auto'`: the collapsed list is as tall
  *   before hydration as after, so the browser's own restoration lands right,
@@ -95,6 +98,10 @@ export function LandingState(): null {
   useEffect(() => {
     let active = true;
     const { history } = window;
+    if (firstRun.current === undefined) {
+      // Before the first run rewrites the fragment.
+      refocusSkipTarget(document, window.location.hash);
+    }
     // Before anything here changes it: on a reload or Back, the mode the
     // history entry kept, which the browser has just used.
     firstRun.current ??= openOnFirstRun();
@@ -203,6 +210,20 @@ export function LandingState(): null {
     };
   }, [chartLink]);
   return null;
+}
+/**
+ * When the landing page's data is slow, the skip link can focus the loading
+ * view's main ([`HomeLoading`]). The groups replace that main with their own,
+ * and focus falls to the body, so the next Tab would start at the top of the
+ * page again. If the fragment still names the skip target and nothing holds
+ * focus, give focus to the new main. Without the loading view the skip link's
+ * main stays, keeps focus, and this does nothing.
+ */
+function refocusSkipTarget(doc: Document, hash: string): void {
+  const active = doc.activeElement;
+  if (hash === '#main' && (active === null || active === doc.body)) {
+    doc.getElementById('main')?.focus({ preventScroll: true });
+  }
 }
 /** What [`LandingState`]'s first run found: the saved position, the listed
  * groups that are open, whether the reader moved before hydration, and the

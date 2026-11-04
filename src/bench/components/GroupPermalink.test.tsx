@@ -238,6 +238,34 @@ describe('GroupPermalink click behavior', () => {
     expect(details.open).toBe(false);
   });
 
+  it('keeps the link wording where the browser has no Clipboard API', () => {
+    Object.defineProperty(navigator, 'clipboard', { value: undefined, configurable: true });
+    const { link } = mount();
+    expect(link.getAttribute('aria-label')).toBe('Link to Random Access');
+    expect(link.getAttribute('title')).toBe('Link to this group');
+  });
+
+  // FilterBar makes a pending filter write in a capturing click listener,
+  // after the pointerdown that last set the href.
+  it('follows the URL as it is at the click where the browser has no Clipboard API', async () => {
+    Object.defineProperty(navigator, 'clipboard', { value: undefined, configurable: true });
+    const { link } = mount();
+    act(() => {
+      link.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    });
+    expect(link.getAttribute('href')).toBe('/#random-access');
+    const flush = (): void => {
+      window.history.replaceState(null, '', '/?engine=duckdb');
+    };
+    document.addEventListener('click', flush, true);
+    try {
+      await click(link);
+    } finally {
+      document.removeEventListener('click', flush, true);
+    }
+    expect(link.getAttribute('href')).toBe('/?engine=duckdb#random-access');
+  });
+
   it('follows the link on Space where the browser has no Clipboard API', async () => {
     Object.defineProperty(navigator, 'clipboard', { value: undefined, configurable: true });
     const { link } = mount();

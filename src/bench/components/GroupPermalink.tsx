@@ -74,8 +74,9 @@ export function groupPermalinkUrl(
  *
  * It leaves the address bar alone: the fragment there holds the page's open
  * groups (`lib/open-groups.ts`), not a single group's link. Where the browser
- * has no Clipboard API (older browsers, plain-HTTP hosts), a click follows the
- * link as it does without JavaScript, because nothing can be copied. Where
+ * has no Clipboard API (older browsers, plain-HTTP hosts), it keeps the link
+ * wording and a click follows the link as it does without JavaScript, because
+ * nothing can be copied. Where
  * the browser refuses the write, its status says "Link not copied." for the
  * same moment.
  *
@@ -117,12 +118,14 @@ export function GroupPermalink({
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mountedRef = useRef(false);
 
-  // Switch to the copy wording, cancel a pending feedback reset on unmount so
+  // Switch to the copy wording where the browser can copy, cancel a pending feedback reset on unmount so
   // it never fires after the island is gone, and note the unmount so a copy
   // that settles later shows nothing.
   useEffect(() => {
     mountedRef.current = true;
-    setCopies(true);
+    // Without a Clipboard API a click follows the link, so the link keeps
+    // the link wording.
+    setCopies(navigator.clipboard !== undefined);
     return () => {
       mountedRef.current = false;
       if (timerRef.current !== null) {
@@ -164,9 +167,15 @@ export function GroupPermalink({
         // Keep the click from the <summary>, which would toggle the group.
         e.stopPropagation();
         // Older browsers and plain-HTTP hosts have no Clipboard API. Nothing
-        // can be copied, so the click follows the link.
+        // can be copied, so the click follows the link. FilterBar's capturing
+        // listener has just made any pending filter write, so the href is set
+        // again from the URL as it is now; the browser follows the href it
+        // finds after this handler.
         const clipboard = navigator.clipboard as Clipboard | undefined;
         if (clipboard === undefined) {
+          const next = permalink().slice(window.location.origin.length);
+          e.currentTarget.setAttribute('href', next);
+          setHref(next);
           return;
         }
         // Copy instead of following the link.
