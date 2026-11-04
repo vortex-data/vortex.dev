@@ -1,7 +1,7 @@
 /* Vortex design system components (sections: base, brand, site, blog, tables, focus), copied by tools/site-styles.mjs.
    Edit the system, then run tools/site-styles.mjs; do not edit here.
    Made by: node tools/site-styles.mjs <site> --sections base,brand,site,blog,tables,focus --faces --vx-face --base
-   sha256 e117b58b1c9a603708746a0738653bb14b390ddc81835e0c5b7f27a64bd04ec2 */
+   sha256 3847e56718f045c268a1c3ed33bf210dfb2f3aa544be69c3e445e9ac6c07568b */
 
 /* ------------------------------------------------------------------ base */
 /* Every component sizes with border-box, so it draws the same under a site's reset or none. */
@@ -69,7 +69,6 @@ main[tabindex="-1"]:focus {
   user-select: all;
   overflow-wrap: anywhere;
 }
-.vx-stat,
 .vx-num {
   font-variant-numeric: tabular-nums;
 }
@@ -119,10 +118,10 @@ main[tabindex="-1"]:focus {
 
 /* Headings take ink, so a page never has to say so. It sits in base, which every site
    copies. :where() keeps it at no specificity, so any component that colours its own headings wins. */
-:where(.vx-display, .vx-display-mono, .vx-h1, .vx-h2, .vx-h3, .vx-h4, .vx-h5, .vx-stat) { color: var(--ink); }
+:where(.vx-display, .vx-display-mono, .vx-h1, .vx-h2, .vx-h3, .vx-h4, .vx-h5) { color: var(--ink); }
 
 
-/* An encoding chain: mono steps on raised, joined by arrows. A post and DetailStrip
+/* An encoding chain: mono steps on raised, joined by arrows. A post and the Explorer
    both draw it, so it sits in base, which every site copies. */
 .vx-chain { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-8); font: 400 12.5px/1 var(--font-mono); color: var(--ink-body); }
 .vx-chain-step { padding: var(--space-4) var(--space-8); background: var(--raised); border: 1px solid var(--edge); border-radius: var(--radius-control); }
@@ -278,21 +277,6 @@ main[tabindex="-1"]:focus {
 }
 
 /* ------------------------------------------------------------------ site */
-/* Page: the frame and the bands a page is built from. .vx-page holds the header, a main and the
-   footer in a column, so the footer sits at the bottom of a short page. A .vx-band is one slice of
-   the page, at page-max with page-pad on both sides, as the header and footer are. */
-.vx-page { min-height: 100dvh; display: flex; flex-direction: column; }
-.vx-page > main { flex: 1 0 auto; }
-.vx-band { width: 100%; max-width: var(--page-max); margin-inline: auto; padding: var(--space-80) var(--page-pad); }
-.vx-band.is-compact { padding-block: var(--space-48); }
-@media (min-width: 761px) {
-  .vx-band { padding-block: var(--space-152); }
-  .vx-band.is-compact { padding-block: var(--space-120); }
-}
-/* A page head: an Eyebrow, the heading and a lede, at the reading measure. */
-.vx-page-head { display: grid; justify-items: start; gap: var(--space-18); max-width: 840px; }
-.vx-page-head > * { margin: 0; }
-.vx-page-head > .vx-lede { color: var(--ink-body); }
 /* The frame: the terminal's dashed rule, 1px wide, 12px on and 4px off, in ink-body. The header
    draws it below itself and the footer above itself, on the side that faces the page, and a
    .vx-frame box draws it on all four, over the ground, so it can sit on the ASCII mark. Inside a
@@ -309,11 +293,6 @@ main[tabindex="-1"]:focus {
   background-position: left top, left bottom, left top, right top;
 }
 .vx-frame .vx-tabs-list { border-bottom: 0; background: var(--vx-dash-x) left bottom / 16px 1px repeat-x; }
-/* Two columns on the 24px gutter. They stack at 760px. */
-.vx-split { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gutter); align-items: start; }
-@media (max-width: 760px) {
-  .vx-split { grid-template-columns: minmax(0, 1fr); }
-}
 .vx-btn {
   display: inline-flex;
   align-items: center;
@@ -755,12 +734,6 @@ html:has(.vx-header.has-tools) { scroll-padding-top: calc(var(--space-64) + var(
   color: var(--syntax-plain);
   tab-size: 4;
 }
-.vx-tok-key { color: var(--syntax-keyword); }
-.vx-tok-fn { color: var(--syntax-function); }
-.vx-tok-type { color: var(--syntax-type); }
-.vx-tok-str { color: var(--syntax-string); }
-.vx-tok-com { color: var(--syntax-comment); font-style: italic; }
-.vx-code-inline,
 .vx-prose :not(pre) > code {
   padding: 1px var(--space-4);
   font: 400 0.875em/1 var(--font-mono);
@@ -866,14 +839,6 @@ html:has(.vx-header.has-tools) { scroll-padding-top: calc(var(--space-64) + var(
 .vx-post-row-out { flex: none; width: 12px; height: 12px; fill: currentColor; }
 .vx-post-row.is-external:hover .vx-post-row-source { color: var(--accent-ink); }
 
-/* Cover: a post's art, from coverFor(seed) in components/lib/cover.js. The blocks and the slab's
-   characters take their colours from the tokens, so a cover follows the theme. */
-.vx-cover { display: block; overflow: hidden; background: var(--ground); }
-.vx-cover-art { display: block; width: 100%; height: 100%; }
-.vx-cover-slab { fill: var(--accent); }
-.vx-cover-edge { fill: var(--edge); }
-.vx-cover-muted { fill: var(--ink-muted); }
-.vx-cover-ch { fill: var(--ground); font: 500 16px var(--font-mono); text-anchor: middle; dominant-baseline: central; }
 
 .vx-article {
   max-width: calc(68ch + 2 * var(--space-48));
@@ -899,7 +864,7 @@ html:has(.vx-header.has-tools) { scroll-padding-top: calc(var(--space-64) + var(
 }
 .vx-article-byline { margin: 0; }
 /* Reading text wraps so that a paragraph's last line is not one word (impeccable's stragglers). */
-.vx-reading, .vx-lede, .vx-prose { text-wrap: pretty; }
+.vx-reading, .vx-prose { text-wrap: pretty; }
 .vx-prose > * { margin: 0 0 1.1em; }
 .vx-prose > h2 { margin: 2em 0 0.6em; font: 500 28px/1.15 var(--font-mono); letter-spacing: -0.02em; color: var(--ink); }
 .vx-prose > h3 { margin: 1.6em 0 0.5em; font: 600 22px/1.2 var(--font-mono); letter-spacing: -0.02em; color: var(--ink); }
@@ -1056,4 +1021,4 @@ html:has(.vx-header.has-tools) { scroll-padding-top: calc(var(--space-64) + var(
    segments inside a clipped container draw it inside their edge. */
 :is(a, button, input, select, textarea, summary, [tabindex]):focus-visible,
 .vx-docs-toggle:focus-visible ~ .vx-docs-header .vx-docs-menu { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
-:is(.vx-docs-nav a, .vx-docs-nav summary, .vx-docs-toc a, .vx-docs-fold a, .vx-post-row, .vx-tree-node, .vx-filemap-bar > button, .vx-tabs-list button, .vx-switch button, .vx-theme-switch button, .vx-table-wrap :is(a, button), .vx-docs-main table.docutils a):focus-visible { outline-offset: -2px; }
+:is(.vx-docs-nav a, .vx-docs-nav summary, .vx-docs-toc a, .vx-docs-fold a, .vx-post-row, .vx-tree-node, .vx-tabs-list button, .vx-switch button, .vx-theme-switch button, .vx-table-wrap :is(a, button), .vx-docs-main table.docutils a):focus-visible { outline-offset: -2px; }
