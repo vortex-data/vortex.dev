@@ -55,7 +55,7 @@ export function HeaderNav({ bench }: HeaderPlace) {
  * without scripts. With them it closes when a link changes the page, on
  * Escape, and on a click outside it. `spill` holds the rows of the end
  * group's items that move into the panel on a phone (the ThemeSwitch and the
- * GitHub button), after the links.
+ * socials), after the links.
  */
 export function HeaderMenu({
   bench,

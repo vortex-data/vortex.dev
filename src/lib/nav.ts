@@ -19,7 +19,7 @@ export type NavLink = {
 const SITE = "https://vortex.dev";
 
 /**
- * The header's links. On the site, Blog and Slack are its own paths. On
+ * The header's links. On the site, Blog is its own path. On
  * bench, which is served from its own host, they point back to the site,
  * and Bench is the current section: the current page on its landing page.
  * `home` is the bench landing page's path for the request's host.
@@ -55,9 +55,17 @@ export function navLinks(
       href: `${site}/blog`,
       internal: !bench,
       current: bench ? null : blogCurrent(pathname)
-    },
-    // A redirect to the Slack invite (next.config.mjs). A plain link,
-    // because a client-side navigation cannot follow it off the site.
-    { label: "Slack", href: `${site}/slack`, internal: false, current: null }
+    }
   ];
+}
+
+/**
+ * The header's socials beside the GitHub button. Slack's is the site's
+ * redirect to the Slack invite (next.config.mjs), so on bench it points back
+ * to the site. Both are plain links: a client-side navigation cannot follow
+ * the redirect off the site.
+ */
+export function socialLinks(bench?: { home: string }) {
+  const site = bench ? SITE : "";
+  return { slack: `${site}/slack`, x: "https://x.com/vortexdotdev" };
 }

@@ -524,7 +524,7 @@ test.describe("blog post", () => {
 });
 
 test.describe("header", () => {
-  test("shows the five nav links and the GitHub button", async ({ page }) => {
+  test("shows the four nav links and the socials", async ({ page }) => {
     await page.goto("/");
     // On a phone the links are behind the Menu button.
     const menu = page.locator(".vx-header-menu > summary");
@@ -534,8 +534,7 @@ test.describe("header", () => {
       ["Docs", "https://docs.vortex.dev"],
       ["Bench", "https://bench.vortex.dev"],
       ["Explorer", "https://explore.vortex.dev"],
-      ["Blog", "/blog"],
-      ["Slack", "/slack"]
+      ["Blog", "/blog"]
     ] as const) {
       const link = nav.getByRole("link", { name, exact: true });
       await expect(link).toBeVisible();
@@ -548,7 +547,23 @@ test.describe("header", () => {
       .locator('header a[href="https://github.com/vortex-data/vortex"]')
       .filter({ visible: true });
     await expect(github).toHaveCount(1);
-    await expect(github).toHaveAccessibleName(/^vortex-data\/vortex/);
+    await expect(github).toHaveAccessibleName(/vortex-data\/vortex on GitHub$/);
+    // Slack is no text link: its mark and X's sit beside the GitHub button,
+    // and on a phone their twin rows sit in the Menu.
+    await expect(
+      nav.getByRole("link", { name: "Slack", exact: true })
+    ).toHaveCount(0);
+    for (const [name, href] of [
+      ["Vortex on Slack", "/slack"],
+      ["Vortex on X", "https://x.com/vortexdotdev"]
+    ] as const) {
+      const link = page
+        .locator("header")
+        .getByRole("link", { name, exact: true })
+        .filter({ visible: true });
+      await expect(link).toHaveCount(1);
+      await expect(link).toHaveAttribute("href", href);
+    }
   });
 });
 
@@ -1323,6 +1338,7 @@ test.describe("design system rules on the blog", () => {
     expect(ring).toBe("solid 2px");
   });
 
+  // The button shows the mark and the count; its name starts with the count.
   test("the GitHub button's name starts with its visible text", async ({
     page
   }) => {
@@ -1333,7 +1349,9 @@ test.describe("design system rules on the blog", () => {
       page
         .locator('header a[href="https://github.com/vortex-data/vortex"]')
         .filter({ visible: true })
-    ).toHaveAccessibleName(/^vortex-data\/vortex( [\d.]+k? stars)? on GitHub$/);
+    ).toHaveAccessibleName(
+      /^([\d.]+k? stars, )?vortex-data\/vortex on GitHub$/
+    );
   });
 
   for (const [width, menu] of [

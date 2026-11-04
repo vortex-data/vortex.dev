@@ -76,22 +76,33 @@ describe("Header on bench", () => {
     assert.match(renderToStaticMarkup(await Header()), want);
   });
 
-  it("ends every header with the switch, the GitHub button and the Menu, and their twin rows in the panel", async () => {
-    for (const html of [
-      renderToStaticMarkup(await Header()),
-      renderToStaticMarkup(await Header({ bench: { home: "/" } }))
-    ]) {
+  // Will, 4 Nov 2026: Slack's text link becomes its mark, "right next to the GitHub octocat", with
+  // X beside it: the socials, together.
+  it("ends every header with the switch, the socials and the Menu, and their twin rows in the panel", async () => {
+    for (const [html, slack] of [
+      [renderToStaticMarkup(await Header()), "/slack"],
+      [
+        renderToStaticMarkup(await Header({ bench: { home: "/" } })),
+        "https://vortex.dev/slack"
+      ]
+    ] as const) {
+      const x = "https://x.com/vortexdotdev";
       assert.match(
         html,
-        /<div class="vx-header-end"><fieldset class="vx-theme-switch"[^>]*>.*?<\/fieldset><a class="vx-btn vx-btn-secondary is-mono vx-header-github"/
+        new RegExp(
+          `<div class="vx-header-end"><fieldset class="vx-theme-switch"[^>]*>.*?</fieldset><div class="vx-header-social"><a class="vx-nav-link vx-header-social-link" href="${x}" aria-label="Vortex on X" title="Vortex on X"><svg[^>]*>.*?</svg></a><a class="vx-nav-link vx-header-social-link" href="${slack}" aria-label="Vortex on Slack" title="Vortex on Slack"><svg[^>]*>.*?</svg></a>(<!--\\$\\?--><template[^>]*></template>)?<a class="vx-btn vx-btn-secondary is-mono vx-header-github"`
+        )
+      );
+      assert.doesNotMatch(html, /vx-nav-link" href="[^"]*">Slack</);
+      assert.match(
+        html,
+        />Blog<\/a><div class="vx-header-menu-spill"><span class="vx-label">Theme<\/span><fieldset class="vx-theme-switch"/
       );
       assert.match(
         html,
-        />Slack<\/a><div class="vx-header-menu-spill"><span class="vx-label">Theme<\/span><fieldset class="vx-theme-switch"/
-      );
-      assert.match(
-        html,
-        /<a class="vx-label vx-nav-link vx-header-menu-spill" href="https:\/\/github.com\/vortex-data\/vortex" aria-label="vortex-data\/vortex on GitHub">GitHub<svg/
+        new RegExp(
+          `<a class="vx-label vx-nav-link vx-header-menu-spill is-social" href="https://github.com/vortex-data/vortex" aria-label="vortex-data/vortex on GitHub">GitHub<svg[^>]*>.*?</svg></a><a class="vx-label vx-nav-link vx-header-menu-spill is-social" href="${slack}" aria-label="Vortex on Slack">Slack<svg[^>]*>.*?</svg></a><a class="vx-label vx-nav-link vx-header-menu-spill is-social" href="${x}" aria-label="Vortex on X">X<svg`
+        )
       );
       assert.doesNotMatch(
         html,
