@@ -90,7 +90,8 @@ warmth:
   outside production, from `benchPrefixCdnRules` in `next.config.mjs`: in production a cached
   `/bench` page must never answer for bench.vortex.dev.
 
-After each production deployment, `.github/workflows/bench-verify-deploy.yml` verifies the
+On each push to `main`, `.github/workflows/bench-verify-deploy.yml` waits for that commit's
+production deployment, then verifies the
 expected build SHA through `/api/health`, a representative group and chart JSON response, and the
 landing and chart pages, under `/bench` on the deployment's own URL. It then checks for a CDN `HIT`
 on repeated landing/chart-API requests on bench.vortex.dev (`BENCH_SITE_BASE_URL`), the form

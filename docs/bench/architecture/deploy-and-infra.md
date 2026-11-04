@@ -104,7 +104,7 @@ push to main         ──▶  Vercel production deploy (vortex.dev + bench.vor
 Vercel builds on its own builders: `bun install --frozen-lockfile`, `bun run build`
    │
    ▼
-production ready ──▶ deployment_status ──▶ .github/workflows/bench-verify-deploy.yml
+push to main ──▶ .github/workflows/bench-verify-deploy.yml waits for the production deployment
    │
    ▼
 verify build SHA + read paths under /bench on the deployment URL (bounded retries),
@@ -118,7 +118,8 @@ then a CDN HIT on bench.vortex.dev once it serves this commit (skipped until the
 - `main` **is** production — there is no staging gate. The per-PR CI (including a
   testcontainer migration test) is the gate. Vercel deploys a merge to `main` as
   soon as it builds; `ci.yml` checks the same commit beside it, not before it.
-- After each production deployment, `bench-verify-deploy.yml` runs
+- On each push to `main`, `bench-verify-deploy.yml` waits for that commit's
+  production deployment (up to 20 minutes), then runs
   `scripts/verify-web-deploy.mjs` against bench under `/bench` on the deployment's
   own URL, and checks CDN caching on bench.vortex.dev, the only form of bench's
   pages production caches, once that domain serves the same commit. An
