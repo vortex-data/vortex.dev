@@ -30,14 +30,19 @@ const SITE_HOSTS = [{ type: "host", value: "^(www\\.)?vortex\\.dev$" }];
 // prod attack surface — and a single static CSP is simpler than swapping
 // headers per environment.
 //
+// Analytics are first-party: next-plausible proxies Plausible's script and
+// events through /js/script.js and /api/event, and @vercel/analytics loads
+// from /_vercel/insights/. Only in `next dev` does @vercel/analytics load its
+// debug script from va.vercel-scripts.com, so only dev allows that host.
+//
 // bench and the marketing site share the policy: both self-host their fonts.
 const csp = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' plausible.io va.vercel-scripts.com vercel.live",
+  `script-src 'self' 'unsafe-inline'${isDev ? " va.vercel-scripts.com" : ""} vercel.live`,
   "style-src 'self' 'unsafe-inline' vercel.live",
   "img-src 'self' data: blob: vercel.live vercel.com",
   "font-src 'self' data: vercel.live assets.vercel.com",
-  "connect-src 'self' plausible.io vitals.vercel-insights.com vercel.live wss://ws-us3.pusher.com",
+  "connect-src 'self' vercel.live wss://ws-us3.pusher.com",
   "worker-src 'self' blob:",
   "child-src 'self' blob:",
   "frame-src 'self' vercel.live",
