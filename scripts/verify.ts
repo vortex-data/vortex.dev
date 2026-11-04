@@ -120,8 +120,7 @@ function jsonLd(html: string): JsonLdResult {
   const blocks: Array<Record<string, unknown>> = [];
   const re =
     /<script[^>]+type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/gi;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(html)) !== null) {
+  for (const m of html.matchAll(re)) {
     const raw = m[1] ?? "";
     try {
       blocks.push(JSON.parse(raw));
@@ -135,8 +134,7 @@ function jsonLd(html: string): JsonLdResult {
 function internalHrefs(html: string): string[] {
   const hrefs = new Set<string>();
   const re = /<a[^>]+href="(\/[^"#]*)(?:#[^"]*)?"/gi;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(html)) !== null) {
+  for (const m of html.matchAll(re)) {
     const href = m[1];
     if (!href) continue;
     if (href.startsWith("//")) continue;

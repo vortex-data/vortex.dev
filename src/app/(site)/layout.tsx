@@ -56,6 +56,7 @@ export default async function RootLayout({
       className={`no-js ${FONT_CLASSES}`}
     >
       <head>
+        {/* biome-ignore lint/security/noDangerouslySetInnerHtml: a constant script that sets the theme before first paint. */}
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
       </head>
       <body>

@@ -49,6 +49,7 @@ export default async function Home() {
     <div className={styles.home}>
       <script
         type="application/ld+json"
+        // biome-ignore lint/security/noDangerouslySetInnerHtml: JSON-LD from our own data; jsonLdScript escapes every <.
         dangerouslySetInnerHTML={{ __html: jsonLdScript(homeJsonLd()) }}
       />
       <section className={styles.hero}>

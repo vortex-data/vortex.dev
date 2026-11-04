@@ -130,10 +130,9 @@ describe('PR-5.0.95 landing-page lazy hydration', () => {
     });
     // A teardown handle the shared afterEach can unmount (every island at once).
     root = {
-      unmount: () =>
-        roots.forEach((r) => {
-          r.unmount();
-        }),
+      unmount: () => {
+        for (const r of roots) r.unmount();
+      },
       render: () => {},
     } as unknown as Root;
     await act(async () => {
@@ -302,9 +301,7 @@ describe('PR-5.0.95 landing-page lazy hydration', () => {
       expect(scheduleSpy.mock.calls.length).toBeGreaterThan(scheduledAfterOpen);
     } finally {
       // Drain the module-singleton queue so later tests are not affected.
-      rejecters.forEach((reject) => {
-        reject(new Error('test cleanup'));
-      });
+      for (const reject of rejecters) reject(new Error('test cleanup'));
       await act(async () => {
         await Promise.resolve();
         await Promise.resolve();
@@ -402,10 +399,9 @@ describe('PR-5.0.97 group-bundle hydration', () => {
       }
     });
     root = {
-      unmount: () =>
-        roots.forEach((r) => {
-          r.unmount();
-        }),
+      unmount: () => {
+        for (const r of roots) r.unmount();
+      },
       render: () => {},
     } as unknown as Root;
     await act(async () => {

@@ -91,6 +91,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
     <div className="blog-page">
       <script
         type="application/ld+json"
+        // biome-ignore lint/security/noDangerouslySetInnerHtml: JSON-LD from our own data; jsonLdScript escapes every <.
         dangerouslySetInnerHTML={{ __html: jsonLdScript(articleSchema) }}
       />
       <NextLink href="/blog" className="vx-label vx-nav-link blog-back">

@@ -140,6 +140,7 @@ function HomeContent({ data: [params, groups, universe] }: { data: LandingData }
             {/* The results as a schema.org Dataset, for search engines. */}
             <script
               type="application/ld+json"
+              // biome-ignore lint/security/noDangerouslySetInnerHtml: JSON-LD from our own data; jsonLdScript escapes every <.
               dangerouslySetInnerHTML={{ __html: jsonLdScript(datasetJsonLd(groups)) }}
             />
             {/* Shown only with JavaScript off, above the groups. */}

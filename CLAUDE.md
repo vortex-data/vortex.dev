@@ -111,12 +111,18 @@ To see bench as bench.vortex.dev serves it, send its host: `curl -H 'Host: bench
 
 bench uses Biome, not ESLint or Prettier. The bench override in the root `biome.json` keeps the style bench had under Prettier (single quotes, trailing commas, 100 columns, 2-space indent) for bench's files, and `bun run check:ci` checks bench along with the site. `biome.json` cannot hold comments, so the reasons for each difference from the site's rules are here:
 
-- `correctness/useExhaustiveDependencies` is on (the site has it off). It replaces ESLint's `react-hooks/exhaustive-deps`. An effect that omits dependencies on purpose carries a `biome-ignore` comment that says why.
 - The site's `a11y` rules apply to bench unchanged. Seven places in existing markup break one of them on purpose, and each carries an inline `biome-ignore` comment that says why: `useAriaPropsSupportedByRole` for `aria-label` on a plain `div` (the header nav controls, the chart toolbar), `useSemanticElements` for `role="group"` on a `div` in the toolbars (a `fieldset` would change their layout), `useFocusableInteractive` for the pointer-driven range strip, and `noNoninteractiveTabindex` for the group info icon, which takes focus so its tooltip shows for keyboard users. New markup follows the rules, or carries its own `biome-ignore` with a reason.
 - `complexity/noImportantStyles` is off: `!important` overrides Chart.js's inline canvas size and the offscreen prebuild layout in `src/bench/styles/globals.css`.
 - `organizeImports` is off: Prettier never sorted bench's imports, and reordering them would rewrite 27 files and could change the order CSS loads in.
 
-Next.js's `core-web-vitals` lint rules have no Biome equivalent; the site accepts that too. The site's config also turns off `suspicious/noExplicitAny`, so bench's old typescript-eslint `no-explicit-any` check is gone too.
+Next.js's `core-web-vitals` lint rules have no Biome equivalent; the site accepts that too. Two rules replace bench's old ESLint checks for both sites: `correctness/useExhaustiveDependencies` replaces `react-hooks/exhaustive-deps`, and `suspicious/noExplicitAny` replaces typescript-eslint's `no-explicit-any`. An effect that omits dependencies on purpose carries a `biome-ignore` comment that says why.
+
+Both sites run Biome's recommended rules, with the rules in `biome.json` set to `error` so that `check:ci` fails on them (Biome's default for some is a warning, which does not fail it). Each deliberate exception carries a `biome-ignore` comment with its reason: the inline scripts and JSON-LD (`noDangerouslySetInnerHtml`; `jsonLdScript` escapes `<`), and the two lists whose index is the only key (`noArrayIndexKey`). Four rules stay off. The count is what each would raise on 2026-11-04:
+
+- `style/noNonNullAssertion` (192, 190 of them in bench, mostly tests). Turn it on file by file, as bench's code changes.
+- `style/noDescendingSpecificity` (13, 12 in `src/bench/styles/globals.css`). Fixing it reorders CSS rules, which can change what wins the cascade, so it needs a visual check of each page.
+- `performance/noImgElement` (5). The logos and marks are SVGs and small PNGs with fixed sizes, which `next/image` would not make smaller.
+- `complexity/noImportantStyles`, for bench only (3; see above).
 
 ## Licensing
 

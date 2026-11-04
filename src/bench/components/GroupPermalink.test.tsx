@@ -86,7 +86,7 @@ describe('GroupPermalink click behavior', () => {
     root = null;
     container.remove();
     vi.useRealTimers();
-    delete (navigator as any).clipboard;
+    Reflect.deleteProperty(navigator, 'clipboard');
     window.history.replaceState(null, '', '/');
     initGroupFilter('random_access', [], []);
   });

@@ -191,11 +191,13 @@ export function OpenGroupsScript({ children }: { children?: ReactNode }) {
     <>
       <script
         data-role="open-groups-bootstrap"
+        // biome-ignore lint/security/noDangerouslySetInnerHtml: a constant script that opens the URL's groups before hydration.
         dangerouslySetInnerHTML={{ __html: OPEN_GROUPS_BOOTSTRAP }}
       />
       {children}
       <script
         data-role="open-groups-finish"
+        // biome-ignore lint/security/noDangerouslySetInnerHtml: a constant script that opens the URL's groups before hydration.
         dangerouslySetInnerHTML={{ __html: OPEN_GROUPS_FINISH }}
       />
     </>

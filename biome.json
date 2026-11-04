@@ -57,15 +57,15 @@
     "rules": {
       "preset": "recommended",
       "suspicious": {
-        "noExplicitAny": "off",
-        "noArrayIndexKey": "off",
-        "noAssignInExpressions": "off",
-        "noShadowRestrictedNames": "off"
+        "noExplicitAny": "error",
+        "noArrayIndexKey": "error",
+        "noAssignInExpressions": "error",
+        "noShadowRestrictedNames": "error"
       },
       "style": {
-        "useImportType": "warn",
+        "useImportType": "error",
         "noNonNullAssertion": "off",
-        "noParameterAssign": "off",
+        "noParameterAssign": "error",
         "noDescendingSpecificity": "off"
       },
       "correctness": {
@@ -76,7 +76,7 @@
           }
         },
         "noUnusedImports": "error",
-        "useExhaustiveDependencies": "off",
+        "useExhaustiveDependencies": "error",
         "useHookAtTopLevel": "error"
       },
       "a11y": {
@@ -86,14 +86,14 @@
         "noSvgWithoutTitle": "error"
       },
       "complexity": {
-        "noForEach": "off",
-        "noUselessFragments": "off"
+        "noForEach": "error",
+        "noUselessFragments": "error"
       },
       "performance": {
         "noImgElement": "off"
       },
       "security": {
-        "noDangerouslySetInnerHtml": "off"
+        "noDangerouslySetInnerHtml": "error"
       }
     }
   },
@@ -125,9 +125,6 @@
       },
       "linter": {
         "rules": {
-          "correctness": {
-            "useExhaustiveDependencies": "error"
-          },
           "complexity": {
             "noImportantStyles": "off"
           }
