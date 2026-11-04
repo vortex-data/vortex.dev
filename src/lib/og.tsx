@@ -93,13 +93,13 @@ export const OG_COVER_COLOURS = {
   accent: "#2f63ff" // --accent in Dark (blue-bright)
 } as const;
 
-// The faces as Google Fonts ships them, except that the Geist Mono file has
+// The faces as the Geist project ships them, except that the Geist Mono file has
 // no GSUB table: satori's parser cannot read its contextual alternates. The
 // paths are literal, so the build traces only these two files.
 let ogFonts: Promise<{ display: Buffer; mono: Buffer }> | undefined;
 function loadOgFonts() {
   ogFonts ??= Promise.all([
-    readFile(join(process.cwd(), "src/lib/og-assets/FunnelDisplay-Medium.ttf")),
+    readFile(join(process.cwd(), "src/lib/og-assets/Geist-Medium.ttf")),
     readFile(join(process.cwd(), "src/lib/og-assets/GeistMono-Regular.ttf"))
   ]).then(([display, mono]) => ({ display, mono }));
   return ogFonts;
@@ -116,7 +116,7 @@ const OG_COVER = { width: 792, height: 408, clear: 384 } as const;
 /**
  * A post's Open Graph image: the post's Cover, drawn from its slug, on the
  * right, and on the left the site and the blog in Geist Mono over its title
- * in Funnel Display.
+ * in Geist.
  */
 export async function renderPostOgImage(props: {
   slug: string;
@@ -204,7 +204,7 @@ export async function renderPostOgImage(props: {
         <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
           <div
             style={{
-              fontFamily: "Funnel Display",
+              fontFamily: "Geist",
               fontSize: props.title.length > 32 ? 60 : 68,
               fontWeight: 500,
               lineHeight: 1.04,
@@ -230,7 +230,7 @@ export async function renderPostOgImage(props: {
     {
       ...OG_SIZE,
       fonts: [
-        { name: "Funnel Display", data: display, weight: 500, style: "normal" },
+        { name: "Geist", data: display, weight: 500, style: "normal" },
         { name: "Geist Mono", data: mono, weight: 400, style: "normal" }
       ]
     }
