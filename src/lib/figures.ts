@@ -2,8 +2,15 @@
 export interface Bar {
   name: string;
   value: number;
-  /** Vortex's own bar, in `chart-vortex`. People and other systems are grey. */
+  /** Vortex's own bar, in `chart-vortex`. */
   ours?: boolean;
+  /**
+   * The system the bar measures, when its name says more ("Parquet" for
+   * "Parquet + zstd"). Parquet, Lance, and Arrow take their muted tints, as
+   * the design system's `barClass` maps them. People and other systems are
+   * grey.
+   */
+  system?: string;
   /** A ratio after the value, such as "0.62×". */
   extra?: string;
 }
@@ -22,6 +29,7 @@ export function barRows(bars: readonly Bar[]) {
     width: Math.round((b.value / max) * 10_000) / 100,
     value: NUMBER.format(b.value),
     ours: b.ours ?? false,
+    system: b.system ?? b.name,
     extra: b.extra
   }));
 }

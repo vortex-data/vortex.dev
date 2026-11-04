@@ -1,6 +1,7 @@
 import { type CSSProperties, Fragment, type ReactNode } from "react";
 import { OpenInNewIcon } from "@/components/icons";
 import { type Bar, barRows, barsLabel, chainLabel } from "@/lib/figures";
+import { barClass } from "@/vendor/vortex-design/results.js";
 
 /**
  * The parts a post draws with the design system's cards. Each takes the
@@ -55,7 +56,7 @@ export function Bars({
         </span>
         <div className="vx-bars is-lg" style={style}>
           {rows.map((r) => (
-            <div key={r.name} className={r.ours ? "vx-bar is-ours" : "vx-bar"}>
+            <div key={r.name} className={barClass({ ...r, state: "measured" })}>
               <span>{r.name}</span>
               <span className="vx-bar-track">
                 <span

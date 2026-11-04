@@ -112,7 +112,34 @@ describe("bench's stylesheet on the system's tokens", () => {
     expect(lastValue('.filter-chip--active:hover', 'border-color')).toBe('var(--accent)');
     expect(lastValue('.toolbar-slider', 'accent-color')).toBe('var(--accent)');
     expect(lastValue('.chart-range-strip-handle', 'background')).toBe('var(--accent)');
-    expect(lastValue('a', 'color')).toBe('var(--accent-ink)');
+  });
+
+  // Bench's Blue names Vortex, its line, and a pressed chip. A link is ink at rest and Blue only
+  // under the pointer. Under the pointer an outlined control's border turns ink, and a row takes
+  // the wash, as the system's States rule says.
+  it('keeps Blue off links at rest and off hovers', () => {
+    expect(lastValue('a', 'color')).toBe('var(--ink)');
+    expect(lastValue('a:hover', 'color')).toBe('var(--accent-ink)');
+    for (const sel of [
+      '.control-btn:hover',
+      '.filter-chip:hover',
+      '.group-toolbar-reset:hover',
+      '.group-toolbar-empty-toggle:hover',
+    ]) {
+      expect(lastValue(sel, 'border-color'), sel).toBe('var(--ink)');
+    }
+    expect(lastValue('.control-btn:hover', 'color')).toBeUndefined();
+    expect(lastValue('.group-summary:hover .group-summary-row', 'background')).toBe('var(--wash)');
+    expect(lastValue('.group-nav-link:hover', 'background')).toBe('var(--wash)');
+    expect(lastValue('.group-nav-link:hover', 'color')).toBe('var(--ink)');
+    expect(lastValue('.score-rank', 'color')).toBe('var(--ink-muted)');
+    expect(decls.some((d) => selectorsOf(d).includes('.chart-badge--downsampled'))).toBe(false);
+  });
+
+  // Each control's look is in its own rules, once: no late block restates it.
+  it('defines the toolbar button in one rule', () => {
+    expect(decls.filter((d) => d.sel === '.control-btn' && d.prop === 'font-size')).toHaveLength(1);
+    expect(lastValue('.control-btn', 'border-radius')).toBe('var(--radius-control)');
   });
 
   // The system's States rule: a pressed switch sits on surface in ink inside a raised group, and
@@ -171,11 +198,10 @@ describe("bench's stylesheet on the system's tokens", () => {
     }
   });
 
-  // Cards and popovers stand on their borders, as the system's do. Only the tooltips, which sit
-  // over a chart's lines, keep a shadow.
-  it('draws no shadows but on the tooltips', () => {
+  // Cards, popovers, and the group info tooltip stand on their borders, as the system's do. Only
+  // the chart tooltip, which sits over a chart's lines, keeps a shadow.
+  it('draws no shadows but on the chart tooltip', () => {
     expect(decls.filter((d) => d.prop === 'box-shadow').map((d) => d.sel)).toEqual([
-      '[data-tooltip].group-info-icon::after',
       '.chart-tooltip-host',
     ]);
   });

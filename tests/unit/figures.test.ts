@@ -18,6 +18,19 @@ describe("barRows", () => {
   });
 });
 
+describe("barRows system", () => {
+  it("names each bar's system, so Parquet takes its tint", () => {
+    const rows = barRows([
+      { name: "Parquet + zstd", system: "Parquet", value: 4465 },
+      { name: "Connor Tsui", value: 41 }
+    ]);
+    assert.deepEqual(
+      rows.map((r) => r.system),
+      ["Parquet", "Connor Tsui"]
+    );
+  });
+});
+
 describe("barsLabel", () => {
   it("states every figure for a screen reader", () => {
     assert.equal(
