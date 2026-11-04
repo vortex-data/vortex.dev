@@ -6,9 +6,9 @@
 # The reports default to .lighthouseci/lhr-*.json. The config collects three
 # runs per URL and asserts on the best one, so the table shows each URL's
 # best run by performance, the run the check is judged by. `group_by(.url)`
-# also keeps row order deterministic. The full reports are not published:
-# the footer links to the workflow run, whose `lighthouse-*` artifacts hold
-# them.
+# also keeps row order deterministic. CI passes each run's URL and category
+# scores alone: the full reports, with screenshots of the protected preview,
+# never leave the runner. Run `bun run lighthouse` for full reports.
 #
 # Each cell follows Lighthouse's own scoring buckets: 🟢 ≥90, 🟡 50–89,
 # 🔴 <50. A threshold below the 🟢 cutoff lets a cell pass and still show 🟡,
@@ -45,4 +45,4 @@ jq -s -r '
   | join("\n")
 ' "$@"
 echo ''
-echo "_Run [\`${GITHUB_RUN_ID}\`](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}) · full reports in the run's \`lighthouse-*\` artifacts · $(date -u +'%Y-%m-%d %H:%M UTC')_"
+echo "_Run [\`${GITHUB_RUN_ID}\`](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}) · $(date -u +'%Y-%m-%d %H:%M UTC')_"

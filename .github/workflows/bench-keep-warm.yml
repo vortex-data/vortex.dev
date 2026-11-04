@@ -12,8 +12,10 @@
 # Once the Vercel project sets `CRON_SECRET`, the health route runs its database
 # check only for `Authorization: Bearer <CRON_SECRET>`, and answers any other
 # caller with the build identity alone. The repository secret `BENCH_CRON_SECRET`
-# holds the same value, so this ping keeps checking the database. Without it the
-# ping still reaches the function, but not the database.
+# holds the same value, so this ping keeps checking the database, and it fails
+# unless the response reports `status: ok`: a wrong or stale secret gets the
+# identity alone and fails the job. Without the secret the ping still reaches the
+# function, but may not reach the database.
 
 name: Bench Keep-Warm
 
@@ -51,5 +53,10 @@ jobs:
           # The header goes through stdin (`-H @-`), so the secret is never a
           # command-line argument.
           { [ -z "${CRON_SECRET}" ] || printf 'Authorization: Bearer %s\n' "${CRON_SECRET}"; } \
-            | curl -fsS --max-time 30 --retry 2 -H @- "${BASE_URL%/}/api/health" -o /dev/null
+            | curl -fsS --max-time 30 --retry 2 -H @- "${BASE_URL%/}/api/health" \
+              -o "${RUNNER_TEMP}/health.json"
+          if [ -n "${CRON_SECRET}" ] && ! jq -e '.status == "ok"' "${RUNNER_TEMP}/health.json" >/dev/null; then
+            echo "::error::The health check did not run the database check; is BENCH_CRON_SECRET the Vercel project's CRON_SECRET?"
+            exit 1
+          fi
           echo "keep-warm ping OK: ${BASE_URL%/}/api/health"

@@ -101,15 +101,29 @@ jobs:
           configPath: ./lighthouserc.cjs
           uploadArtifacts: false
 
-      # The reports, for the report job's comment and for anyone who wants
-      # the full reports. Uploaded when the assertions fail too.
-      - name: Upload the reports
+      # The report job's comment needs only each run's URL and category
+      # scores. The full reports hold screenshots and page details of the
+      # protected preview, and anyone signed in to GitHub can download a
+      # public repository's artifacts, so the full reports stay on the
+      # runner. The assertion results print in the Lighthouse CI step's log.
+      - name: Keep only the scores
+        if: always() && steps.page.outputs.path != ''
+        run: |
+          set -Eeuo pipefail
+          shopt -s nullglob
+          mkdir -p "${RUNNER_TEMP}/lighthouse-scores"
+          for report in .lighthouseci/lhr-*.json; do
+            jq '{finalUrl, categories: (.categories | map_values({score}))}' "${report}" \
+              > "${RUNNER_TEMP}/lighthouse-scores/$(basename "${report}")"
+          done
+
+      # Uploaded when the assertions fail too.
+      - name: Upload the scores
         if: always() && steps.page.outputs.path != ''
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: lighthouse-${{ matrix.page }}
-          path: .lighthouseci/
-          include-hidden-files: true
+          path: ${{ runner.temp }}/lighthouse-scores/
           if-no-files-found: ignore
           retention-days: 7
 
