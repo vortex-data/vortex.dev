@@ -17,6 +17,17 @@
   margin-inline: auto;
 }
 
+/* The header's links start just after the wordmark, and the end group takes
+   the slack. The system pushes the links to the end group, so they moved
+   whenever its width did: only the blog's header carries the ThemeSwitch. */
+.vx-header .vx-header-nav {
+  margin-left: 0;
+}
+
+.vx-header .vx-header-nav + .vx-header-end {
+  margin-left: auto;
+}
+
 /* main fills the height the header and footer leave, and hands it on as a
    flex column, so the homepage's hero and the Status card can fill it. */
 .site-main {
@@ -120,6 +131,14 @@
 
 .blog-back {
   margin-bottom: var(--space-16);
+}
+
+/* An excerpt keeps a reading measure of about 72 characters. The row's
+   column is as wide as a post (68ch at 17px), so at 14px an excerpt ran past
+   100 characters a line. A ch is Geist's zero, wider than an average letter,
+   so 48ch holds about 72 characters of prose. */
+.vx-post-row-excerpt {
+  max-width: 48ch;
 }
 
 /* The byline's date and reading time each stay on one line. */

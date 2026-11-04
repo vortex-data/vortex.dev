@@ -25,12 +25,21 @@ describe("ResultsTable", () => {
     const html = renderToStaticMarkup(
       <ResultsTable panels={PANELS} readAt={READ} />
     );
+    // One difference, until the system's renderer catches up: the README
+    // gives every source line `vx-label-sm`, and renderResults leaves it off
+    // the head's source line. When the copy in src/vendor adds it, the first
+    // assertion fails: drop it and the replace then.
+    const system = renderResults(PANELS, {
+      read: formatReadDate(READ),
+      icon: renderToStaticMarkup(<OpenInNewIcon />)
+    });
+    assert.ok(system.includes('<span class="vx-results-src">'));
     assert.equal(
       html,
-      renderResults(PANELS, {
-        read: formatReadDate(READ),
-        icon: renderToStaticMarkup(<OpenInNewIcon />)
-      })
+      system.replace(
+        '<span class="vx-results-src">',
+        '<span class="vx-label-sm vx-results-src">'
+      )
     );
   });
 

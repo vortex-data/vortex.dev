@@ -30,7 +30,7 @@ export function ResultsTable({
     <section className="vx-frame vx-results" aria-label="Benchmark results">
       <p className="vx-results-head">
         <span>File format benchmarks</span>
-        <span className="vx-results-src">
+        <span className="vx-label-sm vx-results-src">
           <a className="vx-source vx-nav-link" href={SOURCE_URL}>
             bench.vortex.dev
             <OpenInNewIcon />

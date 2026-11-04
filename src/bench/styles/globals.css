@@ -71,11 +71,15 @@ pre {
   font-family: var(--font-mono);
 }
 
+/* A link is ink at rest and Blue only under the pointer, as the system's are: bench's Blue names
+ * Vortex, its line, and a pressed chip. A link in prose also takes the system's quiet underline
+ * (the methodology page, below), so it reads as a link without the Blue. */
 a {
-  color: var(--accent-ink);
+  color: var(--ink);
   text-decoration: none;
 }
 a:hover {
+  color: var(--accent-ink);
   text-decoration: underline;
 }
 
@@ -135,36 +139,34 @@ main {
   }
 }
 
+/* The toolbar buttons (the Groups button and the "Filter series" trigger) are outlined controls:
+ * 4px corners, a mono label in sentence case, and a border that turns ink under the pointer. */
 .control-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.45rem;
   min-height: 36px;
+  padding: var(--space-8) var(--space-20);
   border: 1px solid var(--line);
-  border-radius: var(--radius-card);
+  border-radius: var(--radius-control);
   background: var(--surface);
   color: var(--ink);
   font: inherit;
-  font-size: 0.875rem;
+  font-family: var(--font-mono);
+  font-size: 11px;
   font-weight: 500;
   line-height: 1;
   white-space: nowrap;
+  cursor: pointer;
   transition:
     background-color 0.2s ease,
     border-color 0.2s ease,
     color 0.2s ease;
 }
 
-.control-btn {
-  padding: var(--space-8) var(--space-20);
-  cursor: pointer;
-}
-
 .control-btn:hover {
-  border-color: var(--accent-ink);
-  background: var(--ground);
-  color: var(--accent-ink);
+  border-color: var(--ink);
 }
 
 /* While it shows its word, the toggle keeps one width for "Light" and "Dark". */
@@ -213,6 +215,17 @@ main {
 .methodology {
   max-width: 72ch;
   line-height: 1.6;
+}
+
+.methodology a:not([class]) {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-decoration-color: color-mix(in srgb, var(--ink) 30%, transparent);
+  text-underline-offset: 3px;
+}
+
+.methodology a:not([class]):hover {
+  text-decoration-color: currentColor;
 }
 
 .methodology h2 {
@@ -321,7 +334,7 @@ main {
   transform: rotate(90deg);
 }
 .group-summary:hover .group-summary-row {
-  background: var(--surface);
+  background: var(--wash);
 }
 /* The groups speak in the system's mono voice, as the header's label does, and heavy enough to
    lead their cards: 400 at 13px read thin, Light most of all. */
@@ -337,7 +350,9 @@ main {
     font-size: 17px;
   }
 }
+/* Square, on purpose, as the filter badge is. */
 .group-count {
+  border-radius: 2px;
   color: var(--ink-muted);
   font-family: var(--font-mono);
   font-size: 0.7rem;
@@ -371,7 +386,7 @@ main {
   height: 1.5rem;
   padding: 0;
   border: none;
-  border-radius: var(--radius-card);
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--ink-muted);
   text-decoration: none;
@@ -405,7 +420,7 @@ main {
   width: 1.5rem;
   height: 1.5rem;
   padding: 0;
-  border-radius: var(--radius-card);
+  border-radius: var(--radius-control);
   color: var(--ink-muted);
   text-decoration: none;
   flex-shrink: 0;
@@ -485,7 +500,8 @@ main {
     visibility 0.15s ease;
   pointer-events: none;
   z-index: 10;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+  /* A hairline, not a shadow: bench keeps shadows for its two chart tooltips only. */
+  border: 1px solid var(--edge);
 }
 [data-tooltip].group-info-icon:hover::after,
 [data-tooltip].group-info-icon:focus-visible::after {
@@ -719,9 +735,10 @@ main {
   break-inside: avoid;
 }
 
+/* Ranks are muted, so Blue marks only Vortex's rows. */
 .score-rank {
   min-width: 2.25rem;
-  color: var(--accent-ink);
+  color: var(--ink-muted);
   font-size: 0.75rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -799,7 +816,8 @@ main {
   min-width: 1.25rem;
   height: 1.25rem;
   padding: 0 0.4rem;
-  border-radius: var(--radius-full);
+  /* Square, on purpose: 2px, under the control radius. */
+  border-radius: 2px;
   background: var(--accent);
   color: var(--on-accent);
   font-size: 0.7rem;
@@ -819,7 +837,7 @@ main {
   max-width: min(90vw, 36rem);
   padding: var(--space-12) 0.85rem;
   border: 1px solid var(--edge);
-  border-radius: var(--radius-card);
+  border-radius: var(--radius-control);
   background: var(--surface);
 }
 .filter-panel[hidden] {
@@ -844,7 +862,7 @@ main {
   min-height: 24px;
   padding: 0.1rem 0.6rem;
   border: 1px solid var(--line);
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-control);
   background: var(--surface);
   color: var(--ink);
   font-size: 0.78rem;
@@ -852,7 +870,7 @@ main {
   cursor: pointer;
 }
 .filter-chip:hover {
-  border-color: var(--accent-ink);
+  border-color: var(--ink);
 }
 .filter-chip--active,
 .filter-chip--active:hover {
@@ -953,7 +971,6 @@ main {
 .group-filter-trigger {
   min-height: 28px;
   padding: var(--space-4) 0.85rem;
-  font-size: 0.78rem;
 }
 .group-filter-panel {
   position: absolute;
@@ -968,7 +985,7 @@ main {
   max-width: min(90vw, 42rem);
   padding: var(--space-12) 0.85rem;
   border: 1px solid var(--edge);
-  border-radius: var(--radius-card);
+  border-radius: var(--radius-control);
   background: var(--surface);
 }
 .group-filter-panel[hidden] {
@@ -1002,8 +1019,8 @@ main {
 }
 .group-toolbar-reset:hover,
 .group-toolbar-empty-toggle:hover {
-  border-color: var(--accent-ink);
-  color: var(--accent-ink);
+  border-color: var(--ink);
+  color: var(--ink);
 }
 /* While the empty charts are revealed the toggle reads as engaged. */
 .group-toolbar-empty-toggle[aria-pressed='true'] {
@@ -1074,11 +1091,6 @@ main {
 }
 .chart-badge[hidden] {
   display: none;
-}
-.chart-badge--downsampled {
-  background: color-mix(in srgb, var(--accent-ink) 12%, transparent);
-  color: var(--accent-ink);
-  border-color: color-mix(in srgb, var(--accent-ink) 35%, transparent);
 }
 
 .chart-window-chip {
@@ -1456,7 +1468,6 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
   .control-btn {
     min-height: 32px;
     padding: 0.4rem 0.55rem;
-    font-size: 0.75rem;
   }
   main {
     padding: var(--space-16) var(--page-pad);
@@ -1646,7 +1657,7 @@ a.site-footer-sha:hover code {
   padding: var(--space-12);
   overflow-y: auto;
   border: 1px solid var(--edge);
-  border-radius: var(--radius-card);
+  border-radius: var(--radius-control);
   background: var(--surface);
   /* Hidden until toggled; fade + slide up from the bottom-left toggle. */
   visibility: hidden;
@@ -1686,7 +1697,7 @@ a.site-footer-sha:hover code {
   width: 100%;
   padding: 0.4rem var(--space-8);
   border: 0;
-  border-radius: var(--radius-card);
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--ink);
   font: inherit;
@@ -1703,54 +1714,14 @@ a.site-footer-sha:hover code {
 
 .group-nav-link:hover,
 .group-nav-link:focus-visible {
-  background: var(--ground);
-  color: var(--accent-ink);
+  background: var(--wash);
+  color: var(--ink);
 }
 
 @media (prefers-reduced-motion: reduce) {
   .group-nav-panel {
     transition: none;
   }
-}
-
-/* The system's corners and label voice. Cards take 6px corners and controls 4px; circles
- * (the info icon, spinners, swatches) keep their 50%. The page title and the toolbar buttons read
- * as mono labels in sentence case, as every label does (no capitals, no tracking), ranks are muted so Blue marks only ratios, and the count badges
- * are square. */
-.group-details,
-.summary-loading-panel,
-.chart-card {
-  border-radius: var(--radius-card);
-}
-
-.control-btn,
-.toolbar-btn,
-.group-toolbar-reset,
-.group-toolbar-empty-toggle,
-.group-filter-trigger,
-.filter-panel,
-.group-filter-panel,
-.group-nav-panel,
-.group-nav-link,
-.group-permalink,
-.group-docs-link,
-.filter-chip {
-  border-radius: var(--radius-control);
-}
-.control-btn {
-  font-family: var(--font-mono);
-  font-weight: 500;
-}
-.control-btn {
-  font-size: 11px;
-}
-.score-rank {
-  color: var(--ink-muted);
-}
-.filter-badge,
-.group-count {
-  /* Square badges, on purpose: 2px, under the control radius. */
-  border-radius: 2px;
 }
 
 /* A press shows, as on the system's buttons: an outlined control fills one step up, a filled one
