@@ -31,6 +31,17 @@ describe("resultsSentences", () => {
       /Lance not available, no cuDF integration/
     );
   });
+
+  it("gives the file-size spread the table's foot gives", () => {
+    assert.ok(PANELS);
+    const size = resultsSentences(PANELS).find((s) =>
+      s.startsWith("File size")
+    );
+    assert.match(
+      size ?? "",
+      /Vortex against Parquet: .+\. File size: geomean of bench’s datasets, from 0\.551× to 1\.46× Parquet\+zstd\.$/
+    );
+  });
 });
 
 describe("siteLlmsText", () => {
