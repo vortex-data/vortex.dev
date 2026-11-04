@@ -53,6 +53,16 @@ const NO_JS_SWAP =
   'document.documentElement.className=document.documentElement.className.replace("no-js","js");';
 
 /**
+ * Before the design system's script reads the choice: bench saved it under
+ * `localStorage["bench-theme"]` (Light or Dark) before it shared `vx-theme`
+ * with the rest of the site, on this same origin. A saved Light or Dark moves
+ * to `vx-theme` unless the reader already made a choice there, and the old
+ * key goes.
+ */
+const BENCH_KEY_MIGRATION =
+  'try{var b=localStorage.getItem("bench-theme");if(b!==null){if((b==="light"||b==="dark")&&localStorage.getItem("vx-theme")===null)localStorage.setItem("vx-theme",b);localStorage.removeItem("bench-theme")}}catch(e){}';
+
+/**
  * On the homepage only, before first paint: whether the browser can give the
  * ASCII mark a WebGL context. The root gets `webgl` or `no-webgl`, and with
  * `no-webgl` the page lays out without the mark from the first frame
@@ -87,19 +97,21 @@ export function probeWebgl(doc: Document = document): void {
 
 /**
  * The first-paint script for this site's paths: the `no-js` swap, the
- * homepage's WebGL probe, then the
+ * homepage's WebGL probe, the move of bench's old key, then the
  * design system's script, which sets `<html data-theme>` from the reader's
  * choice (the `vx-theme` cookie that vortex.dev's subdomains share, else
  * storage, else System) and `data-theme-choice`, from which the system's CSS
  * shows the switch's choice pressed before hydration.
  */
-export const THEME_BOOTSTRAP = NO_JS_SWAP + WEBGL_PROBE + themeBootstrap();
+export const THEME_BOOTSTRAP =
+  NO_JS_SWAP + WEBGL_PROBE + BENCH_KEY_MIGRATION + themeBootstrap();
 
 /**
- * bench's first-paint script: the same `no-js` swap and theme, without the
+ * bench's first-paint script: the same `no-js` swap, key move, and theme, without the
  * homepage's WebGL probe, which bench's own "/" does not need.
  */
-export const BENCH_THEME_BOOTSTRAP = NO_JS_SWAP + themeBootstrap();
+export const BENCH_THEME_BOOTSTRAP =
+  NO_JS_SWAP + BENCH_KEY_MIGRATION + themeBootstrap();
 
 /**
  * `win.localStorage`, or null where reading the property itself throws

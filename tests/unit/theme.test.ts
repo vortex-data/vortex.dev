@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { runInNewContext } from "node:vm";
-import { probeWebgl, THEME_BOOTSTRAP, themeFor } from "@/lib/theme";
+import {
+  BENCH_THEME_BOOTSTRAP,
+  probeWebgl,
+  THEME_BOOTSTRAP,
+  themeFor
+} from "@/lib/theme";
 
 // Runs the inline first-paint script against a fake page and returns what it set on <html>.
 function boot(
@@ -68,6 +73,61 @@ describe("themeFor", () => {
         `${path} ${stored} ${prefersDark}`
       );
     }
+  });
+});
+
+// Runs a first-paint script against a page whose storage holds `items`, and returns the theme and
+// what storage holds afterwards.
+function bootWith(script: string, items: Record<string, string>) {
+  const store = new Map(Object.entries(items));
+  const root = { className: "no-js", dataset: {} as Record<string, string> };
+  runInNewContext(script, {
+    document: {
+      documentElement: root,
+      cookie: "",
+      createElement: () => ({ getContext: () => null })
+    },
+    location: { pathname: "/bench" },
+    localStorage: {
+      getItem: (key: string) => store.get(key) ?? null,
+      setItem: (key: string, value: string) => void store.set(key, value),
+      removeItem: (key: string) => void store.delete(key)
+    },
+    matchMedia: () => ({ matches: true })
+  });
+  return { theme: root.dataset.theme, store: Object.fromEntries(store) };
+}
+
+// bench saved the choice under "bench-theme" before it shared vx-theme with the site, on the same
+// origin, so a returning reader keeps a Light or Dark choice they made there.
+describe("the old bench key", () => {
+  for (const [name, script] of [
+    ["bench", BENCH_THEME_BOOTSTRAP],
+    ["the site", THEME_BOOTSTRAP]
+  ] as const) {
+    it(`moves to vx-theme on ${name}'s first paint`, () => {
+      assert.deepEqual(bootWith(script, { "bench-theme": "light" }), {
+        theme: "light",
+        store: { "vx-theme": "light" }
+      });
+    });
+
+    it(`gives way to a vx-theme choice on ${name}, and is removed`, () => {
+      assert.deepEqual(
+        bootWith(script, { "bench-theme": "light", "vx-theme": "dark" }),
+        { theme: "dark", store: { "vx-theme": "dark" } }
+      );
+    });
+  }
+
+  it("is dropped when it holds no theme", () => {
+    assert.deepEqual(
+      bootWith(BENCH_THEME_BOOTSTRAP, { "bench-theme": "sepia" }),
+      {
+        theme: "dark",
+        store: {}
+      }
+    );
   });
 });
 
