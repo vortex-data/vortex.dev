@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { MARK_FRAME } from "@/components/blog/mark-frame";
 import { PostRows } from "@/components/blog/post-rows";
-import { DotField } from "@/components/dot-field";
 import { NewsletterForm } from "@/components/newsletter-form";
 import { externalPosts } from "@/content/links";
 import { getAllPosts } from "@/lib/blog";
@@ -41,32 +40,29 @@ export default function BlogPage() {
   const entries = indexEntries(getAllPosts(), externalPosts);
 
   return (
-    <div className="has-dot-field">
-      <DotField margins />
-      <div className="blog-page vx-dot-clear">
-        <div className="vx-blog-head has-mark">
-          {/* The frame is the ::before's content, so it is decoration, not text. */}
-          <span
-            className="vx-blog-mark"
-            aria-hidden="true"
-            data-frame={MARK_FRAME}
-          />
-          <h1 className="vx-h2 vx-blog-title">Blog</h1>
-          <nav className="vx-label vx-blog-feeds" aria-label="Feeds">
-            {FEEDS.map((f) => (
-              <a key={f.href} className="vx-nav-link" href={f.href}>
-                {f.label}
-              </a>
-            ))}
-          </nav>
-        </div>
-        {entries.length === 0 ? (
-          <p className="vx-small blog-empty">No posts yet.</p>
-        ) : (
-          <PostRows entries={entries} />
-        )}
-        <NewsletterForm />
+    <div className="blog-page">
+      <div className="vx-blog-head has-mark">
+        {/* The frame is the ::before's content, so it is decoration, not text. */}
+        <span
+          className="vx-blog-mark"
+          aria-hidden="true"
+          data-frame={MARK_FRAME}
+        />
+        <h1 className="vx-h2 vx-blog-title">Blog</h1>
+        <nav className="vx-label vx-blog-feeds" aria-label="Feeds">
+          {FEEDS.map((f) => (
+            <a key={f.href} className="vx-nav-link" href={f.href}>
+              {f.label}
+            </a>
+          ))}
+        </nav>
       </div>
+      {entries.length === 0 ? (
+        <p className="vx-small blog-empty">No posts yet.</p>
+      ) : (
+        <PostRows entries={entries} />
+      )}
+      <NewsletterForm />
     </div>
   );
 }

@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import NextLink from "next/link";
 import { notFound } from "next/navigation";
 import { PostEnd } from "@/components/blog/post-end";
-import { DotField } from "@/components/dot-field";
 import { ArrowBackIcon } from "@/components/icons";
 import { MDXRenderer } from "@/components/MDXRenderer";
 import { getAllPosts, getAllSlugs, getPostBySlug } from "@/lib/blog";
@@ -89,36 +88,33 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
   // older and newer posts, links and the sign-up. The post's cover is its
   // Open Graph image only. Its neighbours are the site's own posts by date.
   return (
-    <div className="has-dot-field">
-      <DotField margins />
-      <div className="blog-page vx-dot-clear">
-        <script
-          type="application/ld+json"
-          // biome-ignore lint/security/noDangerouslySetInnerHtml: JSON-LD from our own data; jsonLdScript escapes every <.
-          dangerouslySetInnerHTML={{ __html: jsonLdScript(articleSchema) }}
-        />
-        <NextLink href="/blog" className="vx-label vx-nav-link blog-back">
-          <ArrowBackIcon />
-          Back to blog
-        </NextLink>
-        <article className="vx-card vx-article vx-reading">
-          <header className="vx-article-head">
-            <h1 className="vx-h1 vx-article-title">{post.title}</h1>
-            {post.excerpt && <p className="vx-article-dek">{post.excerpt}</p>}
-            <p className="vx-label vx-article-byline">
-              <time className="blog-nowrap" dateTime={post.date}>
-                {date}
-              </time>
-              {` · ${authors} · `}
-              <span className="blog-nowrap">{readingTime}</span>
-            </p>
-          </header>
-          <div className="vx-prose">
-            <MDXRenderer code={post.body} />
-          </div>
-          <PostEnd slug={post.slug} older={older} newer={newer} />
-        </article>
-      </div>
+    <div className="blog-page">
+      <script
+        type="application/ld+json"
+        // biome-ignore lint/security/noDangerouslySetInnerHtml: JSON-LD from our own data; jsonLdScript escapes every <.
+        dangerouslySetInnerHTML={{ __html: jsonLdScript(articleSchema) }}
+      />
+      <NextLink href="/blog" className="vx-label vx-nav-link blog-back">
+        <ArrowBackIcon />
+        Back to blog
+      </NextLink>
+      <article className="vx-card vx-article vx-reading">
+        <header className="vx-article-head">
+          <h1 className="vx-h1 vx-article-title">{post.title}</h1>
+          {post.excerpt && <p className="vx-article-dek">{post.excerpt}</p>}
+          <p className="vx-label vx-article-byline">
+            <time className="blog-nowrap" dateTime={post.date}>
+              {date}
+            </time>
+            {` · ${authors} · `}
+            <span className="blog-nowrap">{readingTime}</span>
+          </p>
+        </header>
+        <div className="vx-prose">
+          <MDXRenderer code={post.body} />
+        </div>
+        <PostEnd slug={post.slug} older={older} newer={newer} />
+      </article>
     </div>
   );
 }

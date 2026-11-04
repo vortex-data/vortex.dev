@@ -1,7 +1,7 @@
 /* Vortex design system components (sections: base, brand, chrome, site, blog, tables, focus), copied by tools/site-styles.mjs.
    Edit the system, then run tools/site-styles.mjs; do not edit here.
    Made by: node tools/site-styles.mjs <site> --sections base,brand,chrome,site,blog,tables,focus --faces --vx-face --base
-   sha256 46c87ed5db00dcac4d0c19c5a6ec6b8c995fe68548a274806adcad777b3e2935 */
+   sha256 561359c9ace2fb976d0c19298cf58c1a24645eeccd8fbb8bd3aa3ef318491b92 */
 
 /* ------------------------------------------------------------------ base */
 /* Every component sizes with border-box, so it draws the same under a site's reset or none. */
@@ -100,16 +100,15 @@ main[tabindex="-1"]:focus {
 .vx-chain-arrow { color: var(--ink-muted); }
 
 /* ------------------------------------------------------------------ brand */
-/* DotField: the ASCII mark's dot field, still, behind a page that has no mark of its own (the
-   blog) or whose mark leaves its field to it (the 404, with the mark's field: false). The dots sit
-   on the mark's grid, a dot in every second cell of 12px Geist Mono and every second 14px line, in
-   the mark's field grey. It covers the top of its host and fades out toward every edge and corner,
-   as the mark's field does, so no hard edge shows. The host takes .has-dot-field, so the field
-   sits under the host's content and over its background. A column of text in the host takes
-   .vx-dot-clear: it sits on the ground, and a ground-coloured glow fades the dots out toward it,
-   so they show only in the margins. Decoration only: keep the field aria-hidden. */
+/* DotField: the ASCII mark's dot field, still, behind a page whose mark leaves its field to it
+   (the 404, with the mark's field: false) or that has open ground of its own. The dots sit on the
+   mark's grid, a dot in every second cell of 12px Geist Mono and every second 14px line, in the
+   mark's field grey. It covers the top of its host and fades out toward every edge and corner, as
+   the mark's field does, so no hard edge shows. The host takes .has-dot-field, so the field sits
+   under the host's content and over its background. Keep it out from behind running text: around
+   a text column the dots read as noise (Will, 4 Nov 2026, on the blog: "kind of awkward").
+   Decoration only: keep the field aria-hidden. */
 .has-dot-field { position: relative; isolation: isolate; }
-.vx-dot-clear { background: var(--ground); box-shadow: 0 0 var(--space-48) var(--space-32) var(--ground); }
 .vx-dot-field {
   --dot-field-ink: var(--grey-700);
   position: absolute;
@@ -122,15 +121,6 @@ main[tabindex="-1"]:focus {
   background-size: 2ch 28px;
   -webkit-mask-image: radial-gradient(closest-side, #000 40%, transparent 100%);
   mask-image: radial-gradient(closest-side, #000 40%, transparent 100%);
-}
-/* Around a column of text (with .vx-dot-clear), the dots show in the margins, where the centred
-   fade is all but clear. This fade keeps the margins at full strength: it fades in from the top,
-   so the header and the top corners stay clear, and from the outer edges. */
-.vx-dot-field.is-margins {
-  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 var(--space-152), #000 70%, transparent), linear-gradient(to right, transparent, #000 var(--space-80), #000 calc(100% - var(--space-80)), transparent);
-  mask-image: linear-gradient(to bottom, transparent, #000 var(--space-152), #000 70%, transparent), linear-gradient(to right, transparent, #000 var(--space-80), #000 calc(100% - var(--space-80)), transparent);
-  -webkit-mask-composite: source-in;
-  mask-composite: intersect;
 }
 [data-theme="light"] .vx-dot-field { --dot-field-ink: var(--grey-300); }
 @media (prefers-color-scheme: light) {
@@ -972,8 +962,6 @@ html:has(.vx-header) { scroll-padding-top: calc(var(--space-64) + var(--space-8)
 .vx-article-links { display: flex; flex-wrap: wrap; gap: var(--space-8) var(--space-24); margin: 0; }
 @media (max-width: 640px) {
   .vx-article { padding: var(--space-8) 0 var(--space-24); font-size: 16px; border: 0; background: none; }
-  /* With no card the post's text lies on the ground, so a DotField behind it goes. */
-  .has-dot-field:has(.vx-article) > .vx-dot-field { display: none; }
   .vx-article-title { font-size: 36px; }
   .vx-article-dek { display: block; font-size: 16px; -webkit-line-clamp: none; line-clamp: none; }
   .vx-post-nav { grid-template-columns: minmax(0, 1fr); }
