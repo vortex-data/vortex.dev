@@ -12,6 +12,7 @@
 const PLAIN = "var(--syntax-plain)";
 const KEYWORD = "var(--syntax-keyword)";
 const FUNCTION = "var(--syntax-function)";
+const TYPE = "var(--syntax-type)";
 const STRING = "var(--syntax-string)";
 const COMMENT = "var(--syntax-comment)";
 
@@ -22,10 +23,8 @@ export const shikiTheme = {
   tokenColors: [
     { scope: ["keyword", "storage.type", "storage.modifier", "variable.language"], settings: { foreground: KEYWORD } },
     { scope: ["keyword.operator", "punctuation"], settings: { foreground: PLAIN } },
-    {
-      scope: ["entity.name.function", "support.function", "entity.name.type", "entity.name.class", "support.type", "support.class", "entity.other.inherited-class"],
-      settings: { foreground: FUNCTION },
-    },
+    { scope: ["entity.name.function", "support.function"], settings: { foreground: FUNCTION } },
+    { scope: ["entity.name.type", "entity.name.class", "support.type", "support.class", "entity.other.inherited-class"], settings: { foreground: TYPE } },
     { scope: ["string", "constant", "punctuation.definition.string", "punctuation.definition.char", "markup.inline.raw"], settings: { foreground: STRING } },
     { scope: ["comment", "punctuation.definition.comment"], settings: { foreground: COMMENT, fontStyle: "italic" } },
   ],

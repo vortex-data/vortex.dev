@@ -88,6 +88,14 @@ describe("bench's stylesheet on the system's tokens", () => {
     }
   });
 
+  // Will, 4 Nov: bench's group names in Geist Mono are the model for its headings. bench is mono
+  // first, and the system sets a post's section headings in Geist Mono too.
+  it('sets every heading in Geist Mono', () => {
+    for (const h of ['h1', 'h2', 'h3', 'h4', 'h5', 'h6']) {
+      expect(lastValue(h, 'font-family'), h).toBe('var(--font-mono)');
+    }
+  });
+
   it('writes its own colours only into its own variables', () => {
     const HEX = /#[0-9a-f]{3,8}\b/i;
     for (const d of decls.filter((x) => HEX.test(x.value))) {

@@ -53,15 +53,15 @@ body {
   line-height: 1.6;
 }
 
-/* All headings use Funnel Display, mirroring v2's
- * `h1, h2, h3, h4, h5, h6` rule. */
+/* All headings use Geist Mono, like the group names: bench is mono first,
+ * and the system sets a post's section headings in Geist Mono too. */
 h1,
 h2,
 h3,
 h4,
 h5,
 h6 {
-  font-family: var(--font-display);
+  font-family: var(--font-mono);
   letter-spacing: -0.02em;
 }
 
