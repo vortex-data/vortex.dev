@@ -24,7 +24,9 @@ const links = (origin: string) => [
  * card's credit, the project's links, and the ThemeSwitch, which the system's
  * CSS moves up to the mark's line on a phone. `origin` is the site's, for a page
  * served from another host (bench), where the charter's path is not the site's.
- * Every surface draws this same footer (the system's DECISIONS 36).
+ * Every surface draws this same footer (the system's DECISIONS 36). Each run of
+ * text is one string, so React writes it as one text node, as the docs do; a
+ * `{" "}` would split it, and Chromium sets the glyphs a pixel apart.
  */
 export function Footer({ origin = "" }: { origin?: string } = {}) {
   return (
@@ -38,14 +40,15 @@ export function Footer({ origin = "" }: { origin?: string } = {}) {
         loading="lazy"
       />
       <p className="vx-footer-text">
-        Copyright © Vortex a Series of LF Projects, LLC. For web site terms of
-        use, trademark policy and other project policies please see{" "}
+        {
+          "Copyright © Vortex a Series of LF Projects, LLC. For web site terms of use, trademark policy and other project policies please see "
+        }
         <a className="vx-link" href="https://lfprojects.org/policies">
           lfprojects.org/policies
         </a>
-        .{" "}
+        {". "}
         <span className="vx-footer-credit">
-          Donated by{" "}
+          {"Donated by "}
           <a className="vx-link" href="https://spiraldb.com">
             Spiral
           </a>

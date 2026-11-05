@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { renderToStaticMarkup } from "react-dom/server";
+import { renderToStaticMarkup, renderToString } from "react-dom/server";
 import { Footer } from "@/components/layout/footer";
 import { Header } from "@/components/layout/header";
 
@@ -28,6 +28,13 @@ describe("Footer", () => {
       renderToStaticMarkup(<Footer origin="https://vortex.dev" />),
       want
     );
+  });
+
+  // React separates adjacent text children with <!-- -->, and Chromium then sets the glyphs on
+  // each side of the break apart, a pixel off from the same text in one node: the docs' footer,
+  // which Sphinx writes as plain HTML (Will, 5 Nov 2026: the 404s must "match *exactly*").
+  it("writes each run of its text as one text node, as the docs write it", () => {
+    assert.doesNotMatch(renderToString(<Footer />), /<!-- -->/);
   });
 
   // Will, 4 Nov 2026: "switcher to footer is right". The switch is the footer's last item.
