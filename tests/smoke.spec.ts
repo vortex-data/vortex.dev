@@ -643,27 +643,27 @@ test.describe("header menu without scripts", () => {
   });
 });
 
-// On a phone the switch is a row in the Menu's panel: open it first.
+// On a phone the socials are rows in the Menu's panel: open it first.
 async function openMenuOnPhone(page: Page) {
   const menu = page.locator(".vx-header-menu > summary");
   if (await menu.isVisible()) await menu.click();
 }
 
+// The switch is the footer's last item (Will, 4 Nov 2026: "switcher to footer is right").
+const themeSwitch = (page: Page) =>
+  page.locator("footer.vx-footer").getByRole("group", { name: "Theme" });
+
 test.describe("theme switch", () => {
-  // DECISIONS 37 and 43: every surface has the switch and defaults to Dark, even when the OS
-  // prefers Light.
+  // DECISIONS 37, 43 and 45: every surface has the switch, in the footer, and defaults to Dark,
+  // even when the OS prefers Light.
   test("sets data-theme on the blog, and the choice survives a reload", async ({
     page
   }) => {
     await page.emulateMedia({ colorScheme: "light" });
     await page.goto("/blog");
-    await openMenuOnPhone(page);
     const html = page.locator("html");
     const choice = (name: string) =>
-      page
-        .getByRole("group", { name: "Theme" })
-        .filter({ visible: true })
-        .getByRole("button", { name });
+      themeSwitch(page).getByRole("button", { name });
     await expect(html).toHaveAttribute("data-theme", "dark");
     await expect(choice("Dark")).toHaveAttribute("aria-pressed", "true");
     await choice("Light").click();
@@ -672,20 +672,14 @@ test.describe("theme switch", () => {
     await expect(choice("Dark")).toHaveAttribute("aria-pressed", "false");
     await page.reload();
     await expect(html).toHaveAttribute("data-theme", "light");
-    await openMenuOnPhone(page);
     await expect(choice("Light")).toHaveAttribute("aria-pressed", "true");
   });
 
   test("System follows the OS while the page stays open", async ({ page }) => {
     await page.emulateMedia({ colorScheme: "light" });
     await page.goto("/blog");
-    await openMenuOnPhone(page);
     const html = page.locator("html");
-    await page
-      .getByRole("group", { name: "Theme" })
-      .filter({ visible: true })
-      .getByRole("button", { name: "System" })
-      .click();
+    await themeSwitch(page).getByRole("button", { name: "System" }).click();
     await expect(html).toHaveAttribute("data-theme", "light");
     await page.emulateMedia({ colorScheme: "dark" });
     await expect(html).toHaveAttribute("data-theme", "dark");
@@ -698,10 +692,9 @@ test.describe("theme switch", () => {
     await page.addInitScript(() => localStorage.setItem("vx-theme", "light"));
     await page.goto("/");
     await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
-    await openMenuOnPhone(page);
-    await expect(
-      page.getByRole("group", { name: "Theme" }).filter({ visible: true })
-    ).toHaveCount(1);
+    await expect(themeSwitch(page)).toBeVisible();
+    // The header has none, on its row or in its Menu.
+    await expect(page.locator(".vx-header .vx-theme-switch")).toHaveCount(0);
   });
 
   test("a client navigation from a Light blog to the homepage stays Light", async ({
@@ -1262,7 +1255,7 @@ test.describe("logo banner under reduced motion", () => {
 });
 
 // Rules the site once patched in globals.css, which the design system now
-// carries: the header with a ThemeSwitch, Field, prose lists, numeric cells
+// carries: the footer's ThemeSwitch, Field, prose lists, numeric cells
 // and the post rows.
 test.describe("design system rules on the blog", () => {
   // Audit, 30 Oct 2026: the switch's buttons reset with all: unset, which

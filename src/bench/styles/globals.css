@@ -1478,6 +1478,12 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
     clip-path: inset(50%);
     white-space: nowrap;
   }
+  /* Expand and Collapse are icons alone here: square, like the header's other icon buttons. */
+  .bench-toolbar-controls > .vx-btn {
+    justify-content: center;
+    width: var(--control-md);
+    padding: 0;
+  }
 }
 
 @media (max-width: 768px) {

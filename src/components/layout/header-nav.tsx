@@ -53,9 +53,8 @@ export function HeaderNav({ bench }: HeaderPlace) {
  * The same links behind the Menu button, for narrow screens (the design
  * system's CSS shows one or the other). It is a <details>, so it opens
  * without scripts. With them it closes when a link changes the page, on
- * Escape, and on a click outside it. `spill` holds the rows of the end
- * group's items that move into the panel on a phone (the ThemeSwitch and the
- * socials), after the links.
+ * Escape, and on a click outside it. `spill` holds the socials' rows, after
+ * the links: X and Slack show below 960px, and GitHub below 640px.
  */
 export function HeaderMenu({
   bench,
