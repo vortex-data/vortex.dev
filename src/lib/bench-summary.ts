@@ -9,7 +9,27 @@ const GROUP_URL = "https://bench.vortex.dev/api/group/";
 // latest time per query is in the last few commits.
 const WINDOW = 25;
 const DAY_SECONDS = 86400;
-const TIMEOUT_MS = 5000;
+// A read gets three tries of 7 s each, 0.5 s and then 1 s apart. The groups
+// and then the charts take at most 45 s together, within the 60 s that
+// Next.js gives a page to build.
+const TIMEOUT_MS = 7000;
+const TRIES = 3;
+const RETRY_MS = 500;
+
+/** How the summary waits between tries and reports a failure; for tests. */
+export type SummaryIo = {
+  wait?: (ms: number) => Promise<void>;
+  warn?: (message: string) => void;
+};
+
+const sleep = (ms: number) =>
+  new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+/** An answer worth another try: bench's server failing or busy. */
+const retryable = (res: Response) => res.status >= 500 || res.status === 429;
+
+const reason = (e: unknown) =>
+  e instanceof Error ? `${e.name}: ${e.message}` : String(e);
 
 /**
  * One system in a panel: its time in ms (a time panel) or bench's published
@@ -370,56 +390,99 @@ export function panelsFrom(
  * It reads `/api/groups`, then the charts of each time panel's group
  * (`/api/group/{slug}`, the last `WINDOW` commits). `readAt` is the time
  * bench answered the first read (its Date header), so a cached answer keeps
- * its own date. Any failure (a timeout, an error status, a payload without
- * all six panels) gives `null`, and the page then leaves the table out. A
- * time panel whose charts are missing from the window shows bench's scores.
- * `fetchImpl` is for tests.
+ * its own date. A read that fails or gets a 5xx or 429 is tried again, up to
+ * three times. Any failure after that (a timeout, an error status, a payload
+ * without all six panels) gives `null`, with a warning that says why, and
+ * the page then leaves the table out (but see `summaryForPage`). A time
+ * panel whose charts are missing from the window shows bench's scores.
+ * `fetchImpl` and `io` are for tests.
  */
 export async function getBenchSummary(
-  fetchImpl: typeof fetch = fetch
+  fetchImpl: typeof fetch = fetch,
+  { wait = sleep, warn = console.warn }: SummaryIo = {}
 ): Promise<BenchSummary | null> {
-  const read = (url: string) =>
-    fetchImpl(url, {
-      next: { revalidate: DAY_SECONDS },
-      signal: AbortSignal.timeout(TIMEOUT_MS)
-    });
+  const say = (message: string) => warn(`bench summary: ${message}`);
+  const fail = (why: string) => {
+    say(`${why}; the homepage leaves the card out`);
+    return null;
+  };
+  const read = async (url: string): Promise<Response> => {
+    for (let attempt = 1; ; attempt++) {
+      try {
+        const res = await fetchImpl(url, {
+          next: { revalidate: DAY_SECONDS },
+          signal: AbortSignal.timeout(TIMEOUT_MS)
+        });
+        if (!retryable(res) || attempt === TRIES) return res;
+        res.body?.cancel().catch(() => {});
+        say(`${url} answered ${res.status}, try ${attempt} of ${TRIES}`);
+      } catch (e) {
+        if (attempt === TRIES) throw e;
+        say(`${url} ${reason(e)}, try ${attempt} of ${TRIES}`);
+      }
+      await wait(RETRY_MS * attempt);
+    }
+  };
   try {
     const res = await read(GROUPS_URL);
-    if (!res.ok) return null;
+    if (!res.ok) return fail(`${GROUPS_URL} answered ${res.status}`);
     const body: unknown = await res.json();
     const groups = isObject(body) ? body.groups : undefined;
-    if (!Array.isArray(groups)) return null;
+    if (!Array.isArray(groups)) return fail(`${GROUPS_URL} has no groups`);
     const slugs: [string, string][] = [];
     for (const source of SOURCES) {
       if (!("times" in source) || !source.times) continue;
       const group = groups.find((g) => isObject(g) && g.name === source.group);
       const slug = isObject(group) ? group.slug : undefined;
-      if (typeof slug !== "string" || !/^[\w.-]+$/.test(slug)) return null;
+      if (typeof slug !== "string" || !/^[\w.-]+$/.test(slug))
+        return fail(`group ${source.group} has no usable slug`);
       slugs.push([source.group, slug]);
     }
     const charts = Object.fromEntries(
       await Promise.all(
         slugs.map(async ([name, slug]) => {
+          const url = `${GROUP_URL}${slug}?n=${WINDOW}`;
+          // Without its charts the panel shows bench's scores (panelsFrom).
           try {
-            const r = await read(`${GROUP_URL}${slug}?n=${WINDOW}`);
-            return [name, r.ok ? ((await r.json()) as unknown) : null] as const;
-          } catch {
-            // The panel shows bench's scores instead (panelsFrom).
-            return [name, null] as const;
+            const r = await read(url);
+            if (r.ok) return [name, (await r.json()) as unknown] as const;
+            say(`${url} answered ${r.status}; ${name} shows bench's scores`);
+          } catch (e) {
+            say(`${url} ${reason(e)}; ${name} shows bench's scores`);
           }
+          return [name, null] as const;
         })
       )
     );
     const panels = panelsFrom(groups, charts);
-    if (!panels) return null;
+    if (!panels) return fail("bench's groups do not give all six panels");
     const date = new Date(res.headers.get("date") ?? "");
     return {
       panels,
       readAt: Number.isNaN(date.getTime()) ? new Date() : date
     };
-  } catch {
-    return null;
+  } catch (e) {
+    return fail(reason(e));
   }
+}
+
+/**
+ * The summary the homepage renders. When the daily rebuild (ISR) cannot read
+ * bench, this throws: Next.js then keeps serving the last page, card and
+ * all, and tries again on the next request. At build time and in
+ * development the page goes without the card, so bench being down never
+ * fails a deploy or a dev server. `env` is for tests.
+ */
+export function summaryForPage(
+  summary: BenchSummary | null,
+  env: { phase?: string | undefined; mode?: string | undefined } = {
+    phase: process.env.NEXT_PHASE,
+    mode: process.env.NODE_ENV
+  }
+): BenchSummary | null {
+  if (summary || env.phase === "phase-production-build") return summary;
+  if (env.mode !== "production") return summary;
+  throw new Error("bench summary: unavailable; keeping the last homepage");
 }
 
 /** "28 Oct 2026", in UTC, for the table's source line. */
