@@ -8,7 +8,6 @@ const GROUP_URL = "https://bench.vortex.dev/api/group/";
 // `COMMIT_WINDOW_RUNGS`), so the request is not redirected. Each system's
 // latest time per query is in the last few commits.
 const WINDOW = 25;
-const DAY_SECONDS = 86400;
 // A read gets three tries of 7 s each, 0.5 s and then 1 s apart. The groups
 // and then the charts take at most 45 s together, within the 60 s that
 // Next.js gives a page to build.
@@ -27,6 +26,11 @@ const sleep = (ms: number) =>
 
 /** An answer worth another try: bench's server failing or busy. */
 const retryable = (res: Response) => res.status >= 500 || res.status === 429;
+
+/** One read from bench: its parsed body and Date header, or its error status. */
+type Answer =
+  | { ok: true; body: unknown; date: string | null }
+  | { ok: false; status: number };
 
 const reason = (e: unknown) =>
   e instanceof Error ? `${e.name}: ${e.message}` : String(e);
@@ -386,7 +390,7 @@ export function panelsFrom(
 
 /**
  * The homepage's benchmark figures, read from bench.vortex.dev at build time
- * and again at most once a day (ISR). A figure is never typed into the page.
+ * and again when the page rebuilds, at most once a day (ISR). A figure is never typed into the page.
  * It reads `/api/groups`, then the charts of each time panel's group
  * (`/api/group/{slug}`, the last `WINDOW` commits). `readAt` is the time
  * bench answered the first read (its Date header), so a cached answer keeps
@@ -406,15 +410,27 @@ export async function getBenchSummary(
     say(`${why}; the homepage leaves the card out`);
     return null;
   };
-  const read = async (url: string): Promise<Response> => {
+  // One try reads and parses the whole answer, so a body that stalls, breaks
+  // off, or is not JSON is tried again too. The reads skip Next.js's fetch
+  // cache: on the daily rebuild it would drop the timeout and reuse the
+  // first failed answer for every try. The routes that call this are static
+  // and revalidate daily instead (page.tsx, llms.txt/route.ts).
+  const read = async (url: string): Promise<Answer> => {
     for (let attempt = 1; ; attempt++) {
       try {
         const res = await fetchImpl(url, {
-          next: { revalidate: DAY_SECONDS },
+          cache: "no-store",
           signal: AbortSignal.timeout(TIMEOUT_MS)
         });
-        if (!retryable(res) || attempt === TRIES) return res;
+        if (res.ok)
+          return {
+            ok: true,
+            body: (await res.json()) as unknown,
+            date: res.headers.get("date")
+          };
         res.body?.cancel().catch(() => {});
+        if (!retryable(res) || attempt === TRIES)
+          return { ok: false, status: res.status };
         say(`${url} answered ${res.status}, try ${attempt} of ${TRIES}`);
       } catch (e) {
         if (attempt === TRIES) throw e;
@@ -424,9 +440,9 @@ export async function getBenchSummary(
     }
   };
   try {
-    const res = await read(GROUPS_URL);
-    if (!res.ok) return fail(`${GROUPS_URL} answered ${res.status}`);
-    const body: unknown = await res.json();
+    const answer = await read(GROUPS_URL);
+    if (!answer.ok) return fail(`${GROUPS_URL} answered ${answer.status}`);
+    const { body } = answer;
     const groups = isObject(body) ? body.groups : undefined;
     if (!Array.isArray(groups)) return fail(`${GROUPS_URL} has no groups`);
     const slugs: [string, string][] = [];
@@ -445,7 +461,7 @@ export async function getBenchSummary(
           // Without its charts the panel shows bench's scores (panelsFrom).
           try {
             const r = await read(url);
-            if (r.ok) return [name, (await r.json()) as unknown] as const;
+            if (r.ok) return [name, r.body] as const;
             say(`${url} answered ${r.status}; ${name} shows bench's scores`);
           } catch (e) {
             say(`${url} ${reason(e)}; ${name} shows bench's scores`);
@@ -456,7 +472,7 @@ export async function getBenchSummary(
     );
     const panels = panelsFrom(groups, charts);
     if (!panels) return fail("bench's groups do not give all six panels");
-    const date = new Date(res.headers.get("date") ?? "");
+    const date = new Date(answer.date ?? "");
     return {
       panels,
       readAt: Number.isNaN(date.getTime()) ? new Date() : date

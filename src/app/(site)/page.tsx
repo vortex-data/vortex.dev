@@ -30,6 +30,11 @@ export const metadata: Metadata = {
   }
 };
 
+// Static, and rebuilt at most once a day, so the summary's reads can skip
+// Next.js's fetch cache (getBenchSummary).
+export const dynamic = "force-static";
+export const revalidate = 86400;
+
 /**
  * The design system's Home card: the ASCII mark fills the first screen, with
  * the headline and its standfirst top left, the Eyebrow top right, the

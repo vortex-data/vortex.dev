@@ -467,7 +467,7 @@ const bench =
 const QUIET = { wait: async () => {}, warn: () => {} };
 
 describe("getBenchSummary", () => {
-  it("reads bench's groups and the time panels' charts, cached for a day, dated by bench's answer", async () => {
+  it("reads bench's groups and the time panels' charts, dated by bench's answer", async () => {
     const { fake, calls } = stub(
       bench(PAYLOAD, { Date: "Thu, 29 Oct 2026 21:23:34 GMT" })
     );
@@ -482,11 +482,13 @@ describe("getBenchSummary", () => {
         `https://bench.vortex.dev/api/group/${slugOf("Random Access (NVMe)")}?n=25`
       ]
     );
+    // Each try goes to bench with its own timeout. Next.js's fetch cache
+    // would drop the signal and reuse a first failed answer when the daily
+    // rebuild revalidates, so the routes revalidate instead (routeConfig).
     for (const call of calls) {
-      const init = call.init as RequestInit & {
-        next?: { revalidate?: number };
-      };
-      assert.equal(init.next?.revalidate, 86400);
+      const init = call.init as RequestInit & { next?: unknown };
+      assert.equal(init.cache, "no-store");
+      assert.equal(init.next, undefined);
       assert.ok(
         init.signal instanceof AbortSignal,
         "the request has a timeout"
@@ -592,6 +594,36 @@ describe("getBenchSummary", () => {
     assert.match(warnings[1] ?? "", /answered 503, try 2 of 3/);
   });
 
+  it("tries again when a body breaks off or is not JSON", async () => {
+    let tries = 0;
+    const ok = bench();
+    const { fake, calls } = stub((url) =>
+      url.endsWith("/api/groups") && ++tries === 1
+        ? new Response('{"groups":[', { status: 200 })
+        : ok(url)
+    );
+    const warnings: string[] = [];
+    const summary = await getBenchSummary(fake, {
+      wait: async () => {},
+      warn: (m) => void warnings.push(m)
+    });
+    assert.equal(summary?.panels.length, 6);
+    assert.equal(calls.filter((c) => c.url.endsWith("/api/groups")).length, 2);
+    assert.match(warnings[0] ?? "", /SyntaxError.*try 1 of 3/);
+  });
+
+  it("tries a chart group's read again too", async () => {
+    let tries = 0;
+    const ok = bench();
+    const { fake } = stub((url) =>
+      url.includes(`/api/group/${slugOf("Clickbench")}`) && ++tries === 1
+        ? json({}, 502)
+        : ok(url)
+    );
+    const summary = await getBenchSummary(fake, QUIET);
+    assert.deepEqual(near(summary?.panels), near(PANELS), "the times stay");
+  });
+
   it("gives null after three tries, and says why", async () => {
     const { fake, calls } = stub(() => json({}, 503));
     const warnings: string[] = [];
@@ -635,6 +667,21 @@ describe("getBenchSummary", () => {
     });
     assert.match(warnings.at(-1) ?? "", /TimeoutError/);
   });
+});
+
+// The two routes that read bench rebuild once a day as static pages, so that
+// the summary's reads can skip Next.js's fetch cache (see above).
+describe("routeConfig", () => {
+  for (const file of [
+    "src/app/(site)/page.tsx",
+    "src/app/(site)/llms.txt/route.ts"
+  ]) {
+    it(`${file} is static and revalidates daily`, () => {
+      const source = readFileSync(file, "utf8");
+      assert.match(source, /^export const dynamic = "force-static";$/m);
+      assert.match(source, /^export const revalidate = 86400;$/m);
+    });
+  }
 });
 
 describe("summaryForPage", () => {
