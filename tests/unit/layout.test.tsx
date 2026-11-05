@@ -101,7 +101,7 @@ describe("Header on bench", () => {
       assert.match(
         html,
         new RegExp(
-          `<a class="vx-label vx-nav-link vx-header-menu-spill is-social" href="https://github.com/vortex-data/vortex" aria-label="vortex-data/vortex on GitHub">GitHub<svg[^>]*>.*?</svg></a><a class="vx-label vx-nav-link vx-header-menu-spill is-social" href="${slack}" aria-label="Vortex on Slack">Slack<svg[^>]*>.*?</svg></a><a class="vx-label vx-nav-link vx-header-menu-spill is-social" href="${x}" aria-label="Vortex on X">X<svg`
+          `<a class="vx-label vx-nav-link vx-header-menu-spill is-social" href="https://github.com/vortex-data/vortex" aria-label="vortex-data/vortex on GitHub">GitHub<svg[^>]*>.*?</svg></a><a class="vx-label vx-nav-link vx-header-menu-spill is-social is-icon" href="${slack}" aria-label="Vortex on Slack">Slack<svg[^>]*>.*?</svg></a><a class="vx-label vx-nav-link vx-header-menu-spill is-social is-icon" href="${x}" aria-label="Vortex on X">X<svg`
         )
       );
       assert.doesNotMatch(

@@ -17,8 +17,8 @@ import { HeaderMenu, HeaderNav, type HeaderPlace } from "./header-nav";
  * `tools`, then the end group: the ThemeSwitch, the socials (X, Slack, and
  * the GitHub button), and on a narrow screen the Menu. The system's CSS keeps
  * the shared items in the same place at a given width whatever the tools
- * hold: below 960px the links go behind the Menu, and below 640px the switch
- * and the socials move to twin rows in the Menu's panel.
+ * hold: below 1180px the GitHub button drops its count, below 960px the links,
+ * X, and Slack go behind the Menu, and below 640px the switch and GitHub follow.
  *
  * On bench, which is served from its own host, the wordmark and the site's
  * links point back to vortex.dev, Bench is the current link, and bench's
@@ -112,7 +112,7 @@ export async function Header({
                 <MarkGithub />
               </a>
               <a
-                className="vx-label vx-nav-link vx-header-menu-spill is-social"
+                className="vx-label vx-nav-link vx-header-menu-spill is-social is-icon"
                 href={social.slack}
                 aria-label="Vortex on Slack"
               >
@@ -120,7 +120,7 @@ export async function Header({
                 <MarkSlack />
               </a>
               <a
-                className="vx-label vx-nav-link vx-header-menu-spill is-social"
+                className="vx-label vx-nav-link vx-header-menu-spill is-social is-icon"
                 href={social.x}
                 aria-label="Vortex on X"
               >
