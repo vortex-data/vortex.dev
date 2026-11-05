@@ -3,7 +3,7 @@ import { AsciiMark } from "@/components/ascii-mark";
 import { InstallTabs } from "@/components/install-tabs";
 import { LogoBanner } from "@/components/logo-banner";
 import { ResultsTable } from "@/components/results-table";
-import { getBenchSummary } from "@/lib/bench-summary";
+import { getBenchSummary, summaryForPage } from "@/lib/bench-summary";
 import { jsonLdScript } from "@/lib/json-ld";
 import { homeJsonLd } from "@/lib/llms";
 import { getSparkVersion } from "@/lib/maven";
@@ -30,6 +30,11 @@ export const metadata: Metadata = {
   }
 };
 
+// Static, and rebuilt at most once a day, so the summary's reads can skip
+// Next.js's fetch cache (getBenchSummary).
+export const dynamic = "force-static";
+export const revalidate = 86400;
+
 /**
  * The design system's Home card: the ASCII mark fills the first screen, with
  * the headline and its standfirst top left, the Eyebrow top right, the
@@ -37,14 +42,16 @@ export const metadata: Metadata = {
  * sits below the fold. Without WebGL or scripts the mark goes, and the words
  * and the table share one compact screen (page.module.css). The Spark version
  * and the benchmark figures are read at build time and again at most once a
- * day, so the page stays static. Without the figures the page leaves the
- * table out. The page carries the project's structured data (`homeJsonLd`).
+ * day, so the page stays static. Without the figures the build leaves the
+ * table out, and a daily rebuild keeps the last page (`summaryForPage`).
+ * The page carries the project's structured data (`homeJsonLd`).
  */
 export default async function Home() {
-  const [sparkVersion, bench] = await Promise.all([
+  const [sparkVersion, summary] = await Promise.all([
     getSparkVersion(),
     getBenchSummary()
   ]);
+  const bench = summaryForPage(summary);
   return (
     <div className={styles.home}>
       <script

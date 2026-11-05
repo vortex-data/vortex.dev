@@ -7,7 +7,8 @@ import {
   groupTimes,
   type Panel,
   panelsFrom,
-  type Row
+  type Row,
+  summaryForPage
 } from "@/lib/bench-summary";
 import { geomean } from "@/lib/geomean";
 import { GPU_PANEL, GPU_QUERIES, gpuTimes } from "@/lib/gpu-result";
@@ -462,12 +463,15 @@ const bench =
     return json({ error: "not_found" }, 404);
   };
 
+// No waits between tries and no warnings, for the tests that do not look at them.
+const QUIET = { wait: async () => {}, warn: () => {} };
+
 describe("getBenchSummary", () => {
-  it("reads bench's groups and the time panels' charts, cached for a day, dated by bench's answer", async () => {
+  it("reads bench's groups and the time panels' charts, dated by bench's answer", async () => {
     const { fake, calls } = stub(
       bench(PAYLOAD, { Date: "Thu, 29 Oct 2026 21:23:34 GMT" })
     );
-    const summary = await getBenchSummary(fake);
+    const summary = await getBenchSummary(fake, QUIET);
     assert.deepEqual(near(summary?.panels), near(PANELS));
     assert.equal(summary?.readAt.toISOString(), "2026-10-29T21:23:34.000Z");
     assert.deepEqual(
@@ -478,11 +482,13 @@ describe("getBenchSummary", () => {
         `https://bench.vortex.dev/api/group/${slugOf("Random Access (NVMe)")}?n=25`
       ]
     );
+    // Each try goes to bench with its own timeout. Next.js's fetch cache
+    // would drop the signal and reuse a first failed answer when the daily
+    // rebuild revalidates, so the routes revalidate instead (routeConfig).
     for (const call of calls) {
-      const init = call.init as RequestInit & {
-        next?: { revalidate?: number };
-      };
-      assert.equal(init.next?.revalidate, 86400);
+      const init = call.init as RequestInit & { next?: unknown };
+      assert.equal(init.cache, "no-store");
+      assert.equal(init.next, undefined);
       assert.ok(
         init.signal instanceof AbortSignal,
         "the request has a timeout"
@@ -493,7 +499,10 @@ describe("getBenchSummary", () => {
   it("dates the read now when bench sends no usable Date", async () => {
     for (const headers of [{}, { Date: "yesterday" }]) {
       const before = Date.now();
-      const summary = await getBenchSummary(stub(bench(PAYLOAD, headers)).fake);
+      const summary = await getBenchSummary(
+        stub(bench(PAYLOAD, headers)).fake,
+        QUIET
+      );
       const at = summary?.readAt.getTime() ?? 0;
       assert.ok(at >= before && at <= Date.now(), JSON.stringify(headers));
     }
@@ -501,13 +510,13 @@ describe("getBenchSummary", () => {
 
   it("gives null when bench answers with an error", async () => {
     const { fake } = stub(() => json(PAYLOAD, 500));
-    assert.equal(await getBenchSummary(fake), null);
+    assert.equal(await getBenchSummary(fake, QUIET), null);
   });
 
   it("shows bench's scores when a group's charts answer with an error or fail", async () => {
     const ok = bench();
     const units = async (fake: typeof fetch) =>
-      (await getBenchSummary(fake))?.panels.map((p) => p.unit);
+      (await getBenchSummary(fake, QUIET))?.panels.map((p) => p.unit);
     const failing = stub((url) =>
       url.includes("/api/group/") ? json({}, 503) : ok(url)
     );
@@ -527,7 +536,7 @@ describe("getBenchSummary", () => {
     const gs = groups();
     group(gs, "Clickbench").slug = "../groups";
     const { fake, calls } = stub(bench({ groups: gs }));
-    assert.equal(await getBenchSummary(fake), null);
+    assert.equal(await getBenchSummary(fake, QUIET), null);
     assert.equal(calls.length, 1);
   });
 
@@ -535,7 +544,7 @@ describe("getBenchSummary", () => {
     const { fake } = stub(() => {
       throw new TypeError("fetch failed");
     });
-    assert.equal(await getBenchSummary(fake), null);
+    assert.equal(await getBenchSummary(fake, QUIET), null);
   });
 
   it("gives null when the payload is malformed", async () => {
@@ -548,13 +557,163 @@ describe("getBenchSummary", () => {
       { groups: PAYLOAD.groups.slice(1) }
     ]) {
       const { fake } = stub(bench(body));
-      assert.equal(await getBenchSummary(fake), null, JSON.stringify(body));
+      assert.equal(
+        await getBenchSummary(fake, QUIET),
+        null,
+        JSON.stringify(body)
+      );
     }
   });
 
   it("gives null when the body is not JSON", async () => {
     const { fake } = stub(() => new Response("<html>", { status: 200 }));
-    assert.equal(await getBenchSummary(fake), null);
+    assert.equal(await getBenchSummary(fake, QUIET), null);
+  });
+
+  it("tries a request again after a failure or a 5xx, and then reads it", async () => {
+    let tries = 0;
+    const ok = bench();
+    const { fake, calls } = stub((url) => {
+      if (url.endsWith("/api/groups") && ++tries < 3) {
+        if (tries === 1) throw new TypeError("fetch failed");
+        return json({}, 503);
+      }
+      return ok(url);
+    });
+    const waits: number[] = [];
+    const warnings: string[] = [];
+    const summary = await getBenchSummary(fake, {
+      wait: async (ms) => void waits.push(ms),
+      warn: (m) => void warnings.push(m)
+    });
+    assert.equal(summary?.panels.length, 6, "the third try gives the card");
+    assert.equal(calls.filter((c) => c.url.endsWith("/api/groups")).length, 3);
+    assert.deepEqual(waits, [500, 1000]);
+    assert.equal(warnings.length, 2);
+    assert.match(warnings[0] ?? "", /fetch failed, try 1 of 3/);
+    assert.match(warnings[1] ?? "", /answered 503, try 2 of 3/);
+  });
+
+  it("tries again when a body breaks off or is not JSON", async () => {
+    let tries = 0;
+    const ok = bench();
+    const { fake, calls } = stub((url) =>
+      url.endsWith("/api/groups") && ++tries === 1
+        ? new Response('{"groups":[', { status: 200 })
+        : ok(url)
+    );
+    const warnings: string[] = [];
+    const summary = await getBenchSummary(fake, {
+      wait: async () => {},
+      warn: (m) => void warnings.push(m)
+    });
+    assert.equal(summary?.panels.length, 6);
+    assert.equal(calls.filter((c) => c.url.endsWith("/api/groups")).length, 2);
+    assert.match(warnings[0] ?? "", /SyntaxError.*try 1 of 3/);
+  });
+
+  it("tries a chart group's read again too", async () => {
+    let tries = 0;
+    const ok = bench();
+    const { fake } = stub((url) =>
+      url.includes(`/api/group/${slugOf("Clickbench")}`) && ++tries === 1
+        ? json({}, 502)
+        : ok(url)
+    );
+    const summary = await getBenchSummary(fake, QUIET);
+    assert.deepEqual(near(summary?.panels), near(PANELS), "the times stay");
+  });
+
+  it("gives null after three tries, and says why", async () => {
+    const { fake, calls } = stub(() => json({}, 503));
+    const warnings: string[] = [];
+    const summary = await getBenchSummary(fake, {
+      wait: async () => {},
+      warn: (m) => void warnings.push(m)
+    });
+    assert.equal(summary, null);
+    assert.equal(calls.length, 3);
+    assert.match(
+      warnings.at(-1) ?? "",
+      /answered 503; the homepage leaves the card out/
+    );
+  });
+
+  it("does not try again after a 4xx", async () => {
+    const { fake, calls } = stub(() => json({}, 404));
+    const warnings: string[] = [];
+    assert.equal(
+      await getBenchSummary(fake, {
+        wait: async () => {},
+        warn: (m) => void warnings.push(m)
+      }),
+      null
+    );
+    assert.equal(calls.length, 1);
+    assert.match(warnings.at(-1) ?? "", /answered 404/);
+  });
+
+  it("says why when it gives null for a timeout", async () => {
+    const { fake } = stub(() => {
+      throw new DOMException(
+        "The operation was aborted due to timeout",
+        "TimeoutError"
+      );
+    });
+    const warnings: string[] = [];
+    await getBenchSummary(fake, {
+      wait: async () => {},
+      warn: (m) => void warnings.push(m)
+    });
+    assert.match(warnings.at(-1) ?? "", /TimeoutError/);
+  });
+});
+
+// The two routes that read bench rebuild once a day as static pages, so that
+// the summary's reads can skip Next.js's fetch cache (see above).
+describe("routeConfig", () => {
+  for (const file of [
+    "src/app/(site)/page.tsx",
+    "src/app/(site)/llms.txt/route.ts"
+  ]) {
+    it(`${file} is static and revalidates daily`, () => {
+      const source = readFileSync(file, "utf8");
+      assert.match(source, /^export const dynamic = "force-static";$/m);
+      assert.match(source, /^export const revalidate = 86400;$/m);
+    });
+  }
+});
+
+describe("summaryForPage", () => {
+  const summary = { panels: PANELS, readAt: new Date(0) };
+
+  it("passes a summary through", () => {
+    assert.equal(
+      summaryForPage(summary, { phase: undefined, mode: "production" }),
+      summary
+    );
+  });
+
+  it("leaves the card out at build time and in development", () => {
+    assert.equal(
+      summaryForPage(null, {
+        phase: "phase-production-build",
+        mode: "production"
+      }),
+      null
+    );
+    assert.equal(
+      summaryForPage(null, { phase: undefined, mode: "development" }),
+      null
+    );
+  });
+
+  // Next.js keeps serving the last page when its rebuild throws, so a failed
+  // read never replaces a homepage that has the card.
+  it("throws on a rebuild after the build, so the last page and its card stay", () => {
+    assert.throws(() =>
+      summaryForPage(null, { phase: undefined, mode: "production" })
+    );
   });
 });
 
