@@ -223,6 +223,10 @@ describe("bench's stylesheet on the system's tokens", () => {
     expect(css).toMatch(
       /@media \(max-width: 1440px\) \{\s*\.bench-toolbar-controls \.vx-btn > span:not\(\.filter-badge\) \{/,
     );
+    // Then Expand and Collapse are 32px squares, like the header's other icon buttons.
+    expect(css).toMatch(
+      /\.bench-toolbar-controls > \.vx-btn \{\s*justify-content: center;\s*width: var\(--control-md\);\s*padding: 0;\s*\}/,
+    );
     // The header's buttons are the system's (vx-btn), and bench restyles none of them.
     expect(css).not.toMatch(
       /\.vx-header[^{}]*\.(control-btn|vx-btn)\b[^{}]*\{[^}]*(background|border|font|height)/,

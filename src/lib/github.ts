@@ -18,7 +18,12 @@ export async function getStarCount(
     const res = await fetchImpl(API_URL, {
       headers: {
         Accept: "application/vnd.github+json",
-        "X-GitHub-Api-Version": "2022-11-28"
+        "X-GitHub-Api-Version": "2022-11-28",
+        // A token, where the build has one, lifts the API's limit of 60
+        // requests an hour. The docs and the Explorer read the count the same way.
+        ...(process.env.GITHUB_TOKEN
+          ? { Authorization: `Bearer ${process.env.GITHUB_TOKEN}` }
+          : {})
       },
       next: { revalidate: DAY_SECONDS },
       signal: AbortSignal.timeout(TIMEOUT_MS)

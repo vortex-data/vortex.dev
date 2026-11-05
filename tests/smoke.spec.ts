@@ -524,7 +524,7 @@ test.describe("blog post", () => {
 });
 
 test.describe("header", () => {
-  test("shows the five nav links and the GitHub button", async ({ page }) => {
+  test("shows the four nav links and the socials", async ({ page }) => {
     await page.goto("/");
     // On a phone the links are behind the Menu button.
     const menu = page.locator(".vx-header-menu > summary");
@@ -534,8 +534,7 @@ test.describe("header", () => {
       ["Docs", "https://docs.vortex.dev"],
       ["Bench", "https://bench.vortex.dev"],
       ["Explorer", "https://explore.vortex.dev"],
-      ["Blog", "/blog"],
-      ["Slack", "/slack"]
+      ["Blog", "/blog"]
     ] as const) {
       const link = nav.getByRole("link", { name, exact: true });
       await expect(link).toBeVisible();
@@ -548,7 +547,23 @@ test.describe("header", () => {
       .locator('header a[href="https://github.com/vortex-data/vortex"]')
       .filter({ visible: true });
     await expect(github).toHaveCount(1);
-    await expect(github).toHaveAccessibleName(/^vortex-data\/vortex/);
+    await expect(github).toHaveAccessibleName(/vortex-data\/vortex on GitHub$/);
+    // Slack is no text link: its mark and X's sit beside the GitHub button,
+    // and on a phone their twin rows sit in the Menu.
+    await expect(
+      nav.getByRole("link", { name: "Slack", exact: true })
+    ).toHaveCount(0);
+    for (const [name, href] of [
+      ["Vortex on Slack", "/slack"],
+      ["Vortex on X", "https://x.com/vortexdotdev"]
+    ] as const) {
+      const link = page
+        .locator("header")
+        .getByRole("link", { name, exact: true })
+        .filter({ visible: true });
+      await expect(link).toHaveCount(1);
+      await expect(link).toHaveAttribute("href", href);
+    }
   });
 });
 
@@ -628,27 +643,27 @@ test.describe("header menu without scripts", () => {
   });
 });
 
-// On a phone the switch is a row in the Menu's panel: open it first.
+// On a phone the socials are rows in the Menu's panel: open it first.
 async function openMenuOnPhone(page: Page) {
   const menu = page.locator(".vx-header-menu > summary");
   if (await menu.isVisible()) await menu.click();
 }
 
+// The switch is the footer's last item (Will, 4 Nov 2026: "switcher to footer is right").
+const themeSwitch = (page: Page) =>
+  page.locator("footer.vx-footer").getByRole("group", { name: "Theme" });
+
 test.describe("theme switch", () => {
-  // DECISIONS 37 and 43: every surface has the switch and defaults to Dark, even when the OS
-  // prefers Light.
+  // DECISIONS 37, 43 and 45: every surface has the switch, in the footer, and defaults to Dark,
+  // even when the OS prefers Light.
   test("sets data-theme on the blog, and the choice survives a reload", async ({
     page
   }) => {
     await page.emulateMedia({ colorScheme: "light" });
     await page.goto("/blog");
-    await openMenuOnPhone(page);
     const html = page.locator("html");
     const choice = (name: string) =>
-      page
-        .getByRole("group", { name: "Theme" })
-        .filter({ visible: true })
-        .getByRole("button", { name });
+      themeSwitch(page).getByRole("button", { name });
     await expect(html).toHaveAttribute("data-theme", "dark");
     await expect(choice("Dark")).toHaveAttribute("aria-pressed", "true");
     await choice("Light").click();
@@ -657,20 +672,14 @@ test.describe("theme switch", () => {
     await expect(choice("Dark")).toHaveAttribute("aria-pressed", "false");
     await page.reload();
     await expect(html).toHaveAttribute("data-theme", "light");
-    await openMenuOnPhone(page);
     await expect(choice("Light")).toHaveAttribute("aria-pressed", "true");
   });
 
   test("System follows the OS while the page stays open", async ({ page }) => {
     await page.emulateMedia({ colorScheme: "light" });
     await page.goto("/blog");
-    await openMenuOnPhone(page);
     const html = page.locator("html");
-    await page
-      .getByRole("group", { name: "Theme" })
-      .filter({ visible: true })
-      .getByRole("button", { name: "System" })
-      .click();
+    await themeSwitch(page).getByRole("button", { name: "System" }).click();
     await expect(html).toHaveAttribute("data-theme", "light");
     await page.emulateMedia({ colorScheme: "dark" });
     await expect(html).toHaveAttribute("data-theme", "dark");
@@ -683,10 +692,9 @@ test.describe("theme switch", () => {
     await page.addInitScript(() => localStorage.setItem("vx-theme", "light"));
     await page.goto("/");
     await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
-    await openMenuOnPhone(page);
-    await expect(
-      page.getByRole("group", { name: "Theme" }).filter({ visible: true })
-    ).toHaveCount(1);
+    await expect(themeSwitch(page)).toBeVisible();
+    // The header has none, on its row or in its Menu.
+    await expect(page.locator(".vx-header .vx-theme-switch")).toHaveCount(0);
   });
 
   test("a client navigation from a Light blog to the homepage stays Light", async ({
@@ -1247,7 +1255,7 @@ test.describe("logo banner under reduced motion", () => {
 });
 
 // Rules the site once patched in globals.css, which the design system now
-// carries: the header with a ThemeSwitch, Field, prose lists, numeric cells
+// carries: the footer's ThemeSwitch, Field, prose lists, numeric cells
 // and the post rows.
 test.describe("design system rules on the blog", () => {
   // Audit, 30 Oct 2026: the switch's buttons reset with all: unset, which
@@ -1323,6 +1331,7 @@ test.describe("design system rules on the blog", () => {
     expect(ring).toBe("solid 2px");
   });
 
+  // The button shows the mark and the count; its name starts with the count.
   test("the GitHub button's name starts with its visible text", async ({
     page
   }) => {
@@ -1333,7 +1342,9 @@ test.describe("design system rules on the blog", () => {
       page
         .locator('header a[href="https://github.com/vortex-data/vortex"]')
         .filter({ visible: true })
-    ).toHaveAccessibleName(/^vortex-data\/vortex( [\d.]+k? stars)? on GitHub$/);
+    ).toHaveAccessibleName(
+      /^([\d.]+k? stars, )?vortex-data\/vortex on GitHub$/
+    );
   });
 
   for (const [width, menu] of [

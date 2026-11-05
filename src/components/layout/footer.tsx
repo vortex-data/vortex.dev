@@ -1,4 +1,5 @@
 import LFMark from "@/assets/lf_white.svg";
+import { ThemeSwitch } from "@/components/theme-switch";
 import { REPO_URL } from "@/lib/github";
 
 // No project code of conduct exists, so the LF Projects one applies
@@ -20,7 +21,8 @@ const links = (origin: string) => [
 /**
  * The design system's Footer card: The Linux Foundation's logo (the system's
  * CSS inverts it in Light), the line LF Projects requires, followed by the
- * card's credit, and the project's links. `origin` is the site's, for a page
+ * card's credit, the project's links, and the ThemeSwitch, which the system's
+ * CSS moves up to the mark's line on a phone. `origin` is the site's, for a page
  * served from another host (bench), where the charter's path is not the site's.
  * Every surface draws this same footer (the system's DECISIONS 36).
  */
@@ -57,6 +59,7 @@ export function Footer({ origin = "" }: { origin?: string } = {}) {
           </a>
         ))}
       </nav>
+      <ThemeSwitch />
     </footer>
   );
 }

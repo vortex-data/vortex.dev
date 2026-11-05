@@ -106,15 +106,20 @@ describe.skipIf(!databaseAvailable || !BUILD_PRESENT)(
       const first = await (await fetch(BASE)).text();
       expect(first).toContain('class="group-details"');
       const html = await (await fetch(BASE)).text();
-      // The site's one header and footer, with bench's controls in the header's tools and the
-      // shared ThemeSwitch in its end group (server-rendered islands), then the page's h1.
+      // The site's one header and footer, with bench's controls in the header's tools, the
+      // socials at the start of its end group, and the shared ThemeSwitch at the end of the
+      // footer (server-rendered islands), then the page's h1.
       expect(html).toContain('<header class="vx-header">');
       expect(html).toContain('<footer class="vx-footer">');
       expect(html).toContain('</header><h1 class="vx-sr-only">Benchmarks</h1>');
       expect(html).toContain(
         '<div class="vx-header-tools"><div class="bench-toolbar-controls" aria-label="Benchmark group controls">',
       );
-      expect(html).toContain('<div class="vx-header-end"><fieldset class="vx-theme-switch"');
+      expect(html).toContain('<div class="vx-header-end"><div class="vx-header-social">');
+      expect(html).toMatch(
+        /<footer class="vx-footer">[\s\S]*<fieldset class="vx-theme-switch"[\s\S]*<\/footer>/,
+      );
+      expect(html.slice(0, html.indexOf('</header>'))).not.toContain('vx-theme-switch');
       expect(html).toContain('data-action="expand-all"');
       expect(html).toContain('data-role="global-filter-bar"');
       // The fixture's engines surface as filter chips via collectFilterUniverse.

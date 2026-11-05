@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { blogCurrent, navLinks } from "@/lib/nav";
+import { blogCurrent, navLinks, socialLinks } from "@/lib/nav";
 
 describe("blogCurrent", () => {
   it("marks the blog index as the current page and a post's Blog link as the current section", () => {
@@ -15,20 +15,14 @@ describe("navLinks", () => {
   const byLabel = (links: ReturnType<typeof navLinks>) =>
     Object.fromEntries(links.map((l) => [l.label, l]));
 
-  it("gives the site its own Blog and Slack paths, and Bench its host", () => {
+  // Slack left the links for an icon beside the GitHub button (socialLinks).
+  it("gives the site its own Blog path, and Bench its host", () => {
     const links = byLabel(navLinks("/blog"));
-    assert.deepEqual(Object.keys(links), [
-      "Docs",
-      "Bench",
-      "Explorer",
-      "Blog",
-      "Slack"
-    ]);
+    assert.deepEqual(Object.keys(links), ["Docs", "Bench", "Explorer", "Blog"]);
     assert.equal(links.Bench?.href, "https://bench.vortex.dev");
     assert.equal(links.Blog?.href, "/blog");
     assert.equal(links.Blog?.internal, true);
     assert.equal(links.Blog?.current, "page");
-    assert.equal(links.Slack?.href, "/slack");
   });
 
   // bench is served from its own host, so a path there would name a bench page.
@@ -36,7 +30,6 @@ describe("navLinks", () => {
     for (const home of ["/", "/bench"]) {
       const links = byLabel(navLinks(home, { home }));
       assert.equal(links.Blog?.href, "https://vortex.dev/blog");
-      assert.equal(links.Slack?.href, "https://vortex.dev/slack");
       assert.equal(links.Bench?.href, home);
       assert.equal(links.Bench?.current, "page");
       assert.equal(links.Blog?.current, null);
@@ -53,5 +46,19 @@ describe("navLinks", () => {
       byLabel(navLinks("/bench", { home: "/" })).Bench?.current,
       "page"
     );
+  });
+});
+
+describe("socialLinks", () => {
+  it("gives the site its Slack redirect, and bench the site's", () => {
+    assert.deepEqual(socialLinks(), {
+      slack: "/slack",
+      x: "https://x.com/vortexdotdev"
+    });
+    for (const home of ["/", "/bench"])
+      assert.deepEqual(socialLinks({ home }), {
+        slack: "https://vortex.dev/slack",
+        x: "https://x.com/vortexdotdev"
+      });
   });
 });
