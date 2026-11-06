@@ -43,7 +43,7 @@ function boot(
 }
 
 // Every page follows the reader's choice, the homepage too, and no choice is Dark, whatever the OS
-// prefers (design system DECISIONS 37 and 43).
+// prefers.
 const CASES: [string, string | null, boolean, "light" | "dark"][] = [
   ["/", "light", false, "light"],
   ["/", "system", false, "light"],

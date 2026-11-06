@@ -654,7 +654,7 @@ const themeSwitch = (page: Page) =>
   page.locator("footer.vx-footer").getByRole("group", { name: "Theme" });
 
 test.describe("theme switch", () => {
-  // DECISIONS 37, 43 and 45: every surface has the switch, in the footer, and defaults to Dark,
+  // Every surface has the switch, in the footer, and defaults to Dark,
   // even when the OS prefers Light.
   test("sets data-theme on the blog, and the choice survives a reload", async ({
     page
@@ -1175,7 +1175,7 @@ test.describe("theme on client navigation", () => {
     const theme = await page.evaluate(
       () => (window as unknown as { themeAtCommit?: string }).themeAtCommit
     );
-    // The homepage follows the choice, as every page does (DECISIONS 37).
+    // The homepage follows the choice, as every page does.
     expect(theme).toBe("light");
   });
 });

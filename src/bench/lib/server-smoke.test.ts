@@ -190,7 +190,7 @@ describe.skipIf(!databaseAvailable || !BUILD_PRESENT)(
     it('returns 404 HTML for an unknown chart slug', async () => {
       const r = await fetch(`${BASE}/chart/ra.unknown-slug`);
       expect(r.status).toBe(404);
-      // The site's 404 title, not bench's own (DECISIONS 36: one 404 everywhere).
+      // The site's 404 title, not bench's own (one 404 everywhere).
       const html = await r.text();
       expect(html).toContain('<title>Page not found | Vortex</title>');
       expect(html).not.toContain('<meta property="og:url"');

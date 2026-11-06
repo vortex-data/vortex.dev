@@ -85,7 +85,7 @@ describe("Header on bench", () => {
     }
   });
 
-  // Design system DECISIONS 35: one header on every surface. A surface adds only its tools.
+  // One header on every surface. A surface adds only its tools.
   it("draws the same header on the site and on bench", async () => {
     const want = /^<header class="vx-header"><div class="vx-header-start">/;
     assert.match(

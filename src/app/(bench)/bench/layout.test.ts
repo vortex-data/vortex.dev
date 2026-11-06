@@ -61,7 +61,7 @@ describe('RootLayout', () => {
     expect(doc.documentElement.dataset.theme).toBe('light');
   });
 
-  // The choice made on vortex.dev, the docs or the Explorer holds here (design system DECISIONS 37).
+  // The choice made on vortex.dev, the docs or the Explorer holds here.
   it('applies the choice that the vortex.dev cookie shares before storage', () => {
     expect(load(true, 'dark', 'vx-theme=light').documentElement.dataset.theme).toBe('light');
   });
@@ -71,8 +71,7 @@ describe('RootLayout', () => {
     expect(html).not.toMatch(/googleapis|gstatic/);
   });
 
-  // Will, 4 Nov 2026: "shared cookie should be respected! but if no other info, dark" (design
-  // system DECISIONS 43).
+  // The shared cookie wins. With no choice, the theme is Dark.
   it('is Dark until a reader chooses a theme, even when the OS prefers Light', () => {
     const page = load(true, undefined, undefined, false);
     expect(page.documentElement.dataset.theme).toBe('dark');

@@ -24,7 +24,7 @@ const links = (origin: string) => [
  * card's credit, the project's links, and the ThemeSwitch, which the system's
  * CSS moves up to the mark's line on a phone. `origin` is the site's, for a page
  * served from another host (bench), where the charter's path is not the site's.
- * Every surface draws this same footer (the system's DECISIONS 36). Each run of
+ * Every surface draws this same footer. Each run of
  * text is one string, so React writes it as one text node, as the docs do; a
  * `{" "}` would split it, and Chromium sets the glyphs a pixel apart.
  */

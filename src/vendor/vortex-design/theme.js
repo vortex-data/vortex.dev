@@ -1,4 +1,4 @@
-// The theme choice every surface shares (DECISIONS 37, 43): light, dark or system. The default is Dark.
+// The theme choice every surface shares: light, dark or system. The default is Dark.
 // It lives in a vx-theme cookie on vortex.dev, so a choice made on the blog holds on docs, bench and
 // the Explorer too, and in localStorage["vx-theme"] as a fallback for hosts outside vortex.dev. It
 // lands on <html data-theme>. The choice itself also lands on <html data-theme-choice>, so the switch

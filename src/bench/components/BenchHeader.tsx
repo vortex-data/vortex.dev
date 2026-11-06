@@ -9,7 +9,7 @@ import { Header } from '@/components/layout/header';
 /**
  * The site's header on a bench page, with bench's controls in its tools, then
  * the page's h1, "Benchmarks", for screen readers. The shared header carries
- * no title (the system's DECISIONS 35), so the h1 sits after it. A page with
+ * no title, so the h1 sits after it. A page with
  * its own h1, such as the 404, passes `heading={false}`. Each page renders it,
  * not the layout, because the filter dropdown takes the page's data. Its links
  * point back to vortex.dev, because bench is served from its own host.
