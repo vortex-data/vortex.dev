@@ -55,7 +55,10 @@ function Blockquote({
   if (kind === undefined) return <blockquote {...props}>{children}</blockquote>;
   const Icon = kind === "warning" ? WarningIcon : InfoIcon;
   return (
-    <div className="vx-callout" role="note">
+    <div
+      className={kind === "warning" ? "vx-callout is-warning" : "vx-callout"}
+      role="note"
+    >
       <Icon className="vx-callout-icon" />
       <div>
         {title && <p className="vx-callout-title">{title}</p>}

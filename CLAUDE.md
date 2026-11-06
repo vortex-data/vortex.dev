@@ -49,14 +49,14 @@ This is a Next.js 16 marketing website for Vortex, a columnar file format, drawn
 
 - **Design system**: `src/styles/vortex-tokens.css` and `src/styles/vortex.css` are copies of the Vortex design system's styles (change the system, not the copies), and the markup uses its `vx-` classes
 - **ASCII mark**: `src/components/ascii-mark` mounts the system's renderer (`src/vendor/vortex-design/`) on the homepage and the 404, with the static symbol as its fallback
-- **Themes**: Dark only, except the blog, which carries the ThemeSwitch (`src/lib/theme.ts`)
+- **Themes**: Dark by default. Every page's footer has the ThemeSwitch (Light, Dark, System), whose choice is the `vx-theme` cookie (`src/lib/theme.ts`)
 - **Custom Fonts**: Geist and Geist Mono, self-hosted through `next/font`
 
 ### Component Structure
 
 - Layout components (`Header`, `Footer`) wrap all pages
 - The homepage composes the hero (`InstallTabs`, `AsciiMark`), `BenchmarkCard` and `LogoBanner`
-- The 404 and error pages (`not-found.tsx`, `error.tsx`) share the hero's layout in `src/app/(site)/status.module.css`
+- The 404 and error pages (`not-found.tsx`, `error.tsx`) share the system's Status card (`src/components/not-found`)
 
 ### Key Files
 

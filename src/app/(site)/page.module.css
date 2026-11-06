@@ -41,6 +41,7 @@
   margin: 0;
   font: 400 16px / 1.6 var(--font-mono);
   color: var(--ink-body);
+  text-wrap: pretty;
 }
 
 .install {

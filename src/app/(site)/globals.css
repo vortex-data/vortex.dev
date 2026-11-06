@@ -97,12 +97,6 @@
 :root[data-theme="light"] .ascii-mark-still {
   filter: invert(1);
 }
-/* With no script the root stays "system", which follows the OS. */
-@media (prefers-color-scheme: light) {
-  :root[data-theme="system"] .ascii-mark-still {
-    filter: invert(1);
-  }
-}
 
 /* ------------------------------------------------------------------ blog
    The blog's page frame, and the parts the design system has no card for. */

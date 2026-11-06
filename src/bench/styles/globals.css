@@ -3,9 +3,9 @@
 
 /* The colours come from the Vortex design system's tokens (src/styles/vortex-tokens.css), which
  * the root layout loads first: ground, surface, raised, line, ink, ink-muted, accent-ink for words,
- * and accent with on-accent for fills. The root renders data-theme="system", so the tokens follow
- * the OS until a reader picks a theme with the header's toggle. These are bench's own values, which
- * the system has no role for, in the same three theme states. */
+ * and accent with on-accent for fills. The root renders data-theme="dark", and the bootstrap sets
+ * the reader's choice from the footer's ThemeSwitch, resolving System to light or dark. These are
+ * bench's own values, which the system has no role for, in each theme. */
 :root {
   --toolbar-height: 64px;
   --tooltip-bg: var(--primary);
@@ -73,12 +73,13 @@ pre {
 
 /* A link is ink at rest and Blue only under the pointer, as the system's are: bench's Blue names
  * Vortex, its line, and a pressed chip. A link in prose also takes the system's quiet underline
- * (the methodology page, below), so it reads as a link without the Blue. */
-a {
+ * (the methodology page, below), so it reads as a link without the Blue. The system's own links
+ * and buttons (vx- classes) keep their rules, as base.css leaves them. */
+a:not([class*='vx-']) {
   color: var(--ink);
   text-decoration: none;
 }
-a:hover {
+a:not([class*='vx-']):hover {
   color: var(--accent-ink);
   text-decoration: underline;
 }
@@ -135,11 +136,6 @@ main {
 }
 :root[data-theme='light'] .ascii-mark-still {
   filter: invert(1);
-}
-@media (prefers-color-scheme: light) {
-  :root[data-theme='system'] .ascii-mark-still {
-    filter: invert(1);
-  }
 }
 
 /* Room under the footer for the fixed Groups button (GroupNav), which would cover its mark. */
@@ -214,7 +210,7 @@ main {
  * Methodology page
  * ---------------------------------------------------------------------- */
 .methodology {
-  max-width: 72ch;
+  max-width: var(--measure);
   line-height: 1.6;
 }
 
@@ -231,11 +227,13 @@ main {
 
 .methodology h2 {
   margin: 0 0 var(--space-16);
+  font-weight: 500;
 }
 
 .methodology h3 {
   margin: var(--space-32) 0 var(--space-8);
   font-size: 1rem;
+  font-weight: 600;
 }
 
 .methodology p {
@@ -1110,7 +1108,7 @@ main {
   font-size: 0.7rem;
   font-weight: 500;
   padding: 0.1rem 0.45rem;
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-control);
   background: var(--ground);
   color: var(--ink-muted);
   border: 1px solid var(--line);
@@ -1127,7 +1125,7 @@ main {
   font-weight: 500;
   line-height: 1.4;
   padding: 0.1rem 0.45rem;
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-control);
   background: var(--ground);
   color: var(--ink-muted);
   border: 1px solid var(--line);
