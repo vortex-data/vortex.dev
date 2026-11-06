@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { MARK_FRAME } from "@/components/blog/mark-frame";
 import { PostRows } from "@/components/blog/post-rows";
 import { NewsletterForm } from "@/components/newsletter-form";
 import { externalPosts } from "@/content/links";
@@ -31,9 +30,8 @@ const FEEDS = [
 ] as const;
 
 /**
- * The design system's BlogIndex card: the heading with the feeds, over a dim
- * still of the ASCII mark (`MARK_FRAME`), then one
- * list, newest first, of the site's own posts and the posts on other sites
+ * The design system's BlogIndex card: the heading in the mono voice with the
+ * feeds, then one list, newest first, of the site's own posts and the posts on other sites
  * (`src/content/links.ts`). The newsletter sign-up closes the list.
  */
 export default function BlogPage() {
@@ -41,14 +39,8 @@ export default function BlogPage() {
 
   return (
     <div className="blog-page">
-      <div className="vx-blog-head has-mark">
-        {/* The frame is the ::before's content, so it is decoration, not text. */}
-        <span
-          className="vx-blog-mark"
-          aria-hidden="true"
-          data-frame={MARK_FRAME}
-        />
-        <h1 className="vx-h2 vx-blog-title">Blog</h1>
+      <div className="vx-blog-head">
+        <h1 className="vx-display-mono vx-blog-title">Blog</h1>
         <nav className="vx-label vx-blog-feeds" aria-label="Feeds">
           {FEEDS.map((f) => (
             <a key={f.href} className="vx-nav-link" href={f.href}>

@@ -1,7 +1,7 @@
 /* Vortex design system components (sections: base, brand, chrome, site, blog, tables, focus), copied by tools/site-styles.mjs.
    Edit the system, then run tools/site-styles.mjs; do not edit here.
    Made by: node tools/site-styles.mjs <site> --sections base,brand,chrome,site,blog,tables,focus --faces --vx-face --base
-   sha256 bcae956ed3e59034a2a0d1614eb6190bbf153ba3b8d69420fc326bb2d3497e13 */
+   sha256 4f6a6f8328a97bf32846dc6fc28bbb953908245aedce51a764454a76f2b7d638 */
 
 /* ------------------------------------------------------------------ base */
 /* Every component sizes with border-box, so it draws the same under a site's reset or none. */
@@ -791,32 +791,6 @@ html:has(.vx-header) { scroll-padding-top: calc(var(--space-64) + var(--space-8)
 }
 .vx-blog-title { margin: 0; }
 .vx-blog-feeds { display: flex; gap: var(--space-16); }
-/* With has-mark, a still of the ASCII mark sits in the heading's top right corner, above the feeds:
-   mono characters, dim in edge, fading in from the left. The frame is the data-frame attribute,
-   drawn by ::before, so it is decoration and not text that a contrast check reads. It is static,
-   so it adds no motion. Phones leave it out. */
-.vx-blog-head.has-mark { position: relative; min-height: 200px; align-items: flex-end; }
-.vx-blog-head.has-mark > :not(.vx-blog-mark) { position: relative; z-index: 1; }
-.vx-blog-mark::before { content: attr(data-frame); }
-.vx-blog-mark {
-  display: block;
-  position: absolute;
-  right: 0;
-  top: 0;
-  margin: 0;
-  font: 400 12px/14px var(--font-mono);
-  color: var(--edge);
-  white-space: pre;
-  pointer-events: none;
-  user-select: none;
-  transform: scale(0.6);
-  transform-origin: right top;
-  mask-image: linear-gradient(90deg, transparent, var(--ink) 40%);
-}
-@media (max-width: 760px) {
-  .vx-blog-head.has-mark { min-height: 0; }
-  .vx-blog-mark { display: none; }
-}
 
 /* Post rows sit in a .vx-posts list, which they measure to decide their layout. */
 /* The list is a ul of li > a.vx-post-row. Each row reaches 12px past the column on both sides, so
@@ -983,8 +957,7 @@ html:has(.vx-header) { scroll-padding-top: calc(var(--space-64) + var(--space-8)
 .vx-post-nav-title { margin: 0; color: var(--ink); text-wrap: balance; }
 .vx-article-links { display: flex; flex-wrap: wrap; gap: var(--space-8) var(--space-24); margin: 0; }
 @media (max-width: 640px) {
-  .vx-article { padding: var(--space-8) 0 var(--space-24); font-size: 16px; border: 0; background: none; }
-  .vx-article-title { font-size: 36px; }
+  .vx-article { padding: var(--space-8) 0 var(--space-24); font-size: 16px; }
   .vx-article-dek { display: block; font-size: 16px; -webkit-line-clamp: none; line-clamp: none; }
   .vx-post-nav { grid-template-columns: minmax(0, 1fr); }
   .vx-post-nav-link.is-next { grid-column: auto; text-align: left; }

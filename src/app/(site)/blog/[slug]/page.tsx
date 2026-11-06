@@ -98,9 +98,9 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
         <ArrowBackIcon />
         Back to blog
       </NextLink>
-      <article className="vx-card vx-article vx-reading">
+      <article className="vx-article vx-reading">
         <header className="vx-article-head">
-          <h1 className="vx-h1 vx-article-title">{post.title}</h1>
+          <h1 className="vx-display-mono vx-article-title">{post.title}</h1>
           {post.excerpt && <p className="vx-article-dek">{post.excerpt}</p>}
           <p className="vx-label vx-article-byline">
             <time className="blog-nowrap" dateTime={post.date}>
