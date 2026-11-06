@@ -39,7 +39,7 @@ export function navLinks(
       current: null
     },
     {
-      label: "Bench",
+      label: "Benchmarks",
       href: bench ? bench.home : "https://bench.vortex.dev",
       internal: false,
       current: bench ? (benchLanding ? "page" : "true") : null

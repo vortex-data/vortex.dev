@@ -252,7 +252,7 @@ describe.skipIf(!databaseAvailable || !BUILD_PRESENT)(
       expect(html).toContain('<a href="https://vortex.dev" aria-label="Vortex home">');
       expect(html).toMatch(/<a [^>]*class="group-permalink"[^>]*href="\/bench#/);
       expect(html).toMatch(
-        /<a class="vx-label vx-nav-link" href="\/bench" aria-current="page">Bench</,
+        /<a class="vx-label vx-nav-link" href="\/bench" aria-current="page">Benchmarks</,
       );
       expect(html).toContain('href="/bench/favicon.ico"');
     });
@@ -265,7 +265,7 @@ describe.skipIf(!databaseAvailable || !BUILD_PRESENT)(
       expect(landing.body).toContain('<a href="https://vortex.dev" aria-label="Vortex home">');
       expect(landing.body).toMatch(/<a [^>]*class="group-permalink"[^>]*href="\/#/);
       expect(landing.body).toMatch(
-        /<a class="vx-label vx-nav-link" href="\/" aria-current="page">Bench</,
+        /<a class="vx-label vx-nav-link" href="\/" aria-current="page">Benchmarks</,
       );
       expect(landing.body).toContain('href="https://vortex.dev/charter.pdf"');
       expect(landing.body).toContain('href="/favicon.ico"');
