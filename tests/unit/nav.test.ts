@@ -18,7 +18,12 @@ describe("navLinks", () => {
   // Slack left the links for an icon beside the GitHub button (socialLinks).
   it("gives the site its own Blog path, and Benchmarks its host", () => {
     const links = byLabel(navLinks("/blog"));
-    assert.deepEqual(Object.keys(links), ["Docs", "Benchmarks", "Explorer", "Blog"]);
+    assert.deepEqual(Object.keys(links), [
+      "Docs",
+      "Benchmarks",
+      "Explorer",
+      "Blog"
+    ]);
     assert.equal(links.Benchmarks?.href, "https://bench.vortex.dev");
     assert.equal(links.Blog?.href, "/blog");
     assert.equal(links.Blog?.internal, true);
@@ -41,7 +46,10 @@ describe("navLinks", () => {
       ["/chart/tpch-q1", "/"],
       ["/bench/chart/tpch-q1", "/"]
     ] as const)
-      assert.equal(byLabel(navLinks(path, { home })).Benchmarks?.current, "true");
+      assert.equal(
+        byLabel(navLinks(path, { home })).Benchmarks?.current,
+        "true"
+      );
     assert.equal(
       byLabel(navLinks("/bench", { home: "/" })).Benchmarks?.current,
       "page"
