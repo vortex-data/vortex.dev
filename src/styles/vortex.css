@@ -1,7 +1,7 @@
 /* Vortex design system components (sections: base, brand, chrome, site, blog, tables, focus), copied by tools/site-styles.mjs.
    Edit the system, then run tools/site-styles.mjs; do not edit here.
-   Made by: node tools/site-styles.mjs <site> --sections base,brand,chrome,site,blog,tables,focus --faces --vx-face --base
-   sha256 0a6c9938544f3b3053cbaa68d51c6a506ddc764e7cc3507c26dd3b05b4413d1b */
+   Made by: node tools/site-styles.mjs <site> --sections base,brand,chrome,site,blog,tables,focus --faces --vx-face --base --reads ..
+   sha256 bddb79f13fb3cf9a0fd1d27897b97b3bafbd7ffcf29179f01b4015e992e37641 */
 
 /* ------------------------------------------------------------------ base */
 /* Every component sizes with border-box, so it draws the same under a site's reset or none. */
@@ -54,11 +54,6 @@
 main[tabindex="-1"]:focus {
   outline: none;
 }
-.vx-card {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-card);
-}
 .vx-label,
 .vx-label-sm {
   color: var(--ink-muted);
@@ -72,9 +67,6 @@ main[tabindex="-1"]:focus {
   letter-spacing: 0;
   user-select: all;
   overflow-wrap: anywhere;
-}
-.vx-num {
-  font-variant-numeric: tabular-nums;
 }
 /* In prose, the link rule styles an author's links. A system link (a vx- class) has its own rule. */
 .vx-link,
@@ -315,11 +307,9 @@ main[tabindex="-1"]:focus {
 .vx-btn-primary { background: var(--primary); color: var(--on-primary); }
 .vx-btn-secondary { border-color: var(--edge); }
 .vx-btn-secondary:hover { border-color: var(--ink); }
-.vx-btn-ghost:hover { background: var(--raised); }
 /* Pressed: one step past hover, in place. */
 .vx-btn-primary:active:not([disabled], [aria-disabled="true"]) { background: color-mix(in srgb, var(--primary) 82%, var(--ground)); }
 .vx-btn-secondary:active:not([disabled], [aria-disabled="true"]) { background: var(--raised); }
-.vx-btn-ghost:active:not([disabled], [aria-disabled="true"]) { background: var(--edge); }
 .vx-btn.is-mono { padding: 0 var(--space-12); font: 400 13px/1 var(--font-mono); }
 .vx-btn-count { display: inline-flex; align-items: center; gap: var(--space-4); padding-left: var(--space-12); border-left: 1px solid var(--edge); color: var(--ink-muted); }
 /* Buttons side by side, primary first, wrapping onto a second row on a phone. */
@@ -373,14 +363,6 @@ html:has(.vx-header) { scroll-padding-top: calc(var(--space-64) + var(--space-8)
   .vx-header-start { padding-right: var(--space-32); }
   .vx-header-end { padding-left: var(--space-32); }
 }
-/* A search field for the tools, as the docs use it, at control-md on raised. Below 960px its twin,
-   a search button (.vx-header-search-link) that opens the search page, takes its place. */
-.vx-header-search { position: relative; display: flex; align-items: center; flex: 0 1 320px; min-width: 160px; margin: 0; color: var(--ink-muted); }
-.vx-header-search svg { position: absolute; left: var(--space-12); width: 16px; height: 16px; fill: currentColor; pointer-events: none; }
-.vx-header-search input { box-sizing: border-box; width: 100%; height: var(--control-md); margin: 0; padding: 0 var(--space-12) 0 calc(var(--space-12) + 16px + var(--space-8)); background: var(--raised); border: 1px solid var(--edge); border-radius: var(--radius-control); color: var(--ink); font: 400 14px/1 var(--font-sans); transition: border-color var(--vx-motion); }
-.vx-header-search input:hover { border-color: var(--ink); }
-.vx-header-search input::placeholder { color: var(--ink-muted); opacity: 1; }
-.vx-header-search-link { display: none; }
 /* The menu: on a narrow screen the site's links go behind a Menu button at the end of the row, a
    <details>, so it opens without scripts. Its panel is a popover under the button, on the ground with
    the buttons' solid edge, so it covers what is under it. */
@@ -418,7 +400,6 @@ html:has(.vx-header) { scroll-padding-top: calc(var(--space-64) + var(--space-8)
 @media (max-width: 960px) {
   .vx-header-nav, .vx-header-search { display: none; }
   .vx-header-menu { display: block; }
-  .vx-header-search-link { display: inline-flex; }
   .vx-header-social > .vx-header-social-link { display: none; }
   .vx-header-menu-panel .vx-header-menu-spill.is-icon { display: flex; }
   .vx-header-github .vx-btn-count { display: none; }
@@ -495,18 +476,6 @@ html:has(.vx-header) { scroll-padding-top: calc(var(--space-64) + var(--space-8)
   width: 26px;
   height: 26px;
   border-radius: var(--radius-control);
-  color: var(--ink-muted);
-  transition: color var(--vx-motion), background-color var(--vx-motion);
-}
-.vx-switch button {
-  all: unset;
-  box-sizing: border-box;
-  cursor: pointer;
-  height: 26px;
-  padding: 0 var(--space-12);
-  border-radius: var(--radius-control);
-  font: 400 12.5px/26px var(--font-sans);
-  white-space: nowrap;
   color: var(--ink-muted);
   transition: color var(--vx-motion), background-color var(--vx-motion);
 }
@@ -614,12 +583,6 @@ html:has(.vx-header) { scroll-padding-top: calc(var(--space-64) + var(--space-8)
 .vx-field-row > .vx-field { flex: 1 1 auto; min-width: 0; }
 .vx-field-error { margin: var(--space-8) 0 0; color: var(--error-ink); }
 
-/* A display line never strands one word on its last line, and on phones its lines balance. */
-.vx-display { text-wrap: pretty; }
-/* On phones it sets at the h1 size, where 64px would take four lines. */
-@media (max-width: 640px) {
-  .vx-display { font-size: 48px; text-wrap: balance; }
-}
 
 /* The mono headline: tight, as the old terminal set it, and at the h3 size on phones. */
 .vx-display-mono { text-wrap: pretty; }
@@ -998,17 +961,6 @@ html:has(.vx-header) { scroll-padding-top: calc(var(--space-64) + var(--space-8)
 .vx-table td.is-num { font-family: var(--font-mono); font-size: 13px; }
 .vx-prose tr.is-total td,
 .vx-table tr.is-total td { color: var(--ink); font-weight: 600; border-bottom: 0; }
-/* Data tables: every cell in mono, rows at app height, and column names keep their case. */
-.vx-table.is-data th,
-.vx-table.is-data td { padding: var(--space-8) var(--space-12); }
-.vx-table.is-data td { height: var(--app-row); box-sizing: border-box; white-space: nowrap; font-family: var(--font-mono); font-size: 13px; color: var(--ink-body); }
-.vx-table th.is-selected { color: var(--accent-ink); }
-.vx-table td.is-selected { background: var(--accent-soft); color: var(--ink); }
-/* A data table on a surface keeps its head in view and washes the row under the pointer. A spacer
-   row (is-spacer) stands for rows a virtual list has not drawn. */
-.vx-table.is-data thead th { position: sticky; top: 0; z-index: 1; background: var(--surface); }
-.vx-table.is-data tbody tr:not(.is-spacer):hover td { background: var(--wash); }
-.vx-table.is-data tr.is-spacer td { height: auto; padding: 0; border: 0; }
 
 /* ------------------------------------------------------------------ focus
    One rule for every focusable element, last so that it wins over the resets above. The docs'
