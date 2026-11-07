@@ -41,7 +41,7 @@ concurrency:
 jobs:
   apply:
     name: Apply schema migrations
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     environment: bench-production
     timeout-minutes: 15
     defaults:
