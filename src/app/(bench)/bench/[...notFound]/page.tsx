@@ -1,7 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+
+import { NOT_FOUND_METADATA } from '@/bench/lib/not-found-metadata';
+
+// The 404's title after hydration too, not the layout's (see NOT_FOUND_METADATA).
+export const metadata: Metadata = NOT_FOUND_METADATA;
 
 /**
  * Every bench URL no other bench route matches. The app has two root layouts,

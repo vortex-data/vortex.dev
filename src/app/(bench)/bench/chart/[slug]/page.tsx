@@ -16,6 +16,7 @@ import {
   singleSearchParam,
 } from '@/bench/lib/chart-format';
 import { cachedDefaultChartPayload, cachedFilterUniverse } from '@/bench/lib/data-cache';
+import { NOT_FOUND_METADATA } from '@/bench/lib/not-found-metadata';
 import { chartPayload, type ChartResponse } from '@/bench/lib/queries';
 import { chartDescription, chartUrl, openGraph } from '@/bench/lib/site-files';
 import { chartKeyFromSlug, chartKeyToSlug, type ChartKey } from '@/bench/lib/slug';
@@ -131,7 +132,8 @@ export async function generateMetadata({
   await redirectToCanonical(slug, sp);
   const chart = await getChart(slug, singleSearchParam(sp.n));
   if (chart === null) {
-    return {};
+    // The page 404s: keep the 404's title after hydration (see NOT_FOUND_METADATA).
+    return NOT_FOUND_METADATA;
   }
   const key = chartKeyFromSlug(slug);
   const title = `${chart.display_name} | Vortex`;

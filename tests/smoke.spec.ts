@@ -751,6 +751,22 @@ test.describe("404", () => {
       page.getByRole("heading", { level: 1, name: "404" })
     ).toBeVisible();
   });
+
+  // 7 Nov 2026: the server sent the 404's title, and then the client set the
+  // route's own title, which was bench's layout's "Benchmarks | Vortex". Both
+  // routes that call notFound() must give the 404's title after hydration.
+  for (const path of ["/bench/no-such-page", "/bench/chart/not-a-chart"]) {
+    test(`${path} keeps the 404 title after it loads`, async ({ page }) => {
+      const res = await page.goto(path);
+      expect(res?.status()).toBe(404);
+      await page.waitForLoadState("networkidle");
+      await expect(page).toHaveTitle("Page not found | Vortex");
+      // Hydration has run when the theme bootstrap's class is gone.
+      await expect(page.locator("html")).toHaveClass(/\bjs\b/);
+      await page.waitForTimeout(1000);
+      await expect(page).toHaveTitle("Page not found | Vortex");
+    });
+  }
 });
 
 // Note 56: under the blog a 404 follows the reader's theme, and the mark
