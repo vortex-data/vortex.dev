@@ -58,9 +58,8 @@ describe("bench's stylesheet on the system's tokens", () => {
 
   it('renders data-theme="dark", the default theme, for a reader without scripts', () => {
     expect(layout).toMatch(/<html[^>]*data-theme="dark"/);
-    expect(tokens).toMatch(
-      /@media \(prefers-color-scheme: light\) \{\s*\[data-theme="system"\] \{/,
-    );
+    // The bootstrap resolves System to light or dark, so no stylesheet follows the OS by itself.
+    expect(tokens).not.toMatch(/prefers-color-scheme|data-theme="system"/);
   });
 
   it('defines only its own variables, and never redefines a token', () => {
@@ -119,8 +118,11 @@ describe("bench's stylesheet on the system's tokens", () => {
   // under the pointer. Under the pointer an outlined control's border turns ink, and a row takes
   // the wash, as the system's States rule says.
   it('keeps Blue off links at rest and off hovers', () => {
-    expect(lastValue('a', 'color')).toBe('var(--ink)');
-    expect(lastValue('a:hover', 'color')).toBe('var(--accent-ink)');
+    expect(lastValue("a:not([class*='vx-'])", 'color')).toBe('var(--ink)');
+    expect(lastValue("a:not([class*='vx-']):hover", 'color')).toBe('var(--accent-ink)');
+    // A bare a or a:hover would outrank the system's vx- links and buttons in the header and footer.
+    expect(lastValue('a', 'color')).toBeUndefined();
+    expect(lastValue('a:hover', 'color')).toBeUndefined();
     for (const sel of [
       '.control-btn:hover',
       '.filter-chip:hover',

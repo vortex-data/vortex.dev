@@ -28,7 +28,7 @@ export async function generateMetadata(): Promise<Metadata> {
     // in full. No `metadataBase`: it would also resolve the icons' paths, which
     // belong to the host serving the page, against bench.vortex.dev.
     openGraph: openGraph('Benchmarks | Vortex', BENCH_DESCRIPTION, `${BENCH_URL}/`),
-    // The site's favicon (the system's DECISIONS 36: one set on every
+    // The site's favicon (one set on every
     // surface), copied into public/bench, the root of bench.vortex.dev.
     icons: {
       icon: { url: benchPath(base, '/favicon.ico'), sizes: '256x256', type: 'image/x-icon' },

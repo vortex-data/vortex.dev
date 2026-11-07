@@ -51,14 +51,14 @@ describe("Footer", () => {
 });
 
 describe("Header on bench", () => {
-  it("links the wordmark to the site and marks Bench current", async () => {
+  it("links the wordmark to the site and marks Benchmarks current", async () => {
     const html = renderToStaticMarkup(await Header({ bench: { home: "/" } }));
     assert.match(
       html,
       /<a href="https:\/\/vortex.dev" aria-label="Vortex home">/
     );
     // Outside a router there is no pathname: navLinks' tests pin "page" and "true".
-    assert.match(html, /href="\/" aria-current="(page|true)">Bench</);
+    assert.match(html, /href="\/" aria-current="(page|true)">Benchmarks</);
     assert.match(html, /href="https:\/\/vortex.dev\/blog">Blog</);
     assert.match(html, /aria-label="vortex-data\/vortex on GitHub"/);
   });
@@ -85,7 +85,7 @@ describe("Header on bench", () => {
     }
   });
 
-  // Design system DECISIONS 35: one header on every surface. A surface adds only its tools.
+  // One header on every surface. A surface adds only its tools.
   it("draws the same header on the site and on bench", async () => {
     const want = /^<header class="vx-header"><div class="vx-header-start">/;
     assert.match(

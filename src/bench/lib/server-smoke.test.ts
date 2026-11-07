@@ -190,7 +190,7 @@ describe.skipIf(!databaseAvailable || !BUILD_PRESENT)(
     it('returns 404 HTML for an unknown chart slug', async () => {
       const r = await fetch(`${BASE}/chart/ra.unknown-slug`);
       expect(r.status).toBe(404);
-      // The site's 404 title, not bench's own (DECISIONS 36: one 404 everywhere).
+      // The site's 404 title, not bench's own (one 404 everywhere).
       const html = await r.text();
       expect(html).toContain('<title>Page not found | Vortex</title>');
       expect(html).not.toContain('<meta property="og:url"');
@@ -252,7 +252,7 @@ describe.skipIf(!databaseAvailable || !BUILD_PRESENT)(
       expect(html).toContain('<a href="https://vortex.dev" aria-label="Vortex home">');
       expect(html).toMatch(/<a [^>]*class="group-permalink"[^>]*href="\/bench#/);
       expect(html).toMatch(
-        /<a class="vx-label vx-nav-link" href="\/bench" aria-current="page">Bench</,
+        /<a class="vx-label vx-nav-link" href="\/bench" aria-current="page">Benchmarks</,
       );
       expect(html).toContain('href="/bench/favicon.ico"');
     });
@@ -265,7 +265,7 @@ describe.skipIf(!databaseAvailable || !BUILD_PRESENT)(
       expect(landing.body).toContain('<a href="https://vortex.dev" aria-label="Vortex home">');
       expect(landing.body).toMatch(/<a [^>]*class="group-permalink"[^>]*href="\/#/);
       expect(landing.body).toMatch(
-        /<a class="vx-label vx-nav-link" href="\/" aria-current="page">Bench</,
+        /<a class="vx-label vx-nav-link" href="\/" aria-current="page">Benchmarks</,
       );
       expect(landing.body).toContain('href="https://vortex.dev/charter.pdf"');
       expect(landing.body).toContain('href="/favicon.ico"');

@@ -11,8 +11,8 @@ import { socialLinks } from "@/lib/nav";
 import { HeaderMenu, HeaderNav, type HeaderPlace } from "./header-nav";
 
 /**
- * The design system's Header card, the one header every Vortex surface draws
- * (the system's DECISIONS 35): the wordmark, the links, a surface's own
+ * The design system's Header card, the one header every Vortex surface draws:
+ * the wordmark, the links, a surface's own
  * `tools`, then the end group: the socials (X, Slack, and the GitHub button),
  * and on a narrow screen the Menu. The theme switch is in the Footer. The
  * system's CSS keeps the shared items in the same place at a given width

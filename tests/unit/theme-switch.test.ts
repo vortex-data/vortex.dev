@@ -36,8 +36,7 @@ describe("readChoice", () => {
     for (const c of THEME_CHOICES) assert.equal(readChoice(fakeStorage(c)), c);
   });
 
-  // Will, 4 Nov 2026: "shared cookie should be respected! but if no other info, dark"
-  // (design system DECISIONS 43).
+  // The shared cookie wins. With no choice, the theme is Dark.
   it("is Dark when the choice is unset, unknown or blocked", () => {
     assert.equal(readChoice(fakeStorage(null)), "dark");
     assert.equal(readChoice(fakeStorage("sepia")), "dark");

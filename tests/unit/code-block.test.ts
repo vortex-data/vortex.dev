@@ -40,12 +40,11 @@ describe("shikiTheme", () => {
     for (const c of colors) {
       const name = c.match(/^var\(--(syntax-[a-z]+)\)$/)?.[1];
       assert.ok(name, `${c} is a syntax token`);
-      // Defined in both themes, and again in the block that gives a page
-      // set to data-theme="system" Light's tokens when the OS asks for light.
+      // Defined once in each theme.
       assert.equal(
         tokens.match(new RegExp(`--${name}:`, "g"))?.length,
-        3,
-        `${name} in Dark, Light and the OS's Light`
+        2,
+        `${name} in Dark and Light`
       );
     }
   });

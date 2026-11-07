@@ -532,7 +532,7 @@ test.describe("header", () => {
     const nav = page.getByRole("navigation", { name: "Primary" });
     for (const [name, href] of [
       ["Docs", "https://docs.vortex.dev"],
-      ["Bench", "https://bench.vortex.dev"],
+      ["Benchmarks", "https://bench.vortex.dev"],
       ["Explorer", "https://explore.vortex.dev"],
       ["Blog", "/blog"]
     ] as const) {
@@ -638,7 +638,7 @@ test.describe("header menu without scripts", () => {
     await page.goto("/");
     await page.locator(".vx-header-menu > summary").click();
     await expect(
-      page.locator(".vx-header-menu").getByRole("link", { name: "Bench" })
+      page.locator(".vx-header-menu").getByRole("link", { name: "Benchmarks" })
     ).toBeVisible();
   });
 });
@@ -654,7 +654,7 @@ const themeSwitch = (page: Page) =>
   page.locator("footer.vx-footer").getByRole("group", { name: "Theme" });
 
 test.describe("theme switch", () => {
-  // DECISIONS 37, 43 and 45: every surface has the switch, in the footer, and defaults to Dark,
+  // Every surface has the switch, in the footer, and defaults to Dark,
   // even when the OS prefers Light.
   test("sets data-theme on the blog, and the choice survives a reload", async ({
     page
@@ -1161,21 +1161,24 @@ test.describe("theme on client navigation", () => {
     await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
     // A MutationObserver runs after React commits the new route but before
     // the browser paints it, so it sees the theme the first frame uses.
-    await page.evaluate(() => {
+    // The blog's title is mono too, so the homepage's h1 is the one without
+    // vx-blog-title.
+    const HOME_H1 = "h1.vx-display-mono:not(.vx-blog-title)";
+    await page.evaluate((HOME_H1) => {
       const w = window as unknown as { themeAtCommit?: string };
       new MutationObserver((_, observer) => {
-        if (document.querySelector("h1.vx-display-mono")) {
+        if (document.querySelector(HOME_H1)) {
           w.themeAtCommit = document.documentElement.dataset.theme ?? "";
           observer.disconnect();
         }
       }).observe(document.body, { childList: true, subtree: true });
-    });
+    }, HOME_H1);
     await page.locator('header a[href="/"]').first().click();
-    await expect(page.locator("h1.vx-display-mono")).toBeVisible();
+    await expect(page.locator(HOME_H1)).toBeVisible();
     const theme = await page.evaluate(
       () => (window as unknown as { themeAtCommit?: string }).themeAtCommit
     );
-    // The homepage follows the choice, as every page does (DECISIONS 37).
+    // The homepage follows the choice, as every page does.
     expect(theme).toBe("light");
   });
 });
@@ -1553,7 +1556,7 @@ test.describe("post ending", () => {
     await expect(prose.locator(".vx-callout").first()).not.toContainText("> ");
   });
 
-  test("on a phone the post drops its card's edge, so the text gets the width", async ({
+  test("on a phone the post has no edge and no side padding, so the text gets the width", async ({
     page
   }) => {
     await page.setViewportSize({ width: 375, height: 812 });

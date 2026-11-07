@@ -25,7 +25,7 @@ export function MDXRenderer({ code }: MDXRendererProps) {
     // shows a raw exception as the message.
     console.error("Error rendering MDX:", error);
     return (
-      <div className="vx-callout" role="alert">
+      <div className="vx-callout is-warning" role="alert">
         <WarningIcon className="vx-callout-icon" />
         <div>
           <p className="vx-callout-title">This post did not render.</p>
