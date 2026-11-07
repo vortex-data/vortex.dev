@@ -65,6 +65,7 @@ vi.mock('@/bench/lib/queries', () => ({
 vi.mock('@/bench/components/Chart', () => ({ Chart: () => null }));
 
 const { generateMetadata } = await import('@/app/(bench)/bench/chart/[slug]/page');
+const { NOT_FOUND_METADATA } = await import('@/bench/lib/not-found-metadata');
 
 type Query = Record<string, string | string[] | undefined>;
 
@@ -84,6 +85,9 @@ async function metadata(slug: string, query: Query = {}): Promise<Redirect | obj
 }
 
 const permanent = (to: string) => new Redirect('permanent', to);
+// The fake has no chart, so a request that is not redirected gets the 404's
+// metadata, as the page 404s.
+const served = NOT_FOUND_METADATA;
 const temporary = (to: string) => new Redirect('temporary', to);
 
 afterEach(() => {
@@ -93,13 +97,13 @@ afterEach(() => {
 
 describe('the chart page redirect', () => {
   it('serves the default window as sent, whatever else the query holds', async () => {
-    expect(await metadata('ok', { utm_source: 'x' })).toEqual({});
+    expect(await metadata('ok', { utm_source: 'x' })).toEqual(served);
     expect(cachedDefaultChartPayload).toHaveBeenCalledWith('ok');
     expect(cachedFilterUniverse).not.toHaveBeenCalled();
   });
 
   it('serves a canonical non-default window without a redirect', async () => {
-    expect(await metadata('ok', { n: 'all', engine: 'duckdb' })).toEqual({});
+    expect(await metadata('ok', { n: 'all', engine: 'duckdb' })).toEqual(served);
     expect(chartPayload).toHaveBeenCalledWith(expect.anything(), { kind: 'all' });
   });
 
@@ -137,12 +141,12 @@ describe('the chart page redirect', () => {
   });
 
   it('treats a repeated parameter as absent, as the page does', async () => {
-    expect(await metadata('ok', { n: ['all', '100'] })).toEqual({});
+    expect(await metadata('ok', { n: ['all', '100'] })).toEqual(served);
     expect(cachedDefaultChartPayload).toHaveBeenCalledWith('ok');
   });
 
   it('leaves a malformed slug to the 404, without a redirect', async () => {
-    expect(await metadata('bad', { n: 'all' })).toEqual({});
+    expect(await metadata('bad', { n: 'all' })).toEqual(served);
     expect(chartPayload).not.toHaveBeenCalled();
     expect(cachedDefaultChartPayload).not.toHaveBeenCalled();
   });

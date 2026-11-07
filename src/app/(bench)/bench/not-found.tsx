@@ -4,19 +4,10 @@
 import type { Metadata } from 'next';
 
 import { BenchHeader } from '@/bench/components/BenchHeader';
+import { NOT_FOUND_METADATA } from '@/bench/lib/not-found-metadata';
 import { NotFoundStatus } from '@/components/not-found';
 
-const TITLE = 'Page not found | Vortex';
-const SENTENCE = 'There is no page at this address.';
-
-// The site's 404 metadata (src/app/(site)/not-found.tsx). The Open Graph
-// object replaces the layout's, so the page has no og:url: a missing page is
-// not bench's home.
-export const metadata: Metadata = {
-  title: TITLE,
-  description: SENTENCE,
-  openGraph: { title: TITLE, description: SENTENCE, siteName: 'Vortex', type: 'website' },
-};
+export const metadata: Metadata = NOT_FOUND_METADATA;
 
 /**
  * bench's 404, for the paths the catch-all route hands to `notFound()`: the
