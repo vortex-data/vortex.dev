@@ -105,16 +105,23 @@ describe("bench's stylesheet on the system's tokens", () => {
 
   // Words take accent-ink; fills take accent with on-accent text. In Light the two are one Blue.
   it('fills with accent and writes on it in on-accent', () => {
-    for (const sel of ['.filter-badge', '.filter-chip--active']) {
-      expect(lastValue(sel, 'background'), sel).toBe('var(--accent)');
-      expect(lastValue(sel, 'color'), sel).toBe('var(--on-accent)');
-    }
-    expect(lastValue('.filter-chip--active:hover', 'border-color')).toBe('var(--accent)');
+    expect(lastValue('.filter-badge', 'background')).toBe('var(--accent)');
+    expect(lastValue('.filter-badge', 'color')).toBe('var(--on-accent)');
     expect(lastValue('.toolbar-slider', 'accent-color')).toBe('var(--accent)');
     expect(lastValue('.chart-range-strip-handle', 'background')).toBe('var(--accent)');
   });
 
-  // Bench's Blue names Vortex, its line, and a pressed chip. A link is ink at rest and Blue only
+  // A pressed chip is a selected item, not a fill: the accent-soft wash, ink text, and an
+  // accent-ink border, as the system's States rule says. Under the pointer it stays the same.
+  it('draws a pressed chip as a selected item', () => {
+    for (const sel of ['.filter-chip--active', '.filter-chip--active:hover']) {
+      expect(lastValue(sel, 'background'), sel).toBe('var(--accent-soft)');
+      expect(lastValue(sel, 'border-color'), sel).toBe('var(--accent-ink)');
+      expect(lastValue(sel, 'color'), sel).toBe('var(--ink)');
+    }
+  });
+
+  // Bench's Blue names Vortex, its line, and a pressed chip's border. A link is ink at rest and Blue only
   // under the pointer. Under the pointer an outlined control's border turns ink, and a row takes
   // the wash, as the system's States rule says.
   it('keeps Blue off links at rest and off hovers', () => {
