@@ -261,8 +261,9 @@ Automatic minor version upgrades are on. RDS applies a new Postgres 16.x
 release in the weekly maintenance window, Saturday 09:58–10:28 UTC. Single-AZ
 means the site and ingest are down while it restarts: about 30 seconds for the
 16.4 to 16.15 upgrade on 2026-10-28. An ingest job that connects during the
-restart fails, because `scripts/post-ingest.py` in `vortex-data/vortex` does
-not retry.
+restart waits it out: `scripts/post-ingest.py` in `vortex-data/vortex` retries a
+lost or refused connection for about 4 minutes, and each attempt writes the
+whole file again in one transaction. A restart that takes longer fails the job.
 
 OS updates (`system-update`) are separate. A minor engine upgrade does not apply
 them, and RDS applies an optional one only when someone opts in. The OS update
