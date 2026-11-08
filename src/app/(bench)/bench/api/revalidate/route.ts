@@ -10,8 +10,9 @@ import { BENCH_DATA_TAG } from '@/bench/lib/data-cache';
 
 /**
  * `POST /api/revalidate` marks the [`BENCH_DATA_TAG`] Data Cache entries stale, so
- * they refresh against freshly ingested data (see below). `scripts/post-ingest.py`
- * calls this after a successful Postgres write. Auth is a bearer token compared
+ * they refresh against freshly ingested data (see below). The monorepo's
+ * `scripts/refresh-bench-site.py` calls this once per benchmark CI run, after the
+ * run's Postgres writes finish. Auth is a bearer token compared
  * in constant time against `BENCH_REVALIDATE_TOKEN`; a missing env var fails
  * closed with `503` so an unconfigured deployment never silently accepts
  * unauthenticated revalidation. The response is never CDN-cached.

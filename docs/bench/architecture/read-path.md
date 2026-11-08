@@ -68,8 +68,8 @@ by two independent layers, so the common case is cheap and ingest can flush both
   are never cached.
 
 **Freshness propagation.** The primary mechanism is
-`POST /api/revalidate` (token-gated; `src/app/(bench)/bench/api/revalidate/route.ts`): on a
-successful ingest, `scripts/post-ingest.py` calls it and it runs
+`POST /api/revalidate` (token-gated; `src/app/(bench)/bench/api/revalidate/route.ts`): once a
+benchmark CI run's ingest jobs finish, `scripts/refresh-bench-site.py` calls it, and it runs
 `revalidateTag('bench-data', 'max')`, the stale-while-revalidate profile: the
 next read of each Layer 1 entry serves the previous data once and refreshes the
 entry in the background, so no page waits on the database because of an ingest,

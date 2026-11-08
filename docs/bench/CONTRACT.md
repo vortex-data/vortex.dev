@@ -12,10 +12,11 @@ and are unchanged by this repository; this repo owns the ingest *contract*, the 
 read service.
 
 > **Scope.** There is one ingest path: the monorepo's `scripts/post-ingest.py --postgres` writes
-> emitter records directly into the hosted RDS Postgres and then pings this repo's read service
-> to flush its cache. The retired v3 HTTP ingest path (`POST /api/ingest` into a Rust server) is
-> described in [`docs/legacy.md`](legacy.md); the record shapes on the wire are unchanged
-> from that era, which is why the producer flag is still spelled `--gh-json-v3`.
+> emitter records directly into the hosted RDS Postgres. Then, once per CI run, the monorepo's
+> `scripts/refresh-bench-site.py` pings this repo's read service to flush its cache. The retired
+> v3 HTTP ingest path (`POST /api/ingest` into a Rust server) is described in
+> [`docs/legacy.md`](legacy.md); the record shapes on the wire are unchanged from that era, which
+> is why the producer flag is still spelled `--gh-json-v3`.
 
 ## Versioning: `SCHEMA_VERSION`
 
@@ -80,8 +81,9 @@ The `reopen` mode does not clear the OS page cache.
 
 ## The ingest path — direct Postgres write + cache revalidate
 
-The monorepo's `scripts/post-ingest.py --postgres` runs in benchmark CI (required, not
-best-effort — a failure fails the bench job and alerts):
+The monorepo's `scripts/post-ingest.py --postgres` runs in each benchmark CI job and does steps 1
+and 2 (required, not best-effort — a failure fails the bench job and alerts). The monorepo's
+`scripts/refresh-bench-site.py` does step 3, once per CI run:
 
 1. **Commit upsert:** the writer builds the commit row from `git show` and upserts it
    (`ON CONFLICT (commit_sha) DO UPDATE`) before applying any record.
@@ -96,6 +98,14 @@ best-effort — a failure fails the bench job and alerts):
    `Authorization: Bearer $BENCH_REVALIDATE_TOKEN`, to mark the Next.js Data Cache stale so
    it refreshes against freshly written data: the next read serves the previous data once
    while each entry refreshes in the background, and later reads get the new data.
+   The reusable workflow `.github/workflows/refresh-bench-site.yml` runs the script in its own
+   job, after the ingest jobs of a `develop-bench.yml`, `nightly-bench.yml`, or
+   `commit-metadata.yml` run finish. In `develop-bench.yml` and `nightly-bench.yml` it runs even
+   when some benchmark jobs fail. The script does nothing when `BENCH_SITE_BASE_URL` or the
+   token is unset. It retries a transport error, `429`, or `5xx` up to three times (after 5, 15,
+   and 45 seconds). A revalidate that still fails, or fails with another status such as `401`,
+   fails the refresh job but not the ingest jobs. After a successful revalidate, the script
+   warms `/` and each group's default `n=100` bundle. A failed warm request only logs a warning.
 
 ### `measurement_id`: the frozen hash contract
 
