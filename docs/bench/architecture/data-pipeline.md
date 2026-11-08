@@ -88,9 +88,10 @@ every CI ingest run fails. Full procedure in
 
 `post-ingest.py --postgres` (required in monorepo benchmark CI) writes the
 records **directly to RDS** as the least-privilege `bench_ingest` IAM role
-(`INSERT … ON CONFLICT (measurement_id) DO UPDATE`), then pings
-`POST {BENCH_SITE_BASE_URL}/api/revalidate` to flush the Next.js read cache.
-Each JSONL file applies in one transaction. The retired v3 HTTP path
+(`INSERT … ON CONFLICT (measurement_id) DO UPDATE`). Each JSONL file applies in
+one transaction. After the ingest jobs of a CI run finish, the monorepo's
+`scripts/refresh-bench-site.py` sends one `POST {BENCH_SITE_BASE_URL}/api/revalidate`
+to flush the Next.js read cache. The retired v3 HTTP path
 (`POST /api/ingest` into the Rust server) is described in
 [`../legacy.md`](../legacy.md).
 

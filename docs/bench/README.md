@@ -36,6 +36,8 @@ the site reads straight from it.
 │ benchmark jobs                   │
 │   vortex-bench ─▶ JSONL records  │
 │   scripts/post-ingest.py         │
+│ once per run, after the jobs     │
+│   scripts/refresh-bench-site.py  │
 └───────┬──────────────────┬───────┘
         │ upsert rows      │ POST /api/revalidate
         │ (direct SQL)     │ (flush the read cache)
