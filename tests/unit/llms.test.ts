@@ -2,7 +2,15 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import { panelsFrom } from "@/lib/bench-summary";
-import { homeJsonLd, resultsSentences, siteLlmsText } from "@/lib/llms";
+import { defined } from "@/lib/defined";
+import {
+  demoteHeadings,
+  homeJsonLd,
+  postJsonLd,
+  resultsSentences,
+  siteLlmsFullText,
+  siteLlmsText
+} from "@/lib/llms";
 
 const fixture = (name: string) =>
   JSON.parse(
@@ -61,18 +69,148 @@ describe("siteLlmsText", () => {
     const text = siteLlmsText({ bench: null, sparkVersion: null, posts });
     assert.ok(text.includes("/blog/a-post): What it says."));
   });
+
+  it("lists the ecosystem and says which support is only proposed", () => {
+    const text = siteLlmsText({
+      bench: null,
+      sparkVersion: null,
+      posts,
+      ecosystem: [
+        { name: "DuckDB", href: "https://duckdb.org" },
+        {
+          name: "Apache Iceberg",
+          href: "https://iceberg.apache.org",
+          soon: true
+        }
+      ]
+    });
+    assert.ok(text.includes("\n## Adopters and integrations\n"));
+    assert.ok(text.includes("- [DuckDB](https://duckdb.org)\n"));
+    assert.ok(
+      text.includes(
+        "- [Apache Iceberg](https://iceberg.apache.org): Vortex support is proposed, not shipped"
+      )
+    );
+  });
+
+  it("links the posts on other sites with their source and date", () => {
+    const text = siteLlmsText({
+      bench: null,
+      sparkVersion: null,
+      posts,
+      elsewhere: [
+        {
+          title: "Elsewhere",
+          url: "https://example.com/post",
+          date: "2026-10-21T12:00:00.000Z",
+          source: "example.com",
+          authors: ["A. Writer"],
+          summary: "What it says."
+        }
+      ]
+    });
+    assert.ok(
+      text.includes(
+        "- [Elsewhere](https://example.com/post) (example.com, 2026-10-21): What it says."
+      )
+    );
+    assert.ok(text.includes("/llms-full.txt)"));
+  });
+});
+
+describe("demoteHeadings", () => {
+  it("demotes headings outside code fences only", () => {
+    assert.equal(
+      demoteHeadings("## A\n```sh\n# not a heading\n```\n### B", 2),
+      "#### A\n```sh\n# not a heading\n```\n##### B"
+    );
+  });
+
+  it("closes a fence only on a run as long, with nothing after it", () => {
+    const quoted = "````md\n```\n# still code\n```example\n# code\n````\n# A";
+    assert.equal(
+      demoteHeadings(quoted, 1),
+      "````md\n```\n# still code\n```example\n# code\n````\n## A"
+    );
+    assert.equal(
+      demoteHeadings("~~~\n```\n# code\n~~~~\n# A", 1),
+      "~~~\n```\n# code\n~~~~\n## A"
+    );
+  });
+});
+
+describe("siteLlmsFullText", () => {
+  it("starts with llms.txt and gives each post in full under its title", () => {
+    const full = siteLlmsFullText({
+      bench: null,
+      sparkVersion: null,
+      posts: [
+        {
+          title: "A post",
+          slugAsParams: "a-post",
+          excerpt: "What it says.",
+          date: "2026-02-26T00:00:00.000Z",
+          authors: ["A. Writer"],
+          raw: "Intro.\n\n## A section\n\nBody."
+        }
+      ]
+    });
+    assert.ok(full.startsWith("# Vortex\n"));
+    assert.ok(full.includes("\n## Posts in full\n\n### A post\n"));
+    assert.ok(full.includes("/blog/a-post, 2026-02-26, by A. Writer"));
+    assert.ok(full.includes("\n##### A section\n"));
+  });
 });
 
 describe("homeJsonLd", () => {
-  it("describes the project and the organization that publishes it", () => {
+  it("describes the site, the project, and the organization behind it", () => {
     const graph = homeJsonLd()["@graph"] as Record<string, unknown>[];
     assert.deepEqual(
       graph.map((node) => node["@type"]),
-      ["Organization", "SoftwareSourceCode"]
+      ["WebSite", "Organization", "SoftwareSourceCode"]
     );
     assert.equal(
-      graph[1]?.codeRepository,
+      graph[2]?.codeRepository,
       "https://github.com/vortex-data/vortex"
+    );
+    assert.deepEqual(
+      (defined(graph[2]).sameAs as string[]).map((url) => new URL(url).host),
+      [
+        "docs.vortex.dev",
+        "bench.vortex.dev",
+        "crates.io",
+        "pypi.org",
+        "central.sonatype.com",
+        "docs.rs"
+      ]
+    );
+  });
+});
+
+describe("postJsonLd", () => {
+  const graph = (authors: string[]) =>
+    postJsonLd({
+      slugAsParams: "a-post",
+      title: "A post",
+      excerpt: "What it says.",
+      date: "2026-02-26",
+      authors
+    })["@graph"] as Record<string, unknown>[];
+
+  it("gives the post and its breadcrumb", () => {
+    const [article, crumbs] = graph(["Nicholas Gates"]);
+    assert.equal(article?.["@type"], "BlogPosting");
+    assert.deepEqual(article?.author, [
+      { "@type": "Person", name: "Nicholas Gates" }
+    ]);
+    assert.equal(crumbs?.["@type"], "BreadcrumbList");
+  });
+
+  it("names a team author as an organization, not a person", () => {
+    const [article] = graph(["Community Team"]);
+    assert.equal(
+      (defined(article).author as Record<string, unknown>[])[0]?.["@type"],
+      "Organization"
     );
   });
 });
