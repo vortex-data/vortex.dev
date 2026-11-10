@@ -129,12 +129,19 @@ describe('summaryLines', () => {
         title: 't',
         explanation: 'e',
         rankings: [
-          { name: VX, minRatio: 0.677, ratio: 1.137, maxRatio: 1.549, compressionRatio: 5.744 },
+          {
+            name: VX,
+            minRatio: 0.677,
+            ratio: 1.137,
+            maxRatio: 1.549,
+            compressionRatio: 5.744,
+            totalBytes: 1_603_980_000,
+          },
         ],
       }).at(-1),
     ).toBe(
       '1. Vortex: 1.14x the size of Parquet (from 0.677x to 1.55x across datasets), ' +
-        '5.74x smaller than Arrow in memory',
+        '5.74x smaller than Arrow in memory, 1,604.0 MB in total',
     );
   });
 });

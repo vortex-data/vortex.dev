@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { formatTimeNs } from './format';
+import { byteUnit, formatBytes, formatBytesIn, formatTimeNs } from './format';
 
 describe('formatTimeNs', () => {
   it('renders sub-microsecond values as whole nanoseconds', () => {
@@ -38,5 +38,27 @@ describe('formatTimeNs', () => {
     expect(formatTimeNs(-500)).toBe('-500 ns');
     expect(formatTimeNs(-1_500)).toBe('-1.50 us');
     expect(formatTimeNs(-2_000_000)).toBe('-2.00 ms');
+  });
+});
+
+describe('formatBytes', () => {
+  it('keeps sizes from 1 MB up in MB, with a thousands separator', () => {
+    expect(formatBytes(1_000_000)).toBe('1.0 MB');
+    expect(formatBytes(1_428_150_000)).toBe('1,428.2 MB');
+    expect(formatBytes(20_000_000_000)).toBe('20,000.0 MB');
+  });
+
+  it('uses KB and B below 1 MB', () => {
+    expect(formatBytes(999_949)).toBe('999.9 KB');
+    expect(formatBytes(2_500)).toBe('2.5 KB');
+    expect(formatBytes(999)).toBe('999 B');
+  });
+
+  it('gives a set of sizes the unit of its largest', () => {
+    const unit = byteUnit(1_428_150_000);
+    expect(unit).toBe('MB');
+    expect(formatBytesIn(2_500, unit)).toBe('0.0');
+    expect(formatBytesIn(1_428_150_000, unit)).toBe('1,428.2');
+    expect(formatBytesIn(999.6, 'B')).toBe('1000');
   });
 });

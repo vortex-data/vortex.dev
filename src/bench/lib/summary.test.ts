@@ -27,18 +27,36 @@ describe('compression summaries', () => {
       rows: [
         {
           format: 'vortex-file-compressed',
+          dataset: 'a',
+          datasetVariant: null,
           valueBytes: 1,
           baselineBytes: 4,
           uncompressedBytes: 16,
         },
         {
           format: 'vortex-file-compressed',
+          dataset: 'b',
+          datasetVariant: null,
           valueBytes: 900,
           baselineBytes: 100,
           uncompressedBytes: 3_600,
         },
-        { format: 'parquet', valueBytes: 4, baselineBytes: 4, uncompressedBytes: 16 },
-        { format: 'parquet', valueBytes: 100, baselineBytes: 100, uncompressedBytes: null },
+        {
+          format: 'parquet',
+          dataset: 'a',
+          datasetVariant: null,
+          valueBytes: 4,
+          baselineBytes: 4,
+          uncompressedBytes: 16,
+        },
+        {
+          format: 'parquet',
+          dataset: 'b',
+          datasetVariant: null,
+          valueBytes: 100,
+          baselineBytes: 100,
+          uncompressedBytes: null,
+        },
       ],
     });
 
@@ -61,9 +79,75 @@ describe('compression summaries', () => {
     expect(byFormat.get('parquet')?.minRatio).toBeCloseTo(1, 6);
     expect(byFormat.get('parquet')?.maxRatio).toBeCloseTo(1, 6);
     expect(byFormat.get('parquet')?.compressionRatio).toBeCloseTo(4, 6);
+    // Both formats have both datasets, so each total sums both.
+    expect(byFormat.get('vortex-file-compressed')?.totalBytes).toBe(901);
+    expect(byFormat.get('parquet')?.totalBytes).toBe(104);
     expect(summary.explanation).toBe(
-      'Geometric means of compressed sizes versus Arrow (higher is better) and versus Parquet-zstd (lower is better)',
+      'Total compressed size, and geometric means of compressed sizes versus Arrow (higher is better) and versus Parquet-zstd (lower is better)',
     );
+  });
+
+  it('sums totals over the datasets every format has', async () => {
+    const row = (format: string, dataset: string, valueBytes: number, datasetVariant = null) => ({
+      format,
+      dataset,
+      datasetVariant,
+      valueBytes,
+      baselineBytes: 10,
+      uncompressedBytes: null,
+    });
+    query.mockResolvedValueOnce({
+      rows: [
+        row('vortex-file-compressed', 'a', 10),
+        row('vortex-file-compressed', 'b', 1_000),
+        row('parquet', 'a', 20),
+        row('parquet', 'b', 2_000),
+        // Lance has no size for dataset b, so no total counts b.
+        row('lance', 'a', 30),
+      ],
+    });
+
+    const summary = await collectGroupSummary({ k: 'CompressionSizeGroup' });
+    if (summary === null || summary.type !== 'compressionSize') {
+      throw new Error('expected a compressionSize summary');
+    }
+    const totals = new Map(summary.rankings.map((ranking) => [ranking.name, ranking.totalBytes]));
+    expect(totals).toEqual(
+      new Map([
+        ['vortex-file-compressed', 10],
+        ['parquet', 20],
+        ['lance', 30],
+      ]),
+    );
+  });
+
+  it('gives no total when the formats share no dataset', async () => {
+    query.mockResolvedValueOnce({
+      rows: [
+        {
+          format: 'parquet',
+          dataset: 'a',
+          datasetVariant: null,
+          valueBytes: 10,
+          baselineBytes: 10,
+          uncompressedBytes: null,
+        },
+        {
+          format: 'lance',
+          dataset: 'b',
+          datasetVariant: null,
+          valueBytes: 30,
+          baselineBytes: 10,
+          uncompressedBytes: null,
+        },
+      ],
+    });
+
+    const summary = await collectGroupSummary({ k: 'CompressionSizeGroup' });
+    if (summary === null || summary.type !== 'compressionSize') {
+      throw new Error('expected a compressionSize summary');
+    }
+    expect(summary.rankings.map((ranking) => ranking.totalBytes)).toEqual([null, null]);
   });
 
   it('uses available Arrow memory sizes for aggregate throughput', async () => {
@@ -154,8 +238,22 @@ describe('compression summaries', () => {
     });
     query.mockResolvedValueOnce({
       rows: [
-        { format: 'fsst', valueBytes: 300, baselineBytes: 300, uncompressedBytes: 1_200 },
-        { format: 'onpair-12', valueBytes: 200, baselineBytes: 300, uncompressedBytes: 1_200 },
+        {
+          format: 'fsst',
+          dataset: 'strings/x',
+          datasetVariant: null,
+          valueBytes: 300,
+          baselineBytes: 300,
+          uncompressedBytes: 1_200,
+        },
+        {
+          format: 'onpair-12',
+          dataset: 'strings/x',
+          datasetVariant: null,
+          valueBytes: 200,
+          baselineBytes: 300,
+          uncompressedBytes: 1_200,
+        },
       ],
     });
 
@@ -183,6 +281,7 @@ describe('compression summaries', () => {
     expect(size.rankings.map((ranking) => ranking.name)).toEqual(['onpair-12', 'fsst']);
     expect(size.rankings[0]?.ratio).toBeCloseTo(2 / 3, 6);
     expect(size.rankings[0]?.compressionRatio).toBeCloseTo(6, 6);
+    expect(size.rankings.map((ranking) => ranking.totalBytes)).toEqual([200, 300]);
   });
 
   it('applies extensible snapshot policies to timings and sizes', async () => {
@@ -205,7 +304,7 @@ describe('compression summaries', () => {
       'vortex-file-compressed',
       'parquet',
       'arrow-ipc',
-      ['wide table %', 'sparse-wide-%'],
+      ['wide table %', 'sparse-wide-%', 'tpc-h l_comment chunked', 'statpopgen'],
     ];
     const calls = query.mock.calls as Array<[string, unknown[]]>;
     expect(defined(calls[0])[1]).toEqual(timingParams);
