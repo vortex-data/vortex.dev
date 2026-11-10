@@ -140,6 +140,26 @@ describe('SummaryCard', () => {
     expect(html.match(/#1/g)).toHaveLength(2);
   });
 
+  it('shows a dash for a size total the formats cannot share', () => {
+    const html = render({
+      type: 'compressionSize',
+      title: 'Compression Size Summary',
+      rankings: [
+        {
+          name: 'parquet',
+          minRatio: 1,
+          ratio: 1,
+          maxRatio: 1,
+          compressionRatio: 4,
+          totalBytes: null,
+        },
+      ],
+      explanation: 'e',
+    });
+    expect(html).toContain('class="score-runtime compression-size-value">—</span>');
+    expect(html).toContain('class="compression-size-heading compression-size-total-unit"></span>');
+  });
+
   it('renders nothing for a compression card with no rankings', () => {
     expect(render({ type: 'compression', title: 't', rankings: [], explanation: 'e' })).toBe('');
   });

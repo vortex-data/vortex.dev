@@ -144,8 +144,11 @@ interface CompressionSizeRanking {
   maxRatio: number;
   /** Geomean ratio of Arrow memory size to the format size. */
   compressionRatio: number | null;
-  /** Sum of this format's sizes, in bytes, over the datasets in `ratio`. */
-  totalBytes: number;
+  /**
+   * Sum of this format's sizes, in bytes, over the datasets that every format in the summary
+   * has, so the totals compare directly. `null` when the formats share no dataset.
+   */
+  totalBytes: number | null;
 }
 
 /**
@@ -723,6 +726,8 @@ async function collectCompressionSizeSummary(): Promise<Summary | null> {
 /** One size paired with the baseline's size for the same dataset and commit. */
 interface CompressionSizeSample {
   format: string;
+  dataset: string;
+  datasetVariant: string | null;
   valueBytes: number;
   baselineBytes: number;
   uncompressedBytes: number | null;
@@ -735,13 +740,13 @@ interface CompressionSizeSample {
 function compressionSizeRankings(rows: readonly CompressionSizeSample[]): CompressionSizeRanking[] {
   const grouped = new Map<
     string,
-    { sizeRatios: number[]; compressionRatios: number[]; totalBytes: number }
+    { sizeRatios: number[]; compressionRatios: number[]; bytesByDataset: Map<string, number> }
   >();
   for (const row of rows) {
     const ratios = grouped.get(row.format) ?? {
       sizeRatios: [],
       compressionRatios: [],
-      totalBytes: 0,
+      bytesByDataset: new Map<string, number>(),
     };
     if (
       row.valueBytes > 0 &&
@@ -750,7 +755,7 @@ function compressionSizeRankings(rows: readonly CompressionSizeSample[]): Compre
       Number.isFinite(row.baselineBytes)
     ) {
       ratios.sizeRatios.push(row.valueBytes / row.baselineBytes);
-      ratios.totalBytes += row.valueBytes;
+      ratios.bytesByDataset.set(JSON.stringify([row.dataset, row.datasetVariant]), row.valueBytes);
     }
     if (
       row.uncompressedBytes !== null &&
@@ -763,6 +768,12 @@ function compressionSizeRankings(rows: readonly CompressionSizeSample[]): Compre
     }
     grouped.set(row.format, ratios);
   }
+  // Lance and Arrow IPC come from their own snapshots, so a format can lack a dataset that the
+  // others have. Totals use only the datasets every ranked format has.
+  const ranked = [...grouped.values()].filter((ratios) => ratios.sizeRatios.length > 0);
+  const commonDatasets = [...(ranked[0]?.bytesByDataset.keys() ?? [])].filter((dataset) =>
+    ranked.every((ratios) => ratios.bytesByDataset.has(dataset)),
+  );
   const rankings: CompressionSizeRanking[] = [];
   for (const [name, ratios] of grouped) {
     const ratio = geoMean(ratios.sizeRatios);
@@ -779,7 +790,13 @@ function compressionSizeRankings(rows: readonly CompressionSizeSample[]): Compre
         ratio,
         maxRatio,
         compressionRatio: geoMean(ratios.compressionRatios),
-        totalBytes: ratios.totalBytes,
+        totalBytes:
+          commonDatasets.length === 0
+            ? null
+            : commonDatasets.reduce(
+                (sum, dataset) => sum + (ratios.bytesByDataset.get(dataset) ?? 0),
+                0,
+              ),
       });
     }
   }
@@ -877,6 +894,8 @@ async function compressionSizeSamples(): Promise<CompressionSizeSample[]> {
                 c.timestamp DESC, s.commit_sha DESC
     )
     SELECT selected.format AS format,
+           selected.dataset AS dataset,
+           selected.dataset_variant AS "datasetVariant",
            selected.value_bytes AS "valueBytes",
            selected.parquet_bytes AS "baselineBytes",
            COALESCE(uncompressed.uncompressed_bytes, selected.uncompressed_bytes)
@@ -964,6 +983,8 @@ async function collectStringEncodingSizeSummary(): Promise<Summary | null> {
        LIMIT 1
     )
     SELECT s.dataset_variant AS format,
+           s.dataset AS dataset,
+           NULL AS "datasetVariant",
            s.value_bytes::float8 AS "valueBytes",
            b.value_bytes::float8 AS "baselineBytes",
            s.uncompressed_bytes::float8 AS "uncompressedBytes"

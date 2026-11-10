@@ -322,7 +322,7 @@ export function summaryLines(summary: Summary): string[] {
             (item.compressionRatio === null
               ? ''
               : `, ${formatCompressionSizeRatio(item.compressionRatio)} smaller than Arrow in memory`) +
-            `, ${formatBytes(item.totalBytes)} in total`,
+            (item.totalBytes === null ? '' : `, ${formatBytes(item.totalBytes)} in total`),
         ),
       ];
     }

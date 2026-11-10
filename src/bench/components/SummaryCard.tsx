@@ -126,7 +126,10 @@ export function SummaryCard({ summary }: { summary?: Summary | undefined }) {
         return null;
       }
       // One unit for every total, named once in the header, so the rows compare at a glance.
-      const totalUnit = byteUnit(Math.max(...summary.rankings.map((item) => item.totalBytes)));
+      const totals = summary.rankings.flatMap((item) =>
+        item.totalBytes === null ? [] : [item.totalBytes],
+      );
+      const totalUnit = totals.length === 0 ? null : byteUnit(Math.max(...totals));
       return (
         <section className="benchmark-scores-summary" aria-label={summary.title}>
           <div className="compression-size-scores">
@@ -151,9 +154,15 @@ export function SummaryCard({ summary }: { summary?: Summary | undefined }) {
                         {label}
                       </span>
                       <span className="score-runtime compression-size-value">
-                        <span className="vx-sr-only">Total: </span>
-                        {formatBytesIn(item.totalBytes, totalUnit)}
-                        <span className="vx-sr-only"> {totalUnit}</span>
+                        {item.totalBytes === null || totalUnit === null ? (
+                          '—'
+                        ) : (
+                          <>
+                            <span className="vx-sr-only">Total: </span>
+                            {formatBytesIn(item.totalBytes, totalUnit)}
+                            <span className="vx-sr-only"> {totalUnit}</span>
+                          </>
+                        )}
                       </span>
                       <span className="score-value compression-size-value">
                         {item.compressionRatio === null
