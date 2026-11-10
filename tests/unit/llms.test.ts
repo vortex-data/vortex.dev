@@ -161,10 +161,16 @@ describe("homeJsonLd", () => {
       graph[2]?.codeRepository,
       "https://github.com/vortex-data/vortex"
     );
-    assert.ok(
-      (defined(graph[2]).sameAs as string[]).includes(
-        "https://pypi.org/project/vortex-data/"
-      )
+    assert.deepEqual(
+      (defined(graph[2]).sameAs as string[]).map((url) => new URL(url).host),
+      [
+        "docs.vortex.dev",
+        "bench.vortex.dev",
+        "crates.io",
+        "pypi.org",
+        "central.sonatype.com",
+        "docs.rs"
+      ]
     );
   });
 });
