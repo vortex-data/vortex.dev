@@ -26,6 +26,26 @@ export const SUMMARY_EXCLUDED_DATASET_PATTERNS: readonly string[] = [
   'sparse-wide-%',
 ];
 
+/**
+ * `LIKE` patterns for the datasets the compression size summary also leaves out, on top of
+ * `SUMMARY_EXCLUDED_DATASET_PATTERNS`. They still chart in the group, and the compression time
+ * summary keeps them.
+ *
+ * - `tpc-h l_comment chunked` writes the same column as `tpc-h l_comment canonical`, so their
+ *   files are the same size. Only the input to the encoder differs, which matters for time but
+ *   not for size. The size summary counts the column once, as `canonical`.
+ * - `statpopgen`, which joined `compress-bench` on 2026-11-06, is left out of the size summary.
+ *   The pattern also matches the older `statpopgen/100000` rows, which have no Parquet size and
+ *   so were never in the summary.
+ *
+ * Both names are exact. `_` is a `LIKE` wildcard, but no other dataset name matches.
+ */
+export const SIZE_SUMMARY_EXCLUDED_DATASET_PATTERNS: readonly string[] = [
+  ...SUMMARY_EXCLUDED_DATASET_PATTERNS,
+  'tpc-h l_comment chunked',
+  'statpopgen',
+];
+
 export function compressionSuite(dataset: string): CompressionSuite {
   return dataset.startsWith(STRING_DATASET_PREFIX) ? 'strings' : 'compress';
 }

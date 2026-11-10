@@ -41,7 +41,11 @@ import { getPool } from './db';
 import { randomAccessStorage, type RandomAccessStorage } from './random-access';
 import { compareCodeUnits } from './families';
 import type { GroupKey } from './slug';
-import { STRING_DATASET_PATTERN, SUMMARY_EXCLUDED_DATASET_PATTERNS } from './compression-suite';
+import {
+  SIZE_SUMMARY_EXCLUDED_DATASET_PATTERNS,
+  STRING_DATASET_PATTERN,
+  SUMMARY_EXCLUDED_DATASET_PATTERNS,
+} from './compression-suite';
 
 /**
  * Freshness buckets for compression-time and compression-size summaries.
@@ -88,7 +92,7 @@ function compressionSizeSummaryQueryParams(): [
     COMPRESSION_SNAPSHOT_ANCHOR,
     COMPRESSION_BASELINE,
     ARROW_IPC_FORMAT,
-    [...SUMMARY_EXCLUDED_DATASET_PATTERNS],
+    [...SIZE_SUMMARY_EXCLUDED_DATASET_PATTERNS],
   ];
 }
 
@@ -140,6 +144,8 @@ interface CompressionSizeRanking {
   maxRatio: number;
   /** Geomean ratio of Arrow memory size to the format size. */
   compressionRatio: number | null;
+  /** Sum of this format's sizes, in bytes, over the datasets in `ratio`. */
+  totalBytes: number;
 }
 
 /**
@@ -710,7 +716,7 @@ async function collectCompressionSizeSummary(): Promise<Summary | null> {
     title: 'Compression Size Summary',
     rankings,
     explanation:
-      'Geometric means of compressed sizes versus Arrow (higher is better) and versus Parquet-zstd (lower is better)',
+      'Total compressed size, and geometric means of compressed sizes versus Arrow (higher is better) and versus Parquet-zstd (lower is better)',
   };
 }
 
@@ -727,9 +733,16 @@ interface CompressionSizeSample {
  * order is by compression ratio once every format has one, and by baseline ratio until then.
  */
 function compressionSizeRankings(rows: readonly CompressionSizeSample[]): CompressionSizeRanking[] {
-  const grouped = new Map<string, { sizeRatios: number[]; compressionRatios: number[] }>();
+  const grouped = new Map<
+    string,
+    { sizeRatios: number[]; compressionRatios: number[]; totalBytes: number }
+  >();
   for (const row of rows) {
-    const ratios = grouped.get(row.format) ?? { sizeRatios: [], compressionRatios: [] };
+    const ratios = grouped.get(row.format) ?? {
+      sizeRatios: [],
+      compressionRatios: [],
+      totalBytes: 0,
+    };
     if (
       row.valueBytes > 0 &&
       Number.isFinite(row.valueBytes) &&
@@ -737,6 +750,7 @@ function compressionSizeRankings(rows: readonly CompressionSizeSample[]): Compre
       Number.isFinite(row.baselineBytes)
     ) {
       ratios.sizeRatios.push(row.valueBytes / row.baselineBytes);
+      ratios.totalBytes += row.valueBytes;
     }
     if (
       row.uncompressedBytes !== null &&
@@ -765,6 +779,7 @@ function compressionSizeRankings(rows: readonly CompressionSizeSample[]): Compre
         ratio,
         maxRatio,
         compressionRatio: geoMean(ratios.compressionRatios),
+        totalBytes: ratios.totalBytes,
       });
     }
   }
@@ -787,7 +802,7 @@ function compressionSizeRankings(rows: readonly CompressionSizeSample[]): Compre
  * and compares it with Parquet from the same commit. Arrow IPC uses its newest value for each
  * dataset and Parquet from the same commit. Compression ratios use the newest available decoded
  * Arrow memory size for each dataset. The size commit does not need to match.
- * The datasets in `SUMMARY_EXCLUDED_DATASET_PATTERNS` are left out.
+ * The datasets in `SIZE_SUMMARY_EXCLUDED_DATASET_PATTERNS` are left out.
  * `uncompressed_bytes` is read as a plain column, so migration 009 must be applied before a web
  * deploy that includes this query. A JSON field lookup would tolerate an older schema, but it
  * serializes whole rows and timed out in production, so it was dropped once 009 was applied there.
@@ -980,7 +995,7 @@ async function collectStringEncodingSizeSummary(): Promise<Summary | null> {
     title: 'String Encoding Size Summary',
     rankings,
     explanation:
-      'Geometric means of file sizes versus Arrow (higher is better) and versus FSST (lower is better)',
+      'Total file size, and geometric means of file sizes versus Arrow (higher is better) and versus FSST (lower is better)',
     baseline: 'FSST',
   };
 }

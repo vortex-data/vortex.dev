@@ -98,6 +98,11 @@ export const METHODOLOGY: readonly MethodologySection[] = [
         'rank well by skipping work. Each summary says how many a series ran.',
       `Write and scan throughput scores are ${SCORES.throughput}`,
       `File size scores are ${SCORES.size}`,
+      'Total is the sum of a format’s file sizes over the same datasets.',
+      'The compression summaries leave out the wide table and sparse-wide datasets, which ' +
+        'have many variants each. The file size summary also leaves out statpopgen, and counts ' +
+        'the TPC-H l_comment column once, because its canonical and chunked files are the ' +
+        'same size. These datasets still have charts.',
       'The string encoding benchmark compares its encoders with FSST instead of Parquet, so ' +
         'its throughput and size scores divide by FSST’s.',
       'Each summary uses each series’ newest result on develop.',

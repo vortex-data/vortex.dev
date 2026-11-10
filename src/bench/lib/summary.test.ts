@@ -61,8 +61,11 @@ describe('compression summaries', () => {
     expect(byFormat.get('parquet')?.minRatio).toBeCloseTo(1, 6);
     expect(byFormat.get('parquet')?.maxRatio).toBeCloseTo(1, 6);
     expect(byFormat.get('parquet')?.compressionRatio).toBeCloseTo(4, 6);
+    // The total is the plain sum of each format's sizes over its datasets.
+    expect(byFormat.get('vortex-file-compressed')?.totalBytes).toBe(901);
+    expect(byFormat.get('parquet')?.totalBytes).toBe(104);
     expect(summary.explanation).toBe(
-      'Geometric means of compressed sizes versus Arrow (higher is better) and versus Parquet-zstd (lower is better)',
+      'Total compressed size, and geometric means of compressed sizes versus Arrow (higher is better) and versus Parquet-zstd (lower is better)',
     );
   });
 
@@ -183,6 +186,7 @@ describe('compression summaries', () => {
     expect(size.rankings.map((ranking) => ranking.name)).toEqual(['onpair-12', 'fsst']);
     expect(size.rankings[0]?.ratio).toBeCloseTo(2 / 3, 6);
     expect(size.rankings[0]?.compressionRatio).toBeCloseTo(6, 6);
+    expect(size.rankings.map((ranking) => ranking.totalBytes)).toEqual([200, 300]);
   });
 
   it('applies extensible snapshot policies to timings and sizes', async () => {
@@ -205,7 +209,7 @@ describe('compression summaries', () => {
       'vortex-file-compressed',
       'parquet',
       'arrow-ipc',
-      ['wide table %', 'sparse-wide-%'],
+      ['wide table %', 'sparse-wide-%', 'tpc-h l_comment chunked', 'statpopgen'],
     ];
     const calls = query.mock.calls as Array<[string, unknown[]]>;
     expect(defined(calls[0])[1]).toEqual(timingParams);

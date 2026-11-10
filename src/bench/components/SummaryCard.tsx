@@ -2,7 +2,13 @@
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
 import { displayFormat, displaySeriesLabel } from '@/bench/lib/chart-format';
-import { formatCompressionSizeRatio, formatThroughput, formatTimeNs } from '@/bench/lib/format';
+import {
+  byteUnit,
+  formatBytesIn,
+  formatCompressionSizeRatio,
+  formatThroughput,
+  formatTimeNs,
+} from '@/bench/lib/format';
 import type { SeriesRanking, Summary } from '@/bench/lib/summary';
 
 /**
@@ -119,11 +125,17 @@ export function SummaryCard({ summary }: { summary?: Summary | undefined }) {
       if (summary.rankings.length === 0) {
         return null;
       }
+      // One unit for every total, named once in the header, so the rows compare at a glance.
+      const totalUnit = byteUnit(Math.max(...summary.rankings.map((item) => item.totalBytes)));
       return (
         <section className="benchmark-scores-summary" aria-label={summary.title}>
           <div className="compression-size-scores">
             <div className="compression-size-panel compression-size-arrow-panel">
               <div className="compression-size-arrow-header">
+                <span className="compression-size-group compression-size-total-group">Total</span>
+                <span className="compression-size-heading compression-size-total-unit">
+                  {totalUnit}
+                </span>
                 <span className="compression-size-group">vs Arrow</span>
               </div>
               <div className="compression-size-arrow-list">
@@ -138,6 +150,11 @@ export function SummaryCard({ summary }: { summary?: Summary | undefined }) {
                       <span className="score-series" title={label}>
                         {label}
                       </span>
+                      <span className="score-runtime compression-size-value">
+                        <span className="vx-sr-only">Total: </span>
+                        {formatBytesIn(item.totalBytes, totalUnit)}
+                        <span className="vx-sr-only"> {totalUnit}</span>
+                      </span>
                       <span className="score-value compression-size-value">
                         {item.compressionRatio === null
                           ? '—'
@@ -151,9 +168,9 @@ export function SummaryCard({ summary }: { summary?: Summary | undefined }) {
             <div className="compression-size-panel compression-size-parquet-panel">
               <div className="compression-size-parquet-header">
                 <span className="compression-size-group">vs {summary.baseline ?? 'Parquet'}</span>
-                <span className="compression-size-heading">Min</span>
-                <span className="compression-size-heading">Mean</span>
-                <span className="compression-size-heading">Max</span>
+                <span className="compression-size-heading compression-size-range">Min</span>
+                <span className="compression-size-heading">GeoMean</span>
+                <span className="compression-size-heading compression-size-range">Max</span>
               </div>
               <div className="compression-size-parquet-list">
                 {summary.rankings.map((item) => {
@@ -166,15 +183,21 @@ export function SummaryCard({ summary }: { summary?: Summary | undefined }) {
                       key={item.name}
                     >
                       <span className="vx-sr-only">
-                        {`${displayFormat(item.name)}: minimum ${minRatio}, mean ${meanRatio}, maximum ${maxRatio}`}
+                        {`${displayFormat(item.name)}: minimum ${minRatio}, geometric mean ${meanRatio}, maximum ${maxRatio}`}
                       </span>
-                      <span aria-hidden="true" className="score-runtime compression-size-value">
+                      <span
+                        aria-hidden="true"
+                        className="score-runtime compression-size-value compression-size-range"
+                      >
                         {minRatio}
                       </span>
                       <span aria-hidden="true" className="score-value compression-size-value">
                         {meanRatio}
                       </span>
-                      <span aria-hidden="true" className="score-runtime compression-size-value">
+                      <span
+                        aria-hidden="true"
+                        className="score-runtime compression-size-value compression-size-range"
+                      >
                         {maxRatio}
                       </span>
                     </div>

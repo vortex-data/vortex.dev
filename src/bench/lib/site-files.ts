@@ -16,7 +16,12 @@
 import { groupAnchor, groupAnchors } from '@/bench/lib/anchor';
 import { groupDocUrl } from '@/bench/lib/benchmark-docs';
 import { higherIsBetter } from '@/bench/lib/chart-format';
-import { formatCompressionSizeRatio, formatThroughput, formatTimeNs } from '@/bench/lib/format';
+import {
+  formatBytes,
+  formatCompressionSizeRatio,
+  formatThroughput,
+  formatTimeNs,
+} from '@/bench/lib/format';
 import { groupHeadline, headlineText } from '@/bench/lib/headline';
 import { METHODOLOGY, SCORES } from '@/bench/lib/methodology';
 import type { ChartKind } from '@/bench/lib/families';
@@ -316,7 +321,8 @@ export function summaryLines(summary: Summary): string[] {
                 `to ${formatCompressionSizeRatio(item.maxRatio)} across datasets)`) +
             (item.compressionRatio === null
               ? ''
-              : `, ${formatCompressionSizeRatio(item.compressionRatio)} smaller than Arrow in memory`),
+              : `, ${formatCompressionSizeRatio(item.compressionRatio)} smaller than Arrow in memory`) +
+            `, ${formatBytes(item.totalBytes)} in total`,
         ),
       ];
     }
