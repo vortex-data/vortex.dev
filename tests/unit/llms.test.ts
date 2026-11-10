@@ -125,6 +125,18 @@ describe("demoteHeadings", () => {
       "#### A\n```sh\n# not a heading\n```\n##### B"
     );
   });
+
+  it("closes a fence only on a run as long, with nothing after it", () => {
+    const quoted = "````md\n```\n# still code\n```example\n# code\n````\n# A";
+    assert.equal(
+      demoteHeadings(quoted, 1),
+      "````md\n```\n# still code\n```example\n# code\n````\n## A"
+    );
+    assert.equal(
+      demoteHeadings("~~~\n```\n# code\n~~~~\n# A", 1),
+      "~~~\n```\n# code\n~~~~\n## A"
+    );
+  });
 });
 
 describe("siteLlmsFullText", () => {

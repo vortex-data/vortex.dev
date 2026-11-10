@@ -185,18 +185,26 @@ export function siteLlmsText({
  * post's sections sit under its own heading in llms-full.txt.
  */
 export function demoteHeadings(markdown: string, by: number): string {
+  // The open fence, as CommonMark reads one: a run of three or more backticks
+  // or tildes. Only a line with a run of the same character, at least as
+  // long, and nothing after it but spaces closes it. Any indent is allowed,
+  // since a fence in a list item sits deeper than three spaces.
   let fence: string | null = null;
   return markdown
     .split("\n")
     .map((line) => {
-      const open = /^\s*(```|~~~)/.exec(line);
-      if (open?.[1]) {
-        if (fence === null) fence = open[1];
-        else if (line.trimStart().startsWith(fence)) fence = null;
+      if (fence !== null) {
+        const close = /^\s*(`{3,}|~{3,})\s*$/.exec(line)?.[1];
+        if (close && close[0] === fence[0] && close.length >= fence.length)
+          fence = null;
         return line;
       }
-      if (fence === null && /^#{1,6} /.test(line))
-        return `${"#".repeat(by)}${line}`;
+      const open = /^\s*(`{3,}(?=[^`]*$)|~{3,})/.exec(line)?.[1];
+      if (open) {
+        fence = open;
+        return line;
+      }
+      if (/^#{1,6} /.test(line)) return `${"#".repeat(by)}${line}`;
       return line;
     })
     .join("\n");
