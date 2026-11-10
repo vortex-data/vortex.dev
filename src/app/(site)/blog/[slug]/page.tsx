@@ -7,6 +7,7 @@ import { MDXRenderer } from "@/components/MDXRenderer";
 import { getAllPosts, getAllSlugs, getPostBySlug } from "@/lib/blog";
 import { baseUrl, siteName } from "@/lib/constants";
 import { jsonLdScript } from "@/lib/json-ld";
+import { postJsonLd } from "@/lib/llms";
 import { adjacentPosts, bylineParts } from "@/lib/posts";
 
 interface BlogPostPageProps {
@@ -44,7 +45,8 @@ export async function generateMetadata({
       url: `${baseUrl}/blog/${slug}`,
       type: "article",
       locale: "en_US",
-      publishedTime: post.date
+      publishedTime: post.date,
+      authors: post.authors
     },
     alternates: {
       canonical: `${baseUrl}/blog/${slug}`
@@ -60,26 +62,6 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
     notFound();
   }
 
-  const url = `${baseUrl}/blog/${slug}`;
-  const articleSchema = {
-    "@context": "https://schema.org",
-    "@type": "Article",
-    headline: post.title,
-    description: post.excerpt ?? undefined,
-    datePublished: post.date,
-    author: post.authors.map((name) => ({
-      "@type": "Person",
-      name
-    })),
-    publisher: {
-      "@type": "Organization",
-      name: siteName,
-      url: baseUrl
-    },
-    mainEntityOfPage: { "@type": "WebPage", "@id": url },
-    image: `${url}/opengraph-image`
-  };
-
   const { older, newer } = adjacentPosts(getAllPosts(), slug);
   const [date, authors, readingTime] = bylineParts(post);
 
@@ -92,7 +74,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
       <script
         type="application/ld+json"
         // biome-ignore lint/security/noDangerouslySetInnerHtml: JSON-LD from our own data; jsonLdScript escapes every <.
-        dangerouslySetInnerHTML={{ __html: jsonLdScript(articleSchema) }}
+        dangerouslySetInnerHTML={{ __html: jsonLdScript(postJsonLd(post)) }}
       />
       <NextLink href="/blog" className="vx-label vx-nav-link blog-back">
         <ArrowBackIcon />

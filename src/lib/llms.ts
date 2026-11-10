@@ -2,6 +2,7 @@ import { formatReadDate, type Panel } from "@/lib/bench-summary";
 import type { BlogPostMeta } from "@/lib/blog";
 import { baseUrl } from "@/lib/constants";
 import { copyText, installTabs } from "@/lib/install";
+import type { ExternalPost } from "@/lib/posts";
 import { resultsRow, resultsSystems } from "@/vendor/vortex-design/results.js";
 
 // What the homepage says Vortex is, for llms.txt and the structured data.
@@ -11,6 +12,27 @@ const SUMMARY =
 const REPO = "https://github.com/vortex-data/vortex";
 const DOCS = "https://docs.vortex.dev";
 const BENCH = "https://bench.vortex.dev";
+
+// The project's own pages elsewhere, so search and answer engines can tie
+// them to one entity: the organization's, then the packages'.
+const PROFILES = [
+  "https://github.com/vortex-data",
+  "https://x.com/vortexdotdev",
+  "https://lfaidata.foundation/projects/vortex/"
+];
+const PACKAGES = [
+  "https://crates.io/crates/vortex",
+  "https://pypi.org/project/vortex-data/",
+  "https://central.sonatype.com/namespace/dev.vortex",
+  "https://docs.rs/vortex"
+];
+
+/** One mark of the homepage's Ecosystem band (`logos.ts`), as text. */
+export type EcosystemEntry = {
+  name: string;
+  href: string;
+  soon?: true;
+};
 
 /**
  * What each row of the homepage's results table measures, by panel title
@@ -68,11 +90,15 @@ export function resultsSentences(panels: readonly Panel[]): string[] {
 export function siteLlmsText({
   bench,
   sparkVersion,
-  posts
+  posts,
+  ecosystem = [],
+  elsewhere = []
 }: {
   bench: { panels: readonly Panel[]; readAt: Date } | null;
   sparkVersion: string | null;
-  posts: readonly BlogPostMeta[];
+  posts: readonly Pick<BlogPostMeta, "title" | "slugAsParams" | "excerpt">[];
+  ecosystem?: readonly EcosystemEntry[];
+  elsewhere?: readonly ExternalPost[];
 }): string {
   const lines = [
     "# Vortex",
@@ -102,6 +128,19 @@ export function siteLlmsText({
       ""
     );
   }
+  if (ecosystem.length > 0) {
+    lines.push(
+      "## Adopters and integrations",
+      "",
+      "The companies and projects in the homepage's Ecosystem band, which use Vortex or read and write it. Each links to its own page about Vortex where there is one, else to its homepage.",
+      "",
+      ...ecosystem.map(
+        (e) =>
+          `- [${e.name}](${e.href})${e.soon ? ": Vortex support is proposed, not shipped" : ""}`
+      ),
+      ""
+    );
+  }
   lines.push(
     "## Docs",
     "",
@@ -117,9 +156,23 @@ export function siteLlmsText({
       (post) =>
         `- [${post.title}](${baseUrl}/blog/${post.slugAsParams})${post.excerpt ? `: ${post.excerpt}` : ""}`
     ),
-    "",
+    ""
+  );
+  if (elsewhere.length > 0) {
+    lines.push(
+      "## Posts on other sites",
+      "",
+      ...elsewhere.map(
+        (p) =>
+          `- [${p.title}](${p.url}) (${p.source}, ${p.date.slice(0, 10)}): ${p.summary}`
+      ),
+      ""
+    );
+  }
+  lines.push(
     "## Optional",
     "",
+    `- [Full text of this file and of every post](${baseUrl}/llms-full.txt)`,
     `- [Vortex Technical Charter](${baseUrl}/charter.pdf)`,
     `- [Community Slack](${baseUrl}/slack)`,
     ""
@@ -128,8 +181,58 @@ export function siteLlmsText({
 }
 
 /**
- * The homepage's structured data: the project as schema.org
- * SoftwareSourceCode, and the organization behind it.
+ * Markdown headings one level deeper per `by`, outside code fences, so a
+ * post's sections sit under its own heading in llms-full.txt.
+ */
+export function demoteHeadings(markdown: string, by: number): string {
+  let fence: string | null = null;
+  return markdown
+    .split("\n")
+    .map((line) => {
+      const open = /^\s*(```|~~~)/.exec(line);
+      if (open?.[1]) {
+        if (fence === null) fence = open[1];
+        else if (line.trimStart().startsWith(fence)) fence = null;
+        return line;
+      }
+      if (fence === null && /^#{1,6} /.test(line))
+        return `${"#".repeat(by)}${line}`;
+      return line;
+    })
+    .join("\n");
+}
+
+/**
+ * vortex.dev/llms-full.txt: llms.txt, then the full Markdown of each of the
+ * site's own posts under its title, date and authors.
+ */
+export function siteLlmsFullText(
+  args: Omit<Parameters<typeof siteLlmsText>[0], "posts"> & {
+    posts: readonly Pick<
+      BlogPostMeta,
+      "title" | "slugAsParams" | "excerpt" | "date" | "authors" | "raw"
+    >[];
+  }
+): string {
+  const lines = [siteLlmsText(args).trimEnd(), "", "## Posts in full", ""];
+  for (const post of args.posts) {
+    lines.push(
+      `### ${post.title}`,
+      "",
+      `${baseUrl}/blog/${post.slugAsParams}, ${post.date.slice(0, 10)}, by ${post.authors.join(", ")}`,
+      "",
+      demoteHeadings(post.raw.trim(), 3),
+      ""
+    );
+  }
+  return lines.join("\n");
+}
+
+/**
+ * The homepage's structured data: the site, the organization behind the
+ * project, and the project as schema.org SoftwareSourceCode. `sameAs` ties
+ * the organization to its profiles and the project to its packages, so
+ * search and answer engines read them as one entity.
  */
 export function homeJsonLd(): Record<string, unknown> {
   const organization = {
@@ -138,7 +241,8 @@ export function homeJsonLd(): Record<string, unknown> {
     name: "Vortex",
     url: baseUrl,
     logo: `${baseUrl}/favicon.ico`,
-    sameAs: [REPO],
+    slogan: "The frontier file format",
+    sameAs: PROFILES,
     parentOrganization: {
       "@type": "Organization",
       name: "The Linux Foundation",
@@ -148,10 +252,22 @@ export function homeJsonLd(): Record<string, unknown> {
   return {
     "@context": "https://schema.org",
     "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": `${baseUrl}/#website`,
+        name: "Vortex",
+        alternateName: ["vortex.dev", "Vortex file format"],
+        url: baseUrl,
+        description: SUMMARY,
+        inLanguage: "en",
+        publisher: { "@id": `${baseUrl}/#organization` }
+      },
       organization,
       {
         "@type": "SoftwareSourceCode",
+        "@id": `${baseUrl}/#software`,
         name: "Vortex",
+        alternateName: ["Vortex file format", "vortex-data"],
         description: SUMMARY,
         url: baseUrl,
         codeRepository: REPO,
@@ -160,13 +276,78 @@ export function homeJsonLd(): Record<string, unknown> {
         runtimePlatform: ["DuckDB", "DataFusion", "Apache Spark"],
         keywords: [
           "columnar file format",
+          "Apache Parquet alternative",
           "Apache Arrow",
-          "Apache Parquet",
           "compression",
-          "random access"
+          "random access",
+          "GPU analytics"
         ],
         publisher: { "@id": `${baseUrl}/#organization` },
-        sameAs: [DOCS, BENCH]
+        sameAs: [DOCS, BENCH, ...PACKAGES]
+      }
+    ]
+  };
+}
+
+/**
+ * A post's structured data: the Article, tied to the homepage's
+ * organization, and its breadcrumb. An author that is a team rather than a
+ * person ("Community Team") is the organization.
+ */
+export function postJsonLd(post: {
+  slugAsParams: string;
+  title: string;
+  excerpt?: string | null | undefined;
+  date: string;
+  authors: readonly string[];
+}): Record<string, unknown> {
+  const url = `${baseUrl}/blog/${post.slugAsParams}`;
+  const organization = { "@id": `${baseUrl}/#organization` };
+  return {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "BlogPosting",
+        "@id": `${url}#article`,
+        headline: post.title,
+        description: post.excerpt ?? undefined,
+        datePublished: post.date,
+        author: post.authors.map((name) =>
+          /\bteam\b/i.test(name)
+            ? { "@type": "Organization", name: `Vortex ${name}`, url: baseUrl }
+            : { "@type": "Person", name }
+        ),
+        publisher: {
+          ...organization,
+          "@type": "Organization",
+          name: "Vortex",
+          url: baseUrl,
+          logo: `${baseUrl}/favicon.ico`
+        },
+        isPartOf: {
+          "@type": "Blog",
+          "@id": `${baseUrl}/blog#blog`,
+          name: "Vortex Blog",
+          url: `${baseUrl}/blog`
+        },
+        about: { "@id": `${baseUrl}/#software` },
+        inLanguage: "en",
+        license: "https://creativecommons.org/licenses/by/4.0/",
+        mainEntityOfPage: { "@type": "WebPage", "@id": url },
+        image: `${url}/opengraph-image`
+      },
+      {
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: "Vortex", item: baseUrl },
+          {
+            "@type": "ListItem",
+            position: 2,
+            name: "Blog",
+            item: `${baseUrl}/blog`
+          },
+          { "@type": "ListItem", position: 3, name: post.title, item: url }
+        ]
       }
     ]
   };

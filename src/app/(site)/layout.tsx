@@ -16,6 +16,8 @@ export const metadata: Metadata = {
   icons: {
     icon: { url: "/favicon.ico", sizes: "256x256", type: "image/x-icon" }
   },
+  // The project's X account, on every page's card.
+  twitter: { site: "@vortexdotdev" },
   alternates: {
     types: {
       "application/rss+xml": [

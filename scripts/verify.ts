@@ -123,7 +123,11 @@ function jsonLd(html: string): JsonLdResult {
   for (const m of html.matchAll(re)) {
     const raw = m[1] ?? "";
     try {
-      blocks.push(JSON.parse(raw));
+      // A block is one node or an @graph of nodes; check each node.
+      const data = JSON.parse(raw) as Record<string, unknown>;
+      const graph = data["@graph"];
+      if (Array.isArray(graph)) blocks.push(...graph);
+      else blocks.push(data);
     } catch {
       return { ok: false, parseError: raw.trim().slice(0, 80) };
     }
@@ -305,14 +309,16 @@ async function checkRoute(
     allOk = false;
   }
 
-  // JSON-LD Article schema on blog posts
+  // JSON-LD Article schema on blog posts: Article or its BlogPosting subtype
   if (path.startsWith("/blog/") && path !== "/blog") {
     const ld = jsonLd(r.body);
     if (!ld.ok) {
       fail(`json-ld ${path}`, `parse error: ${ld.parseError}`);
       allOk = false;
     } else {
-      const article = ld.blocks.find((b) => b["@type"] === "Article");
+      const article = ld.blocks.find(
+        (b) => b["@type"] === "Article" || b["@type"] === "BlogPosting"
+      );
       if (!article) {
         fail(`json-ld ${path}`, "no Article schema");
         allOk = false;
