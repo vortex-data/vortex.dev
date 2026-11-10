@@ -4,7 +4,9 @@ import { describe, it } from "node:test";
 import { panelsFrom } from "@/lib/bench-summary";
 import { defined } from "@/lib/defined";
 import { answerText, faqJsonLd, faqMarkdown, faqs } from "@/lib/faq";
+import { GPU_DETAIL } from "@/lib/gpu-result";
 import { siteLlmsFullText, siteLlmsText } from "@/lib/llms";
+import { resultsRow, resultsSystems } from "@/vendor/vortex-design/results.js";
 
 const fixture = (name: string) =>
   JSON.parse(
@@ -43,8 +45,17 @@ describe("faqs", () => {
     assert.match(defined(parquet.answer[0]), /on 2 Nov 2026/);
     assert.equal(parquet.list?.length, PANELS.length);
     assert.equal(parquet.list?.[0]?.label, "Scan throughput");
-    // The GPU row is not bench's, and says where it comes from.
-    assert.match(defined(parquet.list?.[3]?.text), /faster \(.+\)$/);
+    // The GPU row is not bench's, and the note after the list says whose.
+    assert.match(defined(parquet.list?.[3]?.text), /not from bench/);
+    assert.equal(parquet.after?.[0], GPU_DETAIL);
+  });
+
+  it("states the size tradeoff with bench's number", () => {
+    const [, tradeoff] = byId(list, "when-to-use-vortex").answer;
+    const size = defined(PANELS.find((p) => p.kind === "size"));
+    const verdict = resultsRow(size, resultsSystems(PANELS)).verdict;
+    assert.match(verdict, /larger$/);
+    assert.ok(defined(tradeoff).includes(`Vortex files are ${verdict} than`));
   });
 
   it("points to bench, with no figures, when bench could not be read", () => {
@@ -56,9 +67,14 @@ describe("faqs", () => {
     assert.match(defined(parquet.answer[0]), /bench\.vortex\.dev measures/);
   });
 
-  it("names the adopters, and the proposed support apart", () => {
-    assert.deepEqual(byId(list, "who-uses-vortex").answer, [
-      "Companies and projects that use Vortex, or read and write it, include Acme, Apache Thing, and Initech. Vortex support in Apache Later is proposed."
+  it("lists the adopters, and the proposed support apart", () => {
+    const uses = byId(list, "who-uses-vortex");
+    assert.deepEqual(
+      uses.list?.map((i) => i.label),
+      ["Acme", "Apache Thing", "Initech"]
+    );
+    assert.deepEqual(uses.after, [
+      "Apache Later has a proposal to add Vortex support."
     ]);
   });
 
@@ -69,7 +85,9 @@ describe("faqs", () => {
       text: "cargo add vortex",
       code: true
     });
-    assert.ok(install.some((i) => i.text.includes("vortex-spark_2.13:0.40.0")));
+    assert.ok(
+      install.some((i) => i.text?.includes("vortex-spark_2.13:0.40.0"))
+    );
   });
 });
 

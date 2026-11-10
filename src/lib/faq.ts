@@ -1,5 +1,6 @@
 import { formatReadDate, type Panel } from "@/lib/bench-summary";
 import { baseUrl } from "@/lib/constants";
+import { GPU_DETAIL, GPU_PANEL } from "@/lib/gpu-result";
 import { copyText, installTabs } from "@/lib/install";
 import type { EcosystemEntry } from "@/lib/llms";
 import { resultsRow, resultsSystems } from "@/vendor/vortex-design/results.js";
@@ -8,19 +9,23 @@ const REPO = "https://github.com/vortex-data/vortex";
 const DOCS = "https://docs.vortex.dev";
 const BENCH = "https://bench.vortex.dev";
 
-/** One item of an answer's list: a figure, or a command when `code` is set. */
-type FaqItem = { label: string; text: string; code?: true };
+/**
+ * One item of an answer's list: a name, a figure (`text`), or a command when
+ * `code` is set.
+ */
+type FaqItem = { label: string; text?: string; code?: true };
 
 /**
  * One question of /faq. The answer is its paragraphs, then an optional list,
- * then links to read more. Every part is plain text, so the page, the
- * structured data, and llms.txt say the same thing.
+ * the paragraphs after the list, and links to read more. Every part is plain
+ * text, so the page, the structured data, and llms.txt say the same thing.
  */
 export type Faq = {
   id: string;
   question: string;
   answer: string[];
   list?: FaqItem[];
+  after?: string[];
   links?: { href: string; label: string }[];
 };
 
@@ -47,6 +52,11 @@ export function faqs({
   ecosystem: readonly EcosystemEntry[];
 }): Faq[] {
   const systems = bench ? resultsSystems(bench.panels) : [];
+  const verdict = (panel: Panel) => resultsRow(panel, systems).verdict;
+  const hasGpu = bench?.panels.some((p) => p.title === GPU_PANEL.title);
+  // The tradeoff, with its number, while bench shows Vortex's files larger.
+  const size = bench?.panels.find((p) => p.kind === "size");
+  const larger = size && /larger$/.test(verdict(size)) ? verdict(size) : null;
   const shipped = ecosystem.filter((e) => !e.soon).map((e) => e.name);
   const proposed = ecosystem.filter((e) => e.soon).map((e) => e.name);
 
@@ -55,8 +65,8 @@ export function faqs({
       id: "what-is-vortex",
       question: "What is Vortex?",
       answer: [
-        "Vortex is an open-source columnar file format. Like Apache Parquet, it stores a table column by column, so a query reads only the columns it needs. It is made for fast scans, fast random access, and good compression.",
-        "You can use Vortex from Rust, Python, and Java, and query it with DuckDB, Apache DataFusion, and Apache Spark. It is a Linux Foundation project, and its code is under the Apache License 2.0."
+        "Vortex is an open-source columnar file format. Like Apache Parquet, it stores a table column by column, so a query reads only the columns it needs. Its goals are fast scans, fast random access, and good compression.",
+        "Vortex has libraries for Rust, Python, and Java. DuckDB, Apache DataFusion, and Apache Spark can query Vortex files."
       ]
     },
     {
@@ -64,19 +74,23 @@ export function faqs({
       question: "How does Vortex compare to Apache Parquet?",
       answer: bench
         ? [
-            `These are Vortex's results against Parquet, read from bench.vortex.dev on ${formatReadDate(bench.readAt)}. Each is the newest result on the develop branch of Vortex, except where a source is given.`
+            `bench.vortex.dev runs these public benchmarks on each commit to the develop branch of Vortex. Its newest results against Parquet, read on ${formatReadDate(bench.readAt)}:`
           ]
         : [
-            "bench.vortex.dev measures Vortex against Parquet and other formats on every commit to Vortex: scan and write speed, query time, random access, and file size."
+            "bench.vortex.dev measures Vortex against Parquet and other formats on each commit to Vortex. It measures scan and write speed, query time, random access, and file size."
           ],
       ...(bench && {
         list: bench.panels.map((panel) => ({
           label: panel.title,
-          text: `${resultsRow(panel, systems).verdict}${panel.source ? ` (${panel.source.note})` : ""}`
+          text:
+            panel.title === GPU_PANEL.title
+              ? `${verdict(panel)} (not from bench: see the note below)`
+              : verdict(panel)
         }))
       }),
+      ...(hasGpu && { after: [GPU_DETAIL] }),
       links: [
-        { href: `${BENCH}/`, label: "Every benchmark, on bench.vortex.dev" },
+        { href: `${BENCH}/`, label: "Every benchmark on bench.vortex.dev" },
         { href: `${BENCH}/methodology`, label: "How the benchmarks run" }
       ]
     },
@@ -84,16 +98,19 @@ export function faqs({
       id: "when-to-use-vortex",
       question: "Should I use Vortex instead of Parquet?",
       answer: [
-        "For almost every workload, yes. Vortex scans, writes, and reads single rows faster than Parquet, and it runs queries faster on both CPUs and GPUs.",
-        "Parquet's files are smaller, and more tools read Parquet today. Where storage cost or the widest tool support matters most, Parquet can still be the better choice."
+        "For almost every workload, yes. In the benchmarks above, Vortex is faster than Parquet at scans, writes, single-row reads, and queries, on CPUs and on GPUs.",
+        larger
+          ? `Parquet still has two advantages. Its files are smaller: on bench's datasets, Vortex files are ${larger} than Parquet files with zstd. More tools also read Parquet today.`
+          : "Parquet still has one advantage: more tools read it today.",
+        `Where ${larger ? "storage cost or tool support" : "tool support"} matters most, Parquet can still be the better choice.`
       ]
     },
     {
       id: "why-fast",
       question: "Why is Vortex fast?",
       answer: [
-        "Vortex keeps a column's logical type, such as a string or a 64-bit integer, apart from the encoding that stores it. So each column can get the encoding that suits its data, and compression can cascade one encoding into another.",
-        "Its compute kernels run on encoded data, so a filter often does not have to decompress a column first. Statistics load lazily, so a query reads only the ones it needs. Vortex converts to and from Apache Arrow without copying."
+        "Vortex separates a column's logical type, such as a string or a 64-bit integer, from the encoding that stores it. Each column gets the encoding that suits its data. Vortex can also apply one encoding on top of another (cascading compression).",
+        "Vortex runs filters and other compute on encoded data, often without decompressing the column. It loads a column's statistics only when a query needs them. It converts to and from Apache Arrow without copying."
       ],
       links: [{ href: `${DOCS}/`, label: "The Vortex documentation" }]
     },
@@ -101,13 +118,13 @@ export function faqs({
       id: "stability",
       question: "Is the Vortex file format stable?",
       answer: [
-        "Yes. From release 0.36.0, each release reads files written by any earlier release from 0.36.0 on. The library APIs can still change between releases."
+        "Yes. Each release from 0.36.0 on reads files written by any release from 0.36.0 on. The library APIs can still change between releases."
       ]
     },
     {
       id: "install",
       question: "How do I install Vortex?",
-      answer: ["Use the command for your language or engine:"],
+      answer: ["Run the command for your language or engine:"],
       list: installTabs(sparkVersion).map((tab) => ({
         label: tab.label,
         text: copyText(tab),
@@ -119,14 +136,21 @@ export function faqs({
       id: "who-uses-vortex",
       question: "Who uses Vortex?",
       answer: [
-        `Companies and projects that use Vortex, or read and write it, include ${series(shipped)}.${proposed.length > 0 ? ` Vortex support in ${series(proposed)} is proposed.` : ""}`
-      ]
+        "These companies and projects use Vortex, or read and write Vortex files:"
+      ],
+      list: shipped.map((name) => ({ label: name })),
+      ...(proposed.length > 0 && {
+        after: [
+          `${series(proposed)} ${proposed.length > 1 ? "have proposals" : "has a proposal"} to add Vortex support.`
+        ]
+      })
     },
     {
       id: "governance",
       question: "Who maintains Vortex, and how is it licensed?",
       answer: [
-        "Vortex is a project of LF AI & Data, part of the Linux Foundation, and runs under the Vortex Technical Charter. Spiral donated it. Its code is under the Apache License 2.0, and its documentation under CC BY 4.0."
+        "Vortex is a project of LF AI & Data, the part of the Linux Foundation for AI and data projects. The Vortex Technical Charter governs it. Spiral donated Vortex to the Linux Foundation.",
+        "The code is under the Apache License 2.0, and the documentation is under CC BY 4.0."
       ],
       links: [
         {
@@ -149,11 +173,20 @@ export function faqs({
   ];
 }
 
-/** One answer as plain text: its paragraphs, then its list, one item a line. */
+/** One list item as text: "label: text", or the label alone. */
+function itemText(item: FaqItem): string {
+  return item.text ? `${item.label}: ${item.text}` : item.label;
+}
+
+/**
+ * One answer as plain text: its paragraphs, its list one item a line, then
+ * the paragraphs after the list.
+ */
 export function answerText(faq: Faq): string {
   return [
     ...faq.answer,
-    ...(faq.list ?? []).map((item) => `${item.label}: ${item.text}`)
+    ...(faq.list ?? []).map(itemText),
+    ...(faq.after ?? [])
   ].join("\n");
 }
 
@@ -182,12 +215,14 @@ export function faqMarkdown(list: readonly Faq[]): string[] {
     ...faq.answer.flatMap((p) => [p, ""]),
     ...(faq.list
       ? [
-          ...faq.list.map(
-            (item) =>
-              `- ${item.label}: ${item.code ? `\`${item.text}\`` : item.text}`
+          ...faq.list.map((item) =>
+            item.code
+              ? `- ${item.label}: \`${item.text}\``
+              : `- ${itemText(item)}`
           ),
           ""
         ]
-      : [])
+      : []),
+    ...(faq.after ?? []).flatMap((p) => [p, ""])
   ]);
 }

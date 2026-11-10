@@ -73,12 +73,21 @@ export default async function FaqPage() {
                 <ul>
                   {faq.list.map((item) => (
                     <li key={item.label}>
-                      {`${item.label}: `}
-                      {item.code ? <code>{item.text}</code> : item.text}
+                      {item.text === undefined ? (
+                        item.label
+                      ) : (
+                        <>
+                          {`${item.label}: `}
+                          {item.code ? <code>{item.text}</code> : item.text}
+                        </>
+                      )}
                     </li>
                   ))}
                 </ul>
               )}
+              {faq.after?.map((p) => (
+                <p key={p}>{p}</p>
+              ))}
               {faq.links && (
                 <p>
                   {faq.links.map((link, i) => (
