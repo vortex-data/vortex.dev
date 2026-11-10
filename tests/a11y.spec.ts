@@ -72,7 +72,7 @@ test.describe("site @axe", () => {
     postSlug = html.match(/href="\/blog\/([a-z0-9-]+)"/)?.[1] ?? null;
   });
 
-  for (const path of ["/", "/blog", "/no-such-page"]) {
+  for (const path of ["/", "/blog", "/faq", "/no-such-page"]) {
     test(`${path} has no serious axe violations`, async ({ page }) => {
       await page.goto(path);
       await expectNoSeriousViolations(page, path);

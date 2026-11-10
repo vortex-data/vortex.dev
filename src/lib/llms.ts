@@ -1,6 +1,7 @@
 import { formatReadDate, type Panel } from "@/lib/bench-summary";
 import type { BlogPostMeta } from "@/lib/blog";
 import { baseUrl } from "@/lib/constants";
+import { type Faq, faqMarkdown } from "@/lib/faq";
 import { copyText, installTabs } from "@/lib/install";
 import type { ExternalPost } from "@/lib/posts";
 import { resultsRow, resultsSystems } from "@/vendor/vortex-design/results.js";
@@ -144,6 +145,7 @@ export function siteLlmsText({
   lines.push(
     "## Docs",
     "",
+    `- [Questions and answers](${baseUrl}/faq): how Vortex compares to Parquet, why it is fast, who uses it, and how to install it`,
     `- [Documentation](${DOCS}/): guides, concepts, and the API reference`,
     `- [Documentation index for language models](${DOCS}/llms.txt)`,
     `- [Benchmarks](${BENCH}/): every result, charted over recent commits`,
@@ -211,8 +213,9 @@ export function demoteHeadings(markdown: string, by: number): string {
 }
 
 /**
- * vortex.dev/llms-full.txt: llms.txt, then the full Markdown of each of the
- * site's own posts under its title, date and authors.
+ * vortex.dev/llms-full.txt: llms.txt, then the questions and answers of
+ * /faq when given, then the full Markdown of each of the site's own posts
+ * under its title, date and authors.
  */
 export function siteLlmsFullText(
   args: Omit<Parameters<typeof siteLlmsText>[0], "posts"> & {
@@ -220,9 +223,13 @@ export function siteLlmsFullText(
       BlogPostMeta,
       "title" | "slugAsParams" | "excerpt" | "date" | "authors" | "raw"
     >[];
+    faq?: readonly Faq[];
   }
 ): string {
-  const lines = [siteLlmsText(args).trimEnd(), "", "## Posts in full", ""];
+  const lines = [siteLlmsText(args).trimEnd(), ""];
+  if (args.faq)
+    lines.push("## Questions and answers", "", ...faqMarkdown(args.faq));
+  lines.push("## Posts in full", "");
   for (const post of args.posts) {
     lines.push(
       `### ${post.title}`,

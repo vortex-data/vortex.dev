@@ -4,8 +4,10 @@ import { REPO_URL } from "@/lib/github";
 
 // No project code of conduct exists, so the LF Projects one applies
 // (charter section 6.b). The charter is a route (src/app/(site)/charter.pdf), so it
-// takes a plain link like the rest.
+// takes a plain link like the rest. The FAQ is the site's too, so on bench it
+// links to vortex.dev.
 const links = (origin: string) => [
+  { href: `${origin}/faq`, label: "FAQ" },
   { href: `${origin}/charter.pdf`, label: "Charter" },
   {
     href: "https://lfprojects.org/policies/code-of-conduct/",
