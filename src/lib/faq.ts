@@ -152,7 +152,11 @@ export function faqs({
       question: "What is Vortex?",
       answer: [
         "Vortex is an open-source columnar file format. Like Apache Parquet, it stores a table column by column, so a query reads only the columns it needs. Its goals are fast scans, fast random access, and good compression.",
-        "Vortex has libraries for Rust, Python, and Java. DuckDB, Apache DataFusion, and Apache Spark can query Vortex files."
+        "Vortex has libraries for Rust, Python, Java, C, and C++. DuckDB, Apache DataFusion, Apache Spark, and Ray can query Vortex files, and Pandas, Polars, and PyArrow can read them through the Python library."
+      ],
+      links: [
+        { href: `${DOCS}/getting-started/`, label: "The quickstart" },
+        { href: `${DOCS}/user-guide/`, label: "Guides for each engine" }
       ]
     },
     {
@@ -211,7 +215,7 @@ export function faqs({
       answer: [
         "Lance is a table format and a file format with the same name. The Lance table format keeps versions of a table and supports secondary indexes, vector indexes among them. It is an alternative to lakehouse table formats such as Apache Iceberg and Delta Lake.",
         [
-          "Vortex, like Parquet, is only a file format. It has no built-in indexes or versions: a table format adds those.",
+          "Vortex, like Parquet, is only a file format. It has no secondary indexes or table versions: a table format adds those. Within a file, Vortex keeps statistics on blocks of rows (zone maps), so a scan skips blocks that cannot match its filter.",
           ...(shippedTables.length > 0
             ? [`${series(shippedTables)} can store tables in Vortex files.`]
             : []),
@@ -246,7 +250,13 @@ export function faqs({
         "Vortex separates a column's logical type, such as a string or a 64-bit integer, from the encoding that stores it. Each column gets the encoding that suits its data. Vortex can also apply one encoding on top of another (cascading compression).",
         "Vortex runs filters and other compute on encoded data, often without decompressing the column. It loads a column's statistics only when a query needs them. It converts to and from Apache Arrow without copying."
       ],
-      links: [{ href: `${DOCS}/`, label: "The Vortex documentation" }]
+      links: [
+        { href: `${DOCS}/concepts/`, label: "Vortex's concepts" },
+        {
+          href: `${DOCS}/developer-guide/internals/stats-pruning`,
+          label: "How statistics prune a scan"
+        }
+      ]
     },
     {
       id: "stability",
@@ -270,7 +280,16 @@ export function faqs({
         text: copyText(tab),
         code: true
       })),
-      links: [{ href: `${DOCS}/`, label: "Guides and the API reference" }]
+      links: [
+        {
+          href: `${DOCS}/getting-started/install`,
+          label: "Install the vx CLI"
+        },
+        {
+          href: `${DOCS}/getting-started/`,
+          label: "Quickstarts for each language"
+        }
+      ]
     },
     {
       id: "who-uses-vortex",
@@ -316,7 +335,8 @@ export function faqs({
       ],
       links: [
         { href: `${baseUrl}/slack`, label: "Join the Slack" },
-        { href: REPO, label: "Vortex on GitHub" }
+        { href: REPO, label: "Vortex on GitHub" },
+        { href: `${DOCS}/project/contributing`, label: "How to contribute" }
       ]
     }
   ];
