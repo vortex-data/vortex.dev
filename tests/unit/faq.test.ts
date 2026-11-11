@@ -58,6 +58,35 @@ describe("faqs", () => {
     assert.ok(defined(tradeoff).includes(`Vortex files are ${verdict} than`));
   });
 
+  it("says Vortex is faster only where bench's verdicts say so", () => {
+    const [claim] = byId(list, "when-to-use-vortex").answer;
+    assert.match(defined(claim), /^For almost every workload, yes\. /);
+    assert.match(defined(claim), /faster than Parquet at scans, writes, /);
+    // A panel where Vortex is slower turns the claim down and names it.
+    const slow = PANELS.map((p) =>
+      p.title === "Write throughput"
+        ? {
+            ...p,
+            rows: [
+              { system: "Vortex", score: 0.5 },
+              { system: "Parquet", score: 1 }
+            ]
+          }
+        : p
+    );
+    const [mixed] = byId(
+      faqs({
+        bench: { panels: slow, readAt: READ },
+        sparkVersion: null,
+        ecosystem: ECOSYSTEM
+      }),
+      "when-to-use-vortex"
+    ).answer;
+    assert.match(defined(mixed), /^For many workloads, yes\. /);
+    assert.doesNotMatch(defined(mixed), /than Parquet at [^.]*writes/);
+    assert.match(defined(mixed), /Parquet is faster at writes\.$/);
+  });
+
   it("points to bench, with no figures, when bench could not be read", () => {
     const parquet = byId(
       faqs({ bench: null, sparkVersion: null, ecosystem: ECOSYSTEM }),
@@ -65,6 +94,11 @@ describe("faqs", () => {
     );
     assert.equal(parquet.list, undefined);
     assert.match(defined(parquet.answer[0]), /bench\.vortex\.dev measures/);
+    const [claim] = byId(
+      faqs({ bench: null, sparkVersion: null, ecosystem: ECOSYSTEM }),
+      "when-to-use-vortex"
+    ).answer;
+    assert.doesNotMatch(defined(claim), /yes|faster than Parquet at/);
   });
 
   it("lists the adopters, and the proposed support apart", () => {

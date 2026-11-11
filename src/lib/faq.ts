@@ -9,6 +9,17 @@ const REPO = "https://github.com/vortex-data/vortex";
 const DOCS = "https://docs.vortex.dev";
 const BENCH = "https://bench.vortex.dev";
 
+// What each speed panel measures, in a few words, by panel title
+// (bench-summary.ts and gpu-result.ts), for the answer that says where
+// Vortex is faster. A panel not named here gives its short name.
+const WORKLOADS: Record<string, string> = {
+  "Scan throughput": "scans",
+  "Write throughput": "writes",
+  "ClickBench on DataFusion": "queries on CPUs",
+  "GPU analytics with cuDF": "queries on GPUs",
+  "Random access, NVMe, hot": "single-row reads"
+};
+
 /**
  * One item of an answer's list: a name, a figure (`text`), or a command when
  * `code` is set.
@@ -57,6 +68,12 @@ export function faqs({
   // The tradeoff, with its number, while bench shows Vortex's files larger.
   const size = bench?.panels.find((p) => p.kind === "size");
   const larger = size && /larger$/.test(verdict(size)) ? verdict(size) : null;
+  // The speed claim says only what bench's newest verdicts show.
+  const speed = bench?.panels.filter((p) => p.kind === "speed") ?? [];
+  const workload = (p: Panel) =>
+    WORKLOADS[p.title] ?? (p.short ?? p.title).toLowerCase();
+  const faster = speed.filter((p) => /faster$/.test(verdict(p))).map(workload);
+  const slower = speed.filter((p) => /slower$/.test(verdict(p))).map(workload);
   const shipped = ecosystem.filter((e) => !e.soon).map((e) => e.name);
   const proposed = ecosystem.filter((e) => e.soon).map((e) => e.name);
 
@@ -98,7 +115,17 @@ export function faqs({
       id: "when-to-use-vortex",
       question: "Should I use Vortex instead of Parquet?",
       answer: [
-        "For almost every workload, yes. In the benchmarks above, Vortex is faster than Parquet at scans, writes, single-row reads, and queries, on CPUs and on GPUs.",
+        faster.length > 0
+          ? [
+              faster.length === speed.length
+                ? "For almost every workload, yes."
+                : "For many workloads, yes.",
+              `In the benchmarks above, Vortex is faster than Parquet at ${series(faster)}.`,
+              ...(slower.length > 0
+                ? [`Parquet is faster at ${series(slower)}.`]
+                : [])
+            ].join(" ")
+          : "bench.vortex.dev compares the speed of Vortex and Parquet on each commit. Its newest results show which is faster for your workload.",
         larger
           ? `Parquet still has two advantages. Its files are smaller: on bench's datasets, Vortex files are ${larger} than Parquet files with zstd. More tools also read Parquet today.`
           : "Parquet still has one advantage: more tools read it today.",
@@ -134,9 +161,9 @@ export function faqs({
     },
     {
       id: "who-uses-vortex",
-      question: "Who uses Vortex?",
+      question: "Who uses Vortex, and what does it work with?",
       answer: [
-        "These companies and projects use Vortex, or read and write Vortex files:"
+        "The adopters of Vortex, and the projects that it works with, include:"
       ],
       list: shipped.map((name) => ({ label: name })),
       ...(proposed.length > 0 && {

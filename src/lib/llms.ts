@@ -133,7 +133,7 @@ export function siteLlmsText({
     lines.push(
       "## Adopters and integrations",
       "",
-      "The companies and projects in the homepage's Ecosystem band, which use Vortex or read and write it. Each links to its own page about Vortex where there is one, else to its homepage.",
+      "The companies and projects in the homepage's Ecosystem band: the adopters of Vortex, and the projects that it works with. Each links to its own page about Vortex where there is one, else to its homepage.",
       "",
       ...ecosystem.map(
         (e) =>
