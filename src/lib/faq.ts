@@ -65,9 +65,15 @@ export function faqs({
   const systems = bench ? resultsSystems(bench.panels) : [];
   const verdict = (panel: Panel) => resultsRow(panel, systems).verdict;
   const hasGpu = bench?.panels.some((p) => p.title === GPU_PANEL.title);
-  // The tradeoff, with its number, while bench shows Vortex's files larger.
+  // The size tradeoff, with its number, while bench shows Vortex's files
+  // larger. Only a measured "smaller" or "the same size" drops it; without a
+  // measured verdict the answer leaves file size open.
   const size = bench?.panels.find((p) => p.kind === "size");
-  const larger = size && /larger$/.test(verdict(size)) ? verdict(size) : null;
+  const sizeVerdict = size ? verdict(size) : null;
+  const larger =
+    sizeVerdict && /larger$/.test(sizeVerdict) ? sizeVerdict : null;
+  const notLarger =
+    sizeVerdict !== null && /smaller$|^the same size$/.test(sizeVerdict);
   // The speed claim says only what bench's newest verdicts show.
   const speed = bench?.panels.filter((p) => p.kind === "speed") ?? [];
   const workload = (p: Panel) =>
@@ -119,7 +125,9 @@ export function faqs({
           ? [
               faster.length === speed.length
                 ? "For almost every workload, yes."
-                : "For many workloads, yes.",
+                : faster.length > speed.length / 2
+                  ? "For most workloads, yes."
+                  : "It depends on the workload.",
               `In the benchmarks above, Vortex is faster than Parquet at ${series(faster)}.`,
               ...(slower.length > 0
                 ? [`Parquet is faster at ${series(slower)}.`]
@@ -128,8 +136,10 @@ export function faqs({
           : "bench.vortex.dev compares the speed of Vortex and Parquet on each commit. Its newest results show which is faster for your workload.",
         larger
           ? `Parquet still has two advantages. Its files are smaller: on bench's datasets, Vortex files are ${larger} than Parquet files with zstd. More tools also read Parquet today.`
-          : "Parquet still has one advantage: more tools read it today.",
-        `Where ${larger ? "storage cost or tool support" : "tool support"} matters most, Parquet can still be the better choice.`
+          : notLarger
+            ? "Parquet still has one advantage: more tools read it today."
+            : "More tools read Parquet today. For file size, see bench.vortex.dev's newest results.",
+        `Where ${notLarger ? "tool support" : "storage cost or tool support"} matters most, Parquet can still be the better choice.`
       ]
     },
     {

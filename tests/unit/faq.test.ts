@@ -82,9 +82,53 @@ describe("faqs", () => {
       }),
       "when-to-use-vortex"
     ).answer;
-    assert.match(defined(mixed), /^For many workloads, yes\. /);
+    assert.match(defined(mixed), /^For most workloads, yes\. /);
     assert.doesNotMatch(defined(mixed), /than Parquet at [^.]*writes/);
     assert.match(defined(mixed), /Parquet is faster at writes\.$/);
+  });
+
+  it("leads with no yes when Vortex wins half the speed panels or fewer", () => {
+    const panels = PANELS.map((p) =>
+      p.kind === "speed" && p.title !== "Scan throughput"
+        ? {
+            ...p,
+            better: "higher" as const,
+            rows: [
+              { system: "Vortex", score: 0.5 },
+              { system: "Parquet", score: 1 }
+            ]
+          }
+        : p
+    );
+    const [claim] = byId(
+      faqs({
+        bench: { panels, readAt: READ },
+        sparkVersion: null,
+        ecosystem: ECOSYSTEM
+      }),
+      "when-to-use-vortex"
+    ).answer;
+    assert.match(defined(claim), /^It depends on the workload\. /);
+    assert.match(defined(claim), /faster than Parquet at scans\./);
+  });
+
+  it("leaves file size open when bench has no size verdict", () => {
+    const panels = PANELS.map((p) =>
+      p.kind === "size"
+        ? { ...p, rows: p.rows.filter((r) => r.system !== "Vortex") }
+        : p
+    );
+    const [, tradeoff, where] = byId(
+      faqs({
+        bench: { panels, readAt: READ },
+        sparkVersion: null,
+        ecosystem: ECOSYSTEM
+      }),
+      "when-to-use-vortex"
+    ).answer;
+    assert.doesNotMatch(defined(tradeoff), /one advantage/);
+    assert.match(defined(tradeoff), /For file size, see bench/);
+    assert.match(defined(where), /storage cost or tool support/);
   });
 
   it("points to bench, with no figures, when bench could not be read", () => {
