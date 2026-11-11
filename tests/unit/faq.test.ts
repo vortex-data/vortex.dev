@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
-import { panelsFrom } from "@/lib/bench-summary";
+import { morePanelsFrom, panelsFrom } from "@/lib/bench-summary";
 import { defined } from "@/lib/defined";
 import { answerText, faqJsonLd, faqMarkdown, faqs } from "@/lib/faq";
 import { GPU_DETAIL } from "@/lib/gpu-result";
@@ -18,11 +18,18 @@ const PANELS = defined(
     "Random Access (NVMe)": fixture("bench-group-random-access-nvme.json")
   })
 );
+const MORE = morePanelsFrom(fixture("bench-groups.json").groups);
 const ECOSYSTEM = [
   { name: "Acme", href: "https://acme.example" },
   { name: "Apache Thing", href: "https://thing.example" },
   { name: "Initech", href: "https://initech.example" },
-  { name: "Apache Later", href: "https://later.example", soon: true as const }
+  { name: "Apache Later", href: "https://later.example", soon: true as const },
+  { name: "Apache Paimon", href: "https://paimon.example" },
+  {
+    name: "Apache Iceberg",
+    href: "https://iceberg.example",
+    soon: true as const
+  }
 ];
 const READ = new Date("2026-11-02T12:00:00Z");
 const byId = (list: ReturnType<typeof faqs>, id: string) =>
@@ -149,10 +156,10 @@ describe("faqs", () => {
     const uses = byId(list, "who-uses-vortex");
     assert.deepEqual(
       uses.list?.map((i) => i.label),
-      ["Acme", "Apache Thing", "Initech"]
+      ["Acme", "Apache Thing", "Initech", "Apache Paimon"]
     );
     assert.deepEqual(uses.after, [
-      "Apache Later has a proposal to add Vortex support."
+      "Apache Later and Apache Iceberg have proposals to add Vortex support."
     ]);
   });
 
@@ -166,6 +173,79 @@ describe("faqs", () => {
     assert.ok(
       install.some((i) => i.text?.includes("vortex-spark_2.13:0.40.0"))
     );
+  });
+});
+
+describe("Vortex against Lance, and TPC-H", () => {
+  const list = faqs({
+    bench: { panels: PANELS, more: MORE, readAt: READ },
+    sparkVersion: null,
+    ecosystem: ECOSYSTEM
+  });
+
+  it("adds TPC-H to the comparison with Parquet, after ClickBench", () => {
+    const labels = byId(list, "vortex-vs-parquet").list?.map((i) => i.label);
+    const at = labels?.indexOf("ClickBench on DataFusion") ?? -1;
+    assert.ok(at >= 0);
+    assert.equal(labels?.[at + 1], "TPC-H SF10 on DataFusion");
+    assert.equal(labels?.length, PANELS.length + MORE.length);
+  });
+
+  it("gives bench's verdicts against Lance, without the GPU result", () => {
+    const lance = byId(list, "vortex-vs-lance");
+    const items = defined(lance.list);
+    assert.ok(!items.some((i) => i.label === "GPU analytics with cuDF"));
+    const text = (label: string) => items.find((i) => i.label === label)?.text;
+    // DataFusion's scores on 11 Nov 2026: Lance 24.53, Vortex 1.753.
+    assert.equal(text("TPC-H SF10 on DataFusion"), "14× faster");
+    assert.match(defined(text("File size")), /smaller$/);
+    assert.match(
+      defined(lance.answer[2]),
+      /^On bench\.vortex\.dev's newest results, read on 2 Nov 2026, Vortex is faster than Lance in every benchmark/
+    );
+  });
+
+  it("names the table formats that store Vortex files", () => {
+    const [, fileFormat] = byId(list, "vortex-vs-lance").answer;
+    assert.match(
+      defined(fileFormat),
+      /Apache Paimon can store tables in Vortex files, and Apache Iceberg has a proposal to\.$/
+    );
+  });
+
+  it("drops the lead-in when Lance wins a panel", () => {
+    const panels = PANELS.map((p) =>
+      p.kind === "size"
+        ? {
+            ...p,
+            rows: p.rows.map((r) =>
+              r.system === "Lance" ? { ...r, score: 0.1 } : r
+            )
+          }
+        : p
+    );
+    const lance = byId(
+      faqs({
+        bench: { panels, more: MORE, readAt: READ },
+        sparkVersion: null,
+        ecosystem: ECOSYSTEM
+      }),
+      "vortex-vs-lance"
+    );
+    assert.match(defined(lance.answer[2]), /^bench\.vortex\.dev's newest/);
+    assert.match(
+      defined(lance.list?.find((i) => i.label === "File size")?.text),
+      /larger$/
+    );
+  });
+
+  it("gives no figures against Lance when bench could not be read", () => {
+    const lance = byId(
+      faqs({ bench: null, sparkVersion: null, ecosystem: ECOSYSTEM }),
+      "vortex-vs-lance"
+    );
+    assert.equal(lance.list, undefined);
+    assert.doesNotMatch(lance.answer.join(" "), /faster|smaller/);
   });
 });
 

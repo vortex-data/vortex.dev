@@ -362,6 +362,80 @@
         ],
         "explanation": "Geomean of query time ratio to fastest (lower is better)"
       }
+    },
+    {
+      "name": "TPC-H (NVMe) (SF=10)",
+      "slug": "qmg.eyJrIjoiUXVlcnlHcm91cCIsImRhdGFzZXQiOiJ0cGNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOiIxMCIsInN0b3JhZ2UiOiJudm1lIn0",
+      "summary": {
+        "type": "queryBenchmark",
+        "title": "Performance Summary",
+        "rankings": [
+          {
+            "name": "duckdb:duckdb",
+            "score": 1.1542925484701723,
+            "totalRuntime": 1019812828,
+            "measured": 22,
+            "total": 22
+          },
+          {
+            "name": "duckdb:vortex-file-compressed",
+            "score": 1.2949618602000796,
+            "totalRuntime": 1154696875,
+            "measured": 22,
+            "total": 22
+          },
+          {
+            "name": "duckdb:vortex-compact",
+            "score": 1.4748742863618136,
+            "totalRuntime": 1281636208,
+            "measured": 22,
+            "total": 22
+          },
+          {
+            "name": "datafusion:vortex-file-compressed",
+            "score": 1.7528350940313655,
+            "totalRuntime": 1782285216,
+            "measured": 22,
+            "total": 22
+          },
+          {
+            "name": "datafusion:vortex-compact",
+            "score": 1.964452636253736,
+            "totalRuntime": 1887065142,
+            "measured": 22,
+            "total": 22
+          },
+          {
+            "name": "duckdb:parquet",
+            "score": 3.2494267232265184,
+            "totalRuntime": 2895457772,
+            "measured": 22,
+            "total": 22
+          },
+          {
+            "name": "datafusion:parquet",
+            "score": 4.151252349965506,
+            "totalRuntime": 3595506472,
+            "measured": 22,
+            "total": 22
+          },
+          {
+            "name": "datafusion:arrow",
+            "score": 14.641152697428515,
+            "totalRuntime": 16390563617,
+            "measured": 22,
+            "total": 22
+          },
+          {
+            "name": "datafusion:lance",
+            "score": 24.530371096656147,
+            "totalRuntime": 23531009724,
+            "measured": 22,
+            "total": 22
+          }
+        ],
+        "explanation": "Geomean of query time ratio to fastest (lower is better)"
+      }
     }
   ]
 }

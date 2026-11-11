@@ -3,7 +3,12 @@ import { baseUrl } from "@/lib/constants";
 import { GPU_DETAIL, GPU_PANEL } from "@/lib/gpu-result";
 import { copyText, installTabs } from "@/lib/install";
 import type { EcosystemEntry } from "@/lib/llms";
-import { resultsRow, resultsSystems } from "@/vendor/vortex-design/results.js";
+import {
+  panelVerdict,
+  resultsRow,
+  resultsSystems,
+  versusParquet
+} from "@/vendor/vortex-design/results.js";
 
 const REPO = "https://github.com/vortex-data/vortex";
 const DOCS = "https://docs.vortex.dev";
@@ -15,7 +20,8 @@ const BENCH = "https://bench.vortex.dev";
 const WORKLOADS: Record<string, string> = {
   "Scan throughput": "scans",
   "Write throughput": "writes",
-  "ClickBench on DataFusion": "queries on CPUs",
+  "ClickBench on DataFusion": "ClickBench queries",
+  "TPC-H SF10 on DataFusion": "TPC-H queries",
   "GPU analytics with cuDF": "queries on GPUs",
   "Random access, NVMe, hot": "single-row reads"
 };
@@ -40,6 +46,42 @@ export type Faq = {
   links?: { href: string; label: string }[];
 };
 
+// The table formats in the Ecosystem band, for the answer on Lance.
+const TABLE_FORMATS = ["Apache Iceberg", "Apache Hudi", "Apache Paimon"];
+
+/**
+ * The panels the answers compare: the table's, with the panels /faq adds
+ * (`more`) after ClickBench, so the query benchmarks sit together.
+ */
+function comparedPanels(
+  panels: readonly Panel[],
+  more: readonly Panel[]
+): Panel[] {
+  const at = panels.findIndex((p) => p.title === "ClickBench on DataFusion");
+  const cut = at === -1 ? panels.length : at + 1;
+  return [...panels.slice(0, cut), ...more, ...panels.slice(cut)];
+}
+
+/**
+ * Vortex against Lance in a panel, in the words the table uses against
+ * Parquet ("14× faster", "48% smaller"), or "Lance not measured". `null`
+ * when the panel does not run Lance, as for the GPU result.
+ */
+function versusLance(panel: Panel): string | null {
+  const lance = panel.rows.find((r) => r.system === "Lance");
+  if (!panel.systems?.includes("Lance") || !lance || lance.unavailable)
+    return null;
+  // results.js compares Vortex with the row named Parquet, so Lance's row
+  // takes that name.
+  const rows = panel.rows
+    .filter((r) => r.system !== "Parquet")
+    .map((r) => (r === lance ? { ...r, system: "Parquet" } : r));
+  const vs = versusParquet(rows, panel.better);
+  if (vs.vortexWins === null || vs.vortexWins === undefined)
+    return `${vs.missing === "Parquet" ? "Lance" : "Vortex"} not measured`;
+  return panelVerdict(panel.kind, vs);
+}
+
 /** "a, b, and c", with the serial comma. */
 function series(items: readonly string[]): string {
   if (items.length < 3) return items.join(" and ");
@@ -58,30 +100,51 @@ export function faqs({
   sparkVersion,
   ecosystem
 }: {
-  bench: { panels: readonly Panel[]; readAt: Date } | null;
+  bench: {
+    panels: readonly Panel[];
+    more?: readonly Panel[];
+    readAt: Date;
+  } | null;
   sparkVersion: string | null;
   ecosystem: readonly EcosystemEntry[];
 }): Faq[] {
-  const systems = bench ? resultsSystems(bench.panels) : [];
+  const compared = bench ? comparedPanels(bench.panels, bench.more ?? []) : [];
+  const systems = resultsSystems(compared);
   const verdict = (panel: Panel) => resultsRow(panel, systems).verdict;
-  const hasGpu = bench?.panels.some((p) => p.title === GPU_PANEL.title);
+  const hasGpu = compared.some((p) => p.title === GPU_PANEL.title);
   // The size tradeoff, with its number, while bench shows Vortex's files
   // larger. Only a measured "smaller" or "the same size" drops it; without a
   // measured verdict the answer leaves file size open.
-  const size = bench?.panels.find((p) => p.kind === "size");
+  const size = compared.find((p) => p.kind === "size");
   const sizeVerdict = size ? verdict(size) : null;
   const larger =
     sizeVerdict && /larger$/.test(sizeVerdict) ? sizeVerdict : null;
   const notLarger =
     sizeVerdict !== null && /smaller$|^the same size$/.test(sizeVerdict);
   // The speed claim says only what bench's newest verdicts show.
-  const speed = bench?.panels.filter((p) => p.kind === "speed") ?? [];
+  const speed = compared.filter((p) => p.kind === "speed");
   const workload = (p: Panel) =>
     WORKLOADS[p.title] ?? (p.short ?? p.title).toLowerCase();
   const faster = speed.filter((p) => /faster$/.test(verdict(p))).map(workload);
   const slower = speed.filter((p) => /slower$/.test(verdict(p))).map(workload);
   const shipped = ecosystem.filter((e) => !e.soon).map((e) => e.name);
   const proposed = ecosystem.filter((e) => e.soon).map((e) => e.name);
+  // Vortex against Lance in each panel that runs Lance. The lead-in says
+  // Vortex wins only while every speed verdict says faster and the size
+  // verdict says smaller.
+  const lance = compared.flatMap((panel) => {
+    const text = versusLance(panel);
+    const label = panel.kind === "size" ? "File size" : panel.title;
+    return text === null ? [] : [{ label, text }];
+  });
+  const lanceWins =
+    lance.some((i) => i.label === "File size") &&
+    lance.every((i) =>
+      i.label === "File size" ? /smaller$/.test(i.text) : /faster$/.test(i.text)
+    );
+  const tables = (names: string[]) =>
+    names.filter((n) => TABLE_FORMATS.includes(n));
+  const [shippedTables, proposedTables] = [tables(shipped), tables(proposed)];
 
   return [
     {
@@ -103,7 +166,7 @@ export function faqs({
             "bench.vortex.dev measures Vortex against Parquet and other formats on each commit to Vortex. It measures scan and write speed, query time, random access, and file size."
           ],
       ...(bench && {
-        list: bench.panels.map((panel) => ({
+        list: compared.map((panel) => ({
           label: panel.title,
           text:
             panel.title === GPU_PANEL.title
@@ -140,6 +203,37 @@ export function faqs({
             ? "Parquet still has one advantage: more tools read it today."
             : "More tools read Parquet today. For file size, see bench.vortex.dev's newest results.",
         `Where ${notLarger ? "tool support" : "storage cost or tool support"} matters most, Parquet can still be the better choice.`
+      ]
+    },
+    {
+      id: "vortex-vs-lance",
+      question: "How does Vortex compare to Lance?",
+      answer: [
+        "Lance is a table format and a file format with the same name. The Lance table format keeps versions of a table and supports secondary indexes, vector indexes among them. It is an alternative to lakehouse table formats such as Apache Iceberg and Delta Lake.",
+        [
+          "Vortex, like Parquet, is only a file format. It has no built-in indexes or versions: a table format adds those.",
+          ...(shippedTables.length > 0
+            ? [
+                `${series(shippedTables)} can store tables in Vortex files${proposedTables.length > 0 ? `, and ${series(proposedTables)} ${proposedTables.length > 1 ? "have proposals" : "has a proposal"} to` : ""}.`
+              ]
+            : [])
+        ].join(" "),
+        bench && lance.length > 0
+          ? lanceWins
+            ? `On bench.vortex.dev's newest results, read on ${formatReadDate(bench.readAt)}, Vortex is faster than Lance in every benchmark that runs both, and its files are smaller:`
+            : `bench.vortex.dev's newest results against Lance, read on ${formatReadDate(bench.readAt)}:`
+          : "bench.vortex.dev also measures Vortex against Lance on each commit to Vortex."
+      ],
+      ...(bench && lance.length > 0 && { list: lance }),
+      after: [
+        "Both formats are under the Apache License 2.0. Vortex is a Linux Foundation project. Its charter puts the project's code under that license, and LF Projects, part of the Linux Foundation, holds the Vortex trademark. Lance, which the company LanceDB created, has its own governance outside a foundation."
+      ],
+      links: [
+        { href: `${BENCH}/`, label: "Every benchmark on bench.vortex.dev" },
+        {
+          href: `${baseUrl}/charter.pdf`,
+          label: "The Vortex Technical Charter"
+        }
       ]
     },
     {

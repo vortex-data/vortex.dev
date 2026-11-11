@@ -5,6 +5,7 @@ import {
   formatReadDate,
   getBenchSummary,
   groupTimes,
+  morePanelsFrom,
   type Panel,
   panelsFrom,
   type Row,
@@ -25,7 +26,8 @@ const fixture = (name: string) =>
 
 // bench.vortex.dev/api/groups as it answered on 29 Oct 2026, cut down to each
 // group's name, slug and summary: the four groups the card reads, Random
-// Access (S3), which it no longer reads, and one it ignores.
+// Access (S3), which it no longer reads, and one it ignores. TPC-H (NVMe)
+// (SF=10), which /faq reads, is as bench answered on 11 Nov 2026.
 const PAYLOAD = fixture("bench-groups.json") as {
   groups: Record<string, unknown>[];
 };
@@ -466,6 +468,31 @@ const bench =
 // No waits between tries and no warnings, for the tests that do not look at them.
 const QUIET = { wait: async () => {}, warn: () => {} };
 
+describe("morePanelsFrom", () => {
+  it("gives TPC-H SF10 on DataFusion from bench's scores", () => {
+    const [tpch, ...rest] = morePanelsFrom(PAYLOAD.groups);
+    assert.equal(rest.length, 0);
+    assert.equal(tpch?.title, "TPC-H SF10 on DataFusion");
+    assert.equal(tpch?.unit, "× fastest");
+    const score = (system: string) =>
+      tpch?.rows.find((r) => r.system === system)?.score;
+    // The live scores of 11 Nov 2026: DataFusion on each format.
+    assert.ok(Math.abs((score("Vortex") ?? 0) - 1.7528) < 1e-3);
+    assert.ok(Math.abs((score("Parquet") ?? 0) - 4.1513) < 1e-3);
+    assert.ok(Math.abs((score("Lance") ?? 0) - 24.5304) < 1e-3);
+  });
+
+  it("leaves out a panel bench does not give, and never fails", () => {
+    const groups = PAYLOAD.groups.filter(
+      (g) => g.name !== "TPC-H (NVMe) (SF=10)"
+    );
+    assert.deepEqual(morePanelsFrom(groups), []);
+    assert.deepEqual(morePanelsFrom(null), []);
+    // The table's panels do not depend on it.
+    assert.equal(panelsFrom(groups)?.length, PANELS.length);
+  });
+});
+
 describe("getBenchSummary", () => {
   it("reads bench's groups and the time panels' charts, dated by bench's answer", async () => {
     const { fake, calls } = stub(
@@ -473,6 +500,7 @@ describe("getBenchSummary", () => {
     );
     const summary = await getBenchSummary(fake, QUIET);
     assert.deepEqual(near(summary?.panels), near(PANELS));
+    assert.deepEqual(summary?.more, morePanelsFrom(PAYLOAD.groups));
     assert.equal(summary?.readAt.toISOString(), "2026-10-29T21:23:34.000Z");
     assert.deepEqual(
       calls.map((c) => c.url),
@@ -685,7 +713,7 @@ describe("routeConfig", () => {
 });
 
 describe("summaryForPage", () => {
-  const summary = { panels: PANELS, readAt: new Date(0) };
+  const summary = { panels: PANELS, more: [], readAt: new Date(0) };
 
   it("passes a summary through", () => {
     assert.equal(
