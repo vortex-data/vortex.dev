@@ -41,7 +41,11 @@ import { getPool } from './db';
 import { randomAccessStorage, type RandomAccessStorage } from './random-access';
 import { compareCodeUnits } from './families';
 import type { GroupKey } from './slug';
-import { STRING_DATASET_PATTERN, SUMMARY_EXCLUDED_DATASET_PATTERNS } from './compression-suite';
+import {
+  SIZE_SUMMARY_EXCLUDED_DATASET_PATTERNS,
+  STRING_DATASET_PATTERN,
+  SUMMARY_EXCLUDED_DATASET_PATTERNS,
+} from './compression-suite';
 
 /**
  * Freshness buckets for compression-time and compression-size summaries.
@@ -88,7 +92,7 @@ function compressionSizeSummaryQueryParams(): [
     COMPRESSION_SNAPSHOT_ANCHOR,
     COMPRESSION_BASELINE,
     ARROW_IPC_FORMAT,
-    [...SUMMARY_EXCLUDED_DATASET_PATTERNS],
+    [...SIZE_SUMMARY_EXCLUDED_DATASET_PATTERNS],
   ];
 }
 
@@ -140,6 +144,11 @@ interface CompressionSizeRanking {
   maxRatio: number;
   /** Geomean ratio of Arrow memory size to the format size. */
   compressionRatio: number | null;
+  /**
+   * Sum of this format's sizes, in bytes, over the datasets that every format in the summary
+   * has, so the totals compare directly. `null` when the formats share no dataset.
+   */
+  totalBytes: number | null;
 }
 
 /**
@@ -710,13 +719,15 @@ async function collectCompressionSizeSummary(): Promise<Summary | null> {
     title: 'Compression Size Summary',
     rankings,
     explanation:
-      'Geometric means of compressed sizes versus Arrow (higher is better) and versus Parquet-zstd (lower is better)',
+      'Total compressed size, and geometric means of compressed sizes versus Arrow (higher is better) and versus Parquet-zstd (lower is better)',
   };
 }
 
 /** One size paired with the baseline's size for the same dataset and commit. */
 interface CompressionSizeSample {
   format: string;
+  dataset: string;
+  datasetVariant: string | null;
   valueBytes: number;
   baselineBytes: number;
   uncompressedBytes: number | null;
@@ -727,9 +738,16 @@ interface CompressionSizeSample {
  * order is by compression ratio once every format has one, and by baseline ratio until then.
  */
 function compressionSizeRankings(rows: readonly CompressionSizeSample[]): CompressionSizeRanking[] {
-  const grouped = new Map<string, { sizeRatios: number[]; compressionRatios: number[] }>();
+  const grouped = new Map<
+    string,
+    { sizeRatios: number[]; compressionRatios: number[]; bytesByDataset: Map<string, number> }
+  >();
   for (const row of rows) {
-    const ratios = grouped.get(row.format) ?? { sizeRatios: [], compressionRatios: [] };
+    const ratios = grouped.get(row.format) ?? {
+      sizeRatios: [],
+      compressionRatios: [],
+      bytesByDataset: new Map<string, number>(),
+    };
     if (
       row.valueBytes > 0 &&
       Number.isFinite(row.valueBytes) &&
@@ -737,6 +755,7 @@ function compressionSizeRankings(rows: readonly CompressionSizeSample[]): Compre
       Number.isFinite(row.baselineBytes)
     ) {
       ratios.sizeRatios.push(row.valueBytes / row.baselineBytes);
+      ratios.bytesByDataset.set(JSON.stringify([row.dataset, row.datasetVariant]), row.valueBytes);
     }
     if (
       row.uncompressedBytes !== null &&
@@ -749,6 +768,12 @@ function compressionSizeRankings(rows: readonly CompressionSizeSample[]): Compre
     }
     grouped.set(row.format, ratios);
   }
+  // Lance and Arrow IPC come from their own snapshots, so a format can lack a dataset that the
+  // others have. Totals use only the datasets every ranked format has.
+  const ranked = [...grouped.values()].filter((ratios) => ratios.sizeRatios.length > 0);
+  const commonDatasets = [...(ranked[0]?.bytesByDataset.keys() ?? [])].filter((dataset) =>
+    ranked.every((ratios) => ratios.bytesByDataset.has(dataset)),
+  );
   const rankings: CompressionSizeRanking[] = [];
   for (const [name, ratios] of grouped) {
     const ratio = geoMean(ratios.sizeRatios);
@@ -765,6 +790,13 @@ function compressionSizeRankings(rows: readonly CompressionSizeSample[]): Compre
         ratio,
         maxRatio,
         compressionRatio: geoMean(ratios.compressionRatios),
+        totalBytes:
+          commonDatasets.length === 0
+            ? null
+            : commonDatasets.reduce(
+                (sum, dataset) => sum + (ratios.bytesByDataset.get(dataset) ?? 0),
+                0,
+              ),
       });
     }
   }
@@ -787,7 +819,7 @@ function compressionSizeRankings(rows: readonly CompressionSizeSample[]): Compre
  * and compares it with Parquet from the same commit. Arrow IPC uses its newest value for each
  * dataset and Parquet from the same commit. Compression ratios use the newest available decoded
  * Arrow memory size for each dataset. The size commit does not need to match.
- * The datasets in `SUMMARY_EXCLUDED_DATASET_PATTERNS` are left out.
+ * The datasets in `SIZE_SUMMARY_EXCLUDED_DATASET_PATTERNS` are left out.
  * `uncompressed_bytes` is read as a plain column, so migration 009 must be applied before a web
  * deploy that includes this query. A JSON field lookup would tolerate an older schema, but it
  * serializes whole rows and timed out in production, so it was dropped once 009 was applied there.
@@ -862,6 +894,8 @@ async function compressionSizeSamples(): Promise<CompressionSizeSample[]> {
                 c.timestamp DESC, s.commit_sha DESC
     )
     SELECT selected.format AS format,
+           selected.dataset AS dataset,
+           selected.dataset_variant AS "datasetVariant",
            selected.value_bytes AS "valueBytes",
            selected.parquet_bytes AS "baselineBytes",
            COALESCE(uncompressed.uncompressed_bytes, selected.uncompressed_bytes)
@@ -949,6 +983,8 @@ async function collectStringEncodingSizeSummary(): Promise<Summary | null> {
        LIMIT 1
     )
     SELECT s.dataset_variant AS format,
+           s.dataset AS dataset,
+           NULL AS "datasetVariant",
            s.value_bytes::float8 AS "valueBytes",
            b.value_bytes::float8 AS "baselineBytes",
            s.uncompressed_bytes::float8 AS "uncompressedBytes"
@@ -980,7 +1016,7 @@ async function collectStringEncodingSizeSummary(): Promise<Summary | null> {
     title: 'String Encoding Size Summary',
     rankings,
     explanation:
-      'Geometric means of file sizes versus Arrow (higher is better) and versus FSST (lower is better)',
+      'Total file size, and geometric means of file sizes versus Arrow (higher is better) and versus FSST (lower is better)',
     baseline: 'FSST',
   };
 }

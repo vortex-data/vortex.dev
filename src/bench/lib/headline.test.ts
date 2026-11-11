@@ -185,7 +185,9 @@ describe('groupHeadline', () => {
       type: 'compressionSize',
       title: 's',
       explanation: 'e',
-      rankings: [{ name: VX, minRatio: ratio, ratio, maxRatio: ratio, compressionRatio: 5 }],
+      rankings: [
+        { name: VX, minRatio: ratio, ratio, maxRatio: ratio, compressionRatio: 5, totalBytes: 1 },
+      ],
     });
     expect(h && headlineText(h)).toBe(expected);
     expect(h?.parts[0]?.tone).toBe(tone);

@@ -678,7 +678,7 @@ main {
 .compression-size-arrow-header,
 .score-item.compression-size-arrow-row {
   display: grid;
-  grid-template-columns: 2.25rem minmax(0, 1fr) 7rem;
+  grid-template-columns: 2.25rem minmax(0, 1fr) 6rem 7rem;
   column-gap: var(--space-16);
 }
 
@@ -703,21 +703,19 @@ main {
   text-align: center;
 }
 
-.compression-size-arrow-header .compression-size-group,
-.compression-size-arrow-header .compression-size-heading {
-  grid-column: 3;
+.compression-size-arrow-header .compression-size-group {
+  grid-column: 4;
+  grid-row: 1;
   text-align: center;
 }
 
-.compression-size-arrow-header .compression-size-group {
-  grid-row: 1;
+.compression-size-arrow-header .compression-size-total-group {
+  grid-column: 3;
 }
 
-.compression-size-arrow-header::after {
-  content: '';
+.compression-size-arrow-header .compression-size-total-unit {
   grid-column: 3;
   grid-row: 2;
-  min-height: 1em;
 }
 
 .compression-size-parquet-header,
@@ -1597,17 +1595,30 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
     gap: 0;
     align-items: flex-end;
   }
+  .compression-size-arrow-header,
   .score-item.compression-size-arrow-row {
-    grid-template-columns: 1.75rem minmax(0, 1fr) 3.4rem;
+    grid-template-columns: 1.75rem minmax(0, 1fr) 3.75rem 3.4rem;
     column-gap: 0.35rem;
   }
   .compression-size-parquet-panel {
     padding-left: 0.35rem;
     margin-left: 0.35rem;
   }
+  /* A phone has no room for Total and the Min and Max ratios: it shows Total and the
+     geomean, and the screen-reader text of each row still gives Min and Max. */
+  .compression-size-scores {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
   .compression-size-parquet-header,
   .compression-size-parquet-row {
+    grid-template-columns: auto;
     column-gap: 0.35rem;
+  }
+  .compression-size-parquet-header .compression-size-group {
+    grid-column: 1;
+  }
+  .compression-size-range {
+    display: none;
   }
   .toolbar-slider {
     width: 100%;
