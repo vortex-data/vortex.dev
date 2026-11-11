@@ -229,7 +229,7 @@ export function faqs({
       ],
       ...(bench && lance.length > 0 && { list: lance }),
       after: [
-        "Both formats are under the Apache License 2.0. Vortex is a Linux Foundation project. Its charter puts the project's code under that license, and LF Projects, part of the Linux Foundation, holds the Vortex trademark. Lance, which the company LanceDB created, has its own governance outside a foundation."
+        "Both formats are under the Apache License 2.0. Vortex is a Linux Foundation project. LF Projects, part of the Linux Foundation, holds the Vortex trademark, and the charter keeps the project's code under the Apache License. Changing the charter takes a two-thirds vote of the Technical Steering Committee and the approval of LF Projects. Lance has its own governance, but the name and code are held by a private company (LanceDB) instead of an independent foundation."
       ],
       links: [
         { href: `${BENCH}/`, label: "Every benchmark on bench.vortex.dev" },
