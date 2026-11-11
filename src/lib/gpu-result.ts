@@ -25,8 +25,8 @@ import { geomean } from "./geomean";
  *
  * To update: change the times in `GPU_QUERIES` (and `PARQUET_CONFIGS` if the
  * configurations change). The panel computes its geomeans from them. Change
- * `source.note` if the hardware, scale factor or source changes. Keep the
- * note short: the results table gives it as the GPU row's hover title and
+ * `source.note`, and `GPU_DETAIL`, if the hardware, scale factor or source
+ * changes. Keep the note short: the results table gives it as the GPU row's hover title and
  * screen-reader text. If cuDF gains a Lance integration, give Lance its times in
  * the table and a row computed like Vortex's.
  */
@@ -65,6 +65,13 @@ export function gpuTimes(queries: typeof GPU_QUERIES) {
 }
 
 const times = gpuTimes(GPU_QUERIES);
+
+/**
+ * The GPU figure's source in full, for /faq, in plain words: the results
+ * table has room only for `source.note`.
+ */
+export const GPU_DETAIL =
+  "The GPU figure is an internal measurement, not a bench result. The Vortex maintainers measured query time on an NVIDIA GH200, a data-center GPU, with cuDF and a hot cache. The workload is NDS-H, a benchmark derived from TPC-H, at scale factor 10: the five queries that cuDF runs. Each Parquet time is the fastest of four Parquet writer settings.";
 
 export const GPU_PANEL: Panel = {
   title: "GPU analytics with cuDF",

@@ -2,6 +2,7 @@ import { LOGOS } from "@/components/logo-banner/logos";
 import { externalPosts } from "@/content/links";
 import { getBenchSummary, summaryForPage } from "@/lib/bench-summary";
 import { getAllPosts } from "@/lib/blog";
+import { faqs } from "@/lib/faq";
 import { siteLlmsFullText } from "@/lib/llms";
 import { getSparkVersion } from "@/lib/maven";
 
@@ -15,10 +16,12 @@ export async function GET() {
     getSparkVersion(),
     getBenchSummary()
   ]);
+  const bench = summaryForPage(summary);
   return new Response(
     siteLlmsFullText({
-      bench: summaryForPage(summary),
+      bench,
       sparkVersion,
+      faq: faqs({ bench, sparkVersion, ecosystem: LOGOS }),
       posts: getAllPosts(),
       ecosystem: LOGOS,
       elsewhere: externalPosts

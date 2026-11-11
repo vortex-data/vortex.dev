@@ -167,7 +167,7 @@ async function checkSitemap(): Promise<string[]> {
   const locs = [...r.body.matchAll(/<loc>([^<]+)<\/loc>/g)].flatMap((m) =>
     m[1] ? [m[1]] : []
   );
-  const required = ["/", "/blog"];
+  const required = ["/", "/blog", "/faq"];
   const paths = locs.map((l) => l.replace(/^https?:\/\/[^/]+/, "") || "/");
   const missing = required.filter((p) => !paths.includes(p));
   if (missing.length > 0) {
@@ -323,6 +323,25 @@ async function checkRoute(
         fail(`json-ld ${path}`, "no Article schema");
         allOk = false;
       }
+    }
+  }
+
+  // FAQPage schema on /faq, with one Question per heading
+  if (path === "/faq") {
+    const ld = jsonLd(r.body);
+    const faq = ld.ok
+      ? ld.blocks.find((b) => b["@type"] === "FAQPage")
+      : undefined;
+    const questions = Array.isArray(faq?.mainEntity)
+      ? faq.mainEntity.length
+      : 0;
+    const headings = (r.body.match(/<h2\b/g) ?? []).length;
+    if (!faq || questions === 0 || questions !== headings) {
+      fail(
+        `json-ld ${path}`,
+        `FAQPage with ${questions} questions for ${headings} headings`
+      );
+      allOk = false;
     }
   }
 
