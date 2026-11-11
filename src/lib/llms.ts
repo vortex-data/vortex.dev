@@ -50,6 +50,10 @@ function about(panel: Panel): string {
       return panel.unit === "ms"
         ? "the geometric mean time of the ClickBench queries on DataFusion, reading files on local NVMe, so lower is better"
         : "the ClickBench queries on DataFusion, reading files on local NVMe: the geometric mean of each query's time divided by the fastest format's, so lower is better";
+    case "TPC-H SF10 on DataFusion":
+      return panel.unit === "ms"
+        ? "the geometric mean time of the 22 TPC-H queries at scale factor 10 on DataFusion, reading files on local NVMe, so lower is better"
+        : "the TPC-H queries at scale factor 10 on DataFusion, reading files on local NVMe: the geometric mean of each query's time divided by the fastest format's, so lower is better";
     case "Random access, NVMe, hot":
       return panel.unit === "ms"
         ? "the geometric mean time to take rows from each of the random access benchmark's datasets on local NVMe, reusing an open file, so lower is better"

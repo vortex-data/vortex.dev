@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
-import { morePanelsFrom, panelsFrom } from "@/lib/bench-summary";
+import { panelsFrom } from "@/lib/bench-summary";
 import { defined } from "@/lib/defined";
 import { answerText, faqJsonLd, faqMarkdown, faqs } from "@/lib/faq";
 import { GPU_DETAIL } from "@/lib/gpu-result";
@@ -15,10 +15,10 @@ const fixture = (name: string) =>
 const PANELS = defined(
   panelsFrom(fixture("bench-groups.json").groups, {
     Clickbench: fixture("bench-group-clickbench.json"),
+    "TPC-H (NVMe) (SF=10)": fixture("bench-group-tpch-sf10-nvme.json"),
     "Random Access (NVMe)": fixture("bench-group-random-access-nvme.json")
   })
 );
-const MORE = morePanelsFrom(fixture("bench-groups.json").groups);
 const ECOSYSTEM = [
   { name: "Acme", href: "https://acme.example" },
   { name: "Apache Thing", href: "https://thing.example" },
@@ -53,7 +53,7 @@ describe("faqs", () => {
     assert.equal(parquet.list?.length, PANELS.length);
     assert.equal(parquet.list?.[0]?.label, "Scan throughput");
     // The GPU row is not bench's, and the note after the list says whose.
-    assert.match(defined(parquet.list?.[3]?.text), /not from bench/);
+    assert.match(defined(parquet.list?.[4]?.text), /not from bench/);
     assert.equal(parquet.after?.[0], GPU_DETAIL);
   });
 
@@ -178,7 +178,7 @@ describe("faqs", () => {
 
 describe("Vortex against Lance, and TPC-H", () => {
   const list = faqs({
-    bench: { panels: PANELS, more: MORE, readAt: READ },
+    bench: { panels: PANELS, readAt: READ },
     sparkVersion: null,
     ecosystem: ECOSYSTEM
   });
@@ -188,7 +188,7 @@ describe("Vortex against Lance, and TPC-H", () => {
     const at = labels?.indexOf("ClickBench on DataFusion") ?? -1;
     assert.ok(at >= 0);
     assert.equal(labels?.[at + 1], "TPC-H SF10 on DataFusion");
-    assert.equal(labels?.length, PANELS.length + MORE.length);
+    assert.equal(labels?.length, PANELS.length);
   });
 
   it("gives bench's verdicts against Lance, without the GPU result", () => {
@@ -226,7 +226,7 @@ describe("Vortex against Lance, and TPC-H", () => {
     );
     const lance = byId(
       faqs({
-        bench: { panels, more: MORE, readAt: READ },
+        bench: { panels, readAt: READ },
         sparkVersion: null,
         ecosystem: ECOSYSTEM
       }),

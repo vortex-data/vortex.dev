@@ -182,7 +182,7 @@ test.describe("home", () => {
 });
 
 test.describe("home bands", () => {
-  test("the results table shows six benchmarks with a source link, or is absent", async ({
+  test("the results table shows seven benchmarks with a source link, or is absent", async ({
     page
   }) => {
     await page.goto("/");
@@ -194,8 +194,8 @@ test.describe("home bands", () => {
       return;
     }
     await expect(table).toBeVisible();
-    await expect(table.locator("tbody tr")).toHaveCount(6);
-    await expect(table.locator("tbody td.is-ours")).toHaveCount(6);
+    await expect(table.locator("tbody tr")).toHaveCount(7);
+    await expect(table.locator("tbody td.is-ours")).toHaveCount(7);
     await expect(table).toContainText(/read \d+ \w{3} \d{4}/);
     const source = table.locator('a[href="https://bench.vortex.dev"]');
     await expect(source).toBeVisible();
@@ -226,6 +226,7 @@ test.describe("home bands", () => {
       "Scan",
       "Write",
       "ClickBench",
+      "TPC-H",
       "GPU, cuDF",
       "Random access",
       "File size"

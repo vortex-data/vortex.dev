@@ -50,19 +50,6 @@ export type Faq = {
 const TABLE_FORMATS = ["Apache Iceberg", "Apache Hudi", "Apache Paimon"];
 
 /**
- * The panels the answers compare: the table's, with the panels /faq adds
- * (`more`) after ClickBench, so the query benchmarks sit together.
- */
-function comparedPanels(
-  panels: readonly Panel[],
-  more: readonly Panel[]
-): Panel[] {
-  const at = panels.findIndex((p) => p.title === "ClickBench on DataFusion");
-  const cut = at === -1 ? panels.length : at + 1;
-  return [...panels.slice(0, cut), ...more, ...panels.slice(cut)];
-}
-
-/**
  * Vortex against Lance in a panel, in the words the table uses against
  * Parquet ("14× faster", "48% smaller"), or "Lance not measured". `null`
  * when the panel does not run Lance, as for the GPU result.
@@ -100,15 +87,11 @@ export function faqs({
   sparkVersion,
   ecosystem
 }: {
-  bench: {
-    panels: readonly Panel[];
-    more?: readonly Panel[];
-    readAt: Date;
-  } | null;
+  bench: { panels: readonly Panel[]; readAt: Date } | null;
   sparkVersion: string | null;
   ecosystem: readonly EcosystemEntry[];
 }): Faq[] {
-  const compared = bench ? comparedPanels(bench.panels, bench.more ?? []) : [];
+  const compared = bench?.panels ?? [];
   const systems = resultsSystems(compared);
   const verdict = (panel: Panel) => resultsRow(panel, systems).verdict;
   const hasGpu = compared.some((p) => p.title === GPU_PANEL.title);
