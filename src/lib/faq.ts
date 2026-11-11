@@ -252,7 +252,13 @@ export function faqs({
       id: "stability",
       question: "Is the Vortex file format stable?",
       answer: [
-        "Yes. Each release from 0.36.0 on reads files written by any release from 0.36.0 on. The library APIs can still change between releases."
+        "Yes. From release 0.36.0, each release reads the files that any earlier release from 0.36.0 on wrote. For an older release to read a newer release's files, the writer targets an edition (a named set of wire formats) that the older release supports. The library APIs can still change between releases."
+      ],
+      links: [
+        {
+          href: `${DOCS}/specs/versioning`,
+          label: "Versioning and compatibility"
+        }
       ]
     },
     {
