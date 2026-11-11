@@ -213,8 +213,11 @@ export function faqs({
         [
           "Vortex, like Parquet, is only a file format. It has no built-in indexes or versions: a table format adds those.",
           ...(shippedTables.length > 0
+            ? [`${series(shippedTables)} can store tables in Vortex files.`]
+            : []),
+          ...(proposedTables.length > 0
             ? [
-                `${series(shippedTables)} can store tables in Vortex files${proposedTables.length > 0 ? `, and ${series(proposedTables)} ${proposedTables.length > 1 ? "have proposals" : "has a proposal"} to` : ""}.`
+                `${series(proposedTables)} ${proposedTables.length > 1 ? "have proposals" : "has a proposal"} to store tables in Vortex files.`
               ]
             : [])
         ].join(" "),

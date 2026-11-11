@@ -209,7 +209,7 @@ describe("Vortex against Lance, and TPC-H", () => {
     const [, fileFormat] = byId(list, "vortex-vs-lance").answer;
     assert.match(
       defined(fileFormat),
-      /Apache Paimon can store tables in Vortex files, and Apache Iceberg has a proposal to\.$/
+      /Apache Paimon can store tables in Vortex files\. Apache Iceberg has a proposal to store tables in Vortex files\.$/
     );
   });
 
