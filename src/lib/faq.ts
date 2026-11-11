@@ -215,7 +215,7 @@ export function faqs({
       answer: [
         "Lance is a table format and a file format with the same name. The Lance table format keeps versions of a table and supports secondary indexes, vector indexes among them. It is an alternative to lakehouse table formats such as Apache Iceberg and Delta Lake.",
         [
-          "Vortex, like Parquet, is only a file format. It has no secondary indexes or table versions: a table format adds those. Within a file, Vortex keeps statistics on blocks of rows (zone maps), so a scan skips blocks that cannot match its filter.",
+          "Vortex, like Parquet, is only a file format. A Vortex file can hold its own indexes. By default it keeps zone maps (statistics on blocks of rows), so a scan skips blocks that cannot match its filter. A custom layout can add other indexes. Indexes outside the file, such as a vector index over a whole table, and table versions are a table format's job.",
           ...(shippedTables.length > 0
             ? [`${series(shippedTables)} can store tables in Vortex files.`]
             : []),
