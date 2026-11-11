@@ -18,6 +18,7 @@ const fixture = (name: string) =>
   ) as Record<string, unknown>;
 const PANELS = panelsFrom(fixture("bench-groups.json").groups, {
   Clickbench: fixture("bench-group-clickbench.json"),
+  "TPC-H (NVMe) (SF=10)": fixture("bench-group-tpch-sf10-nvme.json"),
   "Random Access (NVMe)": fixture("bench-group-random-access-nvme.json")
 });
 const READ = new Date("2026-11-02T12:00:00Z");
@@ -29,13 +30,17 @@ describe("resultsSentences", () => {
   it("says what each row measures, its figures, and the verdict", () => {
     assert.ok(PANELS);
     const sentences = resultsSentences(PANELS);
-    assert.equal(sentences.length, 6);
+    assert.equal(sentences.length, 7);
     for (const s of sentences) assert.match(s, /Vortex against Parquet: .+\.$/);
     assert.match(sentences[0] ?? "", /^Scan, how fast each format scans/);
-    assert.match(sentences[3] ?? "", /^GPU, cuDF, query time on a GPU in cuDF/);
-    // Lance cannot run in cuDF, and the sentence says why, not a figure.
     assert.match(
       sentences[3] ?? "",
+      /^TPC-H, the geometric mean time of the 22/
+    );
+    assert.match(sentences[4] ?? "", /^GPU, cuDF, query time on a GPU in cuDF/);
+    // Lance cannot run in cuDF, and the sentence says why, not a figure.
+    assert.match(
+      sentences[4] ?? "",
       /Lance not available, no cuDF integration/
     );
   });

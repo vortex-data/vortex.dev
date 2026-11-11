@@ -1,0 +1,425 @@
+{
+  "name": "TPC-H (NVMe) (SF=10)",
+  "charts": [
+    {
+      "name": "Q1",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJ0cGNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOiIxMCIsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4IjoxfQ",
+      "display_name": "tpch sf=10 Q1 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:lance": [
+          948211142, 946309712, 945476790, 950109401, 949298738
+        ],
+        "datafusion:parquet": [
+          87590775, 87479163, 87201711, 87754445, 87446147
+        ],
+        "datafusion:vortex-file-compressed": [
+          91939751, 90751357, 91794474, 90882596, 91668592
+        ],
+        "duckdb:parquet": [67642047, 67840767, 68072635, 67454233, 67799692]
+      }
+    },
+    {
+      "name": "Q2",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJ0cGNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOiIxMCIsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4IjoyfQ",
+      "display_name": "tpch sf=10 Q2 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:lance": [
+          325468862, 325610921, 328398805, 327267658, 328482079
+        ],
+        "datafusion:parquet": [
+          173001227, 175200822, 173665320, 173381519, 173132245
+        ],
+        "datafusion:vortex-file-compressed": [
+          64749044, 64358184, 65424879, 65985132, 64157437
+        ],
+        "duckdb:parquet": [87453718, 86997836, 87578713, 87180253, 87272399]
+      }
+    },
+    {
+      "name": "Q3",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJ0cGNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOiIxMCIsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4IjozfQ",
+      "display_name": "tpch sf=10 Q3 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:lance": [
+          1411430437, 1409388169, 1407097625, 1414220087, 1411639294
+        ],
+        "datafusion:parquet": [
+          135649557, 135293400, 135558336, 134782889, 134804820
+        ],
+        "datafusion:vortex-file-compressed": [
+          64050691, 65382830, 63710306, 63695061, 63657237
+        ],
+        "duckdb:parquet": [
+          110567483, 110753947, 111719608, 109983956, 110545515
+        ]
+      }
+    },
+    {
+      "name": "Q4",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJ0cGNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOiIxMCIsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4Ijo0fQ",
+      "display_name": "tpch sf=10 Q4 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:lance": [
+          695421961, 695067243, 694326652, 697055193, 697051899
+        ],
+        "datafusion:parquet": [
+          57202538, 57054007, 57577536, 57207812, 57289061
+        ],
+        "datafusion:vortex-file-compressed": [
+          34283004, 34846774, 34882784, 34668351, 34162712
+        ],
+        "duckdb:parquet": [76733018, 76915000, 78743355, 76702096, 76936356]
+      }
+    },
+    {
+      "name": "Q5",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJ0cGNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOiIxMCIsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4Ijo1fQ",
+      "display_name": "tpch sf=10 Q5 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:lance": [
+          1596080999, 1601701359, 1608356042, 1613509389, 1612466734
+        ],
+        "datafusion:parquet": [
+          167683320, 167079408, 167744958, 167521409, 167714923
+        ],
+        "datafusion:vortex-file-compressed": [
+          118037852, 119736703, 119020421, 118432923, 120157165
+        ],
+        "duckdb:parquet": [
+          124407206, 124844237, 124478575, 124357441, 122898948
+        ]
+      }
+    },
+    {
+      "name": "Q6",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJ0cGNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOiIxMCIsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4Ijo2fQ",
+      "display_name": "tpch sf=10 Q6 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:lance": [
+          692133649, 695416944, 692953352, 688203270, 691791011
+        ],
+        "datafusion:parquet": [
+          36560516, 36618152, 36545996, 36466591, 36435117
+        ],
+        "datafusion:vortex-file-compressed": [
+          9697022, 9572409, 9401868, 9410264, 9274230
+        ],
+        "duckdb:parquet": [35792629, 35730042, 35325890, 35878982, 35797151]
+      }
+    },
+    {
+      "name": "Q7",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJ0cGNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOiIxMCIsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4Ijo3fQ",
+      "display_name": "tpch sf=10 Q7 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:lance": [
+          1144480237, 1148337279, 1144749823, 1152967420, 1149568207
+        ],
+        "datafusion:parquet": [
+          215148399, 216042322, 217405649, 216482379, 215000845
+        ],
+        "datafusion:vortex-file-compressed": [
+          99114538, 97744817, 98425578, 97366359, 96655771
+        ],
+        "duckdb:parquet": [
+          117687174, 117024456, 120768731, 118863439, 117515950
+        ]
+      }
+    },
+    {
+      "name": "Q8",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJ0cGNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOiIxMCIsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4Ijo4fQ",
+      "display_name": "tpch sf=10 Q8 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:lance": [
+          1802590691, 1801024858, 1812809695, 1811432715, 1803238744
+        ],
+        "datafusion:parquet": [
+          218050936, 218193790, 217839688, 218218522, 218370744
+        ],
+        "datafusion:vortex-file-compressed": [
+          143681291, 143213373, 142744673, 141487147, 142357582
+        ],
+        "duckdb:parquet": [
+          148112126, 148716748, 148689359, 147423156, 147783655
+        ]
+      }
+    },
+    {
+      "name": "Q9",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJ0cGNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOiIxMCIsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4Ijo5fQ",
+      "display_name": "tpch sf=10 Q9 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:lance": [
+          2330970908, 2324447702, 2335361710, 2328712740, 2332323197
+        ],
+        "datafusion:parquet": [
+          310282771, 309796004, 310341156, 309566267, 308626137
+        ],
+        "datafusion:vortex-file-compressed": [
+          187258459, 185612738, 185741301, 184786697, 186327450
+        ],
+        "duckdb:parquet": [
+          237150963, 236740278, 237484738, 236763466, 236623990
+        ]
+      }
+    },
+    {
+      "name": "Q10",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJ0cGNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOiIxMCIsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4IjoxMH0",
+      "display_name": "tpch sf=10 Q10 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:lance": [
+          1375552441, 1371995942, 1376372509, 1372663617, 1369853390
+        ],
+        "datafusion:parquet": [
+          311558361, 311780691, 313553301, 312510795, 311384572
+        ],
+        "datafusion:vortex-file-compressed": [
+          70349202, 70279009, 72061446, 70842590, 70422309
+        ],
+        "duckdb:parquet": [
+          315915097, 311936978, 313520469, 314231421, 313917651
+        ]
+      }
+    },
+    {
+      "name": "Q11",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJ0cGNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOiIxMCIsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4IjoxMX0",
+      "display_name": "tpch sf=10 Q11 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:lance": [
+          306870434, 308174608, 308416604, 309559021, 308141885
+        ],
+        "datafusion:parquet": [
+          126818447, 128074912, 128307377, 127115284, 127111318
+        ],
+        "datafusion:vortex-file-compressed": [
+          45342712, 45612543, 45930139, 45447034, 45940037
+        ],
+        "duckdb:parquet": [43807706, 43592664, 43677931, 43609854, 43662905]
+      }
+    },
+    {
+      "name": "Q12",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJ0cGNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOiIxMCIsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4IjoxMn0",
+      "display_name": "tpch sf=10 Q12 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:lance": [
+          1808707516, 1812153786, 1806159854, 1805362030, 1809536704
+        ],
+        "datafusion:parquet": [
+          82484423, 82584828, 82364790, 82646717, 82958453
+        ],
+        "datafusion:vortex-file-compressed": [
+          35295049, 35826007, 35314120, 35260424, 35795803
+        ],
+        "duckdb:parquet": [71842260, 71201480, 71018144, 70838812, 70400241]
+      }
+    },
+    {
+      "name": "Q13",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJ0cGNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOiIxMCIsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4IjoxM30",
+      "display_name": "tpch sf=10 Q13 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:lance": [
+          1439196425, 1436911374, 1437951598, 1438515807, 1438391539
+        ],
+        "datafusion:parquet": [
+          210666696, 211213193, 211072492, 210560923, 210637606
+        ],
+        "datafusion:vortex-file-compressed": [
+          48856530, 48407672, 49584256, 49049902, 50223057
+        ],
+        "duckdb:parquet": [
+          293498245, 292624997, 294018449, 293948861, 291009422
+        ]
+      }
+    },
+    {
+      "name": "Q14",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJ0cGNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOiIxMCIsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4IjoxNH0",
+      "display_name": "tpch sf=10 Q14 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:lance": [
+          259944197, 259281176, 259774022, 258786668, 258909276
+        ],
+        "datafusion:parquet": [
+          83865637, 85404641, 86406150, 86550088, 87085322
+        ],
+        "datafusion:vortex-file-compressed": [
+          20813907, 20824769, 20659509, 20717499, 20473150
+        ],
+        "duckdb:parquet": [
+          101002991, 101089869, 102804064, 101216362, 100304314
+        ]
+      }
+    },
+    {
+      "name": "Q15",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJ0cGNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOiIxMCIsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4IjoxNX0",
+      "display_name": "tpch sf=10 Q15 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:lance": [
+          546640887, 540551102, 545745314, 547927148, 544767525
+        ],
+        "datafusion:parquet": [
+          106399009, 107755461, 106583407, 104275468, 106605982
+        ],
+        "datafusion:vortex-file-compressed": [
+          33819085, 33824513, 34137690, 33112722, 33123464
+        ],
+        "duckdb:parquet": [57913875, 57951643, 59733786, 58034774, 57560768]
+      }
+    },
+    {
+      "name": "Q16",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJ0cGNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOiIxMCIsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4IjoxNn0",
+      "display_name": "tpch sf=10 Q16 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:lance": [
+          194034768, 194447028, 195005258, 194846573, 196029253
+        ],
+        "datafusion:parquet": [
+          95410082, 95115969, 94518003, 94912151, 95351671
+        ],
+        "datafusion:vortex-file-compressed": [
+          37111541, 36953983, 37020151, 36764337, 36651435
+        ],
+        "duckdb:parquet": [100674942, 100051125, 100839649, 100437198, 99948268]
+      }
+    },
+    {
+      "name": "Q17",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJ0cGNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOiIxMCIsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4IjoxN30",
+      "display_name": "tpch sf=10 Q17 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:lance": [
+          1326854613, 1333766859, 1331206683, 1335413967, 1336674736
+        ],
+        "datafusion:parquet": [
+          217225687, 213988397, 215796077, 215246776, 216689697
+        ],
+        "datafusion:vortex-file-compressed": [
+          182349051, 178043973, 178145666, 178579225, 177137907
+        ],
+        "duckdb:parquet": [82764740, 81663301, 83844693, 82798057, 84697233]
+      }
+    },
+    {
+      "name": "Q18",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJ0cGNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOiIxMCIsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4IjoxOH0",
+      "display_name": "tpch sf=10 Q18 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:lance": [
+          1440649652, 1447565213, 1457970951, 1453512110, 1453180343
+        ],
+        "datafusion:parquet": [
+          267223597, 269449039, 268909981, 269683567, 269806321
+        ],
+        "datafusion:vortex-file-compressed": [
+          208477602, 206819944, 206825599, 209891546, 205584619
+        ],
+        "duckdb:parquet": [
+          160233436, 156207522, 160111090, 145561039, 158546132
+        ]
+      }
+    },
+    {
+      "name": "Q19",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJ0cGNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOiIxMCIsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4IjoxOX0",
+      "display_name": "tpch sf=10 Q19 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:lance": [
+          1291069493, 1290659659, 1285501663, 1277919355, 1277806242
+        ],
+        "datafusion:parquet": [
+          108524663, 109301510, 109216745, 108063994, 108285967
+        ],
+        "datafusion:vortex-file-compressed": [
+          28141283, 28254835, 27634644, 28033767, 28559250
+        ],
+        "duckdb:parquet": [98397556, 99043844, 97268315, 97841079, 98916638]
+      }
+    },
+    {
+      "name": "Q20",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJ0cGNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOiIxMCIsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4IjoyMH0",
+      "display_name": "tpch sf=10 Q20 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:lance": [
+          503763831, 504950036, 505145380, 508262948, 504450435
+        ],
+        "datafusion:parquet": [
+          185529402, 185329106, 185575719, 186207395, 186134779
+        ],
+        "datafusion:vortex-file-compressed": [
+          60140392, 61384303, 60699908, 60466586, 60820058
+        ],
+        "duckdb:parquet": [
+          147049224, 146755400, 147628594, 146875965, 147543765
+        ]
+      }
+    },
+    {
+      "name": "Q21",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJ0cGNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOiIxMCIsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4IjoyMX0",
+      "display_name": "tpch sf=10 Q21 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:lance": [
+          1832732880, 1833507460, 1835857805, 1839811977, 1834144425
+        ],
+        "datafusion:parquet": [
+          242714876, 242244157, 245362052, 245593952, 244867534
+        ],
+        "datafusion:vortex-file-compressed": [
+          179957786, 183142490, 182840804, 181406322, 183253187
+        ],
+        "duckdb:parquet": [
+          256489495, 253369561, 253195089, 255978191, 257690252
+        ]
+      }
+    },
+    {
+      "name": "Q22",
+      "slug": "qm.eyJrIjoiUXVlcnlNZWFzdXJlbWVudCIsImRhdGFzZXQiOiJ0cGNoIiwiZGF0YXNldF92YXJpYW50IjpudWxsLCJzY2FsZV9mYWN0b3IiOiIxMCIsInN0b3JhZ2UiOiJudm1lIiwicXVlcnlfaWR4IjoyMn0",
+      "display_name": "tpch sf=10 Q22 [nvme]",
+      "unit_kind": "time_ns",
+      "series": {
+        "datafusion:lance": [
+          224384137, 224452763, 223847181, 225566381, 223264068
+        ],
+        "datafusion:parquet": [
+          149828009, 149997964, 149129297, 149601609, 149767211
+        ],
+        "datafusion:vortex-file-compressed": [
+          25806272, 25906261, 25316392, 25608014, 25882764
+        ],
+        "duckdb:parquet": [
+          168308776, 168238576, 168707850, 168478030, 168086527
+        ]
+      }
+    }
+  ]
+}

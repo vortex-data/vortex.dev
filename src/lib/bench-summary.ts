@@ -64,11 +64,7 @@ export type Panel = {
   source?: { note: string };
 };
 
-/**
- * The results table's panels, the panels /faq adds to them
- * (`morePanelsFrom`), and when bench answered.
- */
-export type BenchSummary = { panels: Panel[]; more: Panel[]; readAt: Date };
+export type BenchSummary = { panels: Panel[]; readAt: Date };
 
 // The systems the table can compare, by bench's format name, in the order the
 // rows are listed (the table sorts them best first). Each panel chooses the
@@ -125,9 +121,10 @@ type Source = {
   };
 };
 
-// The six panels, in the table's order: five from bench and, beside
-// ClickBench, the GPU result bench does not publish yet, kept by hand in
-// gpu-result.ts with its source.
+// The seven panels, in the table's order: six from bench and, after the two
+// query benchmarks, the GPU result bench does not publish yet, kept by hand
+// in gpu-result.ts with its source. ClickBench and TPC-H run on DataFusion,
+// the one engine that runs all three formats.
 const SOURCES: (Source | Panel)[] = [
   {
     title: "Scan throughput",
@@ -162,6 +159,19 @@ const SOURCES: (Source | Panel)[] = [
     kind: "speed",
     better: "lower",
     group: "Clickbench",
+    rankings: (s) => s.rankings,
+    name: (f) => `datafusion:${f}`,
+    score: "score",
+    systems: WITH_LANCE,
+    times: { series: (f) => `datafusion:${f}`, bucket: (chart) => chart }
+  },
+  {
+    title: "TPC-H SF10 on DataFusion",
+    short: "TPC-H",
+    unit: "ms",
+    kind: "speed",
+    better: "lower",
+    group: "TPC-H (NVMe) (SF=10)",
     rankings: (s) => s.rankings,
     name: (f) => `datafusion:${f}`,
     score: "score",
@@ -319,24 +329,6 @@ function timeRows(
   });
 }
 
-// The panels /faq adds to the table's: TPC-H at scale factor 10 on
-// DataFusion, the one engine that runs all three formats. A panel shows
-// bench's scores against the fastest, so it needs no charts.
-const MORE_SOURCES: Source[] = [
-  {
-    title: "TPC-H SF10 on DataFusion",
-    short: "TPC-H",
-    unit: "× fastest",
-    kind: "speed",
-    better: "lower",
-    group: "TPC-H (NVMe) (SF=10)",
-    rankings: (s) => s.rankings,
-    name: (f) => `datafusion:${f}`,
-    score: "score",
-    systems: WITH_LANCE
-  }
-];
-
 /**
  * One bench panel from its group in bench's `/api/groups` payload and, for
  * a time panel, the group's charts. A shown system bench did not report
@@ -397,10 +389,10 @@ function panelFor(
 }
 
 /**
- * The results table's six panels: five from bench (its `/api/groups`
+ * The results table's seven panels: six from bench (its `/api/groups`
  * payload's `groups` array and, for a time panel, `charts`, its group's
  * `/api/group` payload by group name) and the hand-kept GPU panel. A bench
- * panel that `panelFor` cannot build gives `null`: the table shows six
+ * panel that `panelFor` cannot build gives `null`: the table shows seven
  * panels or none.
  */
 export function panelsFrom(
@@ -422,16 +414,6 @@ export function panelsFrom(
 }
 
 /**
- * The panels /faq adds to the table's (`MORE_SOURCES`), from the same
- * `/api/groups` payload. One that bench does not give is left out, so the
- * table's panels never depend on these.
- */
-export function morePanelsFrom(groups: unknown): Panel[] {
-  if (!Array.isArray(groups)) return [];
-  return MORE_SOURCES.flatMap((source) => panelFor(source, groups, {}) ?? []);
-}
-
-/**
  * The homepage's benchmark figures, read from bench.vortex.dev at build time
  * and again when the page rebuilds, at most once a day (ISR). A figure is never typed into the page.
  * It reads `/api/groups`, then the charts of each time panel's group
@@ -439,7 +421,7 @@ export function morePanelsFrom(groups: unknown): Panel[] {
  * bench answered the first read (its Date header), so a cached answer keeps
  * its own date. A read that fails or gets a 5xx or 429 is tried again, up to
  * three times. Any failure after that (a timeout, an error status, a payload
- * without all six panels) gives `null`, with a warning that says why, and
+ * without all seven panels) gives `null`, with a warning that says why, and
  * the page then leaves the table out (but see `summaryForPage`). A time
  * panel whose charts are missing from the window shows bench's scores.
  * `fetchImpl` and `io` are for tests.
@@ -514,11 +496,10 @@ export async function getBenchSummary(
       )
     );
     const panels = panelsFrom(groups, charts);
-    if (!panels) return fail("bench's groups do not give all six panels");
+    if (!panels) return fail("bench's groups do not give all seven panels");
     const date = new Date(answer.date ?? "");
     return {
       panels,
-      more: morePanelsFrom(groups),
       readAt: Number.isNaN(date.getTime()) ? new Date() : date
     };
   } catch (e) {
