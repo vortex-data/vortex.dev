@@ -284,7 +284,7 @@ export function faqs({
       question: "Who maintains Vortex, and how is it licensed?",
       answer: [
         "Vortex is a project of LF AI & Data, the part of the Linux Foundation for AI and data projects. The Vortex Technical Charter governs it. Spiral donated Vortex to the Linux Foundation.",
-        "Vortex has committers and maintainers who are affiliated with organizations that include Microsoft, Dash0, Firebolt, ClickHouse, Kenn Software, Carnegie Mellon University, CWI, and Tsinghua University. CWI is the national research institute for mathematics and computer science in the Netherlands.",
+        "Vortex has committers and maintainers who are affiliated with organizations that include Microsoft, Dash0, Firebolt, ClickHouse, Kenn Software, Carnegie Mellon University, CWI, and Tsinghua University.",
         "The code is under the Apache License 2.0, and the documentation is under CC BY 4.0."
       ],
       links: [
