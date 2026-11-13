@@ -46,7 +46,7 @@ A `SCHEMA_VERSION` bump must be coordinated with them in the same logical change
 
 The monorepo emitter `vortex-bench --gh-json-v3 <path>` writes **JSONL of bare records only** —
 one JSON object per line, no envelope. `records` are discriminated by a `kind` field
-(snake_case). The five kinds and their destination fact tables:
+(snake_case). The six kinds and their destination fact tables:
 
 | `kind`               | Destination table     |
 |----------------------|-----------------------|
@@ -55,6 +55,7 @@ one JSON object per line, no envelope. `records` are discriminated by a `kind` f
 | `compression_size`   | `compression_sizes`   |
 | `random_access_time` | `random_access_times` |
 | `vector_search_run`  | `vector_search_runs`  |
+| `file_size`          | `file_sizes`          |
 
 Each record's fields are defined by the producer structs in the monorepo's
 `vortex-bench/src/v3.rs` and match the column names of its fact table (see
@@ -70,6 +71,12 @@ and `vortex-file-compressed` as `format`; `encode` is the Vortex file write and 
 Its `uncompressed_bytes` is the column's canonical Arrow `Utf8View` size. The site lists these
 rows in the `String Encoding` groups and compares each encoder with `fsst`, so the prefix and the
 `fsst` label are part of the contract.
+
+`file_size` records are not written by `vortex-bench`: the monorepo's
+`scripts/capture-file-sizes.py` writes one per Vortex file a SQL benchmark leaves on disk, with
+`benchmark` (the `vx-bench` subcommand), `scale_factor`, `format`, `file` (the path below the format
+directory) and `value_bytes`. The read service does not chart them; CI reads them back as the develop
+baseline for the PR comment's file-size section.
 
 `random_access_time` records include `open_mode`. The value is `cached` for a reused accessor
 or `reopen` when each timed take includes a new accessor. Historical rows use `cached`.
