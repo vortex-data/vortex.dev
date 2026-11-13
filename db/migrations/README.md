@@ -84,6 +84,9 @@ lexicographic order, which equals numeric order under this convention.
   connections at most, and by default read-only transactions, a 30 s statement timeout and a
   60 s idle-in-transaction timeout. Only the connection limit is enforced; a session can change
   the defaults. The RDS master applied it in production on 2026-11-03.
+- `014_file_sizes.sql` — adds the `file_sizes` table for the on-disk size of each Vortex file a SQL
+  benchmark writes, which PR benchmark comments compare against develop. The default privileges from
+  004, 005 and 011 grant the three login roles their access. `migrator` applies it.
 
 This README + the runner ship in PR-1.2; `001`/`002` land in PR-1.3, `003` in
 PR-1.4, `004` in PR-2.1, `005` in the Phase-4 operator-gate work (the v4

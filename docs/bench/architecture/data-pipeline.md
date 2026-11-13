@@ -29,7 +29,7 @@ v2→v3→v4 migration a faithful copy rather than a re-derivation.
 
 ## The record model
 
-Every measurement is one of **five kinds**, each routed to its own fact table:
+Every measurement is one of **six kinds**, each routed to its own fact table:
 
 | `kind` | Fact table | Dimension tuple (besides `commit_sha`) |
 |---|---|---|
@@ -38,6 +38,7 @@ Every measurement is one of **five kinds**, each routed to its own fact table:
 | `compression_size` | `compression_sizes` | dataset, dataset_variant, format |
 | `random_access_time` | `random_access_times` | dataset, format |
 | `vector_search_run` | `vector_search_runs` | dataset, layout, flavor, threshold |
+| `file_size` | `file_sizes` | benchmark, scale_factor, format, file |
 
 Plus one **dimension table**, `commits`, keyed by `commit_sha` (40-hex), carrying
 the commit timestamp, message, author/committer, tree SHA and URL. The commit row
