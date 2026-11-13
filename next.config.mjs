@@ -87,7 +87,11 @@ const nextConfig = wrapWithPlausible({
   // deployed build however the runtime is configured. Vercel sets the
   // variable during its builds.
   env: {
-    VERCEL_GIT_COMMIT_SHA: process.env.VERCEL_GIT_COMMIT_SHA ?? "unknown"
+    VERCEL_GIT_COMMIT_SHA: process.env.VERCEL_GIT_COMMIT_SHA ?? "unknown",
+    // Which deployment this is, for the site's links to bench
+    // (src/lib/bench-link.ts): bench.vortex.dev on production, this
+    // deployment's /bench elsewhere. Embedded so client components see it.
+    VERCEL_ENV: process.env.VERCEL_ENV ?? ""
   },
   async headers() {
     return [

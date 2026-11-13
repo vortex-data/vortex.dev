@@ -16,6 +16,8 @@ export type NavLink = {
   current: "page" | "true" | null;
 };
 
+import { benchHref } from "@/lib/bench-link";
+
 const SITE = "https://vortex.dev";
 
 /**
@@ -40,7 +42,7 @@ export function navLinks(
     },
     {
       label: "Benchmarks",
-      href: bench ? bench.home : "https://bench.vortex.dev",
+      href: bench ? bench.home : benchHref(),
       internal: false,
       current: bench ? (benchLanding ? "page" : "true") : null
     },

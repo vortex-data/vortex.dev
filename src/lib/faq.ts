@@ -1,3 +1,4 @@
+import { benchHref } from "@/lib/bench-link";
 import { formatReadDate, type Panel } from "@/lib/bench-summary";
 import { baseUrl } from "@/lib/constants";
 import { GPU_DETAIL, GPU_PANEL } from "@/lib/gpu-result";
@@ -12,7 +13,6 @@ import {
 
 const REPO = "https://github.com/vortex-data/vortex";
 const DOCS = "https://docs.vortex.dev";
-const BENCH = "https://bench.vortex.dev";
 
 // What each speed panel measures, in a few words, by panel title
 // (bench-summary.ts and gpu-result.ts), for the answer that says where
@@ -163,8 +163,8 @@ export function faqs({
       }),
       ...(hasGpu && { after: [GPU_DETAIL] }),
       links: [
-        { href: `${BENCH}/`, label: "Every benchmark on bench.vortex.dev" },
-        { href: `${BENCH}/methodology`, label: "How the benchmarks run" }
+        { href: benchHref("/"), label: "Every benchmark on bench.vortex.dev" },
+        { href: benchHref("/methodology"), label: "How the benchmarks run" }
       ]
     },
     {
@@ -219,7 +219,7 @@ export function faqs({
         "Both formats are under the Apache License 2.0. Vortex is a Linux Foundation project. LF Projects, part of the Linux Foundation, holds the Vortex trademark, and the charter keeps the project's code under the Apache License. Changing the charter takes a two-thirds vote of the Technical Steering Committee and the approval of LF Projects. Lance has its own governance, but the name and code are held by a private company (LanceDB) instead of an independent foundation."
       ],
       links: [
-        { href: `${BENCH}/`, label: "Every benchmark on bench.vortex.dev" },
+        { href: benchHref("/"), label: "Every benchmark on bench.vortex.dev" },
         {
           href: `${baseUrl}/charter.pdf`,
           label: "The Vortex Technical Charter"

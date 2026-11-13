@@ -1,8 +1,7 @@
 import { OpenInNewIcon } from "@/components/icons";
+import { benchHref } from "@/lib/bench-link";
 import { formatReadDate, type Panel } from "@/lib/bench-summary";
 import { resultsRow, resultsSystems } from "@/vendor/vortex-design/results.js";
-
-const SOURCE_URL = "https://bench.vortex.dev";
 
 const classes = (...names: (string | false)[]) =>
   names.filter(Boolean).join(" ") || undefined;
@@ -31,7 +30,7 @@ export function ResultsTable({
       <p className="vx-results-head">
         <span>File format benchmarks</span>
         <span className="vx-label-sm vx-results-src">
-          <a className="vx-source vx-nav-link" href={SOURCE_URL}>
+          <a className="vx-source vx-nav-link" href={benchHref()}>
             bench.vortex.dev
             <OpenInNewIcon />
           </a>
