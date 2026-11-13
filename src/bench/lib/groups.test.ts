@@ -642,6 +642,8 @@ describe.skipIf(!databaseAvailable)('summary math fidelity (testcontainers Postg
       [develop, 'tpch', '10.0', 'vortex-compact', 'lineitem.vortex', 1000],
       [nightly, 'tpch', '100', 'vortex-file-compressed', 'lineitem.vortex', 40000],
       [develop, 'clickbench', '1.0', 'vortex-file-compressed', 'hits_0.vortex', 1000],
+      [develop, 'tpcds', '1.0', 'vortex-file-compressed', 'store_sales.vortex', 500],
+      [develop, 'appian', '1.0', 'vortex-file-compressed', 'data.vortex', 70],
     ] as const) {
       await getPool().query(
         `INSERT INTO file_sizes
@@ -655,11 +657,15 @@ describe.skipIf(!databaseAvailable)('summary math fidelity (testcontainers Postg
     expect(groups.map((group) => group.name)).toEqual(['SQL File Size']);
     const [group] = groups;
     expect(groupKeyFromSlug(defined(group).slug)).toEqual({ k: 'FileSizeGroup' });
+    // Clickbench, TPC-H and TPC-DS lead; the rest follow by name. TPC-H always names its scale
+    // factor, while Clickbench and Appian have none.
     expect(defined(group).charts.map((chart) => chart.name)).toEqual([
       'clickbench',
-      'tpch',
+      'tpch sf=1.0',
       'tpch sf=10.0',
       'tpch sf=100',
+      'tpcds sf=1.0',
+      'appian',
     ]);
     expect(chartKeyFromSlug(defined(defined(group).charts[3]).slug)).toEqual({
       k: 'FileSize',

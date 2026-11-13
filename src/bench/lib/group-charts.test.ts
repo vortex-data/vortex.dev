@@ -648,7 +648,7 @@ describe.skipIf(!databaseAvailable)('groupChartPayloads at the window edges', ()
       ...defined(OTHER_FAMILIES[3]),
       parseCommitWindow('all'),
     );
-    expect(sf1?.display_name).toBe('tpch');
+    expect(sf1?.display_name).toBe('tpch sf=1.0');
     expect(sf1?.unit_kind).toBe('bytes');
     expect(sf1?.series).toEqual({
       'vortex-compact': [null, null, null, null, 88, 86],
