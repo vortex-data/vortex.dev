@@ -182,7 +182,7 @@ test.describe("home", () => {
 });
 
 test.describe("home bands", () => {
-  test("the results table shows six benchmarks with a source link, or is absent", async ({
+  test("the results table shows seven benchmarks with a source link, or is absent", async ({
     page
   }) => {
     await page.goto("/");
@@ -194,8 +194,8 @@ test.describe("home bands", () => {
       return;
     }
     await expect(table).toBeVisible();
-    await expect(table.locator("tbody tr")).toHaveCount(6);
-    await expect(table.locator("tbody td.is-ours")).toHaveCount(6);
+    await expect(table.locator("tbody tr")).toHaveCount(7);
+    await expect(table.locator("tbody td.is-ours")).toHaveCount(7);
     await expect(table).toContainText(/read \d+ \w{3} \d{4}/);
     const source = table.locator('a[href="https://bench.vortex.dev"]');
     await expect(source).toBeVisible();
@@ -226,6 +226,7 @@ test.describe("home bands", () => {
       "Scan",
       "Write",
       "ClickBench",
+      "TPC-H",
       "GPU, cuDF",
       "Random access",
       "File size"
@@ -751,6 +752,22 @@ test.describe("404", () => {
       page.getByRole("heading", { level: 1, name: "404" })
     ).toBeVisible();
   });
+
+  // 7 Nov 2026: the server sent the 404's title, and then the client set the
+  // route's own title, which was bench's layout's "Benchmarks | Vortex". Both
+  // routes that call notFound() must give the 404's title after hydration.
+  for (const path of ["/bench/no-such-page", "/bench/chart/not-a-chart"]) {
+    test(`${path} keeps the 404 title after it loads`, async ({ page }) => {
+      const res = await page.goto(path);
+      expect(res?.status()).toBe(404);
+      await page.waitForLoadState("networkidle");
+      await expect(page).toHaveTitle("Page not found | Vortex");
+      // Hydration has run when the theme bootstrap's class is gone.
+      await expect(page.locator("html")).toHaveClass(/\bjs\b/);
+      await page.waitForTimeout(1000);
+      await expect(page).toHaveTitle("Page not found | Vortex");
+    });
+  }
 });
 
 // Note 56: under the blog a 404 follows the reader's theme, and the mark

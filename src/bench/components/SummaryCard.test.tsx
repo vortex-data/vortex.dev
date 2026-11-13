@@ -140,6 +140,26 @@ describe('SummaryCard', () => {
     expect(html.match(/#1/g)).toHaveLength(2);
   });
 
+  it('shows a dash for a size total the formats cannot share', () => {
+    const html = render({
+      type: 'compressionSize',
+      title: 'Compression Size Summary',
+      rankings: [
+        {
+          name: 'parquet',
+          minRatio: 1,
+          ratio: 1,
+          maxRatio: 1,
+          compressionRatio: 4,
+          totalBytes: null,
+        },
+      ],
+      explanation: 'e',
+    });
+    expect(html).toContain('class="score-runtime compression-size-value">—</span>');
+    expect(html).toContain('class="compression-size-heading compression-size-total-unit"></span>');
+  });
+
   it('renders nothing for a compression card with no rankings', () => {
     expect(render({ type: 'compression', title: 't', rankings: [], explanation: 'e' })).toBe('');
   });
@@ -155,6 +175,7 @@ describe('SummaryCard', () => {
           ratio: 0.45,
           maxRatio: 1.55,
           compressionRatio: 8.25,
+          totalBytes: 1_603_980_000,
         },
         {
           name: 'parquet',
@@ -162,6 +183,7 @@ describe('SummaryCard', () => {
           ratio: 1,
           maxRatio: 1,
           compressionRatio: 4.5,
+          totalBytes: 1_428_150_000,
         },
         {
           name: 'lance',
@@ -169,6 +191,7 @@ describe('SummaryCard', () => {
           ratio: 1.2,
           maxRatio: 1.3,
           compressionRatio: null,
+          totalBytes: 2_500_000,
         },
       ],
       explanation: 'higher is better',
@@ -177,25 +200,42 @@ describe('SummaryCard', () => {
     expect(html).toContain('class="compression-size-scores"');
     expect(html).toContain('>vs Arrow<');
     expect(html).toContain('>vs Parquet<');
-    expect(html).not.toContain('GeoMean');
-    expect(html.match(/>Mean</g)).toHaveLength(1);
+    expect(html.match(/>GeoMean</g)).toHaveLength(1);
+    expect(html).not.toContain('>Mean<');
+    expect(html.match(/>Total</g)).toHaveLength(1);
     expect(html).toContain('>Min<');
     expect(html).toContain('>Max<');
     expect(html).not.toMatch(/⬇️|📊|⬆️/);
     expect(html).toContain('class="score-value compression-size-value">8.25x</span>');
-    expect(html).toContain('class="score-runtime compression-size-value">0.55x</span>');
+    expect(html).toContain(
+      'class="score-runtime compression-size-value compression-size-range">0.55x</span>',
+    );
     expect(html).toContain('class="score-value compression-size-value">0.45x</span>');
-    expect(html).toContain('class="score-runtime compression-size-value">1.55x</span>');
+    expect(html).toContain(
+      'class="score-runtime compression-size-value compression-size-range">1.55x</span>',
+    );
+    // Phones hide Min and Max, never the geomean.
+    expect(html.match(/compression-size-range/g)).toHaveLength(2 + 2 * 3);
     expect(html.indexOf('8.25x')).toBeLessThan(html.indexOf('0.55x'));
+    // Every total is in one unit, which the header names once.
+    expect(html).toContain(
+      'class="compression-size-heading compression-size-total-unit">MB</span>',
+    );
+    const total = (value: string) =>
+      `class="score-runtime compression-size-value"><span class="vx-sr-only">Total: </span>${value}<span class="vx-sr-only"> MB</span></span>`;
+    expect(html).toContain(total('1,604.0'));
+    expect(html).toContain(total('1,428.2'));
+    expect(html).toContain(total('2.5'));
+    // Total sits between the format's name and its ratio to Arrow.
+    expect(html.indexOf('1,604.0')).toBeLessThan(html.indexOf('8.25x'));
     expect(html).toContain('parquet');
     expect(html).toContain('lance');
     expect(html).toContain('class="score-rank">#3</span>');
     expect(html).toContain('class="score-value compression-size-value">—</span>');
     expect(html).toContain(
-      'class="vx-sr-only">vortex: minimum 0.55x, mean 0.45x, maximum 1.55x</span>',
+      'class="vx-sr-only">vortex: minimum 0.55x, geometric mean 0.45x, maximum 1.55x</span>',
     );
     expect(html).toContain('aria-hidden="true"');
-    expect(html).not.toContain('GB');
   });
 
   it('renders a queryBenchmark card with scores and total runtimes', () => {
@@ -264,8 +304,22 @@ describe('SummaryCard', () => {
       type: 'compressionSize',
       title: 'Compression Size Summary',
       rankings: [
-        { name: 'vortex-file-compressed', minRatio: 1, ratio: 1, maxRatio: 1, compressionRatio: 8 },
-        { name: 'lance', minRatio: 1, ratio: 1, maxRatio: 1, compressionRatio: 2 },
+        {
+          name: 'vortex-file-compressed',
+          minRatio: 1,
+          ratio: 1,
+          maxRatio: 1,
+          compressionRatio: 8,
+          totalBytes: 100,
+        },
+        {
+          name: 'lance',
+          minRatio: 1,
+          ratio: 1,
+          maxRatio: 1,
+          compressionRatio: 2,
+          totalBytes: 200,
+        },
       ],
       explanation: 'e',
     });

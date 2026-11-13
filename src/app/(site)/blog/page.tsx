@@ -3,23 +3,26 @@ import { PostRows } from "@/components/blog/post-rows";
 import { NewsletterForm } from "@/components/newsletter-form";
 import { externalPosts } from "@/content/links";
 import { getAllPosts } from "@/lib/blog";
+import { baseUrl } from "@/lib/constants";
 import { indexEntries } from "@/lib/posts";
+
+const DESCRIPTION =
+  "Posts about Vortex, the open-source columnar file format: how its compression and encodings work, benchmarks against Parquet, releases, and who uses it.";
 
 export const metadata: Metadata = {
   title: "Blog | Vortex",
-  description:
-    "Latest updates and insights from the Vortex team about columnar file formats, performance optimization, and cutting-edge research.",
+  description: DESCRIPTION,
   openGraph: {
     title: "Blog | Vortex",
     description:
       "Latest updates and insights from the Vortex team about columnar file formats, performance optimization, and cutting-edge research.",
     siteName: "Vortex",
-    url: "https://vortex.dev/blog",
+    url: `${baseUrl}/blog`,
     type: "website",
     locale: "en_US"
   },
   alternates: {
-    canonical: "https://vortex.dev/blog"
+    canonical: `${baseUrl}/blog`
   }
 };
 

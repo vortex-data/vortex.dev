@@ -33,7 +33,8 @@ export const BENCH_DATA_TAG = 'bench-data';
 
 /**
  * Backstop revalidation interval (seconds) for every cached read. The
- * post-ingest revalidate hook is the primary freshness mechanism; this bound
+ * revalidate hook that runs after each benchmark CI run is the primary
+ * freshness mechanism; this bound
  * caps staleness at twenty-four hours if that hook ever fails to fire, so the
  * layer degrades to bounded staleness rather than serving stale data forever.
  *
@@ -41,8 +42,8 @@ export const BENCH_DATA_TAG = 'bench-data';
  * site: a longer backstop keeps the default last-100 window warm across
  * overnight idle gaps, so a CDN miss reads this Data Cache instead of paying
  * the multi-second cold database fill. The freshness cost is bounded by the
- * revalidate hook, which marks the tag stale on every ingest once its env is
- * set.
+ * revalidate hook, which marks the tag stale after every benchmark CI run once
+ * its env is set.
  */
 export const DATA_CACHE_BACKSTOP_SECONDS = 86400;
 
@@ -56,7 +57,7 @@ const CACHE_OPTIONS = { tags: [BENCH_DATA_TAG], revalidate: DATA_CACHE_BACKSTOP_
  * code can serve payloads the old code computed until the next ingest.
  * It is independent of the producer-facing benchmark schema version.
  */
-const GROUP_PAYLOAD_CACHE_VERSION = 'v11';
+const GROUP_PAYLOAD_CACHE_VERSION = 'v12';
 
 // The default last-100 group bundle, keyed by group slug. The slug is the cache
 // key (an `unstable_cache` argument), so one wrapper covers every group. A

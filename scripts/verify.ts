@@ -123,7 +123,11 @@ function jsonLd(html: string): JsonLdResult {
   for (const m of html.matchAll(re)) {
     const raw = m[1] ?? "";
     try {
-      blocks.push(JSON.parse(raw));
+      // A block is one node or an @graph of nodes; check each node.
+      const data = JSON.parse(raw) as Record<string, unknown>;
+      const graph = data["@graph"];
+      if (Array.isArray(graph)) blocks.push(...graph);
+      else blocks.push(data);
     } catch {
       return { ok: false, parseError: raw.trim().slice(0, 80) };
     }
@@ -163,7 +167,7 @@ async function checkSitemap(): Promise<string[]> {
   const locs = [...r.body.matchAll(/<loc>([^<]+)<\/loc>/g)].flatMap((m) =>
     m[1] ? [m[1]] : []
   );
-  const required = ["/", "/blog"];
+  const required = ["/", "/blog", "/faq"];
   const paths = locs.map((l) => l.replace(/^https?:\/\/[^/]+/, "") || "/");
   const missing = required.filter((p) => !paths.includes(p));
   if (missing.length > 0) {
@@ -305,18 +309,39 @@ async function checkRoute(
     allOk = false;
   }
 
-  // JSON-LD Article schema on blog posts
+  // JSON-LD Article schema on blog posts: Article or its BlogPosting subtype
   if (path.startsWith("/blog/") && path !== "/blog") {
     const ld = jsonLd(r.body);
     if (!ld.ok) {
       fail(`json-ld ${path}`, `parse error: ${ld.parseError}`);
       allOk = false;
     } else {
-      const article = ld.blocks.find((b) => b["@type"] === "Article");
+      const article = ld.blocks.find(
+        (b) => b["@type"] === "Article" || b["@type"] === "BlogPosting"
+      );
       if (!article) {
         fail(`json-ld ${path}`, "no Article schema");
         allOk = false;
       }
+    }
+  }
+
+  // FAQPage schema on /faq, with one Question per heading
+  if (path === "/faq") {
+    const ld = jsonLd(r.body);
+    const faq = ld.ok
+      ? ld.blocks.find((b) => b["@type"] === "FAQPage")
+      : undefined;
+    const questions = Array.isArray(faq?.mainEntity)
+      ? faq.mainEntity.length
+      : 0;
+    const headings = (r.body.match(/<h2\b/g) ?? []).length;
+    if (!faq || questions === 0 || questions !== headings) {
+      fail(
+        `json-ld ${path}`,
+        `FAQPage with ${questions} questions for ${headings} headings`
+      );
+      allOk = false;
     }
   }
 

@@ -61,24 +61,27 @@ app, all sharing the `bench-data` tag.
 
 The backstop bounds staleness; `POST /api/revalidate`
 ([`src/app/(bench)/bench/api/revalidate/route.ts`](../../../src/app/(bench)/bench/api/revalidate/route.ts))
-*removes* it. On a successful ingest the emitter calls it and it runs
+*removes* it. After the ingest jobs of a benchmark CI run finish, the monorepo's
+`scripts/refresh-bench-site.py` calls it once, and it runs
 `revalidateTag('bench-data', 'max')`, which marks the entries stale rather than
 dropping them: the next read of each serves the previous data once and refreshes
 it in the background, and the read after that gets the fresh data, instead of
 waiting out the 24-hour cap. No read waits on the database because of an ingest;
 new results can take about one more CDN cycle (five minutes) to show. Dropping
 the entries instead (`{ expire: 0 }`) failed in production: every fill then
-shared one advisory lock, the emitter revalidates after every benchmark job
+shared one advisory lock, the emitter then revalidated after every benchmark job
 (about once a minute during a develop run), and the reads that waited on the
 lock ran out of retries. A failed render of `/` then stayed in the CDN for five
 minutes. Each entry now fills under its own lock (see
-[read-path.md](read-path.md#database-connection)). The
+[read-path.md](read-path.md#database-connection)), and the monorepo now
+revalidates once per run, not once per job. The
 endpoint **fails closed** — a missing `BENCH_REVALIDATE_TOKEN` is a `503`, never
-a silent accept — and the post-ingest hook is **best-effort**: every failure in
-it is caught, logged, and swallowed so a cache-refresh problem can never change
-an ingest's exit code. That is why the whole path is safe to ship before the
-emitter cutover wires the token (it is inert until both `BENCH_SITE_BASE_URL`
-and the token are set).
+a silent accept. The refresh runs in its own CI job, apart from the ingest jobs,
+so a cache-refresh problem can never change an ingest's exit code. The script
+retries a transport error, `429`, or `5xx` up to three times. A revalidate that
+still fails fails only the refresh job. The refresh is inert until both
+`BENCH_SITE_BASE_URL` and the token are set, which is why the path was safe to
+ship before the emitter cutover wired the token.
 
 ### Keeping the function and its connections warm
 

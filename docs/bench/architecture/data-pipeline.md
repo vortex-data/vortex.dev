@@ -29,7 +29,7 @@ v2→v3→v4 migration a faithful copy rather than a re-derivation.
 
 ## The record model
 
-Every measurement is one of **five kinds**, each routed to its own fact table:
+Every measurement is one of **six kinds**, each routed to its own fact table:
 
 | `kind` | Fact table | Dimension tuple (besides `commit_sha`) |
 |---|---|---|
@@ -38,6 +38,7 @@ Every measurement is one of **five kinds**, each routed to its own fact table:
 | `compression_size` | `compression_sizes` | dataset, dataset_variant, format |
 | `random_access_time` | `random_access_times` | dataset, format |
 | `vector_search_run` | `vector_search_runs` | dataset, layout, flavor, threshold |
+| `file_size` | `file_sizes` | benchmark, scale_factor, format, file |
 
 Plus one **dimension table**, `commits`, keyed by `commit_sha` (40-hex), carrying
 the commit timestamp, message, author/committer, tree SHA and URL. The commit row
@@ -88,9 +89,10 @@ every CI ingest run fails. Full procedure in
 
 `post-ingest.py --postgres` (required in monorepo benchmark CI) writes the
 records **directly to RDS** as the least-privilege `bench_ingest` IAM role
-(`INSERT … ON CONFLICT (measurement_id) DO UPDATE`), then pings
-`POST {BENCH_SITE_BASE_URL}/api/revalidate` to flush the Next.js read cache.
-Each JSONL file applies in one transaction. The retired v3 HTTP path
+(`INSERT … ON CONFLICT (measurement_id) DO UPDATE`). Each JSONL file applies in
+one transaction. After the ingest jobs of a CI run finish, the monorepo's
+`scripts/refresh-bench-site.py` sends one `POST {BENCH_SITE_BASE_URL}/api/revalidate`
+to flush the Next.js read cache. The retired v3 HTTP path
 (`POST /api/ingest` into the Rust server) is described in
 [`../legacy.md`](../legacy.md).
 

@@ -121,9 +121,10 @@ type Source = {
   };
 };
 
-// The six panels, in the table's order: five from bench and, beside
-// ClickBench, the GPU result bench does not publish yet, kept by hand in
-// gpu-result.ts with its source.
+// The seven panels, in the table's order: six from bench and, after the two
+// query benchmarks, the GPU result bench does not publish yet, kept by hand
+// in gpu-result.ts with its source. ClickBench and TPC-H run on DataFusion,
+// the one engine that runs all three formats.
 const SOURCES: (Source | Panel)[] = [
   {
     title: "Scan throughput",
@@ -158,6 +159,19 @@ const SOURCES: (Source | Panel)[] = [
     kind: "speed",
     better: "lower",
     group: "Clickbench",
+    rankings: (s) => s.rankings,
+    name: (f) => `datafusion:${f}`,
+    score: "score",
+    systems: WITH_LANCE,
+    times: { series: (f) => `datafusion:${f}`, bucket: (chart) => chart }
+  },
+  {
+    title: "TPC-H SF10 on DataFusion",
+    short: "TPC-H",
+    unit: "ms",
+    kind: "speed",
+    better: "lower",
+    group: "TPC-H (NVMe) (SF=10)",
     rankings: (s) => s.rankings,
     name: (f) => `datafusion:${f}`,
     score: "score",
@@ -316,13 +330,69 @@ function timeRows(
 }
 
 /**
- * The results table's six panels: five from bench (its `/api/groups`
+ * One bench panel from its group in bench's `/api/groups` payload and, for
+ * a time panel, the group's charts. A shown system bench did not report
+ * keeps its row with no score, so the table says "Not measured". A group
+ * that is missing, or that reports none of the shown systems, gives `null`.
+ */
+function panelFor(
+  source: Source,
+  groups: unknown[],
+  charts: Record<string, unknown>
+): Panel | null {
+  const group = groups.find((g) => isObject(g) && g.name === source.group);
+  const summary = isObject(group) ? group.summary : undefined;
+  const list = isObject(summary) ? source.rankings(summary) : undefined;
+  if (!Array.isArray(list)) return null;
+  const rankings = list.filter(isObject);
+  let rows: Row[] = SYSTEMS.map(([system, format]) => ({
+    system,
+    ...rowFor(source, rankings, format)
+  }));
+  let { unit } = source;
+  if (source.times) {
+    // bench's chart window counts commits across the repository, so a
+    // benchmark that has not run lately has no times in it although its
+    // scores stand. Then the panel shows the scores, against the fastest,
+    // and the table stays on the page.
+    const listed = isObject(group) ? group.charts : undefined;
+    const expected = Array.isArray(listed)
+      ? listed.flatMap((c) =>
+          isObject(c) && typeof c.name === "string" ? [c.name] : []
+        )
+      : undefined;
+    const times = groupTimes(
+      charts[source.group],
+      source.times.bucket,
+      expected
+    );
+    const timed = times
+      ? timeRows({ ...source, times: source.times }, rankings, times)
+      : null;
+    // A window that holds only some of the queries would give a geomean
+    // over a partial set, so the times must cover every bucket bench's
+    // score covers.
+    const has = (name: string) => {
+      const t = timed?.find((r) => r.system === name);
+      const s = rows.find((r) => r.system === name);
+      return (
+        !!t && measured(t) && t.measured === t.total && t.total === s?.total
+      );
+    };
+    if (timed && has("Vortex") && has("Parquet")) rows = timed;
+    else unit = "× fastest";
+  }
+  const { title, short, kind, better, systems } = source;
+  const shown = rows.filter((r) => systems.includes(r.system));
+  if (shown.every((r) => !measured(r))) return null;
+  return { title, short, unit, kind, better, rows, systems };
+}
+
+/**
+ * The results table's seven panels: six from bench (its `/api/groups`
  * payload's `groups` array and, for a time panel, `charts`, its group's
- * `/api/group` payload by group name) and the hand-kept GPU panel. Each
- * bench panel has a row for every system the table knows and names the ones
- * it shows (`systems`). A shown system bench did not report keeps its row
- * with no score, so the table says "Not measured". A group that is missing,
- * or that reports none of the shown systems, gives `null`: the table shows six
+ * `/api/group` payload by group name) and the hand-kept GPU panel. A bench
+ * panel that `panelFor` cannot build gives `null`: the table shows seven
  * panels or none.
  */
 export function panelsFrom(
@@ -336,54 +406,9 @@ export function panelsFrom(
       panels.push(source);
       continue;
     }
-    const group = groups.find((g) => isObject(g) && g.name === source.group);
-    const summary = isObject(group) ? group.summary : undefined;
-    const list = isObject(summary) ? source.rankings(summary) : undefined;
-    if (!Array.isArray(list)) return null;
-    const rankings = list.filter(isObject);
-    const scoreRows = (): Row[] =>
-      SYSTEMS.map(([system, format]) => ({
-        system,
-        ...rowFor(source, rankings, format)
-      }));
-    let rows = scoreRows();
-    let { unit } = source;
-    if (source.times) {
-      // bench's chart window counts commits across the repository, so a
-      // benchmark that has not run lately has no times in it although its
-      // scores stand. Then the panel shows the scores, against the fastest,
-      // and the table stays on the page.
-      const listed = isObject(group) ? group.charts : undefined;
-      const expected = Array.isArray(listed)
-        ? listed.flatMap((c) =>
-            isObject(c) && typeof c.name === "string" ? [c.name] : []
-          )
-        : undefined;
-      const times = groupTimes(
-        charts[source.group],
-        source.times.bucket,
-        expected
-      );
-      const timed = times
-        ? timeRows({ ...source, times: source.times }, rankings, times)
-        : null;
-      // A window that holds only some of the queries would give a geomean
-      // over a partial set, so the times must cover every bucket bench's
-      // score covers.
-      const has = (name: string) => {
-        const t = timed?.find((r) => r.system === name);
-        const s = rows.find((r) => r.system === name);
-        return (
-          !!t && measured(t) && t.measured === t.total && t.total === s?.total
-        );
-      };
-      if (timed && has("Vortex") && has("Parquet")) rows = timed;
-      else unit = "× fastest";
-    }
-    const { title, short, kind, better, systems } = source;
-    const shown = rows.filter((r) => systems.includes(r.system));
-    if (shown.every((r) => !measured(r))) return null;
-    panels.push({ title, short, unit, kind, better, rows, systems });
+    const panel = panelFor(source, groups, charts);
+    if (!panel) return null;
+    panels.push(panel);
   }
   return panels;
 }
@@ -396,7 +421,7 @@ export function panelsFrom(
  * bench answered the first read (its Date header), so a cached answer keeps
  * its own date. A read that fails or gets a 5xx or 429 is tried again, up to
  * three times. Any failure after that (a timeout, an error status, a payload
- * without all six panels) gives `null`, with a warning that says why, and
+ * without all seven panels) gives `null`, with a warning that says why, and
  * the page then leaves the table out (but see `summaryForPage`). A time
  * panel whose charts are missing from the window shows bench's scores.
  * `fetchImpl` and `io` are for tests.
@@ -471,7 +496,7 @@ export async function getBenchSummary(
       )
     );
     const panels = panelsFrom(groups, charts);
-    if (!panels) return fail("bench's groups do not give all six panels");
+    if (!panels) return fail("bench's groups do not give all seven panels");
     const date = new Date(answer.date ?? "");
     return {
       panels,

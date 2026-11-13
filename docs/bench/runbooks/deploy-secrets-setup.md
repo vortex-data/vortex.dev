@@ -142,9 +142,9 @@ team's secret store. **Never paste a value into this document.**
 | `BENCH_DB_POOL_MAX` | Max connections in the pg pool (default `8`; omit to use default) | Existing monorepo Vercel project env |
 | `BENCH_DB_IDLE_TIMEOUT_MS` | Pool idle-connection timeout in ms (default `5000`; positive integer; omit to use default) | Existing monorepo Vercel project env |
 | `BENCH_DB_CONNECTION_TIMEOUT_MS` | New-connection and pool-slot timeout in ms (default `5000`; positive integer; omit to use default) | Existing monorepo Vercel project env |
-| `BENCH_REVALIDATE_TOKEN` | Bearer token for `POST /api/revalidate` — must match the value the monorepo's emitter caller (`post-ingest.py`) sends | Existing monorepo Vercel project env; coordinate with the monorepo caller (see note below) |
+| `BENCH_REVALIDATE_TOKEN` | Bearer token for `POST /api/revalidate` — must match the value the monorepo's caller (`refresh-bench-site.py`) sends | Existing monorepo Vercel project env; coordinate with the monorepo caller (see note below) |
 
-> **`BENCH_REVALIDATE_TOKEN` coordination:** this token authenticates the monorepo's `post-ingest.py`
+> **`BENCH_REVALIDATE_TOKEN` coordination:** this token authenticates the monorepo's `refresh-bench-site.py`
 > revalidation caller against `POST /api/revalidate`. Setting it on the new project only makes the new
 > project ACCEPT a matching bearer — it does **not** redirect the emitter's traffic here. The emitter
 > POSTs to whatever base URL it is configured with (currently the monorepo-owned project's domain), so
@@ -152,7 +152,7 @@ team's secret store. **Never paste a value into this document.**
 > emitter's configured URL), revalidation traffic continues to hit the **old** project — that is
 > expected during the Phase-4 setup window. Use the SAME token value the monorepo caller sends; if you
 > rotate it, update it in both places: this Vercel project and the monorepo's secret that feeds
-> `post-ingest.py`.
+> `refresh-bench-site.py`.
 
 > **`BENCH_DATA_TAG` is not env-configurable:** the Next.js Data Cache tag is a compile-time constant
 > (`export const BENCH_DATA_TAG = 'bench-data'` in `src/bench/lib/data-cache.ts`), imported directly by

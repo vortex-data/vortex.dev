@@ -25,16 +25,19 @@ const fixture = (name: string) =>
 
 // bench.vortex.dev/api/groups as it answered on 29 Oct 2026, cut down to each
 // group's name, slug and summary: the four groups the card reads, Random
-// Access (S3), which it no longer reads, and one it ignores.
+// Access (S3), which it no longer reads, and one it ignores. TPC-H (NVMe)
+// (SF=10), which /faq reads, is as bench answered on 11 Nov 2026.
 const PAYLOAD = fixture("bench-groups.json") as {
   groups: Record<string, unknown>[];
 };
 // bench.vortex.dev/api/group/{slug}?n=25 for the two time panels' groups, read
 // at the same time, cut down to the series the card reads (and one it does
 // not) and their last five commits. Random access's hot series were read on
-// 30 Oct 2026, from the same two commits as the rest.
+// 30 Oct 2026, from the same two commits as the rest. TPC-H (NVMe) (SF=10)'s
+// were read on 11 Nov 2026, with its group summary.
 const CHARTS = {
   Clickbench: fixture("bench-group-clickbench.json"),
+  "TPC-H (NVMe) (SF=10)": fixture("bench-group-tpch-sf10-nvme.json"),
   "Random Access (NVMe)": fixture("bench-group-random-access-nvme.json")
 };
 
@@ -70,6 +73,12 @@ const CLICKBENCH_MS = {
   Parquet: 65.621614465414,
   Lance: 578.6306006236966
 };
+// TPC-H SF10's, the same way (Python, 11 Nov 2026), over its 22 queries.
+const TPCH_MS = {
+  Vortex: 60.50866557993905,
+  Parquet: 143.30314256082335,
+  Lance: 846.7997612370476
+};
 const RANDOM_ACCESS_MS = {
   Vortex: 0.7290522397517741,
   Parquet: 70.61301694616571,
@@ -77,11 +86,11 @@ const RANDOM_ACCESS_MS = {
   Arrow: 3.7780608403173668
 };
 
-// The six panels from the fixtures. The ratio panels carry bench's published
+// The seven panels from the fixtures. The ratio panels carry bench's published
 // geomean ratios, unrounded. The time panels carry each system's geomean
 // time in ms (checked below to within 1e-9 of the values above), with its
-// coverage in queries or datasets. The hand-kept GPU panel sits beside
-// ClickBench. Each bench panel has a row for every system the card knows and
+// coverage in queries or datasets. The hand-kept GPU panel follows the two
+// query benchmarks. Each bench panel has a row for every system the card knows and
 // names the ones it shows: Lance everywhere, Arrow only in random access and
 // file size, where bench runs it. Titles join their parts with commas, so a
 // line breaks cleanly.
@@ -131,6 +140,15 @@ const PANELS: Panel[] = [
     rows: timeRows(CLICKBENCH_MS, 43),
     systems: LANCE
   },
+  {
+    title: "TPC-H SF10 on DataFusion",
+    short: "TPC-H",
+    unit: "ms",
+    kind: "speed",
+    better: "lower",
+    rows: timeRows(TPCH_MS, 22),
+    systems: LANCE
+  },
   GPU_PANEL,
   {
     title: "Random access, NVMe, hot",
@@ -170,7 +188,7 @@ const near = (panels: Panel[] | null | undefined) =>
   }));
 
 describe("panelsFrom", () => {
-  it("reads the six panels from bench's group summaries and charts, in order", () => {
+  it("reads the seven panels from bench's group summaries and charts, in order", () => {
     assert.deepEqual(near(panelsFrom(groups(), charts())), near(PANELS));
   });
 
@@ -189,7 +207,8 @@ describe("panelsFrom", () => {
     };
     for (const [i, g, key, name] of [
       [2, "Clickbench", "rankings", (f: string) => `datafusion:${f}`],
-      [4, "Random Access (NVMe)", "hotRankings", (f: string) => f]
+      [3, "TPC-H (NVMe) (SF=10)", "rankings", (f: string) => `datafusion:${f}`],
+      [5, "Random Access (NVMe)", "hotRankings", (f: string) => f]
     ] as const) {
       const rows = panels?.[i]?.rows ?? [];
       const ms = (s: string) => rows.find((r) => r.system === s)?.score ?? NaN;
@@ -220,7 +239,7 @@ describe("panelsFrom", () => {
     const gs = groups();
     const hot = group(gs, "Random Access (NVMe)").summary;
     hot.hotRankings = (hot.hotRankings ?? []).filter((r) => r.name !== "lance");
-    assert.deepEqual(panelsFrom(gs, charts())?.[4]?.rows[2], {
+    assert.deepEqual(panelsFrom(gs, charts())?.[5]?.rows[2], {
       system: "Lance",
       score: null,
       measured: 4,
@@ -270,14 +289,14 @@ describe("panelsFrom", () => {
       name: c.name
     }));
     assert.equal(
-      panelsFrom(gs, cs)?.[4]?.unit,
+      panelsFrom(gs, cs)?.[5]?.unit,
       "ms",
       "a full window keeps its times"
     );
     const dropped = charts();
     dropped["Random Access (NVMe)"].charts =
       dropped["Random Access (NVMe)"].charts.slice(1);
-    assert.equal(panelsFrom(gs, dropped)?.[4]?.unit, "× fastest");
+    assert.equal(panelsFrom(gs, dropped)?.[5]?.unit, "× fastest");
   });
   // geomean over a partial set, so the panel shows bench's scores instead.
   it("falls back to bench's scores when the window holds only some of the queries", () => {
@@ -294,16 +313,17 @@ describe("panelsFrom", () => {
   it("falls back to bench's scores when a time panel's charts are missing or not times", () => {
     const check = (panels: ReturnType<typeof panelsFrom>, i: number) => {
       const panel = panels?.[i];
-      assert.ok(panel, "the card keeps all six panels");
+      assert.ok(panel, "the card keeps all seven panels");
       assert.equal(panel.unit, "× fastest");
       const vortex = panel.rows.find((r) => r.system === "Vortex");
       assert.ok(vortex?.score && vortex.score >= 1, "Vortex shows its score");
     };
     check(panelsFrom(groups()), 2);
-    check(panelsFrom(groups()), 4);
+    check(panelsFrom(groups()), 3);
+    check(panelsFrom(groups()), 5);
     const cs = charts();
     for (const c of cs["Random Access (NVMe)"].charts) c.unit_kind = "bytes";
-    check(panelsFrom(groups(), cs), 4);
+    check(panelsFrom(groups(), cs), 5);
     assert.equal(
       panelsFrom(groups(), cs)?.[2]?.unit,
       "ms",
@@ -327,18 +347,19 @@ describe("panelsFrom", () => {
     );
     assert.ok(parquet);
     parquet.ratio = "1";
-    assert.deepEqual(panelsFrom(gs, charts())?.[5]?.rows[1], {
+    assert.deepEqual(panelsFrom(gs, charts())?.[6]?.rows[1], {
       system: "Parquet",
       score: null
     });
   });
 
-  it("gives null when a group is missing, so the card never shows five panels", () => {
+  it("gives null when a group is missing, so the card never shows part of the table", () => {
     for (const name of [
       "Compression",
       "Compression Size",
       "Random Access (NVMe)",
-      "Clickbench"
+      "Clickbench",
+      "TPC-H (NVMe) (SF=10)"
     ]) {
       const gs = groups().filter((g) => g.name !== name);
       assert.equal(panelsFrom(gs, charts()), null, name);
@@ -457,7 +478,11 @@ const bench =
   (url: string) => {
     if (url === "https://bench.vortex.dev/api/groups")
       return json(groupsBody, 200, headers);
-    for (const name of ["Clickbench", "Random Access (NVMe)"] as const)
+    for (const name of [
+      "Clickbench",
+      "TPC-H (NVMe) (SF=10)",
+      "Random Access (NVMe)"
+    ] as const)
       if (url === `https://bench.vortex.dev/api/group/${slugOf(name)}?n=25`)
         return json(CHARTS[name]);
     return json({ error: "not_found" }, 404);
@@ -479,6 +504,7 @@ describe("getBenchSummary", () => {
       [
         "https://bench.vortex.dev/api/groups",
         `https://bench.vortex.dev/api/group/${slugOf("Clickbench")}?n=25`,
+        `https://bench.vortex.dev/api/group/${slugOf("TPC-H (NVMe) (SF=10)")}?n=25`,
         `https://bench.vortex.dev/api/group/${slugOf("Random Access (NVMe)")}?n=25`
       ]
     );
@@ -526,9 +552,10 @@ describe("getBenchSummary", () => {
     });
     for (const fake of [failing.fake, throwing.fake]) {
       const u = await units(fake);
-      assert.equal(u?.length, 6, "the card keeps all six panels");
+      assert.equal(u?.length, 7, "the card keeps all seven panels");
       assert.equal(u?.[2], "× fastest");
-      assert.equal(u?.[4], "× fastest");
+      assert.equal(u?.[3], "× fastest");
+      assert.equal(u?.[5], "× fastest");
     }
   });
 
@@ -586,7 +613,7 @@ describe("getBenchSummary", () => {
       wait: async (ms) => void waits.push(ms),
       warn: (m) => void warnings.push(m)
     });
-    assert.equal(summary?.panels.length, 6, "the third try gives the card");
+    assert.equal(summary?.panels.length, 7, "the third try gives the card");
     assert.equal(calls.filter((c) => c.url.endsWith("/api/groups")).length, 3);
     assert.deepEqual(waits, [500, 1000]);
     assert.equal(warnings.length, 2);
@@ -607,7 +634,7 @@ describe("getBenchSummary", () => {
       wait: async () => {},
       warn: (m) => void warnings.push(m)
     });
-    assert.equal(summary?.panels.length, 6);
+    assert.equal(summary?.panels.length, 7);
     assert.equal(calls.filter((c) => c.url.endsWith("/api/groups")).length, 2);
     assert.match(warnings[0] ?? "", /SyntaxError.*try 1 of 3/);
   });

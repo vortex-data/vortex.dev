@@ -22,6 +22,8 @@ const blog = defineCollection({
       excerpt: s.string().optional(),
       published: s.boolean().default(true),
       metadata: s.metadata(),
+      // The post's Markdown source, for llms-full.txt.
+      raw: s.raw(),
       body: s.mdx({
         rehypePlugins: [
           [

@@ -153,7 +153,8 @@ UNION ALL SELECT 'query_measurements', count(*), max(measurement_id)::text FROM 
 UNION ALL SELECT 'compression_times', count(*), max(measurement_id)::text FROM compression_times
 UNION ALL SELECT 'compression_sizes', count(*), max(measurement_id)::text FROM compression_sizes
 UNION ALL SELECT 'random_access_times', count(*), max(measurement_id)::text FROM random_access_times
-UNION ALL SELECT 'vector_search_runs', count(*), max(measurement_id)::text FROM vector_search_runs;
+UNION ALL SELECT 'vector_search_runs', count(*), max(measurement_id)::text FROM vector_search_runs
+UNION ALL SELECT 'file_sizes', count(*), max(measurement_id)::text FROM file_sizes;
 ```
 
 - The ledger must list every file in [`../migrations/`](../db/migrations/).

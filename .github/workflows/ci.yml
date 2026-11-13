@@ -36,7 +36,7 @@ jobs:
 
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6  # v2.2.0
         with:
-          bun-version: 1.4.3
+          bun-version: 1.4.4
 
       # Bun is the package manager and script runner, but Next.js (and tsc)
       # run on Node. The runner image is pinned, but the Node
@@ -106,7 +106,7 @@ jobs:
           python3 -m unittest discover -s infra/tests -v
 
       - name: Install uv
-        uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884  # v10.3.0
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2  # v10.3.3
         with:
           enable-cache: false
 
@@ -221,7 +221,7 @@ jobs:
 
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6  # v2.2.0
         with:
-          bun-version: 1.4.3
+          bun-version: 1.4.4
 
       - name: Cache Bun install cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
@@ -370,7 +370,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: TruffleHog scan
-        uses: trufflesecurity/trufflehog@e76dff8a7e57d6df0c60ad8cbf5d5cba505a8fc9  # v3.99.2
+        uses: trufflesecurity/trufflehog@31ce31ee1abbcc7dc8eee5764c17121c3044c8b2  # v3.99.7
         with:
           # On PRs: scan the diff between base and head. On push to main:
           # scan the previous commit to HEAD. The action infers both from

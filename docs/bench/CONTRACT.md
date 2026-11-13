@@ -12,10 +12,11 @@ and are unchanged by this repository; this repo owns the ingest *contract*, the 
 read service.
 
 > **Scope.** There is one ingest path: the monorepo's `scripts/post-ingest.py --postgres` writes
-> emitter records directly into the hosted RDS Postgres and then pings this repo's read service
-> to flush its cache. The retired v3 HTTP ingest path (`POST /api/ingest` into a Rust server) is
-> described in [`docs/legacy.md`](legacy.md); the record shapes on the wire are unchanged
-> from that era, which is why the producer flag is still spelled `--gh-json-v3`.
+> emitter records directly into the hosted RDS Postgres. Then, once per CI run, the monorepo's
+> `scripts/refresh-bench-site.py` pings this repo's read service to flush its cache. The retired
+> v3 HTTP ingest path (`POST /api/ingest` into a Rust server) is described in
+> [`docs/legacy.md`](legacy.md); the record shapes on the wire are unchanged from that era, which
+> is why the producer flag is still spelled `--gh-json-v3`.
 
 ## Versioning: `SCHEMA_VERSION`
 
@@ -45,7 +46,7 @@ A `SCHEMA_VERSION` bump must be coordinated with them in the same logical change
 
 The monorepo emitter `vortex-bench --gh-json-v3 <path>` writes **JSONL of bare records only** —
 one JSON object per line, no envelope. `records` are discriminated by a `kind` field
-(snake_case). The five kinds and their destination fact tables:
+(snake_case). The six kinds and their destination fact tables:
 
 | `kind`               | Destination table     |
 |----------------------|-----------------------|
@@ -54,6 +55,7 @@ one JSON object per line, no envelope. `records` are discriminated by a `kind` f
 | `compression_size`   | `compression_sizes`   |
 | `random_access_time` | `random_access_times` |
 | `vector_search_run`  | `vector_search_runs`  |
+| `file_size`          | `file_sizes`          |
 
 Each record's fields are defined by the producer structs in the monorepo's
 `vortex-bench/src/v3.rs` and match the column names of its fact table (see
@@ -70,6 +72,12 @@ Its `uncompressed_bytes` is the column's canonical Arrow `Utf8View` size. The si
 rows in the `String Encoding` groups and compares each encoder with `fsst`, so the prefix and the
 `fsst` label are part of the contract.
 
+`file_size` records are not written by `vortex-bench`: the monorepo's
+`scripts/capture-file-sizes.py` writes one per Vortex file a SQL benchmark leaves on disk, with
+`benchmark` (the `vx-bench` subcommand), `scale_factor`, `format`, `file` (the path below the format
+directory) and `value_bytes`. The read service does not chart them; CI reads them back as the develop
+baseline for the PR comment's file-size section.
+
 `random_access_time` records include `open_mode`. The value is `cached` for a reused accessor
 or `reopen` when each timed take includes a new accessor. Historical rows use `cached`.
 The `reopen` mode does not clear the OS page cache.
@@ -80,8 +88,9 @@ The `reopen` mode does not clear the OS page cache.
 
 ## The ingest path — direct Postgres write + cache revalidate
 
-The monorepo's `scripts/post-ingest.py --postgres` runs in benchmark CI (required, not
-best-effort — a failure fails the bench job and alerts):
+The monorepo's `scripts/post-ingest.py --postgres` runs in each benchmark CI job and does steps 1
+and 2 (required, not best-effort — a failure fails the bench job and alerts). The monorepo's
+`scripts/refresh-bench-site.py` does step 3, once per CI run:
 
 1. **Commit upsert:** the writer builds the commit row from `git show` and upserts it
    (`ON CONFLICT (commit_sha) DO UPDATE`) before applying any record.
@@ -96,6 +105,14 @@ best-effort — a failure fails the bench job and alerts):
    `Authorization: Bearer $BENCH_REVALIDATE_TOKEN`, to mark the Next.js Data Cache stale so
    it refreshes against freshly written data: the next read serves the previous data once
    while each entry refreshes in the background, and later reads get the new data.
+   The reusable workflow `.github/workflows/refresh-bench-site.yml` runs the script in its own
+   job, after the ingest jobs of a `develop-bench.yml`, `nightly-bench.yml`, or
+   `commit-metadata.yml` run finish. In `develop-bench.yml` and `nightly-bench.yml` it runs even
+   when some benchmark jobs fail. The script does nothing when `BENCH_SITE_BASE_URL` or the
+   token is unset. It retries a transport error, `429`, or `5xx` up to three times (after 5, 15,
+   and 45 seconds). A revalidate that still fails, or fails with another status such as `401`,
+   fails the refresh job but not the ingest jobs. After a successful revalidate, the script
+   warms `/` and each group's default `n=100` bundle. A failed warm request only logs a warning.
 
 ### `measurement_id`: the frozen hash contract
 
@@ -109,7 +126,9 @@ measurement, which silently duplicates or collides rows instead of upserting.
 The freeze is pinned by golden vectors, not by trust. The monorepo's
 `scripts/measurement_id_golden.json` holds `(input → hash)` cases covering empty/Unicode
 strings, `i32` bounds, and `f64` edges, generated by the original Rust implementation (the
-retired v3 server, which wrote the production rows) and **never regenerated**; the monorepo's
+retired v3 server, which wrote the production rows) and **never regenerated**. The `file_sizes`
+vectors postdate that server: `scripts/_measurement_id.py` generated them when the table was
+added (migration 014), and they are frozen the same way. The monorepo's
 `scripts/tests/test_measurement_id.py` asserts every vector byte-for-byte in CI. The golden
 vectors ARE the contract.
 
@@ -139,3 +158,8 @@ logical change:
 
 For wire/record *shape* changes, also update the producer snapshot fixtures in the monorepo in
 the same commit.
+
+A new record kind with its own table, as `file_size` was in migration 014, changes no existing
+shape, so it needs no bump: the read service never reads the new table, and older writers never
+send the kind. Its migration must be applied before a writer sends it, because each JSONL file
+lands in one transaction and an unknown table fails the whole file.

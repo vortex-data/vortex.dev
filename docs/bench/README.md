@@ -36,6 +36,8 @@ the site reads straight from it.
 │ benchmark jobs                   │
 │   vortex-bench ─▶ JSONL records  │
 │   scripts/post-ingest.py         │
+│ once per run, after the jobs     │
+│   scripts/refresh-bench-site.py  │
 └───────┬──────────────────┬───────┘
         │ upsert rows      │ POST /api/revalidate
         │ (direct SQL)     │ (flush the read cache)
@@ -49,8 +51,8 @@ the site reads straight from it.
 
 **Emit.** Each benchmark CI run in the monorepo writes JSONL measurement records
 (`vortex-bench --gh-json-v3`), and `scripts/post-ingest.py` delivers them. Every measurement is
-one of five kinds — query time, compression time, compression size, random-access time, and
-vector search — each carrying a commit SHA plus the dimension tuple that identifies its chart.
+one of six kinds — query time, compression time, compression size, random-access time, vector
+search, and SQL benchmark file size — each carrying a commit SHA plus the dimension tuple that identifies its chart.
 The versioned wire format is this repo's [`CONTRACT.md`](CONTRACT.md).
 
 **Store.** One AWS RDS Postgres database holds one fact table per measurement kind plus a

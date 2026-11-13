@@ -13,6 +13,7 @@ const fixture = (name: string) =>
   ) as Record<string, unknown>;
 const PANELS = panelsFrom(fixture("bench-groups.json").groups, {
   Clickbench: fixture("bench-group-clickbench.json"),
+  "TPC-H (NVMe) (SF=10)": fixture("bench-group-tpch-sf10-nvme.json"),
   "Random Access (NVMe)": fixture("bench-group-random-access-nvme.json")
 });
 const READ = new Date("2026-11-02T12:00:00Z");
@@ -41,6 +42,7 @@ describe("ResultsTable", () => {
       "Scan",
       "Write",
       "ClickBench",
+      "TPC-H",
       "GPU, cuDF",
       "Random access",
       "File size"
@@ -49,7 +51,7 @@ describe("ResultsTable", () => {
         html.includes(`<th scope="row"`) && html.includes(`>${name}`),
         name
       );
-    assert.equal(html.match(/<tr><th scope="row"/g)?.length, 6);
+    assert.equal(html.match(/<tr><th scope="row"/g)?.length, 7);
     for (const row of html.split('<tr><th scope="row"').slice(1))
       assert.match(row, /is-best/);
   });
