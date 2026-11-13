@@ -438,12 +438,18 @@ function chartDisplayName(key: ChartKey): string {
   }
 }
 
+/** Benchmarks run at several scale factors, so their file-size charts always name it. */
+const SCALED_FILE_SIZE_BENCHMARKS: ReadonlySet<string> = new Set(['tpch', 'tpcds', 'tpch-nested']);
+
 /**
- * A file-size chart's name: the benchmark, with its scale factor unless it is the default `1.0`.
- * The monorepo's capture script records `1.0` for a benchmark with no scale-factor directory.
+ * A file-size chart's name: the benchmark, with its scale factor unless it is the default `1.0`
+ * of a benchmark with no scale factors. The monorepo's capture script records `1.0` for a
+ * benchmark with no scale-factor directory.
  */
 function fileSizeChartName(benchmark: string, scaleFactor: string): string {
-  return scaleFactor === '1.0' ? benchmark : `${benchmark} sf=${scaleFactor}`;
+  return scaleFactor === '1.0' && !SCALED_FILE_SIZE_BENCHMARKS.has(benchmark)
+    ? benchmark
+    : `${benchmark} sf=${scaleFactor}`;
 }
 
 /** A chart's base `unit_kind`: sizes are bytes, everything else is a time. */
@@ -1236,12 +1242,13 @@ export interface GroupChartsResponse {
   charts: NamedChartResponse[];
 }
 
-/** Canonical group order for the v4 site. Unknown groups sort last by name. */
+/**
+ * Canonical group order for the v4 site. Unknown groups follow by name, then
+ * [`GROUP_ORDER_LAST`].
+ */
 const GROUP_ORDER: readonly string[] = [
   'Compression',
   'Compression Size',
-  'String Encoding',
-  'String Encoding Size',
   'SQL File Size',
   'Random Access (NVMe)',
   'Random Access (S3)',
@@ -1264,14 +1271,21 @@ const GROUP_ORDER: readonly string[] = [
   'appian [nvme]',
 ];
 
+/** Groups that sort after every other group, in this order: the string-bench groups. */
+const GROUP_ORDER_LAST: readonly string[] = ['String Encoding', 'String Encoding Size'];
+
 /**
- * Sort key for a group name against [`GROUP_ORDER`]: names in the list sort by
- * position; names not in the list sort after, with an alphabetical tiebreak.
- * Mirrors the Rust `group_sort_key` `(usize, &str)` tuple.
+ * Sort key for a group name: names in [`GROUP_ORDER`] sort by position, then
+ * names in neither list alphabetically, then names in [`GROUP_ORDER_LAST`] by
+ * position. Mirrors the Rust `group_sort_key` `(usize, &str)` tuple.
  */
 function groupSortKey(name: string): [number, string] {
   const pos = GROUP_ORDER.indexOf(name);
-  return [pos === -1 ? GROUP_ORDER.length : pos, name];
+  if (pos !== -1) {
+    return [pos, name];
+  }
+  const last = GROUP_ORDER_LAST.indexOf(name);
+  return [last === -1 ? GROUP_ORDER.length : GROUP_ORDER.length + 1 + last, name];
 }
 
 /** Comparator over [`groupSortKey`] applying the canonical group ordering. */
@@ -1659,9 +1673,19 @@ async function collectVectorSearchGroups(): Promise<Group[]> {
 
 type FileSizeScopeRow = { benchmark: string; scale_factor: string };
 
+/** Benchmarks whose file-size charts lead the group, in this order; the rest follow by name. */
+const FILE_SIZE_CHART_ORDER: readonly string[] = ['clickbench', 'tpch', 'tpcds'];
+
+/** A benchmark's position in the file-size group: its `FILE_SIZE_CHART_ORDER` index, else after. */
+function fileSizeChartRank(benchmark: string): number {
+  const pos = FILE_SIZE_CHART_ORDER.indexOf(benchmark);
+  return pos === -1 ? FILE_SIZE_CHART_ORDER.length : pos;
+}
+
 /**
  * The `SQL File Size` group: one chart per benchmark and scale factor, or `[]` if the table is
- * empty. Charts order by benchmark, then by numeric scale factor, so `10.0` follows `1.0`.
+ * empty. Charts order by [`FILE_SIZE_CHART_ORDER`], then by benchmark name, then by numeric
+ * scale factor, so `10.0` follows `1.0`.
  */
 async function collectFileSizeGroup(): Promise<Group[]> {
   // A recursive skip scan of `idx_file_sizes_baseline`: one descent per scope instead of a scan
@@ -1691,6 +1715,7 @@ async function collectFileSizeGroup(): Promise<Group[]> {
   }
   rows.sort(
     (a, b) =>
+      fileSizeChartRank(a.benchmark) - fileSizeChartRank(b.benchmark) ||
       compareCodeUnits(a.benchmark, b.benchmark) ||
       Number(a.scale_factor) - Number(b.scale_factor) ||
       compareCodeUnits(a.scale_factor, b.scale_factor),
