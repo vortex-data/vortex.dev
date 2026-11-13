@@ -20,6 +20,8 @@ CREATE TABLE IF NOT EXISTS file_sizes (
     value_bytes      BIGINT      NOT NULL
 );
 
--- The CI baseline lookup filters on the whole dim tuple and joins to `commits` on `commit_sha`.
-CREATE INDEX IF NOT EXISTS idx_file_sizes_lookup
-    ON file_sizes (benchmark, scale_factor, format, file);
+-- CI reads one commit's files for a (benchmark, scale_factor, format) scope, so the index ends in
+-- `commit_sha` rather than `file`: the lookup is a range scan of that commit's rows alone. The
+-- baseline commit itself is chosen from the query measurements written beside these rows.
+CREATE INDEX IF NOT EXISTS idx_file_sizes_baseline
+    ON file_sizes (benchmark, scale_factor, format, commit_sha);
