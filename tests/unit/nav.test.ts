@@ -24,7 +24,8 @@ describe("navLinks", () => {
       "Explorer",
       "Blog"
     ]);
-    assert.equal(links.Benchmarks?.href, "https://bench.vortex.dev");
+    // Outside production, the deployment's own /bench (bench-link.ts).
+    assert.equal(links.Benchmarks?.href, "/bench");
     assert.equal(links.Blog?.href, "/blog");
     assert.equal(links.Blog?.internal, true);
     assert.equal(links.Blog?.current, "page");

@@ -4,6 +4,7 @@ import { describe, it } from "node:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { OpenInNewIcon } from "@/components/icons";
 import { ResultsTable } from "@/components/results-table";
+import { benchHref } from "@/lib/bench-link";
 import { formatReadDate, panelsFrom } from "@/lib/bench-summary";
 import { renderResults } from "@/vendor/vortex-design/results.js";
 
@@ -26,10 +27,12 @@ describe("ResultsTable", () => {
     const html = renderToStaticMarkup(
       <ResultsTable panels={PANELS} readAt={READ} />
     );
+    // The system names bench.vortex.dev; the site names it on production
+    // and its own /bench elsewhere (bench-link.ts), the one difference.
     const system = renderResults(PANELS, {
       read: formatReadDate(READ),
       icon: renderToStaticMarkup(<OpenInNewIcon />)
-    });
+    }).replace('href="https://bench.vortex.dev"', `href="${benchHref()}"`);
     assert.equal(html, system);
   });
 

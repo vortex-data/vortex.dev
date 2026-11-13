@@ -1,6 +1,10 @@
 import { expect, type Page, test } from "@playwright/test";
 import { externalPosts } from "../src/content/links";
 
+// The site's links to bench (src/lib/bench-link.ts): bench.vortex.dev on
+// production, the deployment's own /bench on a preview or a local build.
+const BENCH_HREF = /^(https:\/\/bench\.vortex\.dev|\/bench)$/;
+
 /**
  * Browser smoke tests. Structural and behavioral checks against a real
  * browser engine — catches regressions the HTTP-only verify script can't
@@ -197,8 +201,10 @@ test.describe("home bands", () => {
     await expect(table.locator("tbody tr")).toHaveCount(7);
     await expect(table.locator("tbody td.is-ours")).toHaveCount(7);
     await expect(table).toContainText(/read \d+ \w{3} \d{4}/);
-    const source = table.locator('a[href="https://bench.vortex.dev"]');
+    // bench.vortex.dev on production, this deployment's /bench elsewhere.
+    const source = table.locator("a.vx-source");
     await expect(source).toBeVisible();
+    await expect(source).toHaveAttribute("href", BENCH_HREF);
     await expect(source).toHaveText("bench.vortex.dev");
   });
 
@@ -533,7 +539,7 @@ test.describe("header", () => {
     const nav = page.getByRole("navigation", { name: "Primary" });
     for (const [name, href] of [
       ["Docs", "https://docs.vortex.dev"],
-      ["Benchmarks", "https://bench.vortex.dev"],
+      ["Benchmarks", BENCH_HREF],
       ["Explorer", "https://explore.vortex.dev"],
       ["Blog", "/blog"]
     ] as const) {
