@@ -371,6 +371,29 @@ describe('compareGroupSortKey canonical group ordering (no DB)', () => {
     ]);
   });
 
+  it('puts compression and SQL file size before random access and string encoding last', () => {
+    const sorted = [
+      'String Encoding Size',
+      'Clickbench',
+      'cohere-large-10m / partitioned',
+      'String Encoding',
+      'Random Access (NVMe)',
+      'SQL File Size',
+      'Compression Size',
+      'Compression',
+    ].sort(compareGroupSortKey);
+    expect(sorted).toEqual([
+      'Compression',
+      'Compression Size',
+      'SQL File Size',
+      'Random Access (NVMe)',
+      'Clickbench',
+      'cohere-large-10m / partitioned',
+      'String Encoding',
+      'String Encoding Size',
+    ]);
+  });
+
   it('places the appian group directly after both fineweb groups', () => {
     const sorted = [
       'fineweb [s3]',
