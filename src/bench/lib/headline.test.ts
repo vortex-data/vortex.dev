@@ -193,6 +193,21 @@ describe('groupHeadline', () => {
     expect(h?.parts[0]?.tone).toBe(tone);
   });
 
+  it('has no headline for a size summary with its own baseline', () => {
+    // The SQL file size summary compares with Vortex itself, which would read "same size as Parquet".
+    expect(
+      groupHeadline({
+        type: 'compressionSize',
+        title: 's',
+        explanation: 'e',
+        baseline: 'vortex',
+        rankings: [
+          { name: VX, minRatio: 1, ratio: 1, maxRatio: 1, compressionRatio: null, totalBytes: 1 },
+        ],
+      }),
+    ).toBeNull();
+  });
+
   it('reads hot and cold random access against Parquet', () => {
     expect(line(ra([r(VX, 1), r('parquet', 60.4)], [r(VX, 1), r('parquet', 32)]))).toBe(
       'hot 60× · cold 32× faster than Parquet',

@@ -4,23 +4,25 @@
 /**
  * Per-fact-table registry, the TypeScript port of `server/src/family.rs`.
  *
- * Each of the five fact tables is a [`Family`] that ties together the Postgres
+ * Each of the six fact tables is a [`Family`] that ties together the Postgres
  * table name and the chart and group slug prefixes. The read endpoints
  * dispatch through this registry rather than hand-listing the families, so the
  * slug prefixes consumed by [`./slug`] have a single source of truth. The read
  * queries name their tables in static SQL.
  *
  * The order of [`FAMILIES`] mirrors `family.rs`'s `FAMILIES` constant and the
- * DDL apply order in `migrations/001_initial_schema.sql`.
+ * DDL apply order in `migrations/001_initial_schema.sql`, with `file_sizes`
+ * (`migrations/014`) last.
  */
 
-/** The five fact-table names, spelled exactly as in `migrations/001`. */
+/** The six fact-table names, spelled exactly as in their migrations. */
 type FamilyTable =
   | 'query_measurements'
   | 'compression_times'
   | 'compression_sizes'
   | 'random_access_times'
-  | 'vector_search_runs';
+  | 'vector_search_runs'
+  | 'file_sizes';
 
 /** Discriminant (`k`) of a [`./slug`].`ChartKey`; one per family. */
 export type ChartKind =
@@ -28,7 +30,8 @@ export type ChartKind =
   | 'CompressionTime'
   | 'CompressionSize'
   | 'RandomAccess'
-  | 'VectorSearch';
+  | 'VectorSearch'
+  | 'FileSize';
 
 /** Discriminant (`k`) of a [`./slug`].`GroupKey`; one per family. */
 export type GroupKind =
@@ -36,11 +39,12 @@ export type GroupKind =
   | 'CompressionTimeGroup'
   | 'CompressionSizeGroup'
   | 'RandomAccessGroup'
-  | 'VectorSearchGroup';
+  | 'VectorSearchGroup'
+  | 'FileSizeGroup';
 
 /** One fact-table family: its table name, slug prefixes, and key discriminants. */
 export interface Family {
-  /** Postgres table name, matching `migrations/001_initial_schema.sql`. */
+  /** Postgres table name, matching its migration. */
   tableName: FamilyTable;
   /** Slug prefix for individual charts in this family (e.g. `qm`). */
   chartSlugPrefix: string;
@@ -53,8 +57,8 @@ export interface Family {
 }
 
 /**
- * All five fact-table families, in the order `family.rs`'s `FAMILIES` declares
- * them (which is also the `migrations/001` DDL apply order).
+ * All six fact-table families, in the order `family.rs`'s `FAMILIES` declares
+ * them (which is also the `migrations/001` DDL apply order), then `file_sizes`.
  */
 export const FAMILIES: readonly Family[] = [
   {
@@ -91,6 +95,13 @@ export const FAMILIES: readonly Family[] = [
     groupSlugPrefix: 'vsg',
     chartKind: 'VectorSearch',
     groupKind: 'VectorSearchGroup',
+  },
+  {
+    tableName: 'file_sizes',
+    chartSlugPrefix: 'fs',
+    groupSlugPrefix: 'fsg',
+    chartKind: 'FileSize',
+    groupKind: 'FileSizeGroup',
   },
 ];
 

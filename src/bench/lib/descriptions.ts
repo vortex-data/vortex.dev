@@ -55,6 +55,11 @@ function staticDescription(name: string): string | null {
       return 'Measures Vortex file write and scan throughput for each string encoder';
     case 'String Encoding Size':
       return 'Compares Vortex file sizes for each string encoder';
+    case 'SQL File Size':
+      return (
+        'Tracks the total size of the Vortex files each SQL benchmark writes, per benchmark and ' +
+        'scale factor'
+      );
     case 'Clickbench':
       return (
         "ClickHouse's analytical benchmark suite testing real-world query patterns on web " +

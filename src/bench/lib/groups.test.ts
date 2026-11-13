@@ -26,7 +26,7 @@ import {
 import { groupDescription } from './descriptions';
 import { READ_API_CACHE_CONTROL } from './cache';
 import { collectGroupSummary } from './summary';
-import { chartKeyToSlug, groupKeyFromSlug, groupKeyToSlug } from './slug';
+import { chartKeyFromSlug, chartKeyToSlug, groupKeyFromSlug, groupKeyToSlug } from './slug';
 import {
   type BenchDatabase,
   commitUrl,
@@ -445,7 +445,7 @@ describe.skipIf(!databaseAvailable)('summary math fidelity (testcontainers Postg
   beforeEach(async () => {
     await getPool().query(
       `TRUNCATE compression_times, compression_sizes, query_measurements,
-                random_access_times, vector_search_runs, commits`,
+                random_access_times, vector_search_runs, file_sizes, commits`,
     );
   });
 
@@ -624,6 +624,64 @@ describe.skipIf(!databaseAvailable)('summary math fidelity (testcontainers Postg
       'fineweb/text/fsst',
       'fineweb/text/onpair-12',
     ]);
+  });
+
+  it('discovers one file-size chart per benchmark and scale factor, with a summary', async () => {
+    const develop = 'a'.repeat(40);
+    const nightly = 'b'.repeat(40);
+    await insertCommit(develop, '2026-04-23T12:00:00Z');
+    await insertCommit(nightly, '2026-04-24T03:00:00Z');
+    // TPC-H at SF 1 and 10 from develop, and SF 100 from nightly, the newest commit. Clickbench
+    // has no scale-factor directory, so it is recorded as 1.0.
+    for (const [sha, benchmark, scaleFactor, format, file, bytes] of [
+      [develop, 'tpch', '1.0', 'vortex-file-compressed', 'lineitem.vortex', 300],
+      [develop, 'tpch', '1.0', 'vortex-file-compressed', 'orders.vortex', 100],
+      [develop, 'tpch', '1.0', 'vortex-compact', 'lineitem.vortex', 150],
+      [develop, 'tpch', '1.0', 'vortex-compact', 'orders.vortex', 50],
+      [develop, 'tpch', '10.0', 'vortex-file-compressed', 'lineitem.vortex', 4000],
+      [develop, 'tpch', '10.0', 'vortex-compact', 'lineitem.vortex', 1000],
+      [nightly, 'tpch', '100', 'vortex-file-compressed', 'lineitem.vortex', 40000],
+      [develop, 'clickbench', '1.0', 'vortex-file-compressed', 'hits_0.vortex', 1000],
+    ] as const) {
+      await getPool().query(
+        `INSERT INTO file_sizes
+             (measurement_id, commit_sha, benchmark, scale_factor, format, file, value_bytes)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [nextId(), sha, benchmark, scaleFactor, format, file, bytes],
+      );
+    }
+
+    const groups = await collectGroups();
+    expect(groups.map((group) => group.name)).toEqual(['SQL File Size']);
+    const [group] = groups;
+    expect(groupKeyFromSlug(defined(group).slug)).toEqual({ k: 'FileSizeGroup' });
+    expect(defined(group).charts.map((chart) => chart.name)).toEqual([
+      'clickbench',
+      'tpch',
+      'tpch sf=10.0',
+      'tpch sf=100',
+    ]);
+    expect(chartKeyFromSlug(defined(defined(group).charts[3]).slug)).toEqual({
+      k: 'FileSize',
+      benchmark: 'tpch',
+      scale_factor: '100',
+    });
+    // Compact is half the size at SF 1 and a quarter at SF 10. Totals cover the scopes both
+    // formats have: 200 + 1000 against 400 + 4000.
+    expect(defined(group).summary).toMatchObject({
+      type: 'compressionSize',
+      baseline: 'vortex',
+      rankings: [
+        {
+          name: 'vortex-compact',
+          minRatio: 0.25,
+          ratio: expect.closeTo(0.5 ** 1.5),
+          maxRatio: 0.5,
+          totalBytes: 1200,
+        },
+        { name: 'vortex-file-compressed', ratio: 1, compressionRatio: null, totalBytes: 4400 },
+      ],
+    });
   });
 
   it('ranks random access over every chart, not the alphabetically first one', async () => {

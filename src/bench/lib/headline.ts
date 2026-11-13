@@ -91,7 +91,10 @@ export function groupHeadline(summary: Summary | undefined): Headline | null {
         })),
       );
     case 'compressionSize':
-      return sizeHeadline(summary.rankings.find((row) => row.name === VORTEX)?.ratio);
+      // A summary with its own baseline compares with that, not Parquet, so it has no headline.
+      return summary.baseline === undefined
+        ? sizeHeadline(summary.rankings.find((row) => row.name === VORTEX)?.ratio)
+        : null;
     case 'vectorSearch':
       return vectorSearchHeadline(summary.rankings);
     default:

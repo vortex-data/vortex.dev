@@ -75,7 +75,8 @@ rows in the `String Encoding` groups and compares each encoder with `fsst`, so t
 `file_size` records are not written by `vortex-bench`: the monorepo's
 `scripts/capture-file-sizes.py` writes one per Vortex file a SQL benchmark leaves on disk, with
 `benchmark` (the `vx-bench` subcommand), `scale_factor`, `format`, `file` (the path below the format
-directory) and `value_bytes`. The read service does not chart them; CI reads them back as the develop
+directory) and `value_bytes`. The read service charts each benchmark and scale factor in the
+`SQL File Size` group, one line per format summed over its files. CI reads them back as the develop
 baseline for the PR comment's file-size section.
 
 `random_access_time` records include `open_mode`. The value is `cached` for a reused accessor
@@ -160,6 +161,5 @@ For wire/record *shape* changes, also update the producer snapshot fixtures in t
 the same commit.
 
 A new record kind with its own table, as `file_size` was in migration 014, changes no existing
-shape, so it needs no bump: the read service never reads the new table, and older writers never
-send the kind. Its migration must be applied before a writer sends it, because each JSONL file
+shape, so it needs no bump: no existing read changes, and older writers never send the kind. Its migration must be applied before a writer sends it, because each JSONL file
 lands in one transaction and an unknown table fails the whole file.

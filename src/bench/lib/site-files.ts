@@ -231,6 +231,7 @@ export function chartSeriesLabel(kind: ChartKind, name: string): string {
       return `${FORMATS.get(format) ?? format} (${detail})`;
     case 'CompressionSize':
     case 'VectorSearch':
+    case 'FileSize':
       return FORMATS.get(name) ?? name;
   }
 }

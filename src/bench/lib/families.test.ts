@@ -5,13 +5,14 @@ import { describe, expect, it } from 'vitest';
 import { FAMILIES, familyForChartKind, familyForGroupKind } from './families';
 
 describe('FAMILIES registry', () => {
-  it('lists the five fact tables in family.rs declaration order', () => {
+  it('lists the six fact tables in family.rs declaration order, then file_sizes', () => {
     expect(FAMILIES.map((f) => f.tableName)).toEqual([
       'query_measurements',
       'compression_times',
       'compression_sizes',
       'random_access_times',
       'vector_search_runs',
+      'file_sizes',
     ]);
   });
 
@@ -29,6 +30,7 @@ describe('FAMILIES registry', () => {
       ['cs', 'csg'],
       ['rat', 'rag'],
       ['vsr', 'vsg'],
+      ['fs', 'fsg'],
     ]);
   });
 });
