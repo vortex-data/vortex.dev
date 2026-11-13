@@ -88,6 +88,7 @@ export function groupDocPath(key: GroupKey): string | null {
     case 'QueryGroup':
       return QUERY_DOCS[key.dataset] ?? null;
     case 'VectorSearchGroup':
+    case 'FileSizeGroup':
       return null;
   }
 }

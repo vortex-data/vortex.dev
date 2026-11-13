@@ -88,6 +88,11 @@ describe('seriesFor', () => {
       { flavor: 'vortex-turboquant' },
       { key: 'vortex-turboquant', engine: undefined, format: undefined },
     ],
+    [
+      'FileSize',
+      { format: 'vortex-compact' },
+      { key: 'vortex-compact', engine: undefined, format: 'vortex-compact' },
+    ],
   ] as const)('names the %s series', (kind, cols, expected) => {
     expect(seriesFor(kind, { commit_sha: 'a', value: 1, ...cols })).toEqual(expected);
   });
@@ -468,6 +473,29 @@ describe.skipIf(!databaseAvailable)('groupChartPayloads at the window edges', ()
         [measurementId, sha, dataset, variant, valueBytes],
       );
     }
+    // File sizes: TPC-H SF=1 has two files per format on C0, E and F (compact only from E);
+    // SF=10 has one file on F.
+    for (const [sha, scaleFactor, format, file, valueBytes] of [
+      [C0, '1.0', 'vortex-file-compressed', 'a.vortex', 100],
+      [C0, '1.0', 'vortex-file-compressed', 'b.vortex', 10],
+      [E, '1.0', 'vortex-file-compressed', 'a.vortex', 101],
+      [E, '1.0', 'vortex-file-compressed', 'b.vortex', 11],
+      [E, '1.0', 'vortex-compact', 'a.vortex', 80],
+      [E, '1.0', 'vortex-compact', 'b.vortex', 8],
+      [F, '1.0', 'vortex-file-compressed', 'a.vortex', 102],
+      [F, '1.0', 'vortex-file-compressed', 'b.vortex', 12],
+      [F, '1.0', 'vortex-compact', 'a.vortex', 79],
+      [F, '1.0', 'vortex-compact', 'b.vortex', 7],
+      [F, '10.0', 'vortex-file-compressed', 'a.vortex', 1000],
+    ] as const) {
+      measurementId += 1;
+      await getPool().query(
+        `INSERT INTO file_sizes
+             (measurement_id, commit_sha, benchmark, scale_factor, format, file, value_bytes)
+           VALUES ($1, $2, 'tpch', $3, $4, $5, $6)`,
+        [measurementId, sha, scaleFactor, format, file, valueBytes],
+      );
+    }
   });
 
   afterAll(async () => {
@@ -563,10 +591,17 @@ describe.skipIf(!databaseAvailable)('groupChartPayloads at the window edges', ()
         { k: 'CompressionSize', dataset: 'sy', dataset_variant: 'v2' },
       ],
     ],
+    [
+      { k: 'FileSizeGroup' },
+      [
+        { k: 'FileSize', benchmark: 'tpch', scale_factor: '1.0' },
+        { k: 'FileSize', benchmark: 'tpch', scale_factor: '10.0' },
+      ],
+    ],
   ];
 
   it.each(['1', '2', '3', '4', 'all'])(
-    'matches chartPayload for random-access, vector-search and compression-size groups at ?n=%s',
+    'matches chartPayload for random-access, vector-search, compression-size and file-size groups at ?n=%s',
     async (n) => {
       const window = commitWindow(n);
       for (const [group, keys] of OTHER_FAMILIES) {
@@ -606,6 +641,22 @@ describe.skipIf(!databaseAvailable)('groupChartPayloads at the window edges', ()
     expect(tenth?.series).toEqual({ fl: [600, 601, 602, 603] });
     expect(short?.commits.map((c) => c.sha)).toEqual([F]);
     expect(short?.series).toEqual({ fl: [600] });
+  });
+
+  it('sums each file-size chart over its files, one line per format', async () => {
+    const [sf1, sf10] = await groupChartPayloads(
+      ...defined(OTHER_FAMILIES[3]),
+      parseCommitWindow('all'),
+    );
+    expect(sf1?.display_name).toBe('tpch');
+    expect(sf1?.unit_kind).toBe('bytes');
+    expect(sf1?.series).toEqual({
+      'vortex-compact': [null, null, null, null, 88, 86],
+      'vortex-file-compressed': [110, null, null, null, 112, 114],
+    });
+    expect(sf10?.display_name).toBe('tpch sf=10.0');
+    expect(sf10?.commits.map((c) => c.sha)).toEqual([F]);
+    expect(sf10?.series).toEqual({ 'vortex-file-compressed': [1000] });
   });
 
   it('keeps sibling groups apart', async () => {

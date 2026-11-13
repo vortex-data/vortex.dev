@@ -753,6 +753,7 @@ describe('timing summaries (shared ranking model)', () => {
       { k: 'CompressionSizeGroup' },
       { k: 'RandomAccessGroup', storage: 'nvme' },
       { k: 'VectorSearchGroup', dataset: 'd', layout: 'l' },
+      { k: 'FileSizeGroup' },
     ];
     expect(keys.map((key) => key.k).sort()).toEqual([...GROUP_KINDS].sort());
     for (const key of keys) {

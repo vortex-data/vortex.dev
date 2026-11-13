@@ -354,6 +354,7 @@ type CompressionTimeKey = Extract<ChartKey, { k: 'CompressionTime' }>;
 type CompressionSizeKey = Extract<ChartKey, { k: 'CompressionSize' }>;
 type RandomAccessKey = Extract<ChartKey, { k: 'RandomAccess' }>;
 type VectorSearchKey = Extract<ChartKey, { k: 'VectorSearch' }>;
+type FileSizeKey = Extract<ChartKey, { k: 'FileSize' }>;
 
 /** Row shape of a fact-table pass; `value` is read `::float8`. */
 type ValueRow = { commit_sha: string; value: number };
@@ -396,6 +397,8 @@ export function seriesFor(
     }
     case 'VectorSearch':
       return { key: `${row.flavor}`, engine: undefined, format: undefined };
+    case 'FileSize':
+      return { key: `${row.format}`, engine: undefined, format: row.format };
   }
 }
 
@@ -430,12 +433,22 @@ function chartDisplayName(key: ChartKey): string {
       return key.dataset;
     case 'VectorSearch':
       return `${key.dataset} / ${key.layout} (threshold=${key.threshold})`;
+    case 'FileSize':
+      return fileSizeChartName(key.benchmark, key.scale_factor);
   }
+}
+
+/**
+ * A file-size chart's name: the benchmark, with its scale factor unless it is the default `1.0`.
+ * The monorepo's capture script records `1.0` for a benchmark with no scale-factor directory.
+ */
+function fileSizeChartName(benchmark: string, scaleFactor: string): string {
+  return scaleFactor === '1.0' ? benchmark : `${benchmark} sf=${scaleFactor}`;
 }
 
 /** A chart's base `unit_kind`: sizes are bytes, everything else is a time. */
 function chartUnitKind(key: ChartKey): UnitKind {
-  return key.k === 'CompressionSize' ? 'bytes' : 'time_ns';
+  return key.k === 'CompressionSize' || key.k === 'FileSize' ? 'bytes' : 'time_ns';
 }
 
 async function collectQueryChart(
@@ -637,6 +650,48 @@ async function collectVectorSearchChart(
 }
 
 /**
+ * One line per Vortex format: the total size of the benchmark's files at each commit. The table
+ * has a row per file, which would be thousands of lines across the group.
+ */
+async function collectFileSizeChart(
+  key: FileSizeKey,
+  window: CommitWindow,
+): Promise<ChartResponse | null> {
+  const { benchmark, scale_factor } = key;
+  const seeded = await seededCommitsInWindow(
+    (p) =>
+      `SELECT MIN(c2.timestamp)
+         FROM file_sizes f2
+         JOIN ${BRANCH_COMMITS} c2 ON c2.commit_sha = f2.commit_sha
+        WHERE f2.benchmark = ${p.bind(benchmark)}
+          AND f2.scale_factor = ${p.bind(scale_factor)}`,
+    window,
+  );
+  if (seeded.commits.length === 0) {
+    return null;
+  }
+  const acc = new SeriesAccumulator();
+  acc.seedCommits(seeded.commits);
+
+  const params = new QueryParams();
+  const text = `
+    SELECT f.commit_sha,
+           f.format, SUM(f.value_bytes)::float8 AS value
+      FROM file_sizes f
+      JOIN ${BRANCH_COMMITS} c USING (commit_sha)
+     WHERE f.benchmark = ${params.bind(benchmark)}
+       AND f.scale_factor = ${params.bind(scale_factor)}${factWindowFilter(params, window)}
+     GROUP BY f.commit_sha, c.timestamp, f.format
+     ORDER BY c.timestamp, f.format
+  `;
+  const rows = (await getPool().query<FormatRow>(text, params.values)).rows;
+  for (const row of rows) {
+    recordRow(acc, key.k, row);
+  }
+  return acc.finish(chartDisplayName(key), chartUnitKind(key), seeded.history);
+}
+
+/**
  * Build the JSON payload for one chart by key, or `null` when the chart has no
  * data (callers render a 404). The shared implementation behind
  * `GET /api/chart/{slug}`. `window` caps the number of recent commits; the
@@ -658,6 +713,8 @@ export function chartPayload(key: ChartKey, window: CommitWindow): Promise<Chart
       return collectRandomAccessChart(key, window);
     case 'VectorSearch':
       return collectVectorSearchChart(key, window);
+    case 'FileSize':
+      return collectFileSizeChart(key, window);
   }
 }
 
@@ -728,6 +785,8 @@ function chartInGroup(group: GroupKey, key: ChartKey): boolean {
       return (
         key.k === 'VectorSearch' && key.dataset === group.dataset && key.layout === group.layout
       );
+    case 'FileSizeGroup':
+      return key.k === 'FileSize';
   }
 }
 
@@ -982,6 +1041,30 @@ function groupRowsQuery(
       );
       break;
     }
+    case 'FileSizeGroup': {
+      const keys = chartsOf(group, charts, 'FileSize');
+      const pins = (alias: string): string =>
+        `${alias}.benchmark = ch.benchmark AND ${alias}.scale_factor = ch.scale_factor`;
+      block(
+        ['format'],
+        keys.map((_, i) => i + 1),
+        [
+          ['benchmark', 'text', keys.map((k) => k.benchmark)],
+          ['scale_factor', 'text', keys.map((k) => k.scale_factor)],
+        ],
+        `SELECT MIN(c2.timestamp)
+           FROM file_sizes f2
+           JOIN ${BRANCH_COMMITS} c2 ON c2.commit_sha = f2.commit_sha
+          WHERE ${pins('f2')}`,
+        `SELECT f.commit_sha,
+                f.format, SUM(f.value_bytes)::float8 AS value
+           FROM file_sizes f
+           JOIN ${BRANCH_COMMITS} c USING (commit_sha)
+          WHERE ${pins('f')}${factWindowFilter(params, window)}
+          GROUP BY f.commit_sha, f.format`,
+      );
+      break;
+    }
   }
   const text = `
     WITH commit_times AS (
@@ -1159,6 +1242,7 @@ const GROUP_ORDER: readonly string[] = [
   'Compression Size',
   'String Encoding',
   'String Encoding Size',
+  'SQL File Size',
   'Random Access (NVMe)',
   'Random Access (S3)',
   'Clickbench',
@@ -1573,6 +1657,60 @@ async function collectVectorSearchGroups(): Promise<Group[]> {
   return groups;
 }
 
+type FileSizeScopeRow = { benchmark: string; scale_factor: string };
+
+/**
+ * The `SQL File Size` group: one chart per benchmark and scale factor, or `[]` if the table is
+ * empty. Charts order by benchmark, then by numeric scale factor, so `10.0` follows `1.0`.
+ */
+async function collectFileSizeGroup(): Promise<Group[]> {
+  // A recursive skip scan of `idx_file_sizes_baseline`: one descent per scope instead of a scan
+  // of every file of every commit.
+  const text = `
+    WITH RECURSIVE scopes AS (
+      (SELECT f.benchmark, f.scale_factor
+         FROM file_sizes f
+        ORDER BY f.benchmark, f.scale_factor
+        LIMIT 1)
+      UNION ALL
+      SELECT nxt.benchmark, nxt.scale_factor
+        FROM scopes s
+       CROSS JOIN LATERAL (
+         SELECT f.benchmark, f.scale_factor
+           FROM file_sizes f
+          WHERE (f.benchmark, f.scale_factor) > (s.benchmark, s.scale_factor)
+          ORDER BY f.benchmark, f.scale_factor
+          LIMIT 1
+       ) nxt
+    )
+    SELECT benchmark, scale_factor FROM scopes
+  `;
+  const rows = (await getPool().query<FileSizeScopeRow>(text)).rows;
+  if (rows.length === 0) {
+    return [];
+  }
+  rows.sort(
+    (a, b) =>
+      compareCodeUnits(a.benchmark, b.benchmark) ||
+      Number(a.scale_factor) - Number(b.scale_factor) ||
+      compareCodeUnits(a.scale_factor, b.scale_factor),
+  );
+  return [
+    {
+      name: 'SQL File Size',
+      slug: groupKeyToSlug({ k: 'FileSizeGroup' }),
+      charts: rows.map((row) => ({
+        name: fileSizeChartName(row.benchmark, row.scale_factor),
+        slug: chartKeyToSlug({
+          k: 'FileSize',
+          benchmark: row.benchmark,
+          scale_factor: row.scale_factor,
+        }),
+      })),
+    },
+  ];
+}
+
 /** Dispatch to the discovery pass for one family, the TS analogue of the Rust
  * `(family.collect_groups)(conn)` registry indirection. */
 function discoverGroups(groupKind: GroupKind): Promise<Group[]> {
@@ -1587,6 +1725,8 @@ function discoverGroups(groupKind: GroupKind): Promise<Group[]> {
       return collectRandomAccessGroup();
     case 'VectorSearchGroup':
       return collectVectorSearchGroups();
+    case 'FileSizeGroup':
+      return collectFileSizeGroup();
   }
 }
 

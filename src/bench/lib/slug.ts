@@ -32,7 +32,9 @@ export type ChartKey =
   | { k: 'CompressionTime'; dataset: string; dataset_variant: string | null }
   | { k: 'CompressionSize'; dataset: string; dataset_variant: string | null }
   | { k: 'RandomAccess'; dataset: string }
-  | { k: 'VectorSearch'; dataset: string; layout: string; threshold: number };
+  | { k: 'VectorSearch'; dataset: string; layout: string; threshold: number }
+  // One SQL benchmark's data at one scale factor; its series are the Vortex formats.
+  | { k: 'FileSize'; benchmark: string; scale_factor: string };
 
 /** Strongly-typed group key parsed from a slug. Discriminated on `k`. */
 export type GroupKey =
@@ -47,7 +49,8 @@ export type GroupKey =
   | { k: 'CompressionTimeGroup'; suite?: 'strings' }
   | { k: 'CompressionSizeGroup'; suite?: 'strings' }
   | { k: 'RandomAccessGroup'; storage: RandomAccessStorage }
-  | { k: 'VectorSearchGroup'; dataset: string; layout: string };
+  | { k: 'VectorSearchGroup'; dataset: string; layout: string }
+  | { k: 'FileSizeGroup' };
 
 const CHART_KINDS: readonly ChartKind[] = [
   'QueryMeasurement',
@@ -55,6 +58,7 @@ const CHART_KINDS: readonly ChartKind[] = [
   'CompressionSize',
   'RandomAccess',
   'VectorSearch',
+  'FileSize',
 ];
 
 const GROUP_KINDS: readonly GroupKind[] = [
@@ -63,6 +67,7 @@ const GROUP_KINDS: readonly GroupKind[] = [
   'CompressionSizeGroup',
   'RandomAccessGroup',
   'VectorSearchGroup',
+  'FileSizeGroup',
 ];
 
 function encodePayload(json: string): string {
@@ -110,6 +115,9 @@ export function chartKeyToSlug(key: ChartKey): string {
       break;
     case 'VectorSearch':
       ordered = { k: key.k, dataset: key.dataset, layout: key.layout, threshold: key.threshold };
+      break;
+    case 'FileSize':
+      ordered = { k: key.k, benchmark: key.benchmark, scale_factor: key.scale_factor };
       break;
   }
   return `${prefix}.${encodePayload(JSON.stringify(ordered))}`;
@@ -213,6 +221,12 @@ export function chartKeyFromSlug(slug: string): ChartKey {
         layout: reqString(obj, 'layout'),
         threshold: reqNumber(obj, 'threshold'),
       };
+    case 'FileSize':
+      return {
+        k: kind,
+        benchmark: reqString(obj, 'benchmark'),
+        scale_factor: reqString(obj, 'scale_factor'),
+      };
   }
 }
 
@@ -242,6 +256,9 @@ export function groupKeyToSlug(key: GroupKey): string {
     case 'CompressionTimeGroup':
     case 'CompressionSizeGroup':
       ordered = key.suite === undefined ? { k: key.k } : { k: key.k, suite: key.suite };
+      break;
+    case 'FileSizeGroup':
+      ordered = { k: key.k };
       break;
   }
   return `${prefix}.${encodePayload(JSON.stringify(ordered))}`;
@@ -287,5 +304,7 @@ export function groupKeyFromSlug(slug: string): GroupKey {
       }
       return { k: kind, suite: 'strings' };
     }
+    case 'FileSizeGroup':
+      return { k: kind };
   }
 }

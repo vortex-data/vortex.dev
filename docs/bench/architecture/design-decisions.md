@@ -18,9 +18,9 @@ reasoning behind them. Each entry is "decision → why → where." Topic docs
 ## Data model
 
 **One fact table per measurement family (not one wide table).**
-The five families have genuinely different dimensions. A single wide table would
+The six families have genuinely different dimensions. A single wide table would
 bloat every row with NULL columns it doesn't use, or split one chart's data across
-multiple rows that then need re-joining. Five focused tables keep each row dense
+multiple rows that then need re-joining. Six focused tables keep each row dense
 and each chart query a single-table scan.
 → `migrations/001_initial_schema.sql`, `server/src/schema.rs`.
 
