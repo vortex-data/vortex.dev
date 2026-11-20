@@ -145,7 +145,13 @@ module.exports = {
       settings: {
         preset: "desktop",
         throttlingMethod: "simulate",
-        skipAudits: ["uses-http2"]
+        skipAudits: ["uses-http2"],
+        // Vercel adds its Toolbar to preview deployments, even with the
+        // proxy's `x-vercel-skip-toolbar` header. It loads from vercel.live
+        // (and Pusher, for live comments), and its third-party cookies and
+        // issues cut Best Practices to 0.78 on every page from 2026-11-20.
+        // The site never loads either host, so block them.
+        blockedUrlPatterns: ["*vercel.live*", "*pusher.com*"]
       }
     },
     assert: {
