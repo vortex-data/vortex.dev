@@ -152,12 +152,38 @@ describe('SummaryCard', () => {
           maxRatio: 1,
           compressionRatio: 4,
           totalBytes: null,
+          measured: 1,
+          total: 1,
         },
       ],
       explanation: 'e',
     });
     expect(html).toContain('class="score-runtime compression-size-value">—</span>');
     expect(html).toContain('class="compression-size-heading compression-size-total-unit"></span>');
+  });
+
+  it('says how many datasets a partly measured size ranking covers', () => {
+    const ranking = (name: string, measured: number) => ({
+      name,
+      minRatio: 1,
+      ratio: 1,
+      maxRatio: 1,
+      compressionRatio: null,
+      totalBytes: measured === 2 ? 10 : null,
+      measured,
+      total: 2,
+    });
+    const html = render({
+      type: 'compressionSize',
+      title: 'File Sizes Summary',
+      rankings: [ranking('parquet', 2), ranking('vortex-compact', 1)],
+      explanation: 'e',
+    });
+    expect(html).toContain('title="vortex-compact · measured on 1 of 2 datasets"');
+    expect(html).toContain('<span aria-hidden="true"> (1/2)</span>');
+    expect(html).toContain('<span class="vx-sr-only">, measured on 1 of 2 datasets</span>');
+    // A complete ranking carries no coverage.
+    expect(html.match(/measured on/g)).toHaveLength(2);
   });
 
   it('renders nothing for a compression card with no rankings', () => {
@@ -176,6 +202,8 @@ describe('SummaryCard', () => {
           maxRatio: 1.55,
           compressionRatio: 8.25,
           totalBytes: 1_603_980_000,
+          measured: 1,
+          total: 1,
         },
         {
           name: 'parquet',
@@ -184,6 +212,8 @@ describe('SummaryCard', () => {
           maxRatio: 1,
           compressionRatio: 4.5,
           totalBytes: 1_428_150_000,
+          measured: 1,
+          total: 1,
         },
         {
           name: 'lance',
@@ -192,6 +222,8 @@ describe('SummaryCard', () => {
           maxRatio: 1.3,
           compressionRatio: null,
           totalBytes: 2_500_000,
+          measured: 1,
+          total: 1,
         },
       ],
       explanation: 'higher is better',
@@ -311,6 +343,8 @@ describe('SummaryCard', () => {
           maxRatio: 1,
           compressionRatio: 8,
           totalBytes: 100,
+          measured: 1,
+          total: 1,
         },
         {
           name: 'lance',
@@ -319,6 +353,8 @@ describe('SummaryCard', () => {
           maxRatio: 1,
           compressionRatio: 2,
           totalBytes: 200,
+          measured: 1,
+          total: 1,
         },
       ],
       explanation: 'e',

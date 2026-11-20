@@ -136,6 +136,8 @@ describe('summaryLines', () => {
             maxRatio: 1.549,
             compressionRatio: 5.744,
             totalBytes: 1_603_980_000,
+            measured: 1,
+            total: 1,
           },
         ],
       }).at(-1),

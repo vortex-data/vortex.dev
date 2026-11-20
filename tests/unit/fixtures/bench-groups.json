@@ -48,11 +48,11 @@
       }
     },
     {
-      "name": "Compression Size",
-      "slug": "csg.eyJrIjoiQ29tcHJlc3Npb25TaXplR3JvdXAifQ",
+      "name": "File Sizes",
+      "slug": "fsg.eyJrIjoiRmlsZVNpemVHcm91cCJ9",
       "summary": {
         "type": "compressionSize",
-        "title": "Compression Size Summary",
+        "title": "File Sizes Summary",
         "rankings": [
           {
             "name": "parquet",

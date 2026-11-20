@@ -42,6 +42,12 @@ import {
   STRING_DATASET_PREFIX,
 } from './compression-suite';
 import { groupDescription } from './descriptions';
+import {
+  FILE_SIZE_SCOPES,
+  FILE_SIZES_GROUP_NAME,
+  isFileSizeScope,
+  isFileSizesDataset,
+} from './file-sizes';
 import type { FilterUniverse } from './chart-format';
 import { type ChartKind, compareCodeUnits, FAMILIES, type GroupKind } from './families';
 import { chartKeyFromSlug, chartKeyToSlug, groupKeyFromSlug, groupKeyToSlug } from './slug';
@@ -782,9 +788,7 @@ function chartInGroup(group: GroupKey, key: ChartKey): boolean {
         key.k === 'CompressionTime' && compressionSuite(key.dataset) === (group.suite ?? 'compress')
       );
     case 'CompressionSizeGroup':
-      return (
-        key.k === 'CompressionSize' && compressionSuite(key.dataset) === (group.suite ?? 'compress')
-      );
+      return key.k === 'CompressionSize' && compressionSuite(key.dataset) === group.suite;
     case 'RandomAccessGroup':
       return key.k === 'RandomAccess' && randomAccessStorage(key.dataset) === group.storage;
     case 'VectorSearchGroup':
@@ -792,7 +796,10 @@ function chartInGroup(group: GroupKey, key: ChartKey): boolean {
         key.k === 'VectorSearch' && key.dataset === group.dataset && key.layout === group.layout
       );
     case 'FileSizeGroup':
-      return key.k === 'FileSize';
+      return (
+        (key.k === 'FileSize' && isFileSizeScope(key.benchmark, key.scale_factor)) ||
+        (key.k === 'CompressionSize' && isFileSizesDataset(key.dataset, key.dataset_variant))
+      );
   }
 }
 
@@ -877,6 +884,9 @@ function queryChartEarliest(pins: (alias: string) => string): string {
 /** One per-chart column of a [`groupRowsQuery`] block: its name in `ch`, element type, values. */
 type ChartColumn = readonly [name: string, type: string, values: readonly unknown[]];
 
+/** The key of a chart from either compression table. */
+type CompressionChartKey = Extract<ChartKey, { k: 'CompressionTime' | 'CompressionSize' }>;
+
 /**
  * One row per (chart, fact row in the window), plus one row with NULL fact
  * columns for a chart with no rows there. `ord` is the chart's 1-based position
@@ -934,6 +944,48 @@ function groupRowsQuery(
              ${rows}
              ) d ON true`);
   };
+  /**
+   * The blocks for compression charts, each at its 1-based position in `charts`.
+   * `dataset_variant` varies per chart. `IS NOT DISTINCT FROM ch.dataset_variant` would plan as
+   * if it matched one row and rescan the window per fact row, so the charts split by whether the
+   * variant is NULL and each block pins it sargably, as `sargableDimEq` does.
+   */
+  const compressionBlocks = (
+    kind: CompressionChartKey['k'],
+    charts: readonly (readonly [CompressionChartKey, number])[],
+  ): void => {
+    const time = kind === 'CompressionTime';
+    const table = time ? 'compression_times' : 'compression_sizes';
+    const value = time ? 'value_ns' : 'value_bytes';
+    const fields = time ? ['format', 'op'] : ['format'];
+    for (const nullVariant of [true, false]) {
+      const picked = charts.filter(([key]) => (key.dataset_variant === null) === nullVariant);
+      if (picked.length === 0) {
+        continue;
+      }
+      const columns: ChartColumn[] = [['dataset', 'text', picked.map(([key]) => key.dataset)]];
+      if (!nullVariant) {
+        columns.push(['dataset_variant', 'text', picked.map(([key]) => key.dataset_variant)]);
+      }
+      const pins = (alias: string): string =>
+        `${alias}.dataset = ch.dataset
+           AND ${alias}.dataset_variant ${nullVariant ? 'IS NULL' : '= ch.dataset_variant'}`;
+      block(
+        fields,
+        picked.map(([, position]) => position),
+        columns,
+        `SELECT MIN(c2.timestamp)
+           FROM ${table} f2
+           JOIN ${BRANCH_COMMITS} c2 ON c2.commit_sha = f2.commit_sha
+          WHERE ${pins('f2')}`,
+        `SELECT f.commit_sha,
+                ${fields.map((field) => `f.${field}`).join(', ')}, f.${value}::float8 AS value
+           FROM ${table} f
+           JOIN ${BRANCH_COMMITS} c USING (commit_sha)
+          WHERE ${pins('f')}${factWindowFilter(params, window)}`,
+      );
+    }
+  };
   switch (group.k) {
     case 'QueryGroup': {
       const keys = chartsOf(group, charts, 'QueryMeasurement');
@@ -957,50 +1009,20 @@ function groupRowsQuery(
       );
       break;
     }
-    case 'CompressionTimeGroup':
+    case 'CompressionTimeGroup': {
+      const keys = chartsOf(group, charts, 'CompressionTime');
+      compressionBlocks(
+        'CompressionTime',
+        keys.map((key, i) => [key, i + 1]),
+      );
+      break;
+    }
     case 'CompressionSizeGroup': {
-      const time = group.k === 'CompressionTimeGroup';
-      const table = time ? 'compression_times' : 'compression_sizes';
-      const value = time ? 'value_ns' : 'value_bytes';
-      const fields = time ? ['format', 'op'] : ['format'];
-      const keys = chartsOf(group, charts, time ? 'CompressionTime' : 'CompressionSize');
-      // `dataset_variant` varies per chart. `IS NOT DISTINCT FROM ch.dataset_variant` would plan
-      // as if it matched one row and rescan the window per fact row, so split the charts by
-      // whether the variant is NULL and pin each block sargably, as `sargableDimEq` does.
-      for (const nullVariant of [true, false]) {
-        const positions: number[] = [];
-        const picked: typeof keys = [];
-        keys.forEach((key, i) => {
-          if ((key.dataset_variant === null) === nullVariant) {
-            positions.push(i + 1);
-            picked.push(key);
-          }
-        });
-        if (picked.length === 0) {
-          continue;
-        }
-        const columns: ChartColumn[] = [['dataset', 'text', picked.map((k) => k.dataset)]];
-        if (!nullVariant) {
-          columns.push(['dataset_variant', 'text', picked.map((k) => k.dataset_variant)]);
-        }
-        const pins = (alias: string): string =>
-          `${alias}.dataset = ch.dataset
-           AND ${alias}.dataset_variant ${nullVariant ? 'IS NULL' : '= ch.dataset_variant'}`;
-        block(
-          fields,
-          positions,
-          columns,
-          `SELECT MIN(c2.timestamp)
-             FROM ${table} f2
-             JOIN ${BRANCH_COMMITS} c2 ON c2.commit_sha = f2.commit_sha
-            WHERE ${pins('f2')}`,
-          `SELECT f.commit_sha,
-                  ${fields.map((field) => `f.${field}`).join(', ')}, f.${value}::float8 AS value
-             FROM ${table} f
-             JOIN ${BRANCH_COMMITS} c USING (commit_sha)
-            WHERE ${pins('f')}${factWindowFilter(params, window)}`,
-        );
-      }
+      const keys = chartsOf(group, charts, 'CompressionSize');
+      compressionBlocks(
+        'CompressionSize',
+        keys.map((key, i) => [key, i + 1]),
+      );
       break;
     }
     case 'RandomAccessGroup': {
@@ -1048,15 +1070,32 @@ function groupRowsQuery(
       break;
     }
     case 'FileSizeGroup': {
-      const keys = chartsOf(group, charts, 'FileSize');
+      // The group holds two families. Both give one size per format, so their blocks share
+      // columns.
+      const sizes: [CompressionChartKey, number][] = [];
+      const files: [Extract<ChartKey, { k: 'FileSize' }>, number][] = [];
+      charts.forEach((key, i) => {
+        if (!chartInGroup(group, key)) {
+          throw new Error(`chart ${chartKeyToSlug(key)} is not in group ${groupKeyToSlug(group)}`);
+        }
+        if (key.k === 'CompressionSize') {
+          sizes.push([key, i + 1]);
+        } else if (key.k === 'FileSize') {
+          files.push([key, i + 1]);
+        }
+      });
+      compressionBlocks('CompressionSize', sizes);
+      if (files.length === 0) {
+        break;
+      }
       const pins = (alias: string): string =>
         `${alias}.benchmark = ch.benchmark AND ${alias}.scale_factor = ch.scale_factor`;
       block(
         ['format'],
-        keys.map((_, i) => i + 1),
+        files.map(([, position]) => position),
         [
-          ['benchmark', 'text', keys.map((k) => k.benchmark)],
-          ['scale_factor', 'text', keys.map((k) => k.scale_factor)],
+          ['benchmark', 'text', files.map(([k]) => k.benchmark)],
+          ['scale_factor', 'text', files.map(([k]) => k.scale_factor)],
         ],
         `SELECT MIN(c2.timestamp)
            FROM file_sizes f2
@@ -1248,8 +1287,7 @@ export interface GroupChartsResponse {
  */
 const GROUP_ORDER: readonly string[] = [
   'Compression',
-  'Compression Size',
-  'SQL File Size',
+  'File Sizes',
   'Random Access (NVMe)',
   'Random Access (S3)',
   'Clickbench',
@@ -1531,46 +1569,60 @@ async function collectQueryGroups(): Promise<Group[]> {
 
 type DatasetVariantRow = { dataset: string; dataset_variant: string | null };
 
-/** Group display names per compression suite and family. */
-const COMPRESSION_GROUP_NAMES: Record<
-  'CompressionTimeGroup' | 'CompressionSizeGroup',
-  Record<CompressionSuite, string>
-> = {
+/**
+ * Group display names per compression suite and family. `compress-bench`'s sizes are in the File
+ * Sizes group, so the size family names only `string-bench`'s group.
+ */
+const COMPRESSION_GROUP_NAMES = {
   CompressionTimeGroup: { compress: 'Compression', strings: 'String Encoding' },
-  CompressionSizeGroup: { compress: 'Compression Size', strings: 'String Encoding Size' },
-};
+  CompressionSizeGroup: { strings: 'String Encoding Size' },
+} as const;
+
+/** A compression `(dataset, dataset_variant)` row's chart link, named as its chart is. */
+function compressionChartLink(
+  row: DatasetVariantRow,
+  chartKind: CompressionChartKey['k'],
+): ChartLink {
+  const dataset =
+    compressionSuite(row.dataset) === 'strings'
+      ? row.dataset.slice(STRING_DATASET_PREFIX.length)
+      : row.dataset;
+  return {
+    name: row.dataset_variant !== null ? `${dataset}/${row.dataset_variant}` : dataset,
+    slug: chartKeyToSlug({
+      k: chartKind,
+      dataset: row.dataset,
+      dataset_variant: row.dataset_variant,
+    }),
+  };
+}
 
 /**
- * Split one compression table's `(dataset, dataset_variant)` rows into the `compress-bench`
- * group and the `string-bench` group, dropping a group with no rows. String charts drop the
- * shared `strings/` prefix from their names.
+ * Split one compression table's `(dataset, dataset_variant)` rows into the family's suite
+ * groups, dropping a group with no rows. String charts drop the shared `strings/` prefix from
+ * their names.
  */
 function compressionGroups(
   rows: readonly DatasetVariantRow[],
   groupKind: 'CompressionTimeGroup' | 'CompressionSizeGroup',
 ): Group[] {
   const chartKind = groupKind === 'CompressionTimeGroup' ? 'CompressionTime' : 'CompressionSize';
+  const names: Partial<Record<CompressionSuite, string>> = COMPRESSION_GROUP_NAMES[groupKind];
   const suites: CompressionSuite[] = ['compress', 'strings'];
   return suites.flatMap((suite) => {
+    const name = names[suite];
+    if (name === undefined) {
+      return [];
+    }
     const charts: ChartLink[] = rows
       .filter((row) => compressionSuite(row.dataset) === suite)
-      .map((row) => {
-        const dataset =
-          suite === 'strings' ? row.dataset.slice(STRING_DATASET_PREFIX.length) : row.dataset;
-        return {
-          name: row.dataset_variant !== null ? `${dataset}/${row.dataset_variant}` : dataset,
-          slug: chartKeyToSlug({
-            k: chartKind,
-            dataset: row.dataset,
-            dataset_variant: row.dataset_variant,
-          }),
-        };
-      });
+      .map((row) => compressionChartLink(row, chartKind));
     if (charts.length === 0) {
       return [];
     }
-    const key: GroupKey = suite === 'strings' ? { k: groupKind, suite } : { k: groupKind };
-    return [{ name: COMPRESSION_GROUP_NAMES[groupKind][suite], slug: groupKeyToSlug(key), charts }];
+    const key: GroupKey =
+      suite === 'strings' ? { k: groupKind, suite } : { k: 'CompressionTimeGroup' };
+    return [{ name, slug: groupKeyToSlug(key), charts }];
   });
 }
 
@@ -1586,16 +1638,20 @@ async function collectCompressionTimeGroup(): Promise<Group[]> {
   return compressionGroups(rows, 'CompressionTimeGroup');
 }
 
-/** The `Compression Size` and `String Encoding Size` groups, or `[]` if the fact table is empty. */
-async function collectCompressionSizeGroup(): Promise<Group[]> {
+/** Every `(dataset, dataset_variant)` in `compression_sizes`. */
+async function compressionSizeDatasets(): Promise<DatasetVariantRow[]> {
   const text = `
     SELECT dataset, dataset_variant
       FROM compression_sizes
      GROUP BY dataset, dataset_variant
      ORDER BY dataset, dataset_variant NULLS FIRST
   `;
-  const rows = (await getPool().query<DatasetVariantRow>(text)).rows;
-  return compressionGroups(rows, 'CompressionSizeGroup');
+  return (await getPool().query<DatasetVariantRow>(text)).rows;
+}
+
+/** The `String Encoding Size` group, or `[]` if `string-bench` has no sizes. */
+async function collectCompressionSizeGroup(): Promise<Group[]> {
+  return compressionGroups(await compressionSizeDatasets(), 'CompressionSizeGroup');
 }
 
 /** One random-access group per storage backend, omitting empty sections. */
@@ -1673,67 +1729,47 @@ async function collectVectorSearchGroups(): Promise<Group[]> {
 
 type FileSizeScopeRow = { benchmark: string; scale_factor: string };
 
-/** Benchmarks whose file-size charts lead the group, in this order; the rest follow by name. */
-const FILE_SIZE_CHART_ORDER: readonly string[] = ['clickbench', 'tpch', 'tpcds'];
-
-/** A benchmark's position in the file-size group: its `FILE_SIZE_CHART_ORDER` index, else after. */
-function fileSizeChartRank(benchmark: string): number {
-  const pos = FILE_SIZE_CHART_ORDER.indexOf(benchmark);
-  return pos === -1 ? FILE_SIZE_CHART_ORDER.length : pos;
-}
-
 /**
- * The `SQL File Size` group: one chart per benchmark and scale factor, or `[]` if the table is
- * empty. Charts order by [`FILE_SIZE_CHART_ORDER`], then by benchmark name, then by numeric
- * scale factor, so `10.0` follows `1.0`.
+ * The File Sizes group, or `[]` if neither table has a chart for it: the SQL suites' scopes in
+ * [`FILE_SIZE_SCOPES`] that have rows, in that order, then every `compress-bench` dataset in
+ * `compression_sizes` by name.
  */
 async function collectFileSizeGroup(): Promise<Group[]> {
-  // A recursive skip scan of `idx_file_sizes_baseline`: one descent per scope instead of a scan
-  // of every file of every commit.
-  const text = `
-    WITH RECURSIVE scopes AS (
-      (SELECT f.benchmark, f.scale_factor
-         FROM file_sizes f
-        ORDER BY f.benchmark, f.scale_factor
-        LIMIT 1)
-      UNION ALL
-      SELECT nxt.benchmark, nxt.scale_factor
-        FROM scopes s
-       CROSS JOIN LATERAL (
-         SELECT f.benchmark, f.scale_factor
-           FROM file_sizes f
-          WHERE (f.benchmark, f.scale_factor) > (s.benchmark, s.scale_factor)
-          ORDER BY f.benchmark, f.scale_factor
-          LIMIT 1
-       ) nxt
-    )
-    SELECT benchmark, scale_factor FROM scopes
+  // One index probe of `idx_file_sizes_baseline` per listed scope.
+  const scopesText = `
+    SELECT s.benchmark, s.scale_factor
+      FROM unnest($1::text[], $2::text[]) WITH ORDINALITY AS s(benchmark, scale_factor, ord)
+     WHERE EXISTS (
+             SELECT 1
+               FROM file_sizes f
+              WHERE f.benchmark = s.benchmark
+                AND f.scale_factor = s.scale_factor)
+     ORDER BY s.ord
   `;
-  const rows = (await getPool().query<FileSizeScopeRow>(text)).rows;
-  if (rows.length === 0) {
+  const [scopes, datasets] = await Promise.all([
+    getPool().query<FileSizeScopeRow>(scopesText, [
+      FILE_SIZE_SCOPES.map((scope) => scope.benchmark),
+      FILE_SIZE_SCOPES.map((scope) => scope.scale_factor),
+    ]),
+    compressionSizeDatasets(),
+  ]);
+  const charts: ChartLink[] = [
+    ...scopes.rows.map((row) => ({
+      name: fileSizeChartName(row.benchmark, row.scale_factor),
+      slug: chartKeyToSlug({
+        k: 'FileSize',
+        benchmark: row.benchmark,
+        scale_factor: row.scale_factor,
+      }),
+    })),
+    ...datasets
+      .filter((row) => isFileSizesDataset(row.dataset, row.dataset_variant))
+      .map((row) => compressionChartLink(row, 'CompressionSize')),
+  ];
+  if (charts.length === 0) {
     return [];
   }
-  rows.sort(
-    (a, b) =>
-      fileSizeChartRank(a.benchmark) - fileSizeChartRank(b.benchmark) ||
-      compareCodeUnits(a.benchmark, b.benchmark) ||
-      Number(a.scale_factor) - Number(b.scale_factor) ||
-      compareCodeUnits(a.scale_factor, b.scale_factor),
-  );
-  return [
-    {
-      name: 'SQL File Size',
-      slug: groupKeyToSlug({ k: 'FileSizeGroup' }),
-      charts: rows.map((row) => ({
-        name: fileSizeChartName(row.benchmark, row.scale_factor),
-        slug: chartKeyToSlug({
-          k: 'FileSize',
-          benchmark: row.benchmark,
-          scale_factor: row.scale_factor,
-        }),
-      })),
-    },
-  ];
+  return [{ name: FILE_SIZES_GROUP_NAME, slug: groupKeyToSlug({ k: 'FileSizeGroup' }), charts }];
 }
 
 /** Dispatch to the discovery pass for one family, the TS analogue of the Rust

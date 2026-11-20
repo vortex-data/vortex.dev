@@ -186,7 +186,16 @@ describe('groupHeadline', () => {
       title: 's',
       explanation: 'e',
       rankings: [
-        { name: VX, minRatio: ratio, ratio, maxRatio: ratio, compressionRatio: 5, totalBytes: 1 },
+        {
+          name: VX,
+          minRatio: ratio,
+          ratio,
+          maxRatio: ratio,
+          compressionRatio: 5,
+          totalBytes: 1,
+          measured: 1,
+          total: 1,
+        },
       ],
     });
     expect(h && headlineText(h)).toBe(expected);
@@ -202,7 +211,16 @@ describe('groupHeadline', () => {
         explanation: 'e',
         baseline: 'vortex',
         rankings: [
-          { name: VX, minRatio: 1, ratio: 1, maxRatio: 1, compressionRatio: null, totalBytes: 1 },
+          {
+            name: VX,
+            minRatio: 1,
+            ratio: 1,
+            maxRatio: 1,
+            compressionRatio: null,
+            totalBytes: 1,
+            measured: 1,
+            total: 1,
+          },
         ],
       }),
     ).toBeNull();

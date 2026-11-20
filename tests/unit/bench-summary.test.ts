@@ -342,7 +342,7 @@ describe("panelsFrom", () => {
 
   it("drops a score that is not a positive number", () => {
     const gs = groups();
-    const parquet = group(gs, "Compression Size").summary.rankings?.find(
+    const parquet = group(gs, "File Sizes").summary.rankings?.find(
       (r) => r.name === "parquet"
     );
     assert.ok(parquet);
@@ -353,10 +353,36 @@ describe("panelsFrom", () => {
     });
   });
 
+  it("keeps a file size score bench measured on part of the datasets", () => {
+    // The SQL suites write no Lance or Arrow IPC files, so bench's file size
+    // summary has those two on part of its datasets. A size ratio is to
+    // Parquet on the same dataset, so the card keeps it.
+    const gs = groups();
+    const lance = group(gs, "File Sizes").summary.rankings?.find(
+      (r) => r.name === "lance"
+    );
+    assert.ok(lance);
+    lance.measured = 12;
+    lance.total = 13;
+    assert.deepEqual(panelsFrom(gs, charts())?.[6]?.rows[2], {
+      system: "Lance",
+      score: 1.9876533869960349
+    });
+  });
+
+  it("reads the file size panel from the group's earlier name", () => {
+    // A deploy that renames a bench group builds against production bench,
+    // which still serves the old name.
+    const gs = groups();
+    const sizes = group(gs, "File Sizes");
+    sizes.name = "Compression Size";
+    assert.deepEqual(panelsFrom(gs, charts()), panelsFrom(groups(), charts()));
+  });
+
   it("gives null when a group is missing, so the card never shows part of the table", () => {
     for (const name of [
       "Compression",
-      "Compression Size",
+      "File Sizes",
       "Random Access (NVMe)",
       "Clickbench",
       "TPC-H (NVMe) (SF=10)"

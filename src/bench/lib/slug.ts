@@ -33,7 +33,7 @@ export type ChartKey =
   | { k: 'CompressionSize'; dataset: string; dataset_variant: string | null }
   | { k: 'RandomAccess'; dataset: string }
   | { k: 'VectorSearch'; dataset: string; layout: string; threshold: number }
-  // One SQL benchmark's data at one scale factor; its series are the Vortex formats.
+  // One SQL benchmark's data at one scale factor; its series are the formats it writes.
   | { k: 'FileSize'; benchmark: string; scale_factor: string };
 
 /** Strongly-typed group key parsed from a slug. Discriminated on `k`. */
@@ -47,9 +47,11 @@ export type GroupKey =
     }
   // `suite` is absent for the `compress-bench` group, so its slug predates the split.
   | { k: 'CompressionTimeGroup'; suite?: 'strings' }
-  | { k: 'CompressionSizeGroup'; suite?: 'strings' }
+  // Only `string-bench`'s sizes. `compress-bench`'s sizes are in the File Sizes group.
+  | { k: 'CompressionSizeGroup'; suite: 'strings' }
   | { k: 'RandomAccessGroup'; storage: RandomAccessStorage }
   | { k: 'VectorSearchGroup'; dataset: string; layout: string }
+  // The File Sizes group: `compress-bench`'s sizes and the SQL suites' file sizes.
   | { k: 'FileSizeGroup' };
 
 const CHART_KINDS: readonly ChartKind[] = [
@@ -254,8 +256,10 @@ export function groupKeyToSlug(key: GroupKey): string {
       ordered = { k: key.k, storage: key.storage };
       break;
     case 'CompressionTimeGroup':
-    case 'CompressionSizeGroup':
       ordered = key.suite === undefined ? { k: key.k } : { k: key.k, suite: key.suite };
+      break;
+    case 'CompressionSizeGroup':
+      ordered = { k: key.k, suite: key.suite };
       break;
     case 'FileSizeGroup':
       ordered = { k: key.k };
@@ -294,10 +298,19 @@ export function groupKeyFromSlug(slug: string): GroupKey {
       }
       return { k: kind, storage };
     }
-    case 'CompressionTimeGroup':
-    case 'CompressionSizeGroup': {
+    case 'CompressionTimeGroup': {
       if (obj.suite === undefined) {
         return { k: kind };
+      }
+      if (obj.suite !== 'strings') {
+        throw new Error('compression group suite must be strings when present');
+      }
+      return { k: kind, suite: 'strings' };
+    }
+    case 'CompressionSizeGroup': {
+      // The `Compression Size` group's links resolve to File Sizes, which holds its charts now.
+      if (obj.suite === undefined) {
+        return { k: 'FileSizeGroup' };
       }
       if (obj.suite !== 'strings') {
         throw new Error('compression group suite must be strings when present');

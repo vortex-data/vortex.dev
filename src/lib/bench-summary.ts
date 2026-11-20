@@ -99,6 +99,11 @@ type Source = {
   kind: Panel["kind"];
   better: Panel["better"];
   group: string;
+  /**
+   * The group's earlier names. The page reads production bench while it
+   * builds, so a deploy that renames a group still reads the old name.
+   */
+  formerGroups?: readonly string[];
   /** The rankings that list the systems, from the group's summary. */
   rankings: (summary: Ranking) => unknown;
   /** The ranking's name for a system's format. */
@@ -107,6 +112,14 @@ type Source = {
   where?: Ranking;
   /** The ranking's field that holds the score. */
   score: "score" | "ratio";
+  /**
+   * Show a system's score even when bench measured it on only part of the
+   * workload. The file size summary covers the SQL suites' files, which
+   * have no Lance or Arrow IPC copies, so those two are partial there. A
+   * size ratio is to Parquet's size on the same dataset, so it stays
+   * comparable over the datasets the system has.
+   */
+  partialScores?: true;
   /** The systems the panel shows. */
   systems: readonly string[];
   /**
@@ -203,13 +216,21 @@ const SOURCES: (Source | Panel)[] = [
     unit: "×",
     kind: "size",
     better: "lower",
-    group: "Compression Size",
+    group: "File Sizes",
+    formerGroups: ["Compression Size"],
     rankings: (s) => s.rankings,
     name: (f) => f,
     score: "ratio",
+    partialScores: true,
     systems: WITH_ARROW
   }
 ];
+
+// A source's group in bench's `/api/groups`, by its name or an earlier one.
+const findGroup = (groups: unknown[], source: Source) =>
+  [source.group, ...(source.formerGroups ?? [])]
+    .map((name) => groups.find((g) => isObject(g) && g.name === name))
+    .find((g) => g !== undefined);
 
 const isObject = (x: unknown): x is Ranking =>
   typeof x === "object" && x !== null && !Array.isArray(x);
@@ -224,8 +245,9 @@ const measured = (r: Row) =>
   r.score !== null &&
   !(r.measured !== undefined && r.total !== undefined && r.measured < r.total);
 
-// Bench's coverage passes through: results.js shows a system measured
-// on only part of the workload as "Not measured".
+// Bench's coverage passes through, unless the source shows partial scores:
+// results.js shows a system measured on only part of the workload as
+// "Not measured".
 function rowFor(source: Source, rankings: Ranking[], format: string) {
   const name = source.name(format);
   const where = Object.entries(source.where ?? {});
@@ -234,6 +256,7 @@ function rowFor(source: Source, rankings: Ranking[], format: string) {
   );
   if (!r) return { score: null };
   const score = r[source.score];
+  if (source.partialScores) return { score: positive(score) ? score : null };
   const measured = count(r.measured);
   const total = count(r.total);
   return {
@@ -340,7 +363,7 @@ function panelFor(
   groups: unknown[],
   charts: Record<string, unknown>
 ): Panel | null {
-  const group = groups.find((g) => isObject(g) && g.name === source.group);
+  const group = findGroup(groups, source);
   const summary = isObject(group) ? group.summary : undefined;
   const list = isObject(summary) ? source.rankings(summary) : undefined;
   if (!Array.isArray(list)) return null;
@@ -473,7 +496,7 @@ export async function getBenchSummary(
     const slugs: [string, string][] = [];
     for (const source of SOURCES) {
       if (!("times" in source) || !source.times) continue;
-      const group = groups.find((g) => isObject(g) && g.name === source.group);
+      const group = findGroup(groups, source);
       const slug = isObject(group) ? group.slug : undefined;
       if (typeof slug !== "string" || !/^[\w.-]+$/.test(slug))
         return fail(`group ${source.group} has no usable slug`);

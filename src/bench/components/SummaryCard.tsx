@@ -144,14 +144,27 @@ export function SummaryCard({ summary }: { summary?: Summary | undefined }) {
               <div className="compression-size-arrow-list">
                 {summary.rankings.map((item, idx) => {
                   const label = displayFormat(item.name);
+                  // A format measured on only some datasets has its means over those alone, so
+                  // the row says how many, and it ranks after the complete ones.
+                  const partial = item.measured < item.total;
+                  const coverage = `measured on ${item.measured} of ${item.total} datasets`;
                   return (
                     <div
                       className={rowClass('score-item compression-size-arrow-row', item.name)}
                       key={item.name}
                     >
                       <span className="score-rank">#{idx + 1}</span>
-                      <span className="score-series" title={label}>
+                      <span
+                        className="score-series"
+                        title={partial ? `${label} · ${coverage}` : label}
+                      >
                         {label}
+                        {partial ? (
+                          <>
+                            <span aria-hidden="true">{` (${item.measured}/${item.total})`}</span>
+                            <span className="vx-sr-only">{`, ${coverage}`}</span>
+                          </>
+                        ) : null}
                       </span>
                       <span className="score-runtime compression-size-value">
                         {item.totalBytes === null || totalUnit === null ? (

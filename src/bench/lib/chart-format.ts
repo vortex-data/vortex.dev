@@ -160,6 +160,16 @@ const FORMAT: Record<string, FormatStyle> = {
   'arrow-ipc': ARROW,
 };
 
+/**
+ * The format a codec variant is drawn as: Parquet with a codec other than zstd
+ * (`parquet-snappy`, `parquet-uncompressed`, as the size tables name them) is
+ * Parquet's teal, dashed, so it reads as a kind of Parquet without a color of
+ * its own. Size charts have no engine, so the dash cannot be read as duckdb's.
+ */
+function codecVariantOf(format: string): string | undefined {
+  return format.startsWith('parquet-') ? 'parquet' : undefined;
+}
+
 /** The catch-all style for an otherwise-unknown series: a neutral gray with
  * 3:1 contrast on both cards. */
 const FALLBACK_COLOR = '#8a8a87';
@@ -190,12 +200,19 @@ export function seriesStyle(
   theme: ChartTheme,
 ): SeriesStyle {
   const { engine, format } = seriesDims(name, meta);
-  const dash = engine === 'duckdb' || name.endsWith(':cold') ? [...DASH] : [];
-  const style = format ? FORMAT[format] : undefined;
+  const variantOf = format === undefined ? undefined : codecVariantOf(format);
+  const dash =
+    engine === 'duckdb' || name.endsWith(':cold') || variantOf !== undefined ? [...DASH] : [];
+  const base = variantOf ?? format;
+  const style = base ? FORMAT[base] : undefined;
   if (!style) {
     return { color: FALLBACK_COLOR, width: MUTED_WIDTH, dash };
   }
-  return { color: style.color[theme], width: style.width, dash };
+  return {
+    color: style.color[theme],
+    width: variantOf === undefined ? style.width : MUTED_WIDTH,
+    dash,
+  };
 }
 
 /** Format draw priority, front (low) to back (high) -- Chart.js renders a lower
@@ -231,7 +248,12 @@ export function seriesOrder(
   meta: { engine?: string; format?: string } | null | undefined,
 ): number {
   const { engine, format } = seriesDims(name, meta);
-  const formatRank = rankIn(FORMAT_ORDER, format, FORMAT_ORDER_FALLBACK);
+  // A codec variant sits just behind its format.
+  const variantOf = format === undefined ? undefined : codecVariantOf(format);
+  const formatRank =
+    variantOf === undefined
+      ? rankIn(FORMAT_ORDER, format, FORMAT_ORDER_FALLBACK)
+      : rankIn(FORMAT_ORDER, variantOf, FORMAT_ORDER_FALLBACK) + 0.5;
   const engineRank = rankIn(ENGINE_ORDER, engine, 0);
   return formatRank * 10 + engineRank;
 }

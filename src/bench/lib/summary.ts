@@ -41,8 +41,10 @@ import { getPool } from './db';
 import { randomAccessStorage, type RandomAccessStorage } from './random-access';
 import { compareCodeUnits } from './families';
 import type { GroupKey } from './slug';
+import { FILE_SIZE_SUMMARY_SCOPES } from './file-sizes';
 import {
   SIZE_SUMMARY_EXCLUDED_DATASET_PATTERNS,
+  SIZE_SUMMARY_FAMILIES,
   STRING_DATASET_PATTERN,
   SUMMARY_EXCLUDED_DATASET_PATTERNS,
 } from './compression-suite';
@@ -57,6 +59,13 @@ import {
 const COMPRESSION_SHARED_SNAPSHOT_FORMATS = ['vortex-file-compressed', 'parquet'];
 const COMPRESSION_INDEPENDENT_SNAPSHOT_FORMATS = ['lance'];
 const ARROW_IPC_FORMAT = 'arrow-ipc';
+
+/**
+ * Size-only formats that `compress-bench` writes beside the timed ones on every run, so they
+ * share the Vortex snapshot too. `parquet-snappy` is Parquet with Snappy; `parquet` is zstd.
+ * `vortex-compact` is Vortex with the compact strategy, as the SQL suites write it.
+ */
+const SIZE_ONLY_SHARED_SNAPSHOT_FORMATS = ['parquet-snappy', 'vortex-compact'];
 
 const COMPRESSION_SNAPSHOT_ANCHOR = 'vortex-file-compressed';
 const COMPRESSION_BASELINE = 'parquet';
@@ -82,13 +91,10 @@ function compressionSizeSummaryQueryParams(): [
   string,
   string[],
 ] {
+  const shared = [...COMPRESSION_SHARED_SNAPSHOT_FORMATS, ...SIZE_ONLY_SHARED_SNAPSHOT_FORMATS];
   return [
-    [
-      ...COMPRESSION_SHARED_SNAPSHOT_FORMATS,
-      ...COMPRESSION_INDEPENDENT_SNAPSHOT_FORMATS,
-      ARROW_IPC_FORMAT,
-    ],
-    COMPRESSION_SHARED_SNAPSHOT_FORMATS,
+    [...shared, ...COMPRESSION_INDEPENDENT_SNAPSHOT_FORMATS, ARROW_IPC_FORMAT],
+    shared,
     COMPRESSION_SNAPSHOT_ANCHOR,
     COMPRESSION_BASELINE,
     ARROW_IPC_FORMAT,
@@ -132,7 +138,7 @@ interface CompressionRanking {
   throughputGbS?: number;
 }
 
-/** One format in the compression size summary. */
+/** One format in a size summary. */
 interface CompressionSizeRanking {
   /** On-disk format. */
   name: string;
@@ -145,10 +151,15 @@ interface CompressionSizeRanking {
   /** Geomean ratio of Arrow memory size to the format size. */
   compressionRatio: number | null;
   /**
-   * Sum of this format's sizes, in bytes, over the datasets that every format in the summary
-   * has, so the totals compare directly. `null` when the formats share no dataset.
+   * Sum of this format's sizes, in bytes, over a set of datasets that is the same for every
+   * format, so the totals compare directly. See [`SizeTotals`]. `null` when the format has no
+   * total.
    */
   totalBytes: number | null;
+  /** Datasets this format has a size for, counting a family once ([`sizeBucket`]). */
+  measured: number;
+  /** Datasets in the summary, counted as `measured` is: the denominator it is out of. */
+  total: number;
 }
 
 /**
@@ -201,15 +212,13 @@ export function collectGroupSummary(key: GroupKey): Promise<Summary | null> {
     case 'CompressionTimeGroup':
       return key.suite === 'strings' ? collectStringEncodingSummary() : collectCompressionSummary();
     case 'CompressionSizeGroup':
-      return key.suite === 'strings'
-        ? collectStringEncodingSizeSummary()
-        : collectCompressionSizeSummary();
+      return collectStringEncodingSizeSummary();
     case 'RandomAccessGroup':
       return collectRandomAccessSummary(key.storage);
     case 'VectorSearchGroup':
       return collectVectorSearchSummary(key.dataset, key.layout);
     case 'FileSizeGroup':
-      return collectFileSizeSummary();
+      return collectFileSizesSummary();
   }
 }
 
@@ -711,19 +720,38 @@ async function compressionSamples(): Promise<CompressionTimeSample[]> {
   return (await getPool().query<CompressionTimeSample>(text, compressionSummaryQueryParams())).rows;
 }
 
-async function collectCompressionSizeSummary(): Promise<Summary | null> {
-  const rankings = compressionSizeRankings(await compressionSizeSamples());
+/**
+ * The `File Sizes` rollup: each format's sizes against Parquet's (zstd) over the
+ * `compress-bench` datasets ([`compressionSizeSamples`]) and the SQL scopes in
+ * [`FILE_SIZE_SUMMARY_SCOPES`] ([`fileSizeSamples`]). Each synthetic family in
+ * [`SIZE_SUMMARY_FAMILIES`] counts as one dataset. Only `compress-bench` records Arrow memory
+ * sizes, so a compression ratio covers its datasets alone. The suites write different formats, so
+ * each ranking says how many datasets it covers.
+ */
+async function collectFileSizesSummary(): Promise<Summary | null> {
+  const [sizes, files] = await Promise.all([compressionSizeSamples(), fileSizeSamples()]);
+  const rankings = compressionSizeRankings([...sizes, ...files], 'complete');
   if (rankings.length === 0) {
     return null;
   }
   return {
     type: 'compressionSize',
-    title: 'Compression Size Summary',
+    title: 'File Sizes Summary',
     rankings,
     explanation:
-      'Total compressed size, and geometric means of compressed sizes versus Arrow (higher is better) and versus Parquet-zstd (lower is better)',
+      'Total file size, and geometric means of file sizes versus Arrow (higher is better) and versus Parquet-zstd (lower is better)',
   };
 }
+
+/**
+ * Which datasets a size summary's totals cover:
+ * - `shared`: the datasets that every ranked format has. Every format gets a total.
+ * - `complete`: every dataset in the summary. Only a format measured on all of them gets a
+ *   total. The File Sizes summary uses it: its SQL scopes record DuckDB and Vortex Compact,
+ *   which `compress-bench` does not write, and `compress-bench` records Arrow IPC, which the SQL
+ *   suites do not, so no dataset is shared by every format.
+ */
+type SizeTotals = 'shared' | 'complete';
 
 /** One size paired with the baseline's size for the same dataset and commit. */
 interface CompressionSizeSample {
@@ -736,28 +764,62 @@ interface CompressionSizeSample {
 }
 
 /**
- * Rank each format by its size ratios to the baseline and its compression ratio to Arrow. The
- * order is by compression ratio once every format has one, and by baseline ratio until then.
+ * The summary entry a dataset counts toward: its family's name for a dataset in a
+ * [`SIZE_SUMMARY_FAMILIES`] family, and the dataset itself otherwise.
  */
-function compressionSizeRankings(rows: readonly CompressionSizeSample[]): CompressionSizeRanking[] {
+function sizeBucket(dataset: string, datasetVariant: string | null): string {
+  const family = SIZE_SUMMARY_FAMILIES.find((candidate) => dataset.startsWith(candidate.prefix));
+  return family === undefined
+    ? JSON.stringify([dataset, datasetVariant])
+    : JSON.stringify([family.name]);
+}
+
+/** Geometric mean of each bucket's geometric mean: one entry per bucket. */
+function bucketGeoMean(byBucket: ReadonlyMap<string, readonly number[]>): number | null {
+  return geoMean([...byBucket.values()].flatMap((values) => geoMean(values) ?? []));
+}
+
+/**
+ * Rank each format by its size ratios to the baseline and its compression ratio to Arrow.
+ *
+ * Each dataset is one entry in the geometric means, except that a family counts once
+ * ([`sizeBucket`]). `minRatio` and `maxRatio` are over single datasets. `measured` and `total`
+ * count buckets. A format measured on every bucket ranks above one that is not, because their
+ * means are over different datasets. Within each tier, the order is by compression ratio once
+ * every format in the summary has one, and by baseline ratio until then.
+ */
+function compressionSizeRankings(
+  rows: readonly CompressionSizeSample[],
+  totals: SizeTotals = 'shared',
+): CompressionSizeRanking[] {
   const grouped = new Map<
     string,
-    { sizeRatios: number[]; compressionRatios: number[]; bytesByDataset: Map<string, number> }
+    {
+      sizeRatios: Map<string, number[]>;
+      compressionRatios: Map<string, number[]>;
+      bytesByDataset: Map<string, number>;
+    }
   >();
+  const buckets = new Set<string>();
   for (const row of rows) {
     const ratios = grouped.get(row.format) ?? {
-      sizeRatios: [],
-      compressionRatios: [],
+      sizeRatios: new Map<string, number[]>(),
+      compressionRatios: new Map<string, number[]>(),
       bytesByDataset: new Map<string, number>(),
     };
+    const bucket = sizeBucket(row.dataset, row.datasetVariant);
     if (
       row.valueBytes > 0 &&
       Number.isFinite(row.valueBytes) &&
       row.baselineBytes > 0 &&
       Number.isFinite(row.baselineBytes)
     ) {
-      ratios.sizeRatios.push(row.valueBytes / row.baselineBytes);
+      ratios.sizeRatios.set(bucket, [
+        ...(ratios.sizeRatios.get(bucket) ?? []),
+        row.valueBytes / row.baselineBytes,
+      ]);
       ratios.bytesByDataset.set(JSON.stringify([row.dataset, row.datasetVariant]), row.valueBytes);
+      buckets.add(bucket);
     }
     if (
       row.uncompressedBytes !== null &&
@@ -766,23 +828,29 @@ function compressionSizeRankings(rows: readonly CompressionSizeSample[]): Compre
       row.valueBytes > 0 &&
       Number.isFinite(row.valueBytes)
     ) {
-      ratios.compressionRatios.push(row.uncompressedBytes / row.valueBytes);
+      ratios.compressionRatios.set(bucket, [
+        ...(ratios.compressionRatios.get(bucket) ?? []),
+        row.uncompressedBytes / row.valueBytes,
+      ]);
     }
     grouped.set(row.format, ratios);
   }
   // Lance and Arrow IPC come from their own snapshots, so a format can lack a dataset that the
-  // others have. Totals use only the datasets every ranked format has.
-  const ranked = [...grouped.values()].filter((ratios) => ratios.sizeRatios.length > 0);
-  const commonDatasets = [...(ranked[0]?.bytesByDataset.keys() ?? [])].filter((dataset) =>
-    ranked.every((ratios) => ratios.bytesByDataset.has(dataset)),
-  );
+  // others have. Totals cover one set of datasets for every format (`SizeTotals`).
+  const ranked = [...grouped.values()].filter((ratios) => ratios.sizeRatios.size > 0);
+  const commonDatasets =
+    totals === 'shared'
+      ? [...(ranked[0]?.bytesByDataset.keys() ?? [])].filter((dataset) =>
+          ranked.every((ratios) => ratios.bytesByDataset.has(dataset)),
+        )
+      : [...new Set(ranked.flatMap((ratios) => [...ratios.bytesByDataset.keys()]))];
   const rankings: CompressionSizeRanking[] = [];
   for (const [name, ratios] of grouped) {
-    const ratio = geoMean(ratios.sizeRatios);
+    const ratio = bucketGeoMean(ratios.sizeRatios);
     if (ratio !== null) {
       let minRatio = Infinity;
       let maxRatio = -Infinity;
-      for (const sizeRatio of ratios.sizeRatios) {
+      for (const sizeRatio of [...ratios.sizeRatios.values()].flat()) {
         minRatio = Math.min(minRatio, sizeRatio);
         maxRatio = Math.max(maxRatio, sizeRatio);
       }
@@ -791,19 +859,27 @@ function compressionSizeRankings(rows: readonly CompressionSizeSample[]): Compre
         minRatio,
         ratio,
         maxRatio,
-        compressionRatio: geoMean(ratios.compressionRatios),
+        compressionRatio: bucketGeoMean(ratios.compressionRatios),
         totalBytes:
-          commonDatasets.length === 0
+          commonDatasets.length === 0 ||
+          !commonDatasets.every((dataset) => ratios.bytesByDataset.has(dataset))
             ? null
             : commonDatasets.reduce(
                 (sum, dataset) => sum + (ratios.bytesByDataset.get(dataset) ?? 0),
                 0,
               ),
+        measured: ratios.sizeRatios.size,
+        total: buckets.size,
       });
     }
   }
   const hasCompleteArrowRatios = rankings.every((ranking) => ranking.compressionRatio !== null);
+  const partial = (ranking: CompressionSizeRanking) => (ranking.measured < ranking.total ? 1 : 0);
   rankings.sort((a, b) => {
+    const tier = partial(a) - partial(b);
+    if (tier !== 0) {
+      return tier;
+    }
     if (!hasCompleteArrowRatios) {
       return a.ratio - b.ratio || compareCodeUnits(a.name, b.name);
     }
@@ -1023,64 +1099,73 @@ async function collectStringEncodingSizeSummary(): Promise<Summary | null> {
   };
 }
 
-/** The format every other SQL benchmark file format is compared with. */
-const FILE_SIZE_BASELINE = 'vortex-file-compressed';
-
 /**
- * The `SQL File Size` rollup: each Vortex format's total file size against
- * `vortex-file-compressed`, per benchmark scope (benchmark and scale factor) at that scope's
- * newest commit with a baseline. Scopes come from nightly as well as develop runs, so each one
- * uses its own newest commit. File sizes record no Arrow size, so the Arrow ratio is empty.
+ * Size samples for the SQL scopes in [`FILE_SIZE_SUMMARY_SCOPES`]: each format's total over a
+ * scope's files, with Parquet's total from the same commit. Each format uses its own newest
+ * commit that also has Parquet, as Lance does in the `compress-bench` samples, so a format that a
+ * suite records less often than every run still counts. Scopes and formats come from a skip scan
+ * of `idx_file_sizes_baseline`. `latest` walks the read branch's commits newest first and probes
+ * that index, so it stops at the newest commit with both formats.
  */
-async function collectFileSizeSummary(): Promise<Summary | null> {
-  // `scopes` is a skip scan of `idx_file_sizes_baseline`. `latest` walks the read branch's
-  // commits newest first and probes that index, so it stops at the newest commit with a baseline.
+async function fileSizeSamples(): Promise<CompressionSizeSample[]> {
   const text = `
-    WITH RECURSIVE scopes AS (
-      (SELECT f.benchmark, f.scale_factor
+    WITH RECURSIVE scope_formats AS (
+      (SELECT f.benchmark, f.scale_factor, f.format
          FROM file_sizes f
-        ORDER BY f.benchmark, f.scale_factor
+        ORDER BY f.benchmark, f.scale_factor, f.format
         LIMIT 1)
       UNION ALL
-      SELECT nxt.benchmark, nxt.scale_factor
-        FROM scopes s
+      SELECT nxt.benchmark, nxt.scale_factor, nxt.format
+        FROM scope_formats p
        CROSS JOIN LATERAL (
-         SELECT f.benchmark, f.scale_factor
+         SELECT f.benchmark, f.scale_factor, f.format
            FROM file_sizes f
-          WHERE (f.benchmark, f.scale_factor) > (s.benchmark, s.scale_factor)
-          ORDER BY f.benchmark, f.scale_factor
+          WHERE (f.benchmark, f.scale_factor, f.format) > (p.benchmark, p.scale_factor, p.format)
+          ORDER BY f.benchmark, f.scale_factor, f.format
           LIMIT 1
        ) nxt
     ),
     latest AS (
-      SELECT s.benchmark, s.scale_factor, l.commit_sha
-        FROM scopes s
+      SELECT t.benchmark, t.scale_factor, t.format, l.commit_sha
+        FROM scope_formats t
+        JOIN unnest($1::text[], $2::text[]) AS s(benchmark, scale_factor)
+          ON s.benchmark = t.benchmark
+         AND s.scale_factor = t.scale_factor
        CROSS JOIN LATERAL (
          SELECT c.commit_sha
            FROM ${BRANCH_COMMITS} c
           WHERE EXISTS (
                   SELECT 1
                     FROM file_sizes f
-                   WHERE f.benchmark = s.benchmark
-                     AND f.scale_factor = s.scale_factor
-                     AND f.format = $1
+                   WHERE f.benchmark = t.benchmark
+                     AND f.scale_factor = t.scale_factor
+                     AND f.format = t.format
+                     AND f.commit_sha = c.commit_sha)
+            AND EXISTS (
+                  SELECT 1
+                    FROM file_sizes f
+                   WHERE f.benchmark = t.benchmark
+                     AND f.scale_factor = t.scale_factor
+                     AND f.format = $3
                      AND f.commit_sha = c.commit_sha)
           ORDER BY c.timestamp DESC, c.commit_sha DESC
           LIMIT 1
        ) l
     ),
     totals AS (
-      SELECT f.benchmark, f.scale_factor, f.format, SUM(f.value_bytes)::float8 AS bytes
-        FROM file_sizes f
-        JOIN latest l
-          ON l.benchmark = f.benchmark
-         AND l.scale_factor = f.scale_factor
-         AND l.commit_sha = f.commit_sha
-       GROUP BY f.benchmark, f.scale_factor, f.format
+      SELECT l.benchmark, l.scale_factor, l.format, f.format AS measured,
+             SUM(f.value_bytes)::float8 AS bytes
+        FROM latest l
+        JOIN file_sizes f
+          ON f.benchmark = l.benchmark
+         AND f.scale_factor = l.scale_factor
+         AND f.commit_sha = l.commit_sha
+         AND f.format IN (l.format, $3)
+       GROUP BY l.benchmark, l.scale_factor, l.format, f.format
     )
     SELECT t.format AS format,
            t.benchmark AS dataset,
-           t.scale_factor AS "datasetVariant",
+           'sf=' || t.scale_factor AS "datasetVariant",
            t.bytes AS "valueBytes",
            b.bytes AS "baselineBytes",
            NULL::float8 AS "uncompressedBytes"
@@ -1088,25 +1173,20 @@ async function collectFileSizeSummary(): Promise<Summary | null> {
       JOIN totals b
         ON b.benchmark = t.benchmark
        AND b.scale_factor = t.scale_factor
-       AND b.format = $1
-     WHERE t.bytes > 0
+       AND b.format = t.format
+       AND b.measured = $3
+     WHERE t.measured = t.format
+       AND t.bytes > 0
        AND b.bytes > 0
      ORDER BY t.format, t.benchmark, t.scale_factor
   `;
-  const rows = (await getPool().query<CompressionSizeSample>(text, [FILE_SIZE_BASELINE])).rows;
-  const rankings = compressionSizeRankings(rows);
-  if (rankings.length === 0) {
-    return null;
-  }
-  return {
-    type: 'compressionSize',
-    title: 'SQL File Size Summary',
-    rankings,
-    explanation:
-      'Total size of the Vortex files each SQL benchmark writes, and geometric means of sizes versus vortex (lower is better)',
-    // The card names formats by their display names, which call `vortex-file-compressed` `vortex`.
-    baseline: 'vortex',
-  };
+  return (
+    await getPool().query<CompressionSizeSample>(text, [
+      FILE_SIZE_SUMMARY_SCOPES.map((scope) => scope.benchmark),
+      FILE_SIZE_SUMMARY_SCOPES.map((scope) => scope.scale_factor),
+      COMPRESSION_BASELINE,
+    ])
+  ).rows;
 }
 
 async function collectQuerySummary(

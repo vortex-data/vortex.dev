@@ -31,12 +31,12 @@ const CHART_KEYS: ChartKey[] = [
 const GROUP_KEYS: GroupKey[] = [
   { k: 'QueryGroup', dataset: 'tpch', dataset_variant: null, scale_factor: '1', storage: 'nvme' },
   { k: 'CompressionTimeGroup' },
-  { k: 'CompressionSizeGroup' },
   { k: 'CompressionTimeGroup', suite: 'strings' },
   { k: 'CompressionSizeGroup', suite: 'strings' },
   { k: 'RandomAccessGroup', storage: 'nvme' },
   { k: 'RandomAccessGroup', storage: 's3' },
   { k: 'VectorSearchGroup', dataset: 'cohere', layout: 'partitioned' },
+  { k: 'FileSizeGroup' },
 ];
 
 describe('chart slug round-trip', () => {
@@ -103,6 +103,12 @@ describe('group slug round-trip', () => {
   it('resolves legacy random-access group slugs to NVMe', () => {
     const legacy = `rag.${Buffer.from('{"k":"RandomAccessGroup"}').toString('base64url')}`;
     expect(groupKeyFromSlug(legacy)).toEqual({ k: 'RandomAccessGroup', storage: 'nvme' });
+  });
+
+  it('resolves the Compression Size group slug to File Sizes, which holds its charts', () => {
+    const legacy = 'csg.eyJrIjoiQ29tcHJlc3Npb25TaXplR3JvdXAifQ';
+    expect(groupKeyFromSlug(legacy)).toEqual({ k: 'FileSizeGroup' });
+    expect(groupKeyToSlug(groupKeyFromSlug(legacy))).toBe('fsg.eyJrIjoiRmlsZVNpemVHcm91cCJ9');
   });
 
   it.each(['disk', '', null, 1])('rejects invalid random-access storage %s', (storage) => {
