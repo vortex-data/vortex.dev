@@ -47,11 +47,11 @@ export type GroupKey =
     }
   // `suite` is absent for the `compress-bench` group, so its slug predates the split.
   | { k: 'CompressionTimeGroup'; suite?: 'strings' }
-  // Only `string-bench`'s sizes. `compress-bench`'s sizes are in the File Sizes group.
-  | { k: 'CompressionSizeGroup'; suite: 'strings' }
+  // Without `suite`, the File Sizes group: `compress-bench`'s sizes and three SQL scopes.
+  | { k: 'CompressionSizeGroup'; suite?: 'strings' }
   | { k: 'RandomAccessGroup'; storage: RandomAccessStorage }
   | { k: 'VectorSearchGroup'; dataset: string; layout: string }
-  // The File Sizes group: `compress-bench`'s sizes and the SQL suites' file sizes.
+  // The SQL File Sizes group: every SQL benchmark and scale factor in `file_sizes`.
   | { k: 'FileSizeGroup' };
 
 const CHART_KINDS: readonly ChartKind[] = [
@@ -256,10 +256,8 @@ export function groupKeyToSlug(key: GroupKey): string {
       ordered = { k: key.k, storage: key.storage };
       break;
     case 'CompressionTimeGroup':
-      ordered = key.suite === undefined ? { k: key.k } : { k: key.k, suite: key.suite };
-      break;
     case 'CompressionSizeGroup':
-      ordered = { k: key.k, suite: key.suite };
+      ordered = key.suite === undefined ? { k: key.k } : { k: key.k, suite: key.suite };
       break;
     case 'FileSizeGroup':
       ordered = { k: key.k };
@@ -298,19 +296,10 @@ export function groupKeyFromSlug(slug: string): GroupKey {
       }
       return { k: kind, storage };
     }
-    case 'CompressionTimeGroup': {
+    case 'CompressionTimeGroup':
+    case 'CompressionSizeGroup': {
       if (obj.suite === undefined) {
         return { k: kind };
-      }
-      if (obj.suite !== 'strings') {
-        throw new Error('compression group suite must be strings when present');
-      }
-      return { k: kind, suite: 'strings' };
-    }
-    case 'CompressionSizeGroup': {
-      // The `Compression Size` group's links resolve to File Sizes, which holds its charts now.
-      if (obj.suite === undefined) {
-        return { k: 'FileSizeGroup' };
       }
       if (obj.suite !== 'strings') {
         throw new Error('compression group suite must be strings when present');

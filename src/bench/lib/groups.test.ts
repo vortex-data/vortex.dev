@@ -660,9 +660,9 @@ describe.skipIf(!databaseAvailable)('summary math fidelity (testcontainers Postg
     }
 
     const groups = await collectGroups();
-    expect(groups.map((group) => group.name)).toEqual(['File Sizes']);
-    const [group] = groups;
-    expect(groupKeyFromSlug(defined(group).slug)).toEqual({ k: 'FileSizeGroup' });
+    expect(groups.map((group) => group.name)).toEqual(['File Sizes', 'SQL File Sizes']);
+    const [group, sql] = groups;
+    expect(groupKeyFromSlug(defined(group).slug)).toEqual({ k: 'CompressionSizeGroup' });
     expect(defined(group).charts.map((chart) => chart.name)).toEqual([
       'clickbench',
       'tpch sf=10.0',
@@ -687,6 +687,36 @@ describe.skipIf(!databaseAvailable)('summary math fidelity (testcontainers Postg
       ],
     });
     expect(summary).not.toHaveProperty('baseline');
+
+    // The SQL File Sizes group charts every scope, and ranks each format against Vortex at each
+    // scope's newest commit with a Vortex size. TPC-DS's newest commit with Vortex is the
+    // develop one, so the nightly Snappy file is not in its totals.
+    expect(groupKeyFromSlug(defined(sql).slug)).toEqual({ k: 'FileSizeGroup' });
+    expect(defined(sql).charts.map((chart) => chart.name)).toEqual([
+      'clickbench',
+      'tpch sf=1.0',
+      'tpch sf=10.0',
+      'tpch sf=100',
+      'tpcds sf=1.0',
+      'appian',
+    ]);
+    expect(defined(sql).summary).toMatchObject({
+      type: 'compressionSize',
+      title: 'SQL File Sizes Summary',
+      baseline: 'vortex',
+    });
+    const sqlSummary = defined(defined(sql).summary);
+    if (sqlSummary.type !== 'compressionSize') {
+      throw new Error(`expected a compressionSize summary, got ${sqlSummary.type}`);
+    }
+    expect(
+      Object.fromEntries(sqlSummary.rankings.map((ranking) => [ranking.name, ranking.ratio])),
+    ).toEqual({
+      'vortex-file-compressed': 1,
+      'vortex-compact': 0.5,
+      // TPC-H SF10's Parquet is half its Vortex size, and TPC-DS's is the same size.
+      parquet: expect.closeTo(Math.sqrt(0.5 * 1), 12),
+    });
   });
 
   it('ranks random access over every chart, not the alphabetically first one', async () => {
@@ -854,7 +884,7 @@ describe.skipIf(!databaseAvailable)('summary math fidelity (testcontainers Postg
     expect(timeByKey.get('decode:parquet')?.ratio).toBeCloseTo(1.0, 6);
 
     const size = expectDefined(
-      await collectGroupSummary({ k: 'FileSizeGroup' }),
+      await collectGroupSummary({ k: 'CompressionSizeGroup' }),
       'compression-size summary',
     );
     if (size.type !== 'compressionSize') {
@@ -903,7 +933,7 @@ describe.skipIf(!databaseAvailable)('summary math fidelity (testcontainers Postg
     expect(vortexTime.ratio).toBeCloseTo(3.0, 6);
 
     const size = expectDefined(
-      await collectGroupSummary({ k: 'FileSizeGroup' }),
+      await collectGroupSummary({ k: 'CompressionSizeGroup' }),
       'file size summary',
     );
     if (size.type !== 'compressionSize') {
@@ -949,7 +979,7 @@ describe.skipIf(!databaseAvailable)('summary math fidelity (testcontainers Postg
     expect(vortexTime.ratio).toBeCloseTo(4.0, 6);
 
     const size = expectDefined(
-      await collectGroupSummary({ k: 'FileSizeGroup' }),
+      await collectGroupSummary({ k: 'CompressionSizeGroup' }),
       'compression-size summary',
     );
     if (size.type !== 'compressionSize') {

@@ -212,13 +212,15 @@ export function collectGroupSummary(key: GroupKey): Promise<Summary | null> {
     case 'CompressionTimeGroup':
       return key.suite === 'strings' ? collectStringEncodingSummary() : collectCompressionSummary();
     case 'CompressionSizeGroup':
-      return collectStringEncodingSizeSummary();
+      return key.suite === 'strings'
+        ? collectStringEncodingSizeSummary()
+        : collectFileSizesSummary();
     case 'RandomAccessGroup':
       return collectRandomAccessSummary(key.storage);
     case 'VectorSearchGroup':
       return collectVectorSearchSummary(key.dataset, key.layout);
     case 'FileSizeGroup':
-      return collectFileSizesSummary();
+      return collectFileSizeSummary();
   }
 }
 
@@ -718,6 +720,93 @@ async function compressionSamples(): Promise<CompressionTimeSample[]> {
               selected.dataset_variant NULLS FIRST
   `;
   return (await getPool().query<CompressionTimeSample>(text, compressionSummaryQueryParams())).rows;
+}
+
+/** The format every other SQL benchmark file format is compared with. */
+const FILE_SIZE_BASELINE = 'vortex-file-compressed';
+
+/**
+ * The SQL File Sizes rollup: each format's total file size against `vortex-file-compressed`, per
+ * benchmark scope (benchmark and scale factor) at that scope's newest commit with a baseline.
+ * Unlike the File Sizes summary, it covers every scope in `file_sizes` and leaves out
+ * `compress-bench`. Scopes come from nightly as well as develop runs, so each one uses its own
+ * newest commit. File sizes record no Arrow size, so the Arrow ratio is empty.
+ */
+async function collectFileSizeSummary(): Promise<Summary | null> {
+  // `scopes` is a skip scan of `idx_file_sizes_baseline`. `latest` walks the read branch's
+  // commits newest first and probes that index, so it stops at the newest commit with a baseline.
+  const text = `
+    WITH RECURSIVE scopes AS (
+      (SELECT f.benchmark, f.scale_factor
+         FROM file_sizes f
+        ORDER BY f.benchmark, f.scale_factor
+        LIMIT 1)
+      UNION ALL
+      SELECT nxt.benchmark, nxt.scale_factor
+        FROM scopes s
+       CROSS JOIN LATERAL (
+         SELECT f.benchmark, f.scale_factor
+           FROM file_sizes f
+          WHERE (f.benchmark, f.scale_factor) > (s.benchmark, s.scale_factor)
+          ORDER BY f.benchmark, f.scale_factor
+          LIMIT 1
+       ) nxt
+    ),
+    latest AS (
+      SELECT s.benchmark, s.scale_factor, l.commit_sha
+        FROM scopes s
+       CROSS JOIN LATERAL (
+         SELECT c.commit_sha
+           FROM ${BRANCH_COMMITS} c
+          WHERE EXISTS (
+                  SELECT 1
+                    FROM file_sizes f
+                   WHERE f.benchmark = s.benchmark
+                     AND f.scale_factor = s.scale_factor
+                     AND f.format = $1
+                     AND f.commit_sha = c.commit_sha)
+          ORDER BY c.timestamp DESC, c.commit_sha DESC
+          LIMIT 1
+       ) l
+    ),
+    totals AS (
+      SELECT f.benchmark, f.scale_factor, f.format, SUM(f.value_bytes)::float8 AS bytes
+        FROM file_sizes f
+        JOIN latest l
+          ON l.benchmark = f.benchmark
+         AND l.scale_factor = f.scale_factor
+         AND l.commit_sha = f.commit_sha
+       GROUP BY f.benchmark, f.scale_factor, f.format
+    )
+    SELECT t.format AS format,
+           t.benchmark AS dataset,
+           t.scale_factor AS "datasetVariant",
+           t.bytes AS "valueBytes",
+           b.bytes AS "baselineBytes",
+           NULL::float8 AS "uncompressedBytes"
+      FROM totals t
+      JOIN totals b
+        ON b.benchmark = t.benchmark
+       AND b.scale_factor = t.scale_factor
+       AND b.format = $1
+     WHERE t.bytes > 0
+       AND b.bytes > 0
+     ORDER BY t.format, t.benchmark, t.scale_factor
+  `;
+  const rows = (await getPool().query<CompressionSizeSample>(text, [FILE_SIZE_BASELINE])).rows;
+  const rankings = compressionSizeRankings(rows);
+  if (rankings.length === 0) {
+    return null;
+  }
+  return {
+    type: 'compressionSize',
+    title: 'SQL File Sizes Summary',
+    rankings,
+    explanation:
+      'Total size of the files each SQL benchmark writes at every scale factor, and geometric means of sizes versus vortex (lower is better)',
+    // The card names formats by their display names, which call `vortex-file-compressed` `vortex`.
+    baseline: 'vortex',
+  };
 }
 
 /**

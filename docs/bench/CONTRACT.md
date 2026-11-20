@@ -88,6 +88,10 @@ current `compress-bench` dataset in `compression_sizes`, and three `file_sizes` 
 over its files: ClickBench, TPC-H at SF10, and TPC-DS at SF1 (`src/bench/lib/file-sizes.ts`). Its
 summary compares each format with zstd Parquet on the `compress-bench` datasets and on TPC-DS.
 
+The `SQL File Sizes` group charts every `file_sizes` scope, at every scale factor, and leaves out
+`compression_sizes`. Its summary compares each format with `vortex-file-compressed`, per scope at
+that scope's newest commit with a Vortex size.
+
 `random_access_time` records include `open_mode`. The value is `cached` for a reused accessor
 or `reopen` when each timed take includes a new accessor. Historical rows use `cached`.
 The `reopen` mode does not clear the OS page cache.

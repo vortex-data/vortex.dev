@@ -40,8 +40,8 @@ describe('groupDocPath', () => {
 
   it('maps the three non-query families to their benchmark crate', () => {
     expect(groupDocPath({ k: 'CompressionTimeGroup' })).toBe('benchmarks/compress-bench/README.md');
-    // File Sizes is mostly compress-bench's datasets, so it shares compress-bench's doc.
-    expect(groupDocPath({ k: 'FileSizeGroup' })).toBe('benchmarks/compress-bench/README.md');
+    // Two measurement kinds of one benchmark, so one doc.
+    expect(groupDocPath({ k: 'CompressionSizeGroup' })).toBe('benchmarks/compress-bench/README.md');
     expect(groupDocPath({ k: 'CompressionTimeGroup', suite: 'strings' })).toBe(
       'benchmarks/string-bench/README.md',
     );

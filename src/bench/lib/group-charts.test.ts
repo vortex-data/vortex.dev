@@ -586,13 +586,21 @@ describe.skipIf(!databaseAvailable)('groupChartPayloads at the window edges', ()
     [
       // The File Sizes group mixes the two tables: `compression_sizes` charts, a NULL variant
       // between two non-NULL ones, and `file_sizes` charts.
-      { k: 'FileSizeGroup' },
+      { k: 'CompressionSizeGroup' },
       [
         { k: 'FileSize', benchmark: 'tpcds', scale_factor: '1.0' },
         { k: 'CompressionSize', dataset: 'sx', dataset_variant: 'v1' },
         { k: 'CompressionSize', dataset: 'sx', dataset_variant: null },
         { k: 'FileSize', benchmark: 'tpch', scale_factor: '10.0' },
         { k: 'CompressionSize', dataset: 'sy', dataset_variant: 'v2' },
+      ],
+    ],
+    [
+      // The SQL File Sizes group holds `file_sizes` charts alone, at every scale factor.
+      { k: 'FileSizeGroup' },
+      [
+        { k: 'FileSize', benchmark: 'tpch', scale_factor: '10.0' },
+        { k: 'FileSize', benchmark: 'tpcds', scale_factor: '1.0' },
       ],
     ],
   ];

@@ -83,14 +83,12 @@ export function groupDocPath(key: GroupKey): string | null {
     case 'CompressionTimeGroup':
     case 'CompressionSizeGroup':
       return key.suite === 'strings' ? STRING_BENCH_DOC : COMPRESS_BENCH_DOC;
-    // Most of File Sizes' charts are `compress-bench` datasets, and its doc covers them.
-    case 'FileSizeGroup':
-      return COMPRESS_BENCH_DOC;
     case 'RandomAccessGroup':
       return RANDOM_ACCESS_BENCH_DOC;
     case 'QueryGroup':
       return QUERY_DOCS[key.dataset] ?? null;
     case 'VectorSearchGroup':
+    case 'FileSizeGroup':
       return null;
   }
 }

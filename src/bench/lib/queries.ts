@@ -47,6 +47,7 @@ import {
   FILE_SIZES_GROUP_NAME,
   isFileSizeScope,
   isFileSizesDataset,
+  SQL_FILE_SIZES_GROUP_NAME,
 } from './file-sizes';
 import type { FilterUniverse } from './chart-format';
 import { type ChartKind, compareCodeUnits, FAMILIES, type GroupKind } from './families';
@@ -788,7 +789,13 @@ function chartInGroup(group: GroupKey, key: ChartKey): boolean {
         key.k === 'CompressionTime' && compressionSuite(key.dataset) === (group.suite ?? 'compress')
       );
     case 'CompressionSizeGroup':
-      return key.k === 'CompressionSize' && compressionSuite(key.dataset) === group.suite;
+      if (group.suite === 'strings') {
+        return key.k === 'CompressionSize' && compressionSuite(key.dataset) === 'strings';
+      }
+      return (
+        (key.k === 'FileSize' && isFileSizeScope(key.benchmark, key.scale_factor)) ||
+        (key.k === 'CompressionSize' && isFileSizesDataset(key.dataset, key.dataset_variant))
+      );
     case 'RandomAccessGroup':
       return key.k === 'RandomAccess' && randomAccessStorage(key.dataset) === group.storage;
     case 'VectorSearchGroup':
@@ -796,10 +803,7 @@ function chartInGroup(group: GroupKey, key: ChartKey): boolean {
         key.k === 'VectorSearch' && key.dataset === group.dataset && key.layout === group.layout
       );
     case 'FileSizeGroup':
-      return (
-        (key.k === 'FileSize' && isFileSizeScope(key.benchmark, key.scale_factor)) ||
-        (key.k === 'CompressionSize' && isFileSizesDataset(key.dataset, key.dataset_variant))
-      );
+      return key.k === 'FileSize';
   }
 }
 
@@ -886,6 +890,7 @@ type ChartColumn = readonly [name: string, type: string, values: readonly unknow
 
 /** The key of a chart from either compression table. */
 type CompressionChartKey = Extract<ChartKey, { k: 'CompressionTime' | 'CompressionSize' }>;
+type FileSizeChartKey = Extract<ChartKey, { k: 'FileSize' }>;
 
 /**
  * One row per (chart, fact row in the window), plus one row with NULL fact
@@ -986,6 +991,32 @@ function groupRowsQuery(
       );
     }
   };
+  /** One block for `file_sizes` charts: each chart's size per format, summed over its files. */
+  const fileSizeBlocks = (files: readonly [FileSizeChartKey, number][]): void => {
+    if (files.length === 0) {
+      return;
+    }
+    const pins = (alias: string): string =>
+      `${alias}.benchmark = ch.benchmark AND ${alias}.scale_factor = ch.scale_factor`;
+    block(
+      ['format'],
+      files.map(([, position]) => position),
+      [
+        ['benchmark', 'text', files.map(([k]) => k.benchmark)],
+        ['scale_factor', 'text', files.map(([k]) => k.scale_factor)],
+      ],
+      `SELECT MIN(c2.timestamp)
+         FROM file_sizes f2
+         JOIN ${BRANCH_COMMITS} c2 ON c2.commit_sha = f2.commit_sha
+        WHERE ${pins('f2')}`,
+      `SELECT f.commit_sha,
+              f.format, SUM(f.value_bytes)::float8 AS value
+         FROM file_sizes f
+         JOIN ${BRANCH_COMMITS} c USING (commit_sha)
+        WHERE ${pins('f')}${factWindowFilter(params, window)}
+        GROUP BY f.commit_sha, f.format`,
+    );
+  };
   switch (group.k) {
     case 'QueryGroup': {
       const keys = chartsOf(group, charts, 'QueryMeasurement');
@@ -1018,11 +1049,22 @@ function groupRowsQuery(
       break;
     }
     case 'CompressionSizeGroup': {
-      const keys = chartsOf(group, charts, 'CompressionSize');
-      compressionBlocks(
-        'CompressionSize',
-        keys.map((key, i) => [key, i + 1]),
-      );
+      // The File Sizes group holds two families. Both give one size per format, so their blocks
+      // share columns. The String Encoding Size group holds `compression_sizes` charts alone.
+      const sizes: [CompressionChartKey, number][] = [];
+      const files: [FileSizeChartKey, number][] = [];
+      charts.forEach((key, i) => {
+        if (!chartInGroup(group, key)) {
+          throw new Error(`chart ${chartKeyToSlug(key)} is not in group ${groupKeyToSlug(group)}`);
+        }
+        if (key.k === 'CompressionSize') {
+          sizes.push([key, i + 1]);
+        } else if (key.k === 'FileSize') {
+          files.push([key, i + 1]);
+        }
+      });
+      compressionBlocks('CompressionSize', sizes);
+      fileSizeBlocks(files);
       break;
     }
     case 'RandomAccessGroup': {
@@ -1070,44 +1112,7 @@ function groupRowsQuery(
       break;
     }
     case 'FileSizeGroup': {
-      // The group holds two families. Both give one size per format, so their blocks share
-      // columns.
-      const sizes: [CompressionChartKey, number][] = [];
-      const files: [Extract<ChartKey, { k: 'FileSize' }>, number][] = [];
-      charts.forEach((key, i) => {
-        if (!chartInGroup(group, key)) {
-          throw new Error(`chart ${chartKeyToSlug(key)} is not in group ${groupKeyToSlug(group)}`);
-        }
-        if (key.k === 'CompressionSize') {
-          sizes.push([key, i + 1]);
-        } else if (key.k === 'FileSize') {
-          files.push([key, i + 1]);
-        }
-      });
-      compressionBlocks('CompressionSize', sizes);
-      if (files.length === 0) {
-        break;
-      }
-      const pins = (alias: string): string =>
-        `${alias}.benchmark = ch.benchmark AND ${alias}.scale_factor = ch.scale_factor`;
-      block(
-        ['format'],
-        files.map(([, position]) => position),
-        [
-          ['benchmark', 'text', files.map(([k]) => k.benchmark)],
-          ['scale_factor', 'text', files.map(([k]) => k.scale_factor)],
-        ],
-        `SELECT MIN(c2.timestamp)
-           FROM file_sizes f2
-           JOIN ${BRANCH_COMMITS} c2 ON c2.commit_sha = f2.commit_sha
-          WHERE ${pins('f2')}`,
-        `SELECT f.commit_sha,
-                f.format, SUM(f.value_bytes)::float8 AS value
-           FROM file_sizes f
-           JOIN ${BRANCH_COMMITS} c USING (commit_sha)
-          WHERE ${pins('f')}${factWindowFilter(params, window)}
-          GROUP BY f.commit_sha, f.format`,
-      );
+      fileSizeBlocks(chartsOf(group, charts, 'FileSize').map((key, i) => [key, i + 1]));
       break;
     }
   }
@@ -1288,6 +1293,7 @@ export interface GroupChartsResponse {
 const GROUP_ORDER: readonly string[] = [
   'Compression',
   'File Sizes',
+  'SQL File Sizes',
   'Random Access (NVMe)',
   'Random Access (S3)',
   'Clickbench',
@@ -1570,8 +1576,9 @@ async function collectQueryGroups(): Promise<Group[]> {
 type DatasetVariantRow = { dataset: string; dataset_variant: string | null };
 
 /**
- * Group display names per compression suite and family. `compress-bench`'s sizes are in the File
- * Sizes group, so the size family names only `string-bench`'s group.
+ * Group display names per compression suite and family. The size family's group without a suite
+ * is the File Sizes group, which [`collectFileSizesGroup`] builds, so the size family names only
+ * `string-bench`'s group here.
  */
 const COMPRESSION_GROUP_NAMES = {
   CompressionTimeGroup: { compress: 'Compression', strings: 'String Encoding' },
@@ -1649,9 +1656,16 @@ async function compressionSizeDatasets(): Promise<DatasetVariantRow[]> {
   return (await getPool().query<DatasetVariantRow>(text)).rows;
 }
 
-/** The `String Encoding Size` group, or `[]` if `string-bench` has no sizes. */
+/**
+ * The File Sizes group and the `String Encoding Size` group, each left out when it has no
+ * charts.
+ */
 async function collectCompressionSizeGroup(): Promise<Group[]> {
-  return compressionGroups(await compressionSizeDatasets(), 'CompressionSizeGroup');
+  const datasets = await compressionSizeDatasets();
+  return [
+    ...(await collectFileSizesGroup(datasets)),
+    ...compressionGroups(datasets, 'CompressionSizeGroup'),
+  ];
 }
 
 /** One random-access group per storage backend, omitting empty sections. */
@@ -1731,10 +1745,10 @@ type FileSizeScopeRow = { benchmark: string; scale_factor: string };
 
 /**
  * The File Sizes group, or `[]` if neither table has a chart for it: the SQL suites' scopes in
- * [`FILE_SIZE_SCOPES`] that have rows, in that order, then every `compress-bench` dataset in
- * `compression_sizes` by name.
+ * [`FILE_SIZE_SCOPES`] that have rows, in that order, then the `compress-bench` datasets of
+ * `datasets`, the rows of `compression_sizes`, by name.
  */
-async function collectFileSizeGroup(): Promise<Group[]> {
+async function collectFileSizesGroup(datasets: readonly DatasetVariantRow[]): Promise<Group[]> {
   // One index probe of `idx_file_sizes_baseline` per listed scope.
   const scopesText = `
     SELECT s.benchmark, s.scale_factor
@@ -1746,12 +1760,9 @@ async function collectFileSizeGroup(): Promise<Group[]> {
                 AND f.scale_factor = s.scale_factor)
      ORDER BY s.ord
   `;
-  const [scopes, datasets] = await Promise.all([
-    getPool().query<FileSizeScopeRow>(scopesText, [
-      FILE_SIZE_SCOPES.map((scope) => scope.benchmark),
-      FILE_SIZE_SCOPES.map((scope) => scope.scale_factor),
-    ]),
-    compressionSizeDatasets(),
+  const scopes = await getPool().query<FileSizeScopeRow>(scopesText, [
+    FILE_SIZE_SCOPES.map((scope) => scope.benchmark),
+    FILE_SIZE_SCOPES.map((scope) => scope.scale_factor),
   ]);
   const charts: ChartLink[] = [
     ...scopes.rows.map((row) => ({
@@ -1769,7 +1780,72 @@ async function collectFileSizeGroup(): Promise<Group[]> {
   if (charts.length === 0) {
     return [];
   }
-  return [{ name: FILE_SIZES_GROUP_NAME, slug: groupKeyToSlug({ k: 'FileSizeGroup' }), charts }];
+  return [
+    { name: FILE_SIZES_GROUP_NAME, slug: groupKeyToSlug({ k: 'CompressionSizeGroup' }), charts },
+  ];
+}
+
+/** Benchmarks whose file-size charts lead the group, in this order; the rest follow by name. */
+const FILE_SIZE_CHART_ORDER: readonly string[] = ['clickbench', 'tpch', 'tpcds'];
+
+/** A benchmark's position in the file-size group: its `FILE_SIZE_CHART_ORDER` index, else after. */
+function fileSizeChartRank(benchmark: string): number {
+  const pos = FILE_SIZE_CHART_ORDER.indexOf(benchmark);
+  return pos === -1 ? FILE_SIZE_CHART_ORDER.length : pos;
+}
+
+/**
+ * The SQL File Sizes group: one chart per benchmark and scale factor in `file_sizes`, or `[]` if
+ * the table is empty. Charts order by [`FILE_SIZE_CHART_ORDER`], then by benchmark name, then by numeric
+ * scale factor, so `10.0` follows `1.0`.
+ */
+async function collectFileSizeGroup(): Promise<Group[]> {
+  // A recursive skip scan of `idx_file_sizes_baseline`: one descent per scope instead of a scan
+  // of every file of every commit.
+  const text = `
+    WITH RECURSIVE scopes AS (
+      (SELECT f.benchmark, f.scale_factor
+         FROM file_sizes f
+        ORDER BY f.benchmark, f.scale_factor
+        LIMIT 1)
+      UNION ALL
+      SELECT nxt.benchmark, nxt.scale_factor
+        FROM scopes s
+       CROSS JOIN LATERAL (
+         SELECT f.benchmark, f.scale_factor
+           FROM file_sizes f
+          WHERE (f.benchmark, f.scale_factor) > (s.benchmark, s.scale_factor)
+          ORDER BY f.benchmark, f.scale_factor
+          LIMIT 1
+       ) nxt
+    )
+    SELECT benchmark, scale_factor FROM scopes
+  `;
+  const rows = (await getPool().query<FileSizeScopeRow>(text)).rows;
+  if (rows.length === 0) {
+    return [];
+  }
+  rows.sort(
+    (a, b) =>
+      fileSizeChartRank(a.benchmark) - fileSizeChartRank(b.benchmark) ||
+      compareCodeUnits(a.benchmark, b.benchmark) ||
+      Number(a.scale_factor) - Number(b.scale_factor) ||
+      compareCodeUnits(a.scale_factor, b.scale_factor),
+  );
+  return [
+    {
+      name: SQL_FILE_SIZES_GROUP_NAME,
+      slug: groupKeyToSlug({ k: 'FileSizeGroup' }),
+      charts: rows.map((row) => ({
+        name: fileSizeChartName(row.benchmark, row.scale_factor),
+        slug: chartKeyToSlug({
+          k: 'FileSize',
+          benchmark: row.benchmark,
+          scale_factor: row.scale_factor,
+        }),
+      })),
+    },
+  ];
 }
 
 /** Dispatch to the discovery pass for one family, the TS analogue of the Rust

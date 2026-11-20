@@ -12,6 +12,12 @@ import { compressionSuite } from './compression-suite';
 /** The File Sizes group's display name. */
 export const FILE_SIZES_GROUP_NAME = 'File Sizes';
 
+/**
+ * The SQL File Sizes group's display name. That group charts every SQL benchmark and scale factor
+ * in `file_sizes`, and its summary compares the formats with Vortex.
+ */
+export const SQL_FILE_SIZES_GROUP_NAME = 'SQL File Sizes';
+
 /** One SQL suite's data at one scale factor, as `file_sizes` spells them. */
 export interface FileSizeScope {
   benchmark: string;

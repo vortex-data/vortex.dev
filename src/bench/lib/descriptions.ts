@@ -48,8 +48,14 @@ function staticDescription(name: string): string | null {
       return 'Measures write and scan throughput for Vortex, Parquet, and Lance files';
     case 'File Sizes':
       return (
-        'Compares file sizes and compression ratios across formats, on the compression ' +
-        'datasets and on the files the ClickBench, TPC-H, and TPC-DS benchmarks write'
+        'Compares file sizes and compression ratios across formats against zstd Parquet, on the ' +
+        'compression datasets and on one scale factor each of ClickBench, TPC-H, and TPC-DS'
+      );
+    case 'SQL File Sizes':
+      return (
+        'Tracks the size of the files each SQL benchmark writes, at every scale factor, against ' +
+        'Vortex. Unlike File Sizes, it leaves out the compression datasets and does not rank ' +
+        'formats against Parquet'
       );
     case 'String Encoding':
       return 'Measures Vortex file write and scan throughput for each string encoder';

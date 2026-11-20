@@ -63,7 +63,7 @@ describe('compression summaries', () => {
       ],
     });
 
-    const summary = await collectGroupSummary({ k: 'FileSizeGroup' });
+    const summary = await collectGroupSummary({ k: 'CompressionSizeGroup' });
     if (summary === null || summary.type !== 'compressionSize') {
       throw new Error('expected a compressionSize summary');
     }
@@ -116,7 +116,7 @@ describe('compression summaries', () => {
       ],
     });
 
-    const summary = await collectGroupSummary({ k: 'FileSizeGroup' });
+    const summary = await collectGroupSummary({ k: 'CompressionSizeGroup' });
     if (summary === null || summary.type !== 'compressionSize') {
       throw new Error('expected a compressionSize summary');
     }
@@ -156,7 +156,7 @@ describe('compression summaries', () => {
       ],
     });
 
-    const summary = await collectGroupSummary({ k: 'FileSizeGroup' });
+    const summary = await collectGroupSummary({ k: 'CompressionSizeGroup' });
     if (summary === null || summary.type !== 'compressionSize') {
       throw new Error('expected a compressionSize summary');
     }
@@ -190,7 +190,7 @@ describe('compression summaries', () => {
       ],
     });
 
-    const summary = await collectGroupSummary({ k: 'FileSizeGroup' });
+    const summary = await collectGroupSummary({ k: 'CompressionSizeGroup' });
     if (summary === null || summary.type !== 'compressionSize') {
       throw new Error('expected a compressionSize summary');
     }
@@ -232,7 +232,7 @@ describe('compression summaries', () => {
       ],
     });
 
-    const summary = await collectGroupSummary({ k: 'FileSizeGroup' });
+    const summary = await collectGroupSummary({ k: 'CompressionSizeGroup' });
     if (summary === null || summary.type !== 'compressionSize') {
       throw new Error('expected a compressionSize summary');
     }
@@ -306,7 +306,7 @@ describe('compression summaries', () => {
       ],
     });
 
-    const summary = await collectGroupSummary({ k: 'FileSizeGroup' });
+    const summary = await collectGroupSummary({ k: 'CompressionSizeGroup' });
     if (summary === null || summary.type !== 'compressionSize') {
       throw new Error('expected a compressionSize summary');
     }
@@ -383,7 +383,7 @@ describe('compression summaries', () => {
     query.mockResolvedValue({ rows: [] });
 
     await collectGroupSummary({ k: 'CompressionTimeGroup' });
-    await collectGroupSummary({ k: 'FileSizeGroup' });
+    await collectGroupSummary({ k: 'CompressionSizeGroup' });
 
     // The File Sizes summary reads the SQL suites' sizes in a third query.
     expect(query).toHaveBeenCalledTimes(3);
