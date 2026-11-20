@@ -87,6 +87,8 @@ The read service charts both tables in the `File Sizes` group, one line per form
 current `compress-bench` dataset in `compression_sizes`, and three `file_sizes` scopes, each summed
 over its files: ClickBench, TPC-H at SF10, and TPC-DS at SF1 (`src/bench/lib/file-sizes.ts`). Its
 summary compares each format with zstd Parquet on the `compress-bench` datasets and on TPC-DS.
+On develop, TPC-DS SF1 also writes Arrow IPC, Lance, and Snappy Parquet after its queries, for
+their sizes only, so that every format `compress-bench` measures has a TPC-DS size too.
 
 The `SQL File Sizes` group charts every `file_sizes` scope, at every scale factor, and leaves out
 `compression_sizes`. Its summary compares each format with `vortex-file-compressed`, per scope at
