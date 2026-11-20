@@ -85,7 +85,8 @@ export const MAX_VISIBLE_POINTS = 500;
 // purple, DuckDB green, and Arrow orange. The color means the format and
 // nothing else, so a format looks the same on every engine: the line style
 // shows the engine instead. A duckdb run is dashed, as is a cold random-access
-// run (the two never share a chart). Widths carry the importance tiers.
+// run (the two never share a chart). A Parquet codec variant is dotted, or
+// dash-dotted on duckdb. Widths carry the importance tiers.
 //
 // The palette has one set of colors per card theme, because one set cannot
 // stay legible on both cards: a color with 3:1 contrast against both the
@@ -113,6 +114,10 @@ export interface SeriesStyle {
 
 /** The dash of a duckdb run and of a cold random-access run. */
 const DASH: readonly number[] = [6, 4];
+/** The dash of a Parquet codec variant, which a query chart can hold on both
+ * engines beside zstd Parquet: dotted, and dash-dotted on duckdb. */
+const DOT: readonly number[] = [2, 3];
+const DASH_DOT: readonly number[] = [6, 3, 2, 3];
 
 /** Line widths per importance tier, reinforcing the color hierarchy. */
 const HERO_WIDTH = 2.6;
@@ -162,9 +167,10 @@ const FORMAT: Record<string, FormatStyle> = {
 
 /**
  * The format a codec variant is drawn as: Parquet with a codec other than zstd
- * (`parquet-snappy`, `parquet-uncompressed`, as the size tables name them) is
- * Parquet's teal, dashed, so it reads as a kind of Parquet without a color of
- * its own. Size charts have no engine, so the dash cannot be read as duckdb's.
+ * (`parquet-snappy`, `parquet-uncompressed`, as the size tables and TPC-DS's
+ * queries name them) is Parquet's teal, thinner and dotted, so it reads as a
+ * kind of Parquet without a color of its own. Its dots differ from duckdb's
+ * dash, so a query chart's four Parquet lines stay apart.
  */
 function codecVariantOf(format: string): string | undefined {
   return format.startsWith('parquet-') ? 'parquet' : undefined;
@@ -201,8 +207,13 @@ export function seriesStyle(
 ): SeriesStyle {
   const { engine, format } = seriesDims(name, meta);
   const variantOf = format === undefined ? undefined : codecVariantOf(format);
+  const duckdbOrCold = engine === 'duckdb' || name.endsWith(':cold');
   const dash =
-    engine === 'duckdb' || name.endsWith(':cold') || variantOf !== undefined ? [...DASH] : [];
+    variantOf !== undefined
+      ? [...(engine === 'duckdb' ? DASH_DOT : DOT)]
+      : duckdbOrCold
+        ? [...DASH]
+        : [];
   const base = variantOf ?? format;
   const style = base ? FORMAT[base] : undefined;
   if (!style) {

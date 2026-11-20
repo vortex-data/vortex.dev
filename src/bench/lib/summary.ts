@@ -1462,6 +1462,12 @@ async function collectQuerySummary(
   if (rankings.length === 0) {
     return null;
   }
+  // A series that has no time for a query, because it fails it or skips it (Lance skips TPC-DS
+  // q72), ranks below every series that ran all of them. The penalty alone makes a missing query
+  // cost only 2x the best time on it, so a series could rank first by skipping the slowest query.
+  // Its score and its (measured/total) coverage still show. The sort is stable, so each part keeps
+  // its score order.
+  rankings.sort((a, b) => Number(a.measured < a.total) - Number(b.measured < b.total));
   return {
     type: 'queryBenchmark',
     title: 'Performance Summary',

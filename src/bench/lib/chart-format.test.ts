@@ -139,17 +139,28 @@ describe('seriesStyle', () => {
     }
   });
 
-  it("draws a Parquet codec variant dashed, in Parquet's color, thinner, behind Parquet", () => {
+  it("draws a Parquet codec variant dotted, in Parquet's color, thinner, behind Parquet", () => {
     for (const theme of ['dark', 'light'] as const) {
       const zstd = seriesStyle('parquet', { format: 'parquet' }, theme);
       const snappy = seriesStyle('parquet-snappy', { format: 'parquet-snappy' }, theme);
       expect(snappy.color).toBe(zstd.color);
-      expect(snappy.dash).toEqual([6, 4]);
+      expect(snappy.dash).toEqual([2, 3]);
       expect(snappy.width).toBeLessThan(zstd.width);
     }
     const order = (format: string) => seriesOrder(format, { format });
     expect(order('parquet')).toBeLessThan(order('parquet-snappy'));
     expect(order('parquet-snappy')).toBeLessThan(order('vortex-compact'));
+  });
+
+  it("keeps a query chart's four Parquet lines apart", () => {
+    const styles = ['parquet', 'parquet-snappy'].flatMap((format) =>
+      ['datafusion', 'duckdb'].map((engine) =>
+        seriesStyle(`${engine}:${format}`, { engine, format }, 'dark'),
+      ),
+    );
+    const looks = new Set(styles.map((style) => `${style.width}/${style.dash.join(',')}`));
+    expect(looks.size).toBe(4);
+    expect(seriesStyle('duckdb:parquet-snappy', null, 'dark').dash).toEqual([6, 3, 2, 3]);
   });
 
   it('draws a cold random-access run dashed and a hot one solid', () => {

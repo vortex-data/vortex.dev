@@ -191,6 +191,7 @@ const FORMATS: ReadonlyMap<string, string> = new Map([
   ['vortex-file-compressed', 'Vortex'],
   ['vortex-compact', 'Vortex (compact)'],
   ['parquet', 'Parquet'],
+  ['parquet-snappy', 'Parquet (Snappy)'],
   ['lance', 'Lance'],
   ['arrow-ipc', 'Arrow IPC'],
   ['arrow', 'Arrow'],

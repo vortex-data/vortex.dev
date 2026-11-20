@@ -820,6 +820,39 @@ describe('timing summaries (shared ranking model)', () => {
     },
   );
 
+  it('ranks a series that misses a query below every series that ran them all', async () => {
+    // `partial` is twice as fast on the queries it runs and skips the slowest one. The penalty
+    // scores the skipped query at 2x the best, so its score, 2^(1/3), beats `complete`'s, 2^(2/3).
+    query.mockResolvedValueOnce({
+      rows: [
+        { query_idx: 1, series: 'lance:lance', value_ns: 1_000_000 },
+        { query_idx: 1, series: 'datafusion:parquet', value_ns: 2_000_000 },
+        { query_idx: 2, series: 'lance:lance', value_ns: 1_000_000 },
+        { query_idx: 2, series: 'datafusion:parquet', value_ns: 2_000_000 },
+        { query_idx: 3, series: 'datafusion:parquet', value_ns: 10_000_000 },
+      ],
+    });
+
+    const summary = await collectGroupSummary({
+      k: 'QueryGroup',
+      dataset: 'tpcds',
+      dataset_variant: null,
+      scale_factor: '1',
+      storage: 'nvme',
+    });
+    if (summary === null || summary.type !== 'queryBenchmark') {
+      throw new Error('expected a queryBenchmark summary');
+    }
+
+    expect(summary.rankings.map((ranking) => ranking.name)).toEqual([
+      'datafusion:parquet',
+      'lance:lance',
+    ]);
+    const [complete, partial] = summary.rankings;
+    expect(defined(partial).score).toBeLessThan(defined(complete).score);
+    expect(defined(partial)).toMatchObject({ measured: 2, total: 3 });
+  });
+
   it('summarizes every query group, with no dataset allowlist', async () => {
     // `spatialbench` (and every other suite outside the retired v2 five) used to
     // fall through to `null` and render no card at all.
