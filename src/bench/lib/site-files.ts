@@ -191,6 +191,7 @@ const FORMATS: ReadonlyMap<string, string> = new Map([
   ['vortex-file-compressed', 'Vortex'],
   ['vortex-compact', 'Vortex (compact)'],
   ['parquet', 'Parquet'],
+  ['parquet-snappy', 'Parquet (Snappy)'],
   ['lance', 'Lance'],
   ['arrow-ipc', 'Arrow IPC'],
   ['arrow', 'Arrow'],
@@ -323,7 +324,10 @@ export function summaryLines(summary: Summary): string[] {
             (item.compressionRatio === null
               ? ''
               : `, ${formatCompressionSizeRatio(item.compressionRatio)} smaller than Arrow in memory`) +
-            (item.totalBytes === null ? '' : `, ${formatBytes(item.totalBytes)} in total`),
+            (item.totalBytes === null ? '' : `, ${formatBytes(item.totalBytes)} in total`) +
+            (item.measured < item.total
+              ? `, measured on ${item.measured} of ${item.total} datasets`
+              : ''),
         ),
       ];
     }

@@ -85,7 +85,8 @@ export const MAX_VISIBLE_POINTS = 500;
 // purple, DuckDB green, and Arrow orange. The color means the format and
 // nothing else, so a format looks the same on every engine: the line style
 // shows the engine instead. A duckdb run is dashed, as is a cold random-access
-// run (the two never share a chart). Widths carry the importance tiers.
+// run (the two never share a chart). A Parquet codec variant is dotted, or
+// dash-dotted on duckdb. Widths carry the importance tiers.
 //
 // The palette has one set of colors per card theme, because one set cannot
 // stay legible on both cards: a color with 3:1 contrast against both the
@@ -113,6 +114,10 @@ export interface SeriesStyle {
 
 /** The dash of a duckdb run and of a cold random-access run. */
 const DASH: readonly number[] = [6, 4];
+/** The dash of a Parquet codec variant, which a query chart can hold on both
+ * engines beside zstd Parquet: dotted, and dash-dotted on duckdb. */
+const DOT: readonly number[] = [2, 3];
+const DASH_DOT: readonly number[] = [6, 3, 2, 3];
 
 /** Line widths per importance tier, reinforcing the color hierarchy. */
 const HERO_WIDTH = 2.6;
@@ -160,6 +165,17 @@ const FORMAT: Record<string, FormatStyle> = {
   'arrow-ipc': ARROW,
 };
 
+/**
+ * The format a codec variant is drawn as: Parquet with a codec other than zstd
+ * (`parquet-snappy`, `parquet-uncompressed`, as the size tables and TPC-DS's
+ * queries name them) is Parquet's teal, thinner and dotted, so it reads as a
+ * kind of Parquet without a color of its own. Its dots differ from duckdb's
+ * dash, so a query chart's four Parquet lines stay apart.
+ */
+function codecVariantOf(format: string): string | undefined {
+  return format.startsWith('parquet-') ? 'parquet' : undefined;
+}
+
 /** The catch-all style for an otherwise-unknown series: a neutral gray with
  * 3:1 contrast on both cards. */
 const FALLBACK_COLOR = '#8a8a87';
@@ -190,12 +206,24 @@ export function seriesStyle(
   theme: ChartTheme,
 ): SeriesStyle {
   const { engine, format } = seriesDims(name, meta);
-  const dash = engine === 'duckdb' || name.endsWith(':cold') ? [...DASH] : [];
-  const style = format ? FORMAT[format] : undefined;
+  const variantOf = format === undefined ? undefined : codecVariantOf(format);
+  const duckdbOrCold = engine === 'duckdb' || name.endsWith(':cold');
+  const dash =
+    variantOf !== undefined
+      ? [...(engine === 'duckdb' ? DASH_DOT : DOT)]
+      : duckdbOrCold
+        ? [...DASH]
+        : [];
+  const base = variantOf ?? format;
+  const style = base ? FORMAT[base] : undefined;
   if (!style) {
     return { color: FALLBACK_COLOR, width: MUTED_WIDTH, dash };
   }
-  return { color: style.color[theme], width: style.width, dash };
+  return {
+    color: style.color[theme],
+    width: variantOf === undefined ? style.width : MUTED_WIDTH,
+    dash,
+  };
 }
 
 /** Format draw priority, front (low) to back (high) -- Chart.js renders a lower
@@ -231,7 +259,12 @@ export function seriesOrder(
   meta: { engine?: string; format?: string } | null | undefined,
 ): number {
   const { engine, format } = seriesDims(name, meta);
-  const formatRank = rankIn(FORMAT_ORDER, format, FORMAT_ORDER_FALLBACK);
+  // A codec variant sits just behind its format.
+  const variantOf = format === undefined ? undefined : codecVariantOf(format);
+  const formatRank =
+    variantOf === undefined
+      ? rankIn(FORMAT_ORDER, format, FORMAT_ORDER_FALLBACK)
+      : rankIn(FORMAT_ORDER, variantOf, FORMAT_ORDER_FALLBACK) + 0.5;
   const engineRank = rankIn(ENGINE_ORDER, engine, 0);
   return formatRank * 10 + engineRank;
 }

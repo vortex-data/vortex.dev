@@ -371,21 +371,19 @@ describe('compareGroupSortKey canonical group ordering (no DB)', () => {
     ]);
   });
 
-  it('puts compression and SQL file size before random access and string encoding last', () => {
+  it('puts compression and file sizes before random access and string encoding last', () => {
     const sorted = [
       'String Encoding Size',
       'Clickbench',
       'cohere-large-10m / partitioned',
       'String Encoding',
       'Random Access (NVMe)',
-      'SQL File Size',
-      'Compression Size',
+      'File Sizes',
       'Compression',
     ].sort(compareGroupSortKey);
     expect(sorted).toEqual([
       'Compression',
-      'Compression Size',
-      'SQL File Size',
+      'File Sizes',
       'Random Access (NVMe)',
       'Clickbench',
       'cohere-large-10m / partitioned',
