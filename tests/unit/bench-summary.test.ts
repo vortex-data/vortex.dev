@@ -342,7 +342,7 @@ describe("panelsFrom", () => {
 
   it("drops a score that is not a positive number", () => {
     const gs = groups();
-    const parquet = group(gs, "Compression Size").summary.rankings?.find(
+    const parquet = group(gs, "Compression & File Size").summary.rankings?.find(
       (r) => r.name === "parquet"
     );
     assert.ok(parquet);
@@ -353,10 +353,37 @@ describe("panelsFrom", () => {
     });
   });
 
+  it("passes through the coverage of a file size score measured on part of the datasets", () => {
+    // A geomean over fewer datasets is not comparable with one over all of
+    // them, so results.js shows this row as "Not measured".
+    const gs = groups();
+    const lance = group(gs, "Compression & File Size").summary.rankings?.find(
+      (r) => r.name === "lance"
+    );
+    assert.ok(lance);
+    lance.measured = 12;
+    lance.total = 13;
+    assert.deepEqual(panelsFrom(gs, charts())?.[6]?.rows[2], {
+      system: "Lance",
+      score: 1.9876533869960349,
+      measured: 12,
+      total: 13
+    });
+  });
+
+  it("reads the file size panel from the group's earlier name", () => {
+    // A deploy that renames a bench group builds against production bench,
+    // which still serves the old name.
+    const gs = groups();
+    const sizes = group(gs, "Compression & File Size");
+    sizes.name = "Compression Size";
+    assert.deepEqual(panelsFrom(gs, charts()), panelsFrom(groups(), charts()));
+  });
+
   it("gives null when a group is missing, so the card never shows part of the table", () => {
     for (const name of [
       "Compression",
-      "Compression Size",
+      "Compression & File Size",
       "Random Access (NVMe)",
       "Clickbench",
       "TPC-H (NVMe) (SF=10)"

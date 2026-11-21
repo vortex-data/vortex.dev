@@ -46,20 +46,22 @@ function staticDescription(name: string): string | null {
       return 'Tests performance of selecting arbitrary row indices from a file on S3 storage';
     case 'Compression':
       return 'Measures write and scan throughput for Vortex, Parquet, and Lance files';
-    case 'Compression Size':
+    case 'Compression & File Size':
       return (
-        'Compares compressed file sizes and compression ratios across different encoding ' +
-        'strategies'
+        'Compares file sizes and compression ratios across formats against zstd Parquet. It ' +
+        'charts the compression datasets and one scale factor each of ClickBench, TPC-H, and ' +
+        'TPC-DS, and ranks formats on the compression datasets and TPC-DS'
+      );
+    case 'SQL Benchmark File Sizes':
+      return (
+        'Tracks the size of the files the SQL benchmarks above read, at every scale factor. It ' +
+        'ranks formats against Parquet on the benchmarks that write Parquet with bench’s ' +
+        'settings, each benchmark once. Compression & File Size compares the formats’ compression'
       );
     case 'String Encoding':
       return 'Measures Vortex file write and scan throughput for each string encoder';
     case 'String Encoding Size':
       return 'Compares Vortex file sizes for each string encoder';
-    case 'SQL File Size':
-      return (
-        'Tracks the total size of the Vortex files each SQL benchmark writes, per benchmark and ' +
-        'scale factor'
-      );
     case 'Clickbench':
       return (
         "ClickHouse's analytical benchmark suite testing real-world query patterns on web " +

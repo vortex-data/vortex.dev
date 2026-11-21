@@ -15,7 +15,7 @@
  * style a part; it never carries the meaning alone.
  */
 
-import { displayFormat } from '@/bench/lib/chart-format';
+import { displayFormat, proseParquet, type SeriesLabels } from '@/bench/lib/chart-format';
 import type { SeriesRanking, Summary } from '@/bench/lib/summary';
 
 type HeadlineTone = 'better' | 'worse' | 'same' | 'neutral';
@@ -68,7 +68,10 @@ export function headlineText(headline: Headline): string {
  * The headline for one group's summary, or `null` when the summary is missing
  * or has nothing honest to say.
  */
-export function groupHeadline(summary: Summary | undefined): Headline | null {
+export function groupHeadline(
+  summary: Summary | undefined,
+  seriesLabels?: SeriesLabels,
+): Headline | null {
   if (summary === undefined) {
     return null;
   }
@@ -93,7 +96,10 @@ export function groupHeadline(summary: Summary | undefined): Headline | null {
     case 'compressionSize':
       // A summary with its own baseline compares with that, not Parquet, so it has no headline.
       return summary.baseline === undefined
-        ? sizeHeadline(summary.rankings.find((row) => row.name === VORTEX)?.ratio)
+        ? sizeHeadline(
+            summary.rankings.find((row) => row.name === VORTEX),
+            proseParquet(seriesLabels),
+          )
         : null;
     case 'vectorSearch':
       return vectorSearchHeadline(summary.rankings);
@@ -307,24 +313,29 @@ function queryHeadline(rankings: SeriesRanking[]): Headline | null {
  * and `2.0× smaller` once Parquet is at least twice Vortex's size (ratio 0.5
  * and below). No size reads "100% larger" or "100% smaller".
  */
-function sizeHeadline(ratio: number | undefined): Headline | null {
-  if (ratio === undefined || !isUsableRatio(ratio)) {
+function sizeHeadline(
+  vortex: { ratio: number; measured: number; total: number } | undefined,
+  parquet: string,
+): Headline | null {
+  if (vortex === undefined || !isUsableRatio(vortex.ratio)) {
     return null;
   }
+  const { ratio } = vortex;
   const pct = Math.round(Math.abs(ratio - 1) * 100);
   let part: HeadlinePart;
   if (ratio > 1 && pct >= 100) {
-    part = { text: `${multiple(ratio)} larger than Parquet`, tone: 'worse' };
+    part = { text: `${multiple(ratio)} larger than ${parquet}`, tone: 'worse' };
   } else if (ratio <= 0.5) {
-    part = { text: `${multiple(1 / ratio)} smaller than Parquet`, tone: 'better' };
+    part = { text: `${multiple(1 / ratio)} smaller than ${parquet}`, tone: 'better' };
   } else if (pct === 0) {
-    part = { text: 'same size as Parquet', tone: 'same' };
+    part = { text: `same size as ${parquet}`, tone: 'same' };
   } else if (ratio > 1) {
-    part = { text: `${pct}% larger than Parquet`, tone: 'worse' };
+    part = { text: `${pct}% larger than ${parquet}`, tone: 'worse' };
   } else {
-    part = { text: `${pct}% smaller than Parquet`, tone: 'better' };
+    part = { text: `${pct}% smaller than ${parquet}`, tone: 'better' };
   }
-  return { parts: [part], suffix: null, partial: false };
+  // A Vortex mean over fewer datasets than the summary covers is marked, as the card marks it.
+  return { parts: [part], suffix: null, partial: vortex.measured < vortex.total };
 }
 
 /** No Parquet series exists here, so name the flavor with the lowest score. */

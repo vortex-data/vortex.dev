@@ -96,7 +96,7 @@ export function externalTooltipHandler(state: CardState, host: HTMLDivElement | 
         (r) =>
           `<div class="tt-row">` +
           `<span class="tt-swatch" style="background:${r.color}"></span>` +
-          `<span class="tt-label">${escapeHtml(displaySeriesLabel(r.label))}</span>` +
+          `<span class="tt-label">${escapeHtml(displaySeriesLabel(r.label, state.seriesLabels))}</span>` +
           `<span class="tt-value">${escapeHtml(formatDisplayValue(r.raw, displayUnit))}</span>` +
           r.deltaHtml +
           `</div>`,

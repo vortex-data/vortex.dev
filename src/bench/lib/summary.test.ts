@@ -20,6 +20,9 @@ const GROUP_KINDS = FAMILIES.map((family) => family.groupKind);
 describe('compression summaries', () => {
   beforeEach(() => {
     query.mockReset();
+    // The Compression & File Size summary also reads the SQL suites' sizes; a test that sets no
+    // rows for that second query gets none.
+    query.mockResolvedValue({ rows: [] });
   });
 
   it('uses geometric mean size ratios', async () => {
@@ -66,10 +69,11 @@ describe('compression summaries', () => {
     }
     const byFormat = new Map(summary.rankings.map((ranking) => [ranking.name, ranking]));
 
-    // sqrt((1 / 4) * (900 / 100)) is 1.5.
+    // sqrt((1 / 4) * (900 / 100)) is 1.5. Parquet has no Arrow size for b, so the order is by
+    // the Parquet ratio.
     expect(summary.rankings.map((ranking) => ranking.name)).toEqual([
-      'vortex-file-compressed',
       'parquet',
+      'vortex-file-compressed',
     ]);
     expect(byFormat.get('vortex-file-compressed')?.ratio).toBeCloseTo(1.5, 6);
     expect(byFormat.get('parquet')?.ratio).toBeCloseTo(1, 6);
@@ -82,12 +86,109 @@ describe('compression summaries', () => {
     // Both formats have both datasets, so each total sums both.
     expect(byFormat.get('vortex-file-compressed')?.totalBytes).toBe(901);
     expect(byFormat.get('parquet')?.totalBytes).toBe(104);
+    expect(summary.title).toBe('Compression & File Size Summary');
     expect(summary.explanation).toBe(
-      'Total compressed size, and geometric means of compressed sizes versus Arrow (higher is better) and versus Parquet-zstd (lower is better)',
+      'Total file size, and geometric means of file sizes versus Arrow (higher is better) and versus parquet (zstd) (lower is better)',
     );
+    expect(summary.rankings.map((ranking) => [ranking.measured, ranking.total])).toEqual([
+      [2, 2],
+      [2, 2],
+    ]);
   });
 
-  it('sums totals over the datasets every format has', async () => {
+  it('ranks the SQL benchmarks against parquet, each benchmark once', async () => {
+    const row = (format: string, dataset: string, sf: string, valueBytes: number) => ({
+      format,
+      dataset,
+      datasetVariant: `sf=${sf}`,
+      valueBytes,
+      baselineBytes: 100,
+      uncompressedBytes: null,
+    });
+    query.mockResolvedValueOnce({
+      rows: [
+        row('parquet', 'tpch', '1.0', 100),
+        row('parquet', 'tpch', '10.0', 100),
+        row('parquet', 'tpch', '100', 100),
+        row('parquet', 'tpcds', '1.0', 100),
+        // TPC-H's three scale factors make one benchmark, so its geometric mean, 0.5, weighs
+        // as much as TPC-DS's 2.
+        row('vortex', 'tpch', '1.0', 25),
+        row('vortex', 'tpch', '10.0', 50),
+        row('vortex', 'tpch', '100', 100),
+        row('vortex', 'tpcds', '1.0', 200),
+        row('vortex-compact', 'tpcds', '1.0', 50),
+        // Lance has one of TPC-H's three scale factors, which counts as measured on TPC-H.
+        row('lance', 'tpch', '1.0', 400),
+        // DuckDB has a size on TPC-DS but none on TPC-H, so it does not rank.
+        row('duckdb', 'tpcds', '1.0', 90),
+      ],
+    });
+
+    const summary = await collectGroupSummary({ k: 'FileSizeGroup' });
+    if (summary === null || summary.type !== 'compressionSize') {
+      throw new Error('expected a compressionSize summary');
+    }
+    // One query, over every scale factor of the benchmarks that write Parquet with bench's
+    // settings, against parquet.
+    expect(query).toHaveBeenCalledTimes(1);
+    const params = defined(query.mock.calls[0])[1];
+    expect(params).toEqual([
+      ['job', 'polarsignals', 'statpopgen', 'tpcds', 'tpch', 'tpch-nested'],
+      [null, null, null, null, null, null],
+      'parquet',
+    ]);
+    expect(summary).toMatchObject({
+      title: 'SQL Benchmark File Sizes Summary',
+      coverageUnit: 'benchmarks',
+    });
+    expect(summary).not.toHaveProperty('baseline');
+    expect(
+      Object.fromEntries(
+        summary.rankings.map((ranking) => [
+          ranking.name,
+          [ranking.ratio, ranking.measured, ranking.total, ranking.totalBytes],
+        ]),
+      ),
+    ).toEqual({
+      parquet: [1, 2, 2, null],
+      vortex: [expect.closeTo(1, 12), 2, 2, null],
+      'vortex-compact': [0.5, 1, 2, null],
+      lance: [4, 1, 2, null],
+    });
+  });
+
+  it('ranks DuckDB’s file in the SQL summary when it has every benchmark', async () => {
+    const row = (format: string, dataset: string, valueBytes: number) => ({
+      format,
+      dataset,
+      datasetVariant: 'sf=1.0',
+      valueBytes,
+      baselineBytes: 100,
+      uncompressedBytes: null,
+    });
+    query.mockResolvedValueOnce({
+      rows: [
+        row('parquet', 'tpch', 100),
+        row('parquet', 'tpcds', 100),
+        row('vortex', 'tpch', 80),
+        row('duckdb', 'tpch', 110),
+        row('duckdb', 'tpcds', 90),
+      ],
+    });
+
+    const summary = await collectGroupSummary({ k: 'FileSizeGroup' });
+    if (summary === null || summary.type !== 'compressionSize') {
+      throw new Error('expected a compressionSize summary');
+    }
+    expect(summary.rankings.map((ranking) => [ranking.name, ranking.measured])).toEqual([
+      ['duckdb', 2],
+      ['parquet', 2],
+      ['vortex', 1],
+    ]);
+  });
+
+  it('totals every dataset, for the formats measured on all of them', async () => {
     const row = (format: string, dataset: string, valueBytes: number, datasetVariant = null) => ({
       format,
       dataset,
@@ -102,8 +203,9 @@ describe('compression summaries', () => {
         row('vortex-file-compressed', 'b', 1_000),
         row('parquet', 'a', 20),
         row('parquet', 'b', 2_000),
-        // Lance has no size for dataset b, so no total counts b.
-        row('lance', 'a', 30),
+        // Lance has no size for dataset b, so it has no total, and it ranks after the formats
+        // measured on both datasets although its ratio is the lowest.
+        row('lance', 'a', 3),
       ],
     });
 
@@ -111,14 +213,148 @@ describe('compression summaries', () => {
     if (summary === null || summary.type !== 'compressionSize') {
       throw new Error('expected a compressionSize summary');
     }
-    const totals = new Map(summary.rankings.map((ranking) => [ranking.name, ranking.totalBytes]));
-    expect(totals).toEqual(
-      new Map([
-        ['vortex-file-compressed', 10],
-        ['parquet', 20],
-        ['lance', 30],
+    expect(
+      summary.rankings.map((ranking) => [
+        ranking.name,
+        ranking.totalBytes,
+        ranking.measured,
+        ranking.total,
       ]),
-    );
+    ).toEqual([
+      ['vortex-file-compressed', 1_010, 2, 2],
+      ['parquet', 2_020, 2, 2],
+      ['lance', null, 1, 2],
+    ]);
+  });
+
+  it('counts each synthetic family as one dataset', async () => {
+    const row = (format: string, dataset: string, valueBytes: number) => ({
+      format,
+      dataset,
+      datasetVariant: null,
+      valueBytes,
+      baselineBytes: 100,
+      uncompressedBytes: null,
+    });
+    query.mockResolvedValueOnce({
+      rows: [
+        row('vortex-file-compressed', 'taxi', 400),
+        // Three wide tables and two sparse-wide shapes: one entry each, their geometric means
+        // 1 and 0.25.
+        row('vortex-file-compressed', 'wide table cols=100 chunks=1 rows=1000', 50),
+        row('vortex-file-compressed', 'wide table cols=1000 chunks=1 rows=1000', 100),
+        row('vortex-file-compressed', 'wide table cols=10000 chunks=1 rows=1000', 200),
+        row('vortex-file-compressed', 'sparse-wide-flat-runs', 5),
+        row('vortex-file-compressed', 'sparse-wide-lists-runs', 125),
+      ],
+    });
+
+    const summary = await collectGroupSummary({ k: 'CompressionSizeGroup' });
+    if (summary === null || summary.type !== 'compressionSize') {
+      throw new Error('expected a compressionSize summary');
+    }
+    const vortex = defined(summary.rankings[0]);
+    // The cube root of 4 * 1 * 0.25 is 1. Counted one by one, the six datasets give 2^(1/6).
+    expect(vortex.ratio).toBeCloseTo(1, 6);
+    expect([vortex.measured, vortex.total]).toEqual([3, 3]);
+    // The range is over single datasets, and the total over every one of them.
+    expect(vortex.minRatio).toBeCloseTo(0.05, 6);
+    expect(vortex.maxRatio).toBeCloseTo(4, 6);
+    expect(vortex.totalBytes).toBe(880);
+  });
+
+  it('measures a family only for a format that has all of its datasets', async () => {
+    const row = (format: string, dataset: string, valueBytes: number) => ({
+      format,
+      dataset,
+      datasetVariant: null,
+      valueBytes,
+      baselineBytes: 100,
+      uncompressedBytes: null,
+    });
+    query.mockResolvedValueOnce({
+      rows: [
+        row('vortex-file-compressed', 'taxi', 50),
+        row('vortex-file-compressed', 'sparse-wide-flat-runs', 50),
+        row('vortex-file-compressed', 'sparse-wide-lists-runs', 50),
+        // Lance has one sparse-wide shape, and the smallest ratio. It has not measured the family,
+        // so it ranks after the format that has.
+        row('lance', 'taxi', 10),
+        row('lance', 'sparse-wide-flat-runs', 10),
+      ],
+    });
+
+    const summary = await collectGroupSummary({ k: 'CompressionSizeGroup' });
+    if (summary === null || summary.type !== 'compressionSize') {
+      throw new Error('expected a compressionSize summary');
+    }
+    expect(
+      summary.rankings.map((ranking) => [ranking.name, ranking.measured, ranking.total]),
+    ).toEqual([
+      ['vortex-file-compressed', 2, 2],
+      ['lance', 1, 2],
+    ]);
+  });
+
+  it("ranks the SQL suites' totals with the compress-bench sizes", async () => {
+    const row = (format: string, dataset: string, valueBytes: number, baselineBytes: number) => ({
+      format,
+      dataset,
+      datasetVariant: dataset === 'tpcds' ? 'sf=1.0' : null,
+      valueBytes,
+      baselineBytes,
+      uncompressedBytes: null,
+    });
+    query.mockResolvedValueOnce({
+      rows: [row('vortex-file-compressed', 'taxi', 50, 100), row('parquet', 'taxi', 100, 100)],
+    });
+    query.mockResolvedValueOnce({
+      rows: [
+        row('vortex-file-compressed', 'tpcds', 200, 100),
+        row('vortex-compact', 'tpcds', 50, 100),
+        row('parquet', 'tpcds', 100, 100),
+      ],
+    });
+
+    const summary = await collectGroupSummary({ k: 'CompressionSizeGroup' });
+    if (summary === null || summary.type !== 'compressionSize') {
+      throw new Error('expected a compressionSize summary');
+    }
+    expect(query.mock.calls[1]?.[1]).toEqual([['tpcds'], ['1.0'], 'parquet']);
+    expect(
+      summary.rankings.map((ranking) => [
+        ranking.name,
+        ranking.ratio,
+        ranking.measured,
+        ranking.totalBytes,
+      ]),
+    ).toEqual([
+      ['parquet', 1, 2, 200],
+      ['vortex-file-compressed', 1, 2, 250],
+      // Vortex Compact has a size for TPC-DS alone, so it ranks after the complete formats.
+      ['vortex-compact', 0.5, 1, null],
+    ]);
+  });
+
+  it("leaves DuckDB's database file out of the ranking", async () => {
+    const row = (format: string, dataset: string, valueBytes: number) => ({
+      format,
+      dataset,
+      datasetVariant: dataset === 'tpcds' ? 'sf=1.0' : null,
+      valueBytes,
+      baselineBytes: 100,
+      uncompressedBytes: null,
+    });
+    query.mockResolvedValueOnce({ rows: [row('parquet', 'taxi', 100)] });
+    query.mockResolvedValueOnce({
+      rows: [row('parquet', 'tpcds', 100), row('duckdb', 'tpcds', 20)],
+    });
+
+    const summary = await collectGroupSummary({ k: 'CompressionSizeGroup' });
+    if (summary === null || summary.type !== 'compressionSize') {
+      throw new Error('expected a compressionSize summary');
+    }
+    expect(summary.rankings.map((ranking) => ranking.name)).toEqual(['parquet']);
   });
 
   it('gives no total when the formats share no dataset', async () => {
@@ -192,18 +428,24 @@ describe('compression summaries', () => {
       rows: [
         {
           format: 'vortex-file-compressed',
+          dataset: 'a',
+          datasetVariant: null,
           valueBytes: 200,
           baselineBytes: 100,
           uncompressedBytes: 2_000,
         },
         {
           format: 'parquet',
+          dataset: 'a',
+          datasetVariant: null,
           valueBytes: 100,
           baselineBytes: 100,
           uncompressedBytes: 500,
         },
         {
           format: 'lance',
+          dataset: 'a',
+          datasetVariant: null,
           valueBytes: 300,
           baselineBytes: 100,
           uncompressedBytes: null,
@@ -219,6 +461,48 @@ describe('compression summaries', () => {
     expect(summary.rankings.map((ranking) => ranking.name)).toEqual([
       'parquet',
       'vortex-file-compressed',
+      'lance',
+    ]);
+  });
+
+  it('ranks by the Parquet ratio when a dataset has no Arrow size', async () => {
+    const row = (
+      format: string,
+      dataset: string,
+      valueBytes: number,
+      uncompressedBytes: number | null,
+    ) => ({
+      format,
+      dataset,
+      datasetVariant: dataset === 'tpcds' ? 'sf=1.0' : null,
+      valueBytes,
+      baselineBytes: 100,
+      uncompressedBytes,
+    });
+    // On taxi, Lance compresses Arrow better than Vortex. TPC-DS has no Arrow size, and Vortex is
+    // much smaller than Lance there, so Vortex has the better Parquet ratio over both datasets.
+    query.mockResolvedValueOnce({
+      rows: [
+        row('vortex-file-compressed', 'taxi', 90, 900),
+        row('lance', 'taxi', 80, 900),
+        row('parquet', 'taxi', 100, 900),
+      ],
+    });
+    query.mockResolvedValueOnce({
+      rows: [
+        row('vortex-file-compressed', 'tpcds', 50, null),
+        row('lance', 'tpcds', 150, null),
+        row('parquet', 'tpcds', 100, null),
+      ],
+    });
+
+    const summary = await collectGroupSummary({ k: 'CompressionSizeGroup' });
+    if (summary === null || summary.type !== 'compressionSize') {
+      throw new Error('expected a compressionSize summary');
+    }
+    expect(summary.rankings.map((ranking) => ranking.name)).toEqual([
+      'vortex-file-compressed',
+      'parquet',
       'lance',
     ]);
   });
@@ -290,7 +574,8 @@ describe('compression summaries', () => {
     await collectGroupSummary({ k: 'CompressionTimeGroup' });
     await collectGroupSummary({ k: 'CompressionSizeGroup' });
 
-    expect(query).toHaveBeenCalledTimes(2);
+    // The Compression & File Size summary reads the SQL suites' sizes in a third query.
+    expect(query).toHaveBeenCalledTimes(3);
     const timingParams = [
       ['vortex-file-compressed', 'parquet', 'lance'],
       ['vortex-file-compressed', 'parquet'],
@@ -299,14 +584,21 @@ describe('compression summaries', () => {
       ['wide table %', 'sparse-wide-%'],
     ];
     const sizeParams = [
-      ['vortex-file-compressed', 'parquet', 'lance', 'arrow-ipc'],
-      ['vortex-file-compressed', 'parquet'],
+      [
+        'vortex-file-compressed',
+        'parquet',
+        'parquet-snappy',
+        'vortex-compact',
+        'lance',
+        'arrow-ipc',
+      ],
+      ['vortex-file-compressed', 'parquet', 'parquet-snappy', 'vortex-compact'],
       'vortex-file-compressed',
       'parquet',
       'arrow-ipc',
-      ['wide table %', 'sparse-wide-%', 'tpc-h l_comment chunked', 'statpopgen'],
+      ['tpc-h l_comment chunked', 'wide table cols=% chunks=50 rows=%', 'statpopgen'],
     ];
-    const calls = query.mock.calls as Array<[string, unknown[]]>;
+    const calls = (query.mock.calls as Array<[string, unknown[]]>).slice(0, 2);
     expect(defined(calls[0])[1]).toEqual(timingParams);
     expect(defined(calls[1])[1]).toEqual(sizeParams);
     for (const [text] of calls) {
@@ -717,6 +1009,39 @@ describe('timing summaries (shared ranking model)', () => {
     },
   );
 
+  it('ranks a series that misses a query below every series that ran them all', async () => {
+    // `partial` is twice as fast on the queries it runs and skips the slowest one. The penalty
+    // scores the skipped query at 2x the best, so its score, 2^(1/3), beats `complete`'s, 2^(2/3).
+    query.mockResolvedValueOnce({
+      rows: [
+        { query_idx: 1, series: 'lance:lance', value_ns: 1_000_000 },
+        { query_idx: 1, series: 'datafusion:parquet', value_ns: 2_000_000 },
+        { query_idx: 2, series: 'lance:lance', value_ns: 1_000_000 },
+        { query_idx: 2, series: 'datafusion:parquet', value_ns: 2_000_000 },
+        { query_idx: 3, series: 'datafusion:parquet', value_ns: 10_000_000 },
+      ],
+    });
+
+    const summary = await collectGroupSummary({
+      k: 'QueryGroup',
+      dataset: 'tpcds',
+      dataset_variant: null,
+      scale_factor: '1',
+      storage: 'nvme',
+    });
+    if (summary === null || summary.type !== 'queryBenchmark') {
+      throw new Error('expected a queryBenchmark summary');
+    }
+
+    expect(summary.rankings.map((ranking) => ranking.name)).toEqual([
+      'datafusion:parquet',
+      'lance:lance',
+    ]);
+    const [complete, partial] = summary.rankings;
+    expect(defined(partial).score).toBeLessThan(defined(complete).score);
+    expect(defined(partial)).toMatchObject({ measured: 2, total: 3 });
+  });
+
   it('summarizes every query group, with no dataset allowlist', async () => {
     // `spatialbench` (and every other suite outside the retired v2 five) used to
     // fall through to `null` and render no card at all.
@@ -750,7 +1075,7 @@ describe('timing summaries (shared ranking model)', () => {
         storage: 'nvme',
       },
       { k: 'CompressionTimeGroup' },
-      { k: 'CompressionSizeGroup' },
+      { k: 'CompressionSizeGroup', suite: 'strings' },
       { k: 'RandomAccessGroup', storage: 'nvme' },
       { k: 'VectorSearchGroup', dataset: 'd', layout: 'l' },
       { k: 'FileSizeGroup' },

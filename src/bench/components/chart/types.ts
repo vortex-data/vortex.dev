@@ -3,7 +3,7 @@
 
 import type { Chart as ChartJs, ChartDataset } from 'chart.js';
 
-import type { DisplayUnit, NormalizedChartPayload } from '@/bench/lib/chart-format';
+import type { DisplayUnit, NormalizedChartPayload, SeriesLabels } from '@/bench/lib/chart-format';
 import type { QueueEntry } from '@/bench/lib/chart-store';
 
 /** A Chart.js line dataset extended with the bench-specific carry-alongs. */
@@ -24,6 +24,8 @@ export interface CardState {
   /** Series labels the user has explicitly legend-toggled on this card. Once
    * set, the global/group filters no longer drive that label here. */
   overrides: Record<string, true>;
+  /** Display names this card gives some formats (see `SeriesLabels`). */
+  seriesLabels: SeriesLabels | undefined;
   displayUnit: DisplayUnit;
   /** v3 also tracked `__bench_inline_trimmed`; it was write-only there and is
    * dropped here. `payload.history.complete` carries the same information. */

@@ -11,8 +11,11 @@
  * `bench-orchestrator/bench_orchestrator/ci_matrix/catalog.py`, the runners in
  * `bench-orchestrator/bench_orchestrator/cli.py`, `scripts/random-access-split.py`
  * and `scripts/compress-split.py`, `scripts/setup-benchmark.sh`, and the versions
- * in `Cargo.toml`, `Cargo.lock` and `vortex-duckdb/build.rs`. Update this file
- * when those change.
+ * in `Cargo.toml`, `Cargo.lock` and `vortex-duckdb/build.rs`. The Parquet
+ * settings come from vortex-data/vortex#11720: `parquet_writer_properties()` in
+ * `vortex-bench/src/utils/parquet.rs`, and `snappy_parquet_size()` in
+ * `benchmarks/compress-bench/src/parquet.rs`. The tuning results in "How Parquet
+ * is written" are that PR's. Update this file when those change.
  * The scoring is this site's own (`summary.ts`).
  */
 
@@ -40,6 +43,14 @@ export const SCORES = {
   size:
     'the geometric mean, over the datasets, of the format’s file size divided by ' +
     'Parquet’s. Lower is better.',
+  /** The SQL Benchmark File Sizes summary's score, which weighs each benchmark once. */
+  benchmarkSize:
+    'the geometric mean, over the benchmarks, of the format’s file size divided by ' +
+    'Parquet’s, where each benchmark counts once, as the geometric mean of its scale ' +
+    'factors. Lower is better.',
+  arrow:
+    'the geometric mean, over the datasets, of the data’s size in memory as Arrow divided by ' +
+    'the format’s file size. Higher is better.',
 } as const;
 
 export const METHODOLOGY: readonly MethodologySection[] = [
@@ -68,11 +79,58 @@ export const METHODOLOGY: readonly MethodologySection[] = [
     text: [
       'Queries run on DataFusion 55 and DuckDB 2.0. The formats are Vortex (its default ' +
         'and compact write strategies), Apache Parquet, Lance 13, Arrow IPC, DuckDB’s own ' +
-        'format, and, for random access, LitData. Not every suite runs every format. The ' +
-        'compression and file size benchmarks write Parquet with parquet-rs 59 and zstd at ' +
-        'level 3. ClickBench reads its published Parquet files.',
+        'format, and, for random access, LitData. Not every suite runs every format.',
       'Vortex has more than one way to scan a file in each query engine. bench shows each ' +
         'suite’s default scan. The benchmark reports on pull requests also compare the others.',
+      'Parquet has two variants, which differ only in their codec. Parquet is zstd at level ' +
+        '3, and it is the baseline of the throughput and file size scores. Parquet (Snappy) ' +
+        'is the same Parquet with Snappy, the default codec of DuckDB, Spark, and PyArrow. ' +
+        'Only the compression benchmark and TPC-DS at scale factor 1 write it, for its ' +
+        'size. Both are written with ' +
+        'parquet-rs 59, except SpatialBench’s Parquet, which its generator writes with ' +
+        'parquet-rs 56.',
+      'Every SQL suite’s Parquet is zstd Parquet, except in ClickBench and FineWeb, which ' +
+        'query their published Parquet files as Parquet. ClickBench prescribes its files, ' +
+        'which are Snappy, so its Parquet results are not zstd Parquet and do not use the ' +
+        'settings below.',
+    ],
+  },
+  {
+    title: 'How Parquet is written',
+    text: [
+      'The zstd Parquet is tuned to be good at everything bench measures: file size, scans, ' +
+        'and random access. Every suite that generates Parquet writes it with one set of ' +
+        'settings, and only the row group size depends on the storage. Each setting below ' +
+        'was tested on its own, on TPC-H at scale factor 10 with both engines and on the ' +
+        'random access datasets, on a 16-core Apple M-series Mac with local NVMe. Two runs ' +
+        'with the same settings differed by up to 2% on DataFusion and 6% on DuckDB, so ' +
+        'smaller differences are noise.',
+      'Compression is zstd at level 3, the default of DuckDB and parquet-java. Level 1 made ' +
+        'the files 7.5% larger, and level 9 made them 1.6% smaller. Neither changed query ' +
+        'times by more than noise.',
+      'A column chunk’s dictionary holds at most 64 KiB. When it outgrows that, the rest of ' +
+        'the chunk is written without one. parquet-rs’s default of 1 MiB keeps dictionaries ' +
+        'for columns with many distinct values, such as keys and comments. With 1 MiB ' +
+        'dictionaries, the TPC-H files were 22% larger, DataFusion was 8% slower, and lookups ' +
+        'were up to 2.8 times slower. DuckDB makes the choice once per column chunk: it keeps ' +
+        'a dictionary when the chunk has at most one distinct value for every five rows.',
+      'Data pages hold at most 20,000 rows and 1 MiB, the defaults of parquet-rs. ' +
+        'parquet-java uses the same row limit, which it chose so that the page index has ' +
+        'enough pages to skip. Each file has a page index, which records each page’s ' +
+        'minimum, maximum, and position. With it, a lookup reads and decodes only the pages ' +
+        'that hold its rows. Against pages limited by size alone, the row limit made lookups ' +
+        'up to 4 times faster, at the same file size and with query times within noise. ' +
+        'Leaving out the page index saved no space. DuckDB 2.0 writes no page index, and its ' +
+        'column chunks are usually one page.',
+      'The files have no Bloom filters. Filters on every column made the TPC-H files 14% ' +
+        'larger and made no query faster.',
+      'Row groups hold 122,880 rows, DuckDB’s default, in files that queries read from ' +
+        'local NVMe. They hold 1,048,576 rows, parquet-rs’s default, in files read from S3, ' +
+        'in the random access files, and in the compression benchmark’s files. On the ' +
+        'benchmark machines, the smaller row groups made TPC-H at scale factor 10 28% to 38% ' +
+        'faster on NVMe. On S3, the larger ones made ' +
+        'DataFusion 14% to 21% faster and DuckDB 3% to 8% slower. The page index lets a ' +
+        'lookup skip pages inside a row group, so random access keeps parquet-rs’s default.',
     ],
   },
   {
@@ -98,13 +156,39 @@ export const METHODOLOGY: readonly MethodologySection[] = [
       'In both, a query or dataset a series did not run counts as twice that series’ own ' +
         'slowest time, and at least twice the fastest series’ time, so a series cannot ' +
         'rank well by skipping work. Each summary says how many a series ran.',
+      'A query suite also ranks a series that missed a query below every series that ran ' +
+        'them all. Lance cannot run TPC-DS query 72, so it ranks below the complete series ' +
+        'on TPC-DS at scale factor 1.',
       `Write and scan throughput scores are ${SCORES.throughput}`,
       `File size scores are ${SCORES.size}`,
-      'Total is the sum of a format’s file sizes over the datasets that every format has.',
-      'The compression summaries leave out the wide table and sparse-wide datasets, which ' +
-        'have many variants each. The file size summary also leaves out statpopgen, and counts ' +
+      'The Compression & File Size summary also gives each format’s ratio versus Arrow: ' +
+        `${SCORES.arrow} ` +
+        'The Arrow size is the memory that the compression benchmark’s data takes once it is ' +
+        'read from Parquet into Arrow arrays, with string and binary view columns read as ' +
+        'plain string and binary columns. The SQL suites record no Arrow size, so this ratio ' +
+        'covers the compression benchmark’s datasets alone. The summary orders the formats by ' +
+        'their file size score, which also covers TPC-DS.',
+      'Total is the sum of a format’s file sizes over the datasets that every format has. ' +
+        'The Compression & File Size summary instead gives a total only to a format that has ' +
+        'every dataset in the summary, and ranks a format that lacks a dataset after the ' +
+        'formats that have them all.',
+      'The SQL Benchmark File Sizes summary scores JOB, Polar Signals, statpopgen, TPC-DS, ' +
+        'TPC-H, and nested TPC-H, whose Parquet files bench writes with its own settings. ' +
+        'ClickBench and FineWeb query downloaded files, and DuckDB writes the Parquet files ' +
+        'for Appian, sorted ClickBench, and the Vortex queries, so the summary leaves them ' +
+        'out. They still have charts. It counts each benchmark once, as the geometric mean of ' +
+        'its scale factors, and gives no total, because its scale factors run from megabytes ' +
+        'to tens of gigabytes.',
+      'The compression time summary leaves out the wide table and sparse-wide datasets, ' +
+        'which have many variants each. The Compression & File Size summary counts each of ' +
+        'those two suites as one dataset, the geometric mean of its ratios. It also leaves ' +
+        'out statpopgen, and counts ' +
         'the TPC-H l_comment column once, because its canonical and chunked files are the ' +
         'same size. These datasets still have charts.',
+      'The size summaries do not rank DuckDB’s database file, which is a query engine’s ' +
+        'storage, not a file format. It still has charts. The SQL Benchmark File Sizes ' +
+        'summary ranks it only if it has a size on every benchmark that the summary covers, ' +
+        'because there it is the file that DuckDB’s queries read.',
       'The string encoding benchmark compares its encoders with FSST instead of Parquet, so ' +
         'its throughput and size scores divide by FSST’s.',
       'Each summary uses each series’ newest result on develop.',

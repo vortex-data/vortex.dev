@@ -8,7 +8,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useBenchBase } from '@/bench/components/BenchBase';
 import { Chart } from '@/bench/components/Chart';
 import { GroupToolbar } from '@/bench/components/GroupToolbar';
-import { chartPriority, type FilterUniverse } from '@/bench/lib/chart-format';
+import { chartPriority, type FilterUniverse, type SeriesLabels } from '@/bench/lib/chart-format';
 import { abortGroupBundle, ensureGroupBundle } from '@/bench/lib/chart-store';
 import {
   noteGroupBodyClosed,
@@ -30,6 +30,8 @@ export interface GroupBodyProps {
   universe: FilterUniverse;
   /** The filter choices the page URL gives this group (`?group=…&hide=…`). */
   initialFilter: GroupFilterChoices;
+  /** Display names the toolbar gives some formats (see `SeriesLabels`). */
+  seriesLabels?: SeriesLabels | undefined;
 }
 
 /**
@@ -58,6 +60,7 @@ export function GroupBody({
   startIndex,
   universe,
   initialFilter,
+  seriesLabels,
 }: GroupBodyProps) {
   const base = useBenchBase();
   const ref = useRef<HTMLDivElement>(null);
@@ -120,7 +123,19 @@ export function GroupBody({
     <div className="group-body" ref={ref}>
       {open && (
         <>
-          <GroupToolbar groupSlug={groupSlug} universe={universe} />
+          <GroupToolbar
+            groupSlug={groupSlug}
+            universe={universe}
+            seriesLabels={seriesLabels}
+            unlabeledCharts={Object.fromEntries(
+              Object.keys(seriesLabels ?? {}).map((format) => [
+                format,
+                charts
+                  .filter((link) => link.seriesLabels?.[format] === undefined)
+                  .map((link) => link.name),
+              ]),
+            )}
+          />
           <div className="chart-grid">
             {charts.map((link, i) => (
               <Chart
@@ -129,6 +144,7 @@ export function GroupBody({
                 name={link.name}
                 index={startIndex + i}
                 groupSlug={groupSlug}
+                seriesLabels={link.seriesLabels}
               />
             ))}
           </div>

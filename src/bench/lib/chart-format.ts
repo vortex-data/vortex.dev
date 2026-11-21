@@ -85,7 +85,8 @@ export const MAX_VISIBLE_POINTS = 500;
 // purple, DuckDB green, and Arrow orange. The color means the format and
 // nothing else, so a format looks the same on every engine: the line style
 // shows the engine instead. A duckdb run is dashed, as is a cold random-access
-// run (the two never share a chart). Widths carry the importance tiers.
+// run (the two never share a chart). A Parquet codec variant is dotted, or
+// dash-dotted on duckdb. Widths carry the importance tiers.
 //
 // The palette has one set of colors per card theme, because one set cannot
 // stay legible on both cards: a color with 3:1 contrast against both the
@@ -113,6 +114,10 @@ export interface SeriesStyle {
 
 /** The dash of a duckdb run and of a cold random-access run. */
 const DASH: readonly number[] = [6, 4];
+/** The dash of a Parquet codec variant, which a query chart can hold on both
+ * engines beside zstd Parquet: dotted, and dash-dotted on duckdb. */
+const DOT: readonly number[] = [2, 3];
+const DASH_DOT: readonly number[] = [6, 3, 2, 3];
 
 /** Line widths per importance tier, reinforcing the color hierarchy. */
 const HERO_WIDTH = 2.6;
@@ -160,6 +165,17 @@ const FORMAT: Record<string, FormatStyle> = {
   'arrow-ipc': ARROW,
 };
 
+/**
+ * The format a codec variant is drawn as: Parquet with a codec other than zstd
+ * (`parquet-snappy`, `parquet-uncompressed`, as the size tables and TPC-DS's
+ * queries name them) is Parquet's teal, thinner and dotted, so it reads as a
+ * kind of Parquet without a color of its own. Its dots differ from duckdb's
+ * dash, so a query chart's four Parquet lines stay apart.
+ */
+function codecVariantOf(format: string): string | undefined {
+  return format.startsWith('parquet-') ? 'parquet' : undefined;
+}
+
 /** The catch-all style for an otherwise-unknown series: a neutral gray with
  * 3:1 contrast on both cards. */
 const FALLBACK_COLOR = '#8a8a87';
@@ -190,12 +206,24 @@ export function seriesStyle(
   theme: ChartTheme,
 ): SeriesStyle {
   const { engine, format } = seriesDims(name, meta);
-  const dash = engine === 'duckdb' || name.endsWith(':cold') ? [...DASH] : [];
-  const style = format ? FORMAT[format] : undefined;
+  const variantOf = format === undefined ? undefined : codecVariantOf(format);
+  const duckdbOrCold = engine === 'duckdb' || name.endsWith(':cold');
+  const dash =
+    variantOf !== undefined
+      ? [...(engine === 'duckdb' ? DASH_DOT : DOT)]
+      : duckdbOrCold
+        ? [...DASH]
+        : [];
+  const base = variantOf ?? format;
+  const style = base ? FORMAT[base] : undefined;
   if (!style) {
     return { color: FALLBACK_COLOR, width: MUTED_WIDTH, dash };
   }
-  return { color: style.color[theme], width: style.width, dash };
+  return {
+    color: style.color[theme],
+    width: variantOf === undefined ? style.width : MUTED_WIDTH,
+    dash,
+  };
 }
 
 /** Format draw priority, front (low) to back (high) -- Chart.js renders a lower
@@ -231,7 +259,12 @@ export function seriesOrder(
   meta: { engine?: string; format?: string } | null | undefined,
 ): number {
   const { engine, format } = seriesDims(name, meta);
-  const formatRank = rankIn(FORMAT_ORDER, format, FORMAT_ORDER_FALLBACK);
+  // A codec variant sits just behind its format.
+  const variantOf = format === undefined ? undefined : codecVariantOf(format);
+  const formatRank =
+    variantOf === undefined
+      ? rankIn(FORMAT_ORDER, format, FORMAT_ORDER_FALLBACK)
+      : rankIn(FORMAT_ORDER, variantOf, FORMAT_ORDER_FALLBACK) + 0.5;
   const engineRank = rankIn(ENGINE_ORDER, engine, 0);
   return formatRank * 10 + engineRank;
 }
@@ -247,9 +280,41 @@ export function seriesOrder(
  * a presentation-only rename: callers pass the real format to the data layer and
  * route it through here ONLY when rendering. All other formats pass through.
  */
-export function displayFormat(format: string): string {
-  return format === 'vortex-file-compressed' ? 'vortex' : format;
+export function displayFormat(format: string, labels?: SeriesLabels): string {
+  return labels?.[format] ?? (format === 'vortex-file-compressed' ? 'vortex' : format);
 }
+
+/**
+ * Display names that one group or chart gives some of its formats, over
+ * [`displayFormat`]'s. The Compression & File Size group shows `parquet` as
+ * `parquet (zstd)` and `parquet-snappy` as `parquet (snappy)`, because it charts
+ * both. Like
+ * [`displayFormat`], it changes only what is shown: the series keys stay the
+ * real formats.
+ */
+export type SeriesLabels = Readonly<Record<string, string>>;
+
+/** The Compression & File Size group's display names (see [`SeriesLabels`]). */
+export const PARQUET_CODEC_LABELS: SeriesLabels = {
+  parquet: 'parquet (zstd)',
+  'parquet-snappy': 'parquet (snappy)',
+};
+
+/**
+ * Parquet's name in prose (headlines, `llms.txt`) under a group's `labels`: "Parquet", or
+ * "Parquet (zstd)" in the Compression & File Size group, which also charts Snappy Parquet.
+ */
+export function proseParquet(labels?: SeriesLabels): string {
+  return labels?.parquet?.replace(/^parquet/, 'Parquet') ?? 'Parquet';
+}
+
+/**
+ * The Compression & File Size group's ClickBench chart's display names: it keeps `parquet`,
+ * because it charts ClickBench's published files, which are Snappy.
+ */
+export const CLICKBENCH_PARQUET_LABELS: SeriesLabels = {
+  'parquet-snappy': PARQUET_CODEC_LABELS['parquet-snappy'] ?? 'parquet-snappy',
+};
 
 /**
  * Whether `format` names one of Vortex's other scans. The SQL benchmarks run
@@ -269,8 +334,11 @@ export function isOtherScan(format: string): boolean {
  * the `vortex-file-compressed` token reads `vortex` wherever it appears while the
  * underlying label (the dataset/override/lookup key) stays unchanged.
  */
-export function displaySeriesLabel(label: string): string {
-  return label.split(':').map(displayFormat).join(':');
+export function displaySeriesLabel(label: string, labels?: SeriesLabels): string {
+  return label
+    .split(':')
+    .map((segment) => displayFormat(segment, labels))
+    .join(':');
 }
 
 /** First 7 characters of a commit SHA. */
@@ -651,6 +719,7 @@ export function latestValuesSentence(
   series: readonly VisibleSeries[],
   commits: readonly (Pick<CommitPoint, 'timestamp'> | null)[],
   displayUnit: DisplayUnit,
+  labels?: SeriesLabels,
 ): string {
   if (series.length === 0) {
     return 'No series is shown.';
@@ -668,7 +737,7 @@ export function latestValuesSentence(
   for (const { label, values } of series) {
     const value = values[latest];
     if (isMeasured(value)) {
-      parts.push(`${displaySeriesLabel(label)} ${formatDisplayValue(value, displayUnit)}`);
+      parts.push(`${displaySeriesLabel(label, labels)} ${formatDisplayValue(value, displayUnit)}`);
     }
   }
   const date = shortDate(commits[latest]?.timestamp);

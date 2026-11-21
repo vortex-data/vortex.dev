@@ -64,6 +64,11 @@ column-by-column; an unknown `kind` or a missing dimension field fails the inges
 
 `compression_size` records include `uncompressed_bytes`, the Arrow memory size after the
 source Parquet file is decoded. The column is nullable so historical rows remain valid.
+`compress-bench` also writes two size-only formats, with no `compression_time` records:
+`parquet-snappy` (Parquet with Snappy, and otherwise the same writer settings as `parquet`,
+which is zstd level 3) and
+`vortex-compact` (Vortex with the compact strategy). Each is one write per dataset that is not
+timed.
 
 `string-bench` shares the two compression tables with `compress-bench`. Its records use the
 dataset `strings/<column>`, the string encoder (`onpair-12`, `fsst`, ...) as `dataset_variant`,
@@ -73,11 +78,29 @@ rows in the `String Encoding` groups and compares each encoder with `fsst`, so t
 `fsst` label are part of the contract.
 
 `file_size` records are not written by `vortex-bench`: the monorepo's
-`scripts/capture-file-sizes.py` writes one per Vortex file a SQL benchmark leaves on disk, with
+`scripts/capture-file-sizes.py` writes one per data file a SQL benchmark leaves on disk, with
 `benchmark` (the `vx-bench` subcommand), `scale_factor`, `format`, `file` (the path below the format
-directory) and `value_bytes`. The read service charts each benchmark and scale factor in the
-`SQL File Size` group, one line per format summed over its files. CI reads them back as the develop
-baseline for the PR comment's file-size section.
+directory) and `value_bytes`. A file's `format` is the name of its format directory, not its
+codec. `parquet` is the suite's base Parquet: zstd level 3 where the benchmarks write it, and the
+dataset's published files where the suite prescribes them, as ClickBench's are Snappy. CI
+reads the records back as the develop baseline for the PR comment's file-size section.
+
+The read service charts both tables in the `Compression & File Size` group, one line per
+format. It charts every current `compress-bench` dataset in `compression_sizes`, and three
+`file_sizes` scopes, each summed over its files: ClickBench, TPC-H at SF10, and TPC-DS at SF1
+(`src/bench/lib/file-sizes.ts`). Its summary compares each format with zstd Parquet on the
+`compress-bench` datasets and on TPC-DS. It leaves out `duckdb`, DuckDB's database file, which
+the group still charts. On develop, TPC-DS SF1 records the sizes of Lance, Arrow IPC, and Snappy
+Parquet (`parquet-snappy`) beside Parquet and Vortex. It queries Lance on DataFusion, and writes
+Arrow IPC and Snappy Parquet after its queries, for their sizes only. Lance skips q72, which it cannot run; the query summary ranks a series
+that misses a query below every series that ran them all.
+
+The `SQL Benchmark File Sizes` group charts every `file_sizes` scope, at every scale factor, and
+leaves out `compression_sizes`. Its summary compares each format with Parquet, at each format's
+newest commit that also has Parquet, on the benchmarks that write Parquet with bench's settings:
+JOB, Polar Signals, statpopgen, TPC-DS, TPC-H, and nested TPC-H
+(`FILE_SIZE_RANKED_BENCHMARKS`). It counts each benchmark once, as the geometric mean of its
+scale factors, and shows no totals.
 
 `random_access_time` records include `open_mode`. The value is `cached` for a reused accessor
 or `reopen` when each timed take includes a new accessor. Historical rows use `cached`.

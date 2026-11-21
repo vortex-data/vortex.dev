@@ -5,13 +5,35 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
 import { SummaryCard } from '@/bench/components/SummaryCard';
+import { type SeriesLabels, PARQUET_CODEC_LABELS } from '@/bench/lib/chart-format';
 import type { Summary } from '@/bench/lib/summary';
 
-function render(summary?: Summary): string {
-  return renderToStaticMarkup(<SummaryCard summary={summary} />);
+function render(summary?: Summary, seriesLabels?: SeriesLabels): string {
+  return renderToStaticMarkup(<SummaryCard summary={summary} seriesLabels={seriesLabels} />);
 }
 
 describe('SummaryCard', () => {
+  it('names zstd Parquet as the group labels it', () => {
+    const ranking = {
+      name: 'parquet',
+      minRatio: 1,
+      ratio: 1,
+      maxRatio: 1,
+      compressionRatio: 4.5,
+      totalBytes: 100,
+      measured: 1,
+      total: 1,
+    };
+    const html = render(
+      { type: 'compressionSize', title: 't', rankings: [ranking], explanation: 'e' },
+      PARQUET_CODEC_LABELS,
+    );
+    expect(html).toContain('>vs parquet (zstd)<');
+    expect(html).toContain('>parquet (zstd)<');
+    expect(html).toContain('parquet (zstd): minimum');
+    expect(html).not.toContain('>parquet<');
+  });
+
   it('renders nothing when there is no summary', () => {
     expect(render(undefined)).toBe('');
   });
@@ -152,12 +174,68 @@ describe('SummaryCard', () => {
           maxRatio: 1,
           compressionRatio: 4,
           totalBytes: null,
+          measured: 1,
+          total: 1,
         },
       ],
       explanation: 'e',
     });
     expect(html).toContain('class="score-runtime compression-size-value">—</span>');
     expect(html).toContain('class="compression-size-heading compression-size-total-unit"></span>');
+  });
+
+  it('says how many datasets a partly measured size ranking covers', () => {
+    const ranking = (name: string, measured: number) => ({
+      name,
+      minRatio: 1,
+      ratio: 1,
+      maxRatio: 1,
+      compressionRatio: null,
+      totalBytes: measured === 2 ? 10 : null,
+      measured,
+      total: 2,
+    });
+    const html = render({
+      type: 'compressionSize',
+      title: 'Compression & File Size Summary',
+      rankings: [ranking('parquet', 2), ranking('vortex-compact', 1)],
+      explanation: 'e',
+    });
+    expect(html).toContain('title="vortex-compact · measured on 1 of 2 datasets"');
+    expect(html).toContain('<span aria-hidden="true"> (1/2)</span>');
+    expect(html).toContain('<span class="vx-sr-only">, measured on 1 of 2 datasets</span>');
+    // A complete ranking carries no coverage.
+    expect(html.match(/measured on/g)).toHaveLength(2);
+  });
+
+  it('renders only the parquet ratios when a size summary has no totals or Arrow sizes', () => {
+    const ranking = (name: string, ratio: number, measured: number) => ({
+      name,
+      minRatio: ratio,
+      ratio,
+      maxRatio: ratio,
+      compressionRatio: null,
+      totalBytes: null,
+      measured,
+      total: 2,
+    });
+    const html = render({
+      type: 'compressionSize',
+      title: 'SQL Benchmark File Sizes Summary',
+      rankings: [
+        ranking('vortex-compact', 0.7, 2),
+        ranking('parquet', 1, 2),
+        ranking('lance', 4, 1),
+      ],
+      explanation: 'e',
+      coverageUnit: 'benchmarks',
+    });
+    expect(html).toContain('class="compression-size-scores compression-size-scores--ratios-only"');
+    expect(html).toContain('>vs parquet<');
+    expect(html).not.toContain('>vs Arrow<');
+    expect(html).not.toContain('>Total<');
+    expect(html).toContain('measured on 1 of 2 benchmarks');
+    expect(html).not.toContain('datasets');
   });
 
   it('renders nothing for a compression card with no rankings', () => {
@@ -176,6 +254,8 @@ describe('SummaryCard', () => {
           maxRatio: 1.55,
           compressionRatio: 8.25,
           totalBytes: 1_603_980_000,
+          measured: 1,
+          total: 1,
         },
         {
           name: 'parquet',
@@ -184,6 +264,8 @@ describe('SummaryCard', () => {
           maxRatio: 1,
           compressionRatio: 4.5,
           totalBytes: 1_428_150_000,
+          measured: 1,
+          total: 1,
         },
         {
           name: 'lance',
@@ -192,6 +274,8 @@ describe('SummaryCard', () => {
           maxRatio: 1.3,
           compressionRatio: null,
           totalBytes: 2_500_000,
+          measured: 1,
+          total: 1,
         },
       ],
       explanation: 'higher is better',
@@ -199,7 +283,7 @@ describe('SummaryCard', () => {
     expect(html).not.toContain('<h3 class="scores-title">Compression Size Summary</h3>');
     expect(html).toContain('class="compression-size-scores"');
     expect(html).toContain('>vs Arrow<');
-    expect(html).toContain('>vs Parquet<');
+    expect(html).toContain('>vs parquet<');
     expect(html.match(/>GeoMean</g)).toHaveLength(1);
     expect(html).not.toContain('>Mean<');
     expect(html.match(/>Total</g)).toHaveLength(1);
@@ -311,6 +395,8 @@ describe('SummaryCard', () => {
           maxRatio: 1,
           compressionRatio: 8,
           totalBytes: 100,
+          measured: 1,
+          total: 1,
         },
         {
           name: 'lance',
@@ -319,6 +405,8 @@ describe('SummaryCard', () => {
           maxRatio: 1,
           compressionRatio: 2,
           totalBytes: 200,
+          measured: 1,
+          total: 1,
         },
       ],
       explanation: 'e',
