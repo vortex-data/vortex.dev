@@ -112,9 +112,13 @@ jobs:
           -f description="Claude is reviewing the head commit."
           -f target_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
 
+      # The default ref: on pull_request, the merge commit, which holds the
+      # head commit's changes. Claude reads the diff with `gh pr diff`, and
+      # the statuses go on HEAD_SHA. Naming the head commit here would make
+      # CodeQL flag an untrusted checkout, because this workflow also runs on
+      # issue_comment with a write token.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
-          ref: ${{ needs.gate.outputs.head_sha }}
           persist-credentials: false
 
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6  # v2.2.0
