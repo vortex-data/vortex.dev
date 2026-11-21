@@ -61,7 +61,7 @@ export type Versus = {
   /** Whether the scores are equal (then `factor` is 1 and `vortexWins` false), or null when either is not measured. */
   tie: boolean | null;
   /** The system that is not measured, Vortex first, or null when both are. */
-  missing: "Vortex" | "Parquet" | null;
+  missing: string | null;
 };
 
 export function formatScore(score: number, unit: string): string;
@@ -81,6 +81,13 @@ export function panelRows(
 
 /** The panel's value column: its longest value or "N/A", in ch ("9ch"). */
 export function valueWidth(rows: readonly PanelRow[]): string;
+
+/** Vortex against any system the rows name, as `versusParquet`; `missing` is "Vortex" or `name`. */
+export function versus(
+  rows: readonly BenchRow[],
+  better: BenchPanel["better"],
+  name: string
+): Versus;
 
 export function versusParquet(
   rows: readonly BenchRow[],
@@ -143,12 +150,14 @@ export type ResultsRow = {
   name: string;
   cells: ResultsCell[];
   verdict: string;
+  /** With the `rival` option, how Vortex does against that system, worded as `verdict`: "14× faster", "N/A", or "—" when the panel does not show it. Otherwise null. */
+  rivalVerdict: string | null;
   /** Where the figures come from when they are not bench's, as the row head's hover title and screen-reader text. */
   source: PanelSource | null;
 };
 
 /** One panel as a row of the results table, with a cell per name in `systems`. */
-export function resultsRow(panel: BenchPanel, systems: readonly string[]): ResultsRow;
+export function resultsRow(panel: BenchPanel, systems: readonly string[], options?: { rival?: string }): ResultsRow;
 
 /** The results table as HTML. `read` is the date the figures were read, "2 Nov 2026", which the head prints after the source link; `icon` is the open_in_new icon's markup, which ends that link. */
-export function renderResults(panels: readonly BenchPanel[], options?: { read?: string; icon?: string }): string;
+export function renderResults(panels: readonly BenchPanel[], options?: { read?: string; icon?: string; rival?: string }): string;

@@ -31,7 +31,8 @@ describe("ResultsTable", () => {
     // and its own /bench elsewhere (bench-link.ts), the one difference.
     const system = renderResults(PANELS, {
       read: formatReadDate(READ),
-      icon: renderToStaticMarkup(<OpenInNewIcon />)
+      icon: renderToStaticMarkup(<OpenInNewIcon />),
+      rival: "Lance"
     }).replace('href="https://bench.vortex.dev"', `href="${benchHref()}"`);
     assert.equal(html, system);
   });
@@ -74,7 +75,19 @@ describe("ResultsTable", () => {
     ]);
     assert.match(
       html,
-      /<span>Underlined: the best in each row<\/span><span class="vx-results-key-far">Dotted: 10× or more behind the best<\/span><\/p>/
+      /<span>Underlined: the best in each row<\/span><span>Dotted: 10× or more behind the best<\/span><\/p>/
     );
+  });
+
+  it("adds the verdict against Lance for phones", () => {
+    assert.ok(PANELS);
+    const html = renderToStaticMarkup(
+      <ResultsTable panels={PANELS} readAt={READ} />
+    );
+    assert.match(
+      html,
+      /<th scope="col" class="is-verdict is-rival"><span class="vx-results-subject">Vortex <\/span>vs Lance<\/th>/
+    );
+    assert.equal(html.match(/<td class="is-verdict is-rival">/g)?.length, 7);
   });
 });
