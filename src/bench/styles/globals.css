@@ -1673,6 +1673,26 @@ a.site-footer-sha:hover code {
   text-decoration: none;
 }
 
+/* The landing page's line, above the first group: left-aligned with the cards and small, with the
+   methodology link underlined so it reads as a link. */
+.site-footer--lead {
+  margin: 0 0 var(--space-16);
+  padding: 0;
+  text-align: left;
+}
+
+.site-footer--lead a.site-footer-link {
+  color: var(--ink-body);
+  text-decoration: underline;
+  text-decoration-color: var(--ink-muted);
+  text-underline-offset: 0.2em;
+}
+
+.site-footer--lead a.site-footer-link:hover {
+  color: var(--accent-ink);
+  text-decoration-color: currentColor;
+}
+
 /* Left-side "Jump to group" menu (`GroupNav`): a fixed bottom-left button that
    opens a panel of group links. It sits in the bottom-left corner (not the top)
    so the always-visible toggle never overlays the first group's content; the
