@@ -80,6 +80,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
+          # An `edited` event that moved the pull request to another base.
+          BASE_CHANGED: ${{ github.event.action == 'edited' && github.event.changes.base != null }}
         run: bun scripts/ai-review-gate.ts gate
 
   claude-review:

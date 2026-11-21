@@ -43,6 +43,7 @@ function input(overrides: Partial<GateInput> = {}): GateInput {
     codexRequests: [],
     now: NOW,
     siblingPrs: [],
+    baseChanged: false,
     ...overrides
   };
 }
@@ -234,7 +235,10 @@ test("a Codex-written PR waits for Claude, then follows its status", () => {
   const p2 = decide(
     input({
       body,
-      claudeStatus: reviewed,
+      claudeStatus: {
+        state: "success",
+        description: "Reviewed: 0 P0/P1 findings."
+      },
       threads: [{ ...claudeP1, body: "**P2** A nit." }]
     })
   );
@@ -244,6 +248,17 @@ test("a Codex-written PR waits for Claude, then follows its status", () => {
   const threadless = decide(input({ body, claudeStatus: reviewed }));
   assert.equal(threadless.state, "failure");
   assert.match(threadless.description, /no review thread/);
+
+  // A P2 thread is no evidence for a counted P1.
+  const onlyP2 = decide(
+    input({
+      body,
+      claudeStatus: reviewed,
+      threads: [{ ...claudeP1, body: "**P2** A nit." }]
+    })
+  );
+  assert.equal(onlyP2.state, "failure");
+  assert.match(onlyP2.description, /no review thread/);
 
   // A review that did not finish is retried, not counted as a finding.
   const errored = decide(
@@ -278,6 +293,13 @@ test("a PR from both agents needs both reviews", () => {
 
 test("the Claude status name holds the PR number", () => {
   assert.equal(claudeContext(229), "AI cross-review / Claude #229");
+});
+
+test("a base change voids the reviews of the head commit", () => {
+  const decision = decide(input({ baseChanged: true }));
+  assert.equal(decision.state, "failure");
+  assert.match(decision.description, /base branch changed/);
+  assert.equal(decision.requestCodex, false);
 });
 
 test("drafts wait and dependency updates pass", () => {

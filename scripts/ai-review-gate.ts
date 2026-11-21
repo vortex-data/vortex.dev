@@ -53,6 +53,7 @@
  *                      `{ "blocking": number, "summary": string }`; empty
  *                      when the review did not finish
  *   GITHUB_SERVER_URL, GITHUB_RUN_ID  link each status to its run
+ *   BASE_CHANGED       "true" when the event changed the base branch
  *   GITHUB_OUTPUT      where `gate` writes its outputs
  *   DRY_RUN=1          print what the gate would do and write nothing
  */
@@ -81,6 +82,16 @@ const FOOTER_LINES = 5;
 
 /** The hidden marker on the gate's own `@codex review` comments. */
 const REQUEST_MARKER = "<!-- ai-review-gate:codex-requested";
+
+/**
+ * The hidden marker on the gate's comment when a pull request's base branch
+ * changes. The diff can change with the base, so no review of that head
+ * commit counts any more.
+ */
+const BASE_CHANGED_MARKER = "<!-- ai-review-gate:base-changed";
+
+/** The author of the gate's own comments: the workflow token's. */
+const GATE_LOGIN = "github-actions[bot]";
 
 /** How many times the gate asks Codex to review one commit. */
 const MAX_CODEX_REQUESTS = 3;
@@ -122,6 +133,8 @@ export type GateInput = {
   now: number;
   /** Other open pull requests whose head is the same commit. */
   siblingPrs: number[];
+  /** True when the base branch changed after the head commit was pushed. */
+  baseChanged: boolean;
 };
 
 type Decision = {
@@ -199,18 +212,18 @@ function blockingClaudeThreads(threads: ReviewThread[]): {
   blocking: number;
   findings: number;
 } {
-  const claude = threads.filter(
-    (thread) =>
-      thread.author === CLAUDE_THREAD_AUTHOR &&
-      claudePriority(thread.body) !== null
-  );
+  // Only P0 and P1 threads count, also as evidence that Claude's counted
+  // findings have threads: a P2 thread is no stand-in for a missing P1.
+  const claude = threads.filter((thread) => {
+    if (thread.author !== CLAUDE_THREAD_AUTHOR) return false;
+    const priority = claudePriority(thread.body);
+    return priority === "P0" || priority === "P1";
+  });
   return {
     findings: claude.length,
-    blocking: claude.filter((thread) => {
-      if (thread.isResolved || thread.isOutdated) return false;
-      const priority = claudePriority(thread.body);
-      return priority === "P0" || priority === "P1";
-    }).length
+    blocking: claude.filter(
+      (thread) => !thread.isResolved && !thread.isOutdated
+    ).length
   };
 }
 
@@ -272,6 +285,14 @@ export function decide(input: GateInput): Decision {
       needsClaude: false,
       state: "success",
       description: "Dependency update: no AI review needed."
+    };
+  }
+  if (input.baseChanged) {
+    return {
+      ...base,
+      state: "failure",
+      description:
+        "The base branch changed, so the reviews of this commit no longer count. Push a new commit."
     };
   }
   if (input.draft) {
@@ -571,7 +592,7 @@ async function gate(): Promise<void> {
     "Evaluating the AI reviews of the head commit."
   );
 
-  const [comments, reviews, threads, combined, commitPrs] = await Promise.all([
+  const [comments, reviews, threads, statuses, commitPrs] = await Promise.all([
     githubList<{
       user: { login: string } | null;
       body: string;
@@ -583,13 +604,10 @@ async function gate(): Promise<void> {
       state: string;
     }>(`/repos/${repo}/pulls/${number}/reviews`),
     reviewThreads(owner, name, number),
-    github<{
-      statuses: {
-        context: string;
-        state: string;
-        description: string | null;
-      }[];
-    }>(`/repos/${repo}/commits/${headSha}/status`),
+    // Newest first, every page: the combined status holds only 30 contexts.
+    githubList<{ context: string; state: string; description: string | null }>(
+      `/repos/${repo}/commits/${headSha}/statuses`
+    ),
     githubList<{ number: number; state: string; head: { sha: string } }>(
       `/repos/${repo}/commits/${headSha}/pulls`
     )
@@ -600,9 +618,24 @@ async function gate(): Promise<void> {
     .map((c) => parseCodexState(c.body))
     .filter((state): state is CodexState => state !== null)
     .at(-1);
-  const claude = combined.statuses.find(
-    (s) => s.context === claudeContext(number)
-  );
+  const claude = statuses.find((s) => s.context === claudeContext(number));
+
+  // Only the gate's own comments count as markers; anyone can post the text.
+  const gateComments = comments.filter((c) => c.user?.login === GATE_LOGIN);
+  const baseChangeMarker = `${BASE_CHANGED_MARKER} ${headSha} -->`;
+  let baseChanged = gateComments.some((c) => c.body.includes(baseChangeMarker));
+  if (process.env.BASE_CHANGED === "true" && !baseChanged) {
+    baseChanged = true;
+    console.error(`The base changed under ${headSha.slice(0, 7)}.`);
+    if (!dryRun) {
+      await github(`/repos/${repo}/issues/${number}/comments`, {
+        method: "POST",
+        body: {
+          body: `The base branch changed, so the AI reviews of ${headSha.slice(0, 7)} no longer count. Push a new commit to get new reviews.\n\n${baseChangeMarker}`
+        }
+      });
+    }
+  }
 
   const decision = decide({
     author: pr.user.login,
@@ -618,8 +651,8 @@ async function gate(): Promise<void> {
     claudeStatus: claude
       ? { state: claude.state, description: claude.description ?? "" }
       : null,
-    codexRequests: comments
-      .filter((c) => c.body.includes(`${REQUEST_MARKER} ${headSha}`))
+    codexRequests: gateComments
+      .filter((c) => c.body.includes(`${REQUEST_MARKER} ${headSha} -->`))
       .map((c) => Date.parse(c.created_at)),
     now: Date.now(),
     siblingPrs: commitPrs
@@ -627,7 +660,8 @@ async function gate(): Promise<void> {
         (p) =>
           p.number !== number && p.state === "open" && p.head.sha === headSha
       )
-      .map((p) => p.number)
+      .map((p) => p.number),
+    baseChanged
   });
 
   await setStatus(
