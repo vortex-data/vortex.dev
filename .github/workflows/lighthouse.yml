@@ -109,7 +109,10 @@ jobs:
       # scores. The full reports hold screenshots and page details of the
       # protected preview, and anyone signed in to GitHub can download a
       # public repository's artifacts, so the full reports stay on the
-      # runner. The assertion results print in the Lighthouse CI step's log.
+      # runner. The assertion results print in the Lighthouse CI step's log,
+      # but they name only the category. So this step also keeps, for each
+      # category, the IDs of the scored audits below 1, and prints them.
+      # Audit IDs are Lighthouse's own names, not page content.
       - name: Keep only the scores
         if: always() && steps.page.outputs.path != ''
         run: |
@@ -117,8 +120,18 @@ jobs:
           shopt -s nullglob
           mkdir -p "${RUNNER_TEMP}/lighthouse-scores"
           for report in .lighthouseci/lhr-*.json; do
-            jq '{finalUrl, categories: (.categories | map_values({score}))}' "${report}" \
-              > "${RUNNER_TEMP}/lighthouse-scores/$(basename "${report}")"
+            jq '. as $r | {
+              finalUrl,
+              categories: (.categories | map_values({score})),
+              failedAudits: (.categories | map_values([
+                .auditRefs[] | select(.weight > 0) | .id
+                | select($r.audits[.].score != null and $r.audits[.].score < 1)
+              ]))
+            }' "${report}" > "${RUNNER_TEMP}/lighthouse-scores/$(basename "${report}")"
+            jq -r '"\(.finalUrl): \(.failedAudits | to_entries
+              | map(select(.value != []) | "\(.key) [\(.value | join(", "))]")
+              | if . == [] then "no failed audits" else join("; ") end)"' \
+              "${RUNNER_TEMP}/lighthouse-scores/$(basename "${report}")"
           done
 
       # Uploaded when the assertions fail too.
