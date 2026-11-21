@@ -13,11 +13,14 @@
 
 /**
  * Anchors that stay as they were when a group's name changed, so links that
- * readers already shared still land on the group. The group was named
- * "PolarSignals Profiling" until its owners' spelling replaced it.
+ * readers already shared still land on the group. The groups were named
+ * "PolarSignals Profiling" (until its owners' spelling replaced it),
+ * "Compression Size", and "SQL File Size".
  */
 const KEPT_ANCHORS: Readonly<Record<string, string>> = {
   'Polar Signals Profiling': 'polarsignals-profiling',
+  'Compression & File Size': 'compression-size',
+  'SQL Benchmark File Sizes': 'sql-file-size',
 };
 
 /**

@@ -75,7 +75,7 @@ describe.skipIf(!databaseAvailable)(
       // Random-access sections precede Clickbench in GROUP_ORDER.
       expect(groups.map((g) => g.name)).toEqual([
         'Compression',
-        'Compression Size',
+        'Compression & File Size',
         'Random Access (NVMe)',
         'TPC-H (NVMe) (SF=1)',
         'cohere-large-10m / partitioned',
@@ -176,7 +176,7 @@ describe.skipIf(!databaseAvailable)(
     it('computes compression-size rankings for Vortex, Parquet, Lance, and Arrow IPC', async () => {
       const groups = await collectGroups();
       const summary = expectDefined(
-        groups.find((g) => g.name === 'Compression Size')?.summary,
+        groups.find((g) => g.name === 'Compression & File Size')?.summary,
         'compression size summary',
       );
       if (summary.type !== 'compressionSize') {
@@ -252,7 +252,7 @@ describe.skipIf(!databaseAvailable)(
       const body = (await res.json()) as GroupsResponse;
       expect(body.groups.map((g) => g.name)).toEqual([
         'Compression',
-        'Compression Size',
+        'Compression & File Size',
         'Random Access (NVMe)',
         'TPC-H (NVMe) (SF=1)',
         'cohere-large-10m / partitioned',
@@ -567,7 +567,7 @@ describe.skipIf(!databaseAvailable)('summary math fidelity (testcontainers Postg
     const groups = await collectGroups();
     expect(groups.map((group) => group.name)).toEqual([
       'Compression',
-      'Compression Size',
+      'Compression & File Size',
       'String Encoding',
       'String Encoding Size',
     ]);
@@ -627,24 +627,33 @@ describe.skipIf(!databaseAvailable)('summary math fidelity (testcontainers Postg
     ]);
   });
 
-  it('discovers one file-size chart per benchmark and scale factor, with a summary', async () => {
+  it('charts the listed SQL scopes, and ranks TPC-DS against zstd Parquet', async () => {
     const develop = 'a'.repeat(40);
     const nightly = 'b'.repeat(40);
     await insertCommit(develop, '2026-04-23T12:00:00Z');
     await insertCommit(nightly, '2026-04-24T03:00:00Z');
-    // TPC-H at SF 1 and 10 from develop, and SF 100 from nightly, the newest commit. Clickbench
-    // has no scale-factor directory, so it is recorded as 1.0.
+    // The group charts ClickBench, TPC-H SF10, and TPC-DS SF1. It leaves out TPC-H SF1 and
+    // SF100 and Appian. The newest commit, a nightly run, writes Parquet and Snappy Parquet
+    // for TPC-DS but no Vortex. ClickBench has no scale-factor directory, so it is recorded as
+    // 1.0. Appian's Parquet comes from DuckDB, so the SQL Benchmark File Sizes summary does not
+    // rank it.
     for (const [sha, benchmark, scaleFactor, format, file, bytes] of [
       [develop, 'tpch', '1.0', 'vortex-file-compressed', 'lineitem.vortex', 300],
-      [develop, 'tpch', '1.0', 'vortex-file-compressed', 'orders.vortex', 100],
-      [develop, 'tpch', '1.0', 'vortex-compact', 'lineitem.vortex', 150],
-      [develop, 'tpch', '1.0', 'vortex-compact', 'orders.vortex', 50],
+      [develop, 'tpch', '1.0', 'parquet', 'lineitem.parquet', 300],
       [develop, 'tpch', '10.0', 'vortex-file-compressed', 'lineitem.vortex', 4000],
-      [develop, 'tpch', '10.0', 'vortex-compact', 'lineitem.vortex', 1000],
+      [develop, 'tpch', '10.0', 'parquet', 'lineitem.parquet', 2000],
       [nightly, 'tpch', '100', 'vortex-file-compressed', 'lineitem.vortex', 40000],
       [develop, 'clickbench', '1.0', 'vortex-file-compressed', 'hits_0.vortex', 1000],
-      [develop, 'tpcds', '1.0', 'vortex-file-compressed', 'store_sales.vortex', 500],
+      [develop, 'tpcds', '1.0', 'vortex-file-compressed', 'store_sales.vortex', 300],
+      [develop, 'tpcds', '1.0', 'vortex-file-compressed', 'item.vortex', 100],
+      [develop, 'tpcds', '1.0', 'vortex-compact', 'store_sales.vortex', 150],
+      [develop, 'tpcds', '1.0', 'vortex-compact', 'item.vortex', 50],
+      [develop, 'tpcds', '1.0', 'parquet', 'store_sales.parquet', 350],
+      [develop, 'tpcds', '1.0', 'parquet', 'item.parquet', 50],
+      [nightly, 'tpcds', '1.0', 'parquet', 'store_sales.parquet', 400],
+      [nightly, 'tpcds', '1.0', 'parquet-snappy', 'store_sales.parquet', 600],
       [develop, 'appian', '1.0', 'vortex-file-compressed', 'data.vortex', 70],
+      [develop, 'appian', '1.0', 'parquet', 'data.parquet', 700],
     ] as const) {
       await getPool().query(
         `INSERT INTO file_sizes
@@ -655,12 +664,52 @@ describe.skipIf(!databaseAvailable)('summary math fidelity (testcontainers Postg
     }
 
     const groups = await collectGroups();
-    expect(groups.map((group) => group.name)).toEqual(['SQL File Size']);
-    const [group] = groups;
-    expect(groupKeyFromSlug(defined(group).slug)).toEqual({ k: 'FileSizeGroup' });
-    // Clickbench, TPC-H and TPC-DS lead; the rest follow by name. TPC-H always names its scale
-    // factor, while Clickbench and Appian have none.
+    expect(groups.map((group) => group.name)).toEqual([
+      'Compression & File Size',
+      'SQL Benchmark File Sizes',
+    ]);
+    const [group, sql] = groups;
+    expect(groupKeyFromSlug(defined(group).slug)).toEqual({ k: 'CompressionSizeGroup' });
     expect(defined(group).charts.map((chart) => chart.name)).toEqual([
+      'clickbench',
+      'tpch sf=10.0',
+      'tpcds sf=1.0',
+    ]);
+    expect(chartKeyFromSlug(defined(defined(group).charts[2]).slug)).toEqual({
+      k: 'FileSize',
+      benchmark: 'tpcds',
+      scale_factor: '1.0',
+    });
+    // The group shows `parquet` as `parquet (zstd)` and `parquet-snappy` as `parquet (snappy)`.
+    // ClickBench keeps `parquet`, because its published files are Snappy.
+    const codecs = { parquet: 'parquet (zstd)', 'parquet-snappy': 'parquet (snappy)' };
+    expect(defined(group).seriesLabels).toEqual(codecs);
+    expect(defined(group).charts.map((chart) => chart.seriesLabels)).toEqual([
+      { 'parquet-snappy': 'parquet (snappy)' },
+      codecs,
+      codecs,
+    ]);
+    // Only TPC-DS is ranked. Each format uses its own newest commit that has zstd Parquet:
+    // Snappy the nightly one, and the Vortex formats the develop one.
+    const summary = defined(group).summary;
+    expect(summary).toMatchObject({
+      type: 'compressionSize',
+      title: 'Compression & File Size Summary',
+      rankings: [
+        { name: 'vortex-compact', ratio: 0.5, totalBytes: 200, measured: 1, total: 1 },
+        { name: 'parquet', ratio: 1, totalBytes: 400, measured: 1, total: 1 },
+        { name: 'vortex-file-compressed', ratio: 1, compressionRatio: null, totalBytes: 400 },
+        { name: 'parquet-snappy', ratio: 1.5, totalBytes: 600, measured: 1, total: 1 },
+      ],
+    });
+    expect(summary).not.toHaveProperty('baseline');
+
+    // The SQL Benchmark File Sizes group charts every scope. Its summary ranks each format
+    // against Parquet on TPC-H and TPC-DS only, each benchmark once, at each format's newest
+    // commit with Parquet. It leaves out ClickBench and Appian, whose Parquet bench does not
+    // write.
+    expect(groupKeyFromSlug(defined(sql).slug)).toEqual({ k: 'FileSizeGroup' });
+    expect(defined(sql).charts.map((chart) => chart.name)).toEqual([
       'clickbench',
       'tpch sf=1.0',
       'tpch sf=10.0',
@@ -668,26 +717,29 @@ describe.skipIf(!databaseAvailable)('summary math fidelity (testcontainers Postg
       'tpcds sf=1.0',
       'appian',
     ]);
-    expect(chartKeyFromSlug(defined(defined(group).charts[3]).slug)).toEqual({
-      k: 'FileSize',
-      benchmark: 'tpch',
-      scale_factor: '100',
-    });
-    // Compact is half the size at SF 1 and a quarter at SF 10. Totals cover the scopes both
-    // formats have: 200 + 1000 against 400 + 4000.
-    expect(defined(group).summary).toMatchObject({
+    const sqlSummary = defined(defined(sql).summary);
+    expect(sqlSummary).toMatchObject({
       type: 'compressionSize',
-      baseline: 'vortex',
-      rankings: [
-        {
-          name: 'vortex-compact',
-          minRatio: 0.25,
-          ratio: expect.closeTo(0.5 ** 1.5),
-          maxRatio: 0.5,
-          totalBytes: 1200,
-        },
-        { name: 'vortex-file-compressed', ratio: 1, compressionRatio: null, totalBytes: 4400 },
-      ],
+      title: 'SQL Benchmark File Sizes Summary',
+      coverageUnit: 'benchmarks',
+    });
+    expect(sqlSummary).not.toHaveProperty('baseline');
+    if (sqlSummary.type !== 'compressionSize') {
+      throw new Error(`expected a compressionSize summary, got ${sqlSummary.type}`);
+    }
+    expect(
+      Object.fromEntries(
+        sqlSummary.rankings.map((ranking) => [
+          ranking.name,
+          [ranking.ratio, ranking.measured, ranking.total, ranking.totalBytes],
+        ]),
+      ),
+    ).toEqual({
+      parquet: [1, 2, 2, null],
+      // TPC-H is the geometric mean of SF1 (1) and SF10 (2), and TPC-DS is 1.
+      'vortex-file-compressed': [expect.closeTo(2 ** 0.25, 12), 2, 2, null],
+      'vortex-compact': [0.5, 1, 2, null],
+      'parquet-snappy': [1.5, 1, 2, null],
     });
   });
 
@@ -870,14 +922,20 @@ describe.skipIf(!databaseAvailable)('summary math fidelity (testcontainers Postg
     expect(defined(size.rankings[1]).ratio).toBeCloseTo(1.0, 6);
   });
 
-  it('leaves the wide-table and sparse-wide datasets out of the compression summaries', async () => {
+  it('leaves the synthetic datasets out of the time summary, and counts each family once in the size summary', async () => {
     const sha = 'e'.repeat(40);
     await insertCommit(sha, '2026-04-23T12:00:00Z');
     await insertCompTimePair(sha, 'encode', 1_000, 3_000);
     await insertCompSizePair(sha, 1_000, 4_000);
-    for (const dataset of ['wide table cols=1000 chunks=50 rows=1000', 'sparse-wide-nested-runs']) {
+    for (const [dataset, vortexBytes, parquetBytes] of [
+      ['wide table cols=1000 chunks=1 rows=1000', 9_000, 1_000],
+      // The same file as `chunks=1`, so the size summary leaves it out.
+      ['wide table cols=1000 chunks=50 rows=1000', 1, 1_000],
+      ['sparse-wide-nested-runs', 1_000, 4_000],
+      ['sparse-wide-flat-runs', 4_000, 1_000],
+    ] as const) {
       await insertCompTimePair(sha, 'encode', 9_000, 1_000, dataset);
-      await insertCompSizePair(sha, 9_000, 1_000, dataset);
+      await insertCompSizePair(sha, vortexBytes, parquetBytes, dataset);
     }
     // The patterns match only at the start of the name, so this dataset stays in.
     await insertCompTimePair(sha, 'encode', 1_000, 3_000, 'taxi-sparse-wide');
@@ -900,18 +958,22 @@ describe.skipIf(!databaseAvailable)('summary math fidelity (testcontainers Postg
 
     const size = expectDefined(
       await collectGroupSummary({ k: 'CompressionSizeGroup' }),
-      'compression-size summary',
+      'file size summary',
     );
     if (size.type !== 'compressionSize') {
       throw new Error(`expected compressionSize summary, got ${size.type}`);
     }
     const vortexSize = expectDefined(
       size.rankings.find((ranking) => ranking.name === 'vortex-file-compressed'),
-      'Vortex compression-size ranking',
+      'Vortex file size ranking',
     );
+    // Four entries: tpch-lineitem 0.25, taxi-sparse-wide 1, the wide tables 9, and the
+    // sparse-wide family sqrt(0.25 * 4) = 1.
+    expect(vortexSize.ratio).toBeCloseTo(2.25 ** 0.25, 6);
+    expect([vortexSize.measured, vortexSize.total]).toEqual([4, 4]);
     expect(vortexSize.minRatio).toBeCloseTo(0.25, 6);
-    expect(vortexSize.ratio).toBeCloseTo(0.5, 6);
-    expect(vortexSize.maxRatio).toBeCloseTo(1.0, 6);
+    expect(vortexSize.maxRatio).toBeCloseTo(9, 6);
+    expect(vortexSize.totalBytes).toBe(1_000 + 1_000 + 9_000 + 1_000 + 4_000);
   });
 
   it('selects one commit when the latest timestamps collide', async () => {

@@ -749,6 +749,17 @@ main {
   text-align: center;
 }
 
+.compression-size-scores--ratios-only .compression-size-arrow-header,
+.compression-size-scores--ratios-only .score-item.compression-size-arrow-row {
+  grid-template-columns: 2.25rem minmax(0, 1fr);
+}
+
+/* An empty header row of a panel with no Total or vs Arrow column, as tall as a heading. */
+.compression-size-spacer {
+  grid-column: 1 / -1;
+  font-size: 0.75rem;
+}
+
 .score-item {
   display: flex;
   align-items: center;
@@ -1600,6 +1611,10 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
     grid-template-columns: 1.75rem minmax(0, 1fr) 3.75rem 3.4rem;
     column-gap: 0.35rem;
   }
+  .compression-size-scores--ratios-only .compression-size-arrow-header,
+  .compression-size-scores--ratios-only .score-item.compression-size-arrow-row {
+    grid-template-columns: 1.75rem minmax(0, 1fr);
+  }
   .compression-size-parquet-panel {
     padding-left: 0.35rem;
     margin-left: 0.35rem;
@@ -1671,6 +1686,26 @@ a.site-footer-sha:hover,
 a.site-footer-sha:hover code {
   color: var(--accent-ink);
   text-decoration: none;
+}
+
+/* The landing page's line, above the first group: left-aligned with the cards and small, with the
+   methodology link underlined so it reads as a link. */
+.site-footer--lead {
+  margin: 0 0 var(--space-16);
+  padding: 0;
+  text-align: left;
+}
+
+.site-footer--lead a.site-footer-link {
+  color: var(--ink-body);
+  text-decoration: underline;
+  text-decoration-color: var(--ink-muted);
+  text-underline-offset: 0.2em;
+}
+
+.site-footer--lead a.site-footer-link:hover {
+  color: var(--accent-ink);
+  text-decoration-color: currentColor;
 }
 
 /* Left-side "Jump to group" menu (`GroupNav`): a fixed bottom-left button that

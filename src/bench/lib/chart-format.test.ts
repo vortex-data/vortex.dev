@@ -49,6 +49,7 @@ import {
   throttle,
   truncate,
   visibleRange,
+  PARQUET_CODEC_LABELS,
 } from './chart-format';
 import type { ChartResponse, CommitPoint, UnitKind } from './queries';
 import { defined } from '@/lib/defined';
@@ -138,6 +139,30 @@ describe('seriesStyle', () => {
         expect(duckdb.dash, format).toEqual([6, 4]);
       }
     }
+  });
+
+  it("draws a Parquet codec variant dotted, in Parquet's color, thinner, behind Parquet", () => {
+    for (const theme of ['dark', 'light'] as const) {
+      const zstd = seriesStyle('parquet', { format: 'parquet' }, theme);
+      const snappy = seriesStyle('parquet-snappy', { format: 'parquet-snappy' }, theme);
+      expect(snappy.color).toBe(zstd.color);
+      expect(snappy.dash).toEqual([2, 3]);
+      expect(snappy.width).toBeLessThan(zstd.width);
+    }
+    const order = (format: string) => seriesOrder(format, { format });
+    expect(order('parquet')).toBeLessThan(order('parquet-snappy'));
+    expect(order('parquet-snappy')).toBeLessThan(order('vortex-compact'));
+  });
+
+  it("keeps a query chart's four Parquet lines apart", () => {
+    const styles = ['parquet', 'parquet-snappy'].flatMap((format) =>
+      ['datafusion', 'duckdb'].map((engine) =>
+        seriesStyle(`${engine}:${format}`, { engine, format }, 'dark'),
+      ),
+    );
+    const looks = new Set(styles.map((style) => `${style.width}/${style.dash.join(',')}`));
+    expect(looks.size).toBe(4);
+    expect(seriesStyle('duckdb:parquet-snappy', null, 'dark').dash).toEqual([6, 3, 2, 3]);
   });
 
   it('draws a cold random-access run dashed and a hot one solid', () => {
@@ -521,6 +546,17 @@ describe('the chart canvas label', () => {
       ),
     ).toBe('Latest commit with data: vortex 4.25.');
   });
+
+  it('names each series as its card labels it', () => {
+    expect(
+      latestValuesSentence(
+        [{ label: 'parquet', values: [4.25] }],
+        [{ timestamp: undefined as unknown as string }],
+        pickDisplayUnit('ratio', [4.25]),
+        PARQUET_CODEC_LABELS,
+      ),
+    ).toBe('Latest commit with data: parquet (zstd) 4.25.');
+  });
 });
 
 describe('displayFormat / displaySeriesLabel', () => {
@@ -545,6 +581,15 @@ describe('displayFormat / displaySeriesLabel', () => {
     expect(displaySeriesLabel('vortex-file-compressed')).toBe('vortex');
     // Untouched labels pass through.
     expect(displaySeriesLabel('datafusion:parquet')).toBe('datafusion:parquet');
+  });
+
+  it('applies a group’s own labels over the defaults', () => {
+    expect(displayFormat('parquet', PARQUET_CODEC_LABELS)).toBe('parquet (zstd)');
+    expect(displayFormat('parquet-snappy', PARQUET_CODEC_LABELS)).toBe('parquet (snappy)');
+    expect(displayFormat('vortex-file-compressed', PARQUET_CODEC_LABELS)).toBe('vortex');
+    expect(displaySeriesLabel('datafusion:parquet', PARQUET_CODEC_LABELS)).toBe(
+      'datafusion:parquet (zstd)',
+    );
   });
 });
 

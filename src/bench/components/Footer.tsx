@@ -12,15 +12,18 @@ import { MethodologyLink } from '@/bench/components/MethodologyLink';
  * with the deployed commit. When the SHA is the literal `"unknown"` (a build
  * outside a git checkout, e.g. local dev), the short SHA renders without a
  * commit link, matching v3. It opens with the link to the methodology page.
+ *
+ * With `lead`, the same line opens the landing page's `main`, above the first
+ * group, where readers find it without scrolling past every group.
  */
-export function Footer() {
+export function Footer({ lead = false }: { lead?: boolean }) {
   const fullSha = process.env.VERCEL_GIT_COMMIT_SHA ?? 'unknown';
   const shortSha = fullSha.slice(0, 7);
   const commitUrl = `https://github.com/vortex-data/vortex.dev/commit/${fullSha}`;
   return (
     // A div, not a footer: the system's Footer below it is the page's one
     // contentinfo landmark.
-    <div className="site-footer">
+    <div className={lead ? 'site-footer site-footer--lead' : 'site-footer'}>
       <MethodologyLink />
       <span aria-hidden="true"> · </span>
       <span className="site-footer-label">build </span>

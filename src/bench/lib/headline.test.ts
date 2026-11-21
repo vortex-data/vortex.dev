@@ -3,6 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 
+import { PARQUET_CODEC_LABELS } from '@/bench/lib/chart-format';
 import { groupHeadline, headlineText } from '@/bench/lib/headline';
 import type { SeriesRanking, Summary } from '@/bench/lib/summary';
 
@@ -186,23 +187,86 @@ describe('groupHeadline', () => {
       title: 's',
       explanation: 'e',
       rankings: [
-        { name: VX, minRatio: ratio, ratio, maxRatio: ratio, compressionRatio: 5, totalBytes: 1 },
+        {
+          name: VX,
+          minRatio: ratio,
+          ratio,
+          maxRatio: ratio,
+          compressionRatio: 5,
+          totalBytes: 1,
+          measured: 1,
+          total: 1,
+        },
       ],
     });
     expect(h && headlineText(h)).toBe(expected);
     expect(h?.parts[0]?.tone).toBe(tone);
   });
 
+  it('marks a size headline partial when Vortex lacks some of the datasets', () => {
+    const h = groupHeadline({
+      type: 'compressionSize',
+      title: 's',
+      explanation: 'e',
+      rankings: [
+        {
+          name: VX,
+          minRatio: 0.8,
+          ratio: 0.8,
+          maxRatio: 0.8,
+          compressionRatio: null,
+          totalBytes: null,
+          measured: 5,
+          total: 6,
+        },
+      ],
+    });
+    expect(h && headlineText(h)).toBe('20% smaller than Parquet (partial)');
+  });
+
+  it('names zstd Parquet in a size headline under the group’s labels', () => {
+    const h = groupHeadline(
+      {
+        type: 'compressionSize',
+        title: 's',
+        explanation: 'e',
+        rankings: [
+          {
+            name: VX,
+            minRatio: 1.1,
+            ratio: 1.1,
+            maxRatio: 1.1,
+            compressionRatio: null,
+            totalBytes: null,
+            measured: 1,
+            total: 1,
+          },
+        ],
+      },
+      PARQUET_CODEC_LABELS,
+    );
+    expect(h && headlineText(h)).toBe('10% larger than Parquet (zstd)');
+  });
+
   it('has no headline for a size summary with its own baseline', () => {
-    // The SQL file size summary compares with Vortex itself, which would read "same size as Parquet".
+    // The string encoding size summary compares with FSST, so a Parquet headline would be wrong.
     expect(
       groupHeadline({
         type: 'compressionSize',
         title: 's',
         explanation: 'e',
-        baseline: 'vortex',
+        baseline: 'FSST',
         rankings: [
-          { name: VX, minRatio: 1, ratio: 1, maxRatio: 1, compressionRatio: null, totalBytes: 1 },
+          {
+            name: VX,
+            minRatio: 1,
+            ratio: 1,
+            maxRatio: 1,
+            compressionRatio: null,
+            totalBytes: 1,
+            measured: 1,
+            total: 1,
+          },
         ],
       }),
     ).toBeNull();

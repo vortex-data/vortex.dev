@@ -12,6 +12,7 @@ import {
   chartAriaLabel,
   chartPriority,
   LAZY_HYDRATION_ROOT_MARGIN,
+  type SeriesLabels,
   throttle,
   ZOOM_THROTTLE_MS,
 } from '@/bench/lib/chart-format';
@@ -75,13 +76,22 @@ export interface ChartIslandProps {
   groupSlug?: string;
   /** Server-fetched payload on the permalink page (skips the initial fetch). */
   initialPayload?: ChartResponse;
+  /** Display names the chart gives some of its formats (see `SeriesLabels`). */
+  seriesLabels?: SeriesLabels | undefined;
 }
 
 /**
  * One interactive chart card. Renders the full card chrome (the v3
  * `chart_card` markup) and drives Chart.js through a [`ChartController`].
  */
-export function Chart({ slug, name, index, groupSlug, initialPayload }: ChartIslandProps) {
+export function Chart({
+  slug,
+  name,
+  index,
+  groupSlug,
+  initialPayload,
+  seriesLabels,
+}: ChartIslandProps) {
   const base = useBenchBase();
   const cardRef = useRef<HTMLElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -192,6 +202,7 @@ export function Chart({ slug, name, index, groupSlug, initialPayload }: ChartIsl
         stripWindow: stripWindowRef.current,
       }),
       { setY, setLoading, setError, setRetryable, setConstructed, setLatestValues },
+      seriesLabels,
     );
     controllerRef.current = controller;
     if (initialPayload) {

@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
 
 import { FilterIcon } from '@/bench/components/icons';
-import { DEFAULT_VISIBLE, type FilterUniverse } from '@/bench/lib/chart-format';
+import { DEFAULT_VISIBLE, type FilterUniverse, type SeriesLabels } from '@/bench/lib/chart-format';
 import {
   applyGroupMacro,
   clearGroupFilterRow,
@@ -51,9 +51,18 @@ import { returnFocusToTrigger } from '@/bench/lib/panel-focus';
 export function GroupToolbar({
   groupSlug,
   universe,
+  seriesLabels,
+  unlabeledCharts = {},
 }: {
   groupSlug: string;
   universe: FilterUniverse;
+  /** Display names the chips give some formats (see `SeriesLabels`). */
+  seriesLabels?: SeriesLabels | undefined;
+  /**
+   * For each format the group renames, its charts that keep the real name, which the renamed
+   * chip's title lists.
+   */
+  unlabeledCharts?: UnlabeledCharts;
 }) {
   const [open, setOpen] = useState(false);
   const panelId = useId();
@@ -179,6 +188,8 @@ export function GroupToolbar({
             groupSlug={groupSlug}
             snapshot={snapshot}
             globalSnapshot={globalSnapshot}
+            seriesLabels={seriesLabels}
+            unlabeledCharts={unlabeledCharts}
           />
           <div className="global-filter-row group-series-row">
             <span className="global-filter-label">Series</span>
@@ -206,8 +217,9 @@ export function GroupToolbar({
                     data-value={label}
                     aria-pressed={isActive}
                     onClick={() => toggleGroupSeries(groupSlug, label)}
+                    title={chipTitle(label, seriesLabels, unlabeledCharts)}
                   >
-                    {label}
+                    {relabel(label, seriesLabels)}
                   </button>
                 );
               })}
@@ -262,6 +274,8 @@ function MacroRow({
   groupSlug,
   snapshot,
   globalSnapshot,
+  seriesLabels,
+  unlabeledCharts = {},
 }: {
   label: string;
   dim: 'engine' | 'format';
@@ -269,6 +283,8 @@ function MacroRow({
   groupSlug: string;
   snapshot: ReturnType<typeof getGroupSnapshot>;
   globalSnapshot: ReturnType<typeof getGlobalFilterSnapshot>;
+  seriesLabels?: SeriesLabels | undefined;
+  unlabeledCharts?: UnlabeledCharts;
 }) {
   return (
     <div className="global-filter-row group-macro-row">
@@ -294,11 +310,55 @@ function MacroRow({
             data-value={value}
             aria-pressed={isActive}
             onClick={() => applyGroupMacro(groupSlug, dim, value)}
+            title={chipTitle(value, seriesLabels, unlabeledCharts)}
           >
-            {value}
+            {relabel(value, seriesLabels)}
           </button>
         );
       })}
     </div>
   );
+}
+
+/**
+ * A chip's text: the series label with each segment the group renames (see `SeriesLabels`)
+ * replaced. The chips otherwise show the real labels, so this is not `displaySeriesLabel`.
+ */
+function relabel(label: string, labels: SeriesLabels | undefined): string {
+  if (labels === undefined) {
+    return label;
+  }
+  return label
+    .split(':')
+    .map((segment) => labels[segment] ?? segment)
+    .join(':');
+}
+
+/** For each format a group renames, the group's charts that keep the real name. */
+type UnlabeledCharts = Readonly<Record<string, readonly string[]>>;
+
+/**
+ * A renamed chip's title, when some of the group's charts keep the real name: the chip also
+ * toggles the series there. In the Compression & File Size group, the `parquet (zstd)` chip's
+ * title is "parquet (zstd), and parquet on clickbench", because ClickBench's Parquet is its
+ * published Snappy files.
+ */
+function chipTitle(
+  label: string,
+  labels: SeriesLabels | undefined,
+  unlabeledCharts: UnlabeledCharts,
+): string | undefined {
+  const shown = relabel(label, labels);
+  const charts = [
+    ...new Set(
+      label
+        .split(':')
+        .filter((segment) => labels?.[segment] !== undefined)
+        .flatMap((segment) => unlabeledCharts[segment] ?? []),
+    ),
+  ];
+  if (shown === label || charts.length === 0) {
+    return undefined;
+  }
+  return `${shown}, and ${label} on ${charts.join(', ')}`;
 }

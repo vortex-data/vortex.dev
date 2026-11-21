@@ -33,7 +33,7 @@ export type ChartKey =
   | { k: 'CompressionSize'; dataset: string; dataset_variant: string | null }
   | { k: 'RandomAccess'; dataset: string }
   | { k: 'VectorSearch'; dataset: string; layout: string; threshold: number }
-  // One SQL benchmark's data at one scale factor; its series are the Vortex formats.
+  // One SQL benchmark's data at one scale factor; its series are the formats it writes.
   | { k: 'FileSize'; benchmark: string; scale_factor: string };
 
 /** Strongly-typed group key parsed from a slug. Discriminated on `k`. */
@@ -47,9 +47,12 @@ export type GroupKey =
     }
   // `suite` is absent for the `compress-bench` group, so its slug predates the split.
   | { k: 'CompressionTimeGroup'; suite?: 'strings' }
+  // Without `suite`, the Compression & File Size group: `compress-bench`'s sizes and three SQL
+  // scopes.
   | { k: 'CompressionSizeGroup'; suite?: 'strings' }
   | { k: 'RandomAccessGroup'; storage: RandomAccessStorage }
   | { k: 'VectorSearchGroup'; dataset: string; layout: string }
+  // The SQL Benchmark File Sizes group: every SQL benchmark and scale factor in `file_sizes`.
   | { k: 'FileSizeGroup' };
 
 const CHART_KINDS: readonly ChartKind[] = [
