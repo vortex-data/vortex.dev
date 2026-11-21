@@ -121,13 +121,23 @@ export type ResultsCell = {
   system: string;
   /** The value a bar prints ("42.25 ms", "5.12×"), "Not measured", "N/A", or "—" for a system the panel does not show. */
   label: string;
-  /** The value with its full unit, for the cell's title: as `PanelRow.exact`, or "not run in this benchmark". */
+  /** The value with its full unit, for the cell's title: as `PanelRow.exact`, with how far behind the best when `far` ("575.75 ms, 14× behind the best"), or "not run in this benchmark". */
   exact: string;
   state: PanelRow["state"] | "not-run";
   ours: boolean;
   /** Whether the cell holds the row's best measured score. Every cell that ties for it is best. */
   best: boolean;
+  /** How many times worse than the row's best the score is: 1 for the best, null with no score. */
+  behind: number | null;
+  /** Whether the score is `FAR_BEHIND` times or more behind the best. `exact` then says how far. */
+  far: boolean;
 };
+
+/** How many times behind its row's best a figure must be to be `far`: 10. */
+export const FAR_BEHIND: number;
+
+/** The foot's key for the far mark: "Dotted: 10× or more behind the best". */
+export const FAR_KEY: string;
 
 export type ResultsRow = {
   name: string;
