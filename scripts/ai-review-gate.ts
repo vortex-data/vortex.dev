@@ -64,6 +64,7 @@
  *   DRY_RUN=1          print what the gate would do and write nothing
  */
 
+import { createHash } from "node:crypto";
 import { appendFile } from "node:fs/promises";
 
 const GATE_CONTEXT = "AI cross-review";
@@ -101,8 +102,13 @@ function baseContext(pr: number): string {
   return `AI cross-review / base #${pr}`;
 }
 
+/**
+ * A branch name can be longer than a status description, so the record
+ * starts with the name's SHA-256, which the clip cannot cut.
+ */
 function baseRecord(ref: string): string {
-  return clip(`Reviews of this commit are against ${ref}.`);
+  const hash = createHash("sha256").update(ref).digest("hex");
+  return clip(`Base ${hash}: ${ref}`);
 }
 
 type Review = {
@@ -683,23 +689,20 @@ async function gate(): Promise<void> {
     draft: boolean;
     body: string | null;
     state: string;
-    merged: boolean;
     head: { sha: string };
     base: { ref: string };
   }>(`/repos/${repo}/pulls/${number}`);
   const headSha = pr.head.sha;
   if (pr.state !== "open") {
-    // A status belongs to the commit, so another PR with this head would
-    // inherit a `success`. Withdraw it unless the commit merged.
-    if (!pr.merged) {
-      await setStatus(
-        repo,
-        headSha,
-        GATE_CONTEXT,
-        "pending",
-        "The PR closed without merging, so its reviews do not count."
-      );
-    }
+    // A status belongs to the commit, so another PR with this head, even
+    // against another base, would inherit a `success`. Withdraw it.
+    await setStatus(
+      repo,
+      headSha,
+      GATE_CONTEXT,
+      "pending",
+      "The PR closed, so its reviews do not count for another PR."
+    );
     console.error(`#${number} is ${pr.state}; nothing more to do.`);
     await writeOutputs({ head_sha: headSha, claude_due: "false" });
     return;
