@@ -152,9 +152,14 @@ export const METHODOLOGY: readonly MethodologySection[] = [
         'on TPC-DS at scale factor 1.',
       `Write and scan throughput scores are ${SCORES.throughput}`,
       `File size scores are ${SCORES.size}`,
-      'Total is the sum of a format’s file sizes over the datasets that every format has.',
-      'The compression summaries leave out the wide table and sparse-wide datasets, which ' +
-        'have many variants each. The file size summary also leaves out statpopgen, and counts ' +
+      'Total is the sum of a format’s file sizes over the datasets that every format has. ' +
+        'The Compression & File Size summary instead gives a total only to a format that has ' +
+        'every dataset in the summary, and ranks a format that lacks a dataset after the ' +
+        'formats that have them all.',
+      'The compression time summary leaves out the wide table and sparse-wide datasets, ' +
+        'which have many variants each. The Compression & File Size summary counts each of ' +
+        'those two suites as one dataset, the geometric mean of its ratios. It also leaves ' +
+        'out statpopgen, and counts ' +
         'the TPC-H l_comment column once, because its canonical and chunked files are the ' +
         'same size. It does not rank DuckDB’s database file, which is a query engine’s ' +
         'storage, not a file format. These datasets and DuckDB’s file still have charts.',

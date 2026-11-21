@@ -2,8 +2,8 @@
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
 /**
- * Which charts the Compression & File Size group holds. It joins two tables: `compression_sizes`, the
- * size of each `compress-bench` dataset in each format, and `file_sizes`, the files that the
+ * Which charts the Compression & File Size group holds. It joins two tables: `compression_sizes`,
+ * the size of each `compress-bench` dataset in each format, and `file_sizes`, the files that the
  * SQL suites write. Both are one dataset's size per format per commit.
  */
 

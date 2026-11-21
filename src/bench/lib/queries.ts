@@ -1055,8 +1055,9 @@ function groupRowsQuery(
       break;
     }
     case 'CompressionSizeGroup': {
-      // The Compression & File Size group holds two families. Both give one size per format, so their blocks
-      // share columns. The String Encoding Size group holds `compression_sizes` charts alone.
+      // The Compression & File Size group holds two families. Both give one size per format, so
+      // their blocks share columns. The String Encoding Size group holds `compression_sizes` charts
+      // alone.
       const sizes: [CompressionChartKey, number][] = [];
       const files: [FileSizeChartKey, number][] = [];
       charts.forEach((key, i) => {
@@ -1583,8 +1584,8 @@ type DatasetVariantRow = { dataset: string; dataset_variant: string | null };
 
 /**
  * Group display names per compression suite and family. The size family's group without a suite
- * is the Compression & File Size group, which [`collectFileSizesGroup`] builds, so the size family names only
- * `string-bench`'s group here.
+ * is the Compression & File Size group, which [`collectFileSizesGroup`] builds, so the size family
+ * names only `string-bench`'s group here.
  */
 const COMPRESSION_GROUP_NAMES = {
   CompressionTimeGroup: { compress: 'Compression', strings: 'String Encoding' },
@@ -1663,8 +1664,8 @@ async function compressionSizeDatasets(): Promise<DatasetVariantRow[]> {
 }
 
 /**
- * The Compression & File Size group and the `String Encoding Size` group, each left out when it has no
- * charts.
+ * The Compression & File Size group and the `String Encoding Size` group, each left out when it has
+ * no charts.
  */
 async function collectCompressionSizeGroup(): Promise<Group[]> {
   const datasets = await compressionSizeDatasets();
@@ -1750,9 +1751,9 @@ async function collectVectorSearchGroups(): Promise<Group[]> {
 type FileSizeScopeRow = { benchmark: string; scale_factor: string };
 
 /**
- * The Compression & File Size group, or `[]` if neither table has a chart for it: the SQL suites' scopes in
- * [`FILE_SIZE_SCOPES`] that have rows, in that order, then the `compress-bench` datasets of
- * `datasets`, the rows of `compression_sizes`, by name.
+ * The Compression & File Size group, or `[]` if neither table has a chart for it: the SQL suites'
+ * scopes in [`FILE_SIZE_SCOPES`] that have rows, in that order, then the `compress-bench` datasets
+ * of `datasets`, the rows of `compression_sizes`, by name.
  */
 async function collectFileSizesGroup(datasets: readonly DatasetVariantRow[]): Promise<Group[]> {
   // One index probe of `idx_file_sizes_baseline` per listed scope.

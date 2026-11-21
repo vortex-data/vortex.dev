@@ -39,6 +39,8 @@ describe('groupAnchors', () => {
 
   it('keeps the anchor a renamed group had, so shared links still land on it', () => {
     expect(groupAnchor('Polar Signals Profiling')).toBe('polarsignals-profiling');
+    expect(groupAnchor('Compression & File Size')).toBe('compression-size');
+    expect(groupAnchor('SQL File Sizes')).toBe('sql-file-size');
   });
 
   it('keeps the full production group list collision-free', () => {

@@ -20,8 +20,8 @@ const GROUP_KINDS = FAMILIES.map((family) => family.groupKind);
 describe('compression summaries', () => {
   beforeEach(() => {
     query.mockReset();
-    // The Compression & File Size summary also reads the SQL suites' sizes; a test that sets no rows for that
-    // second query gets none.
+    // The Compression & File Size summary also reads the SQL suites' sizes; a test that sets no
+    // rows for that second query gets none.
     query.mockResolvedValue({ rows: [] });
   });
 
