@@ -40,6 +40,8 @@ function input(overrides: Partial<GateInput> = {}): GateInput {
     codexReviewedShas: [],
     threads: [],
     claudeStatus: null,
+    authorTrusted: true,
+    maintainerApprovedShas: [],
     codexRequests: [],
     now: NOW,
     siblingPrs: [],
@@ -200,7 +202,14 @@ test("a Codex-written PR waits for Claude, then follows its status", () => {
   assert.match(waiting.description, /Claude/);
 
   const running = decide(
-    input({ body, claudeStatus: { state: "pending", description: "" } })
+    input({
+      body,
+      claudeStatus: {
+        state: "pending",
+        description: "",
+        updatedAt: NOW - MINUTE
+      }
+    })
   );
   assert.equal(running.state, "pending");
   assert.equal(running.claudeDue, false);
@@ -208,7 +217,8 @@ test("a Codex-written PR waits for Claude, then follows its status", () => {
   // Claude finished with findings: its open P0/P1 threads block.
   const reviewed = {
     state: "success",
-    description: "Reviewed: 1 P0/P1 finding."
+    description: "Reviewed: 1 P0/P1 finding.",
+    updatedAt: NOW
   };
   const claudeP1 = codexThread({
     author: "github-actions",
@@ -237,34 +247,23 @@ test("a Codex-written PR waits for Claude, then follows its status", () => {
       body,
       claudeStatus: {
         state: "success",
-        description: "Reviewed: 0 P0/P1 findings."
+        description: "Reviewed: 0 P0/P1 findings.",
+        updatedAt: NOW
       },
       threads: [{ ...claudeP1, body: "**P2** A nit." }]
     })
   );
   assert.equal(p2.state, "success");
 
-  // Counted findings with no thread cannot be resolved, so they fail.
-  const threadless = decide(input({ body, claudeStatus: reviewed }));
-  assert.equal(threadless.state, "failure");
-  assert.match(threadless.description, /no review thread/);
-
-  // A P2 thread is no evidence for a counted P1.
-  const onlyP2 = decide(
-    input({
-      body,
-      claudeStatus: reviewed,
-      threads: [{ ...claudeP1, body: "**P2** A nit." }]
-    })
-  );
-  assert.equal(onlyP2.state, "failure");
-  assert.match(onlyP2.description, /no review thread/);
-
   // A review that did not finish is retried, not counted as a finding.
   const errored = decide(
     input({
       body,
-      claudeStatus: { state: "error", description: "no verdict" }
+      claudeStatus: {
+        state: "error",
+        description: "no verdict",
+        updatedAt: NOW
+      }
     })
   );
   assert.equal(errored.state, "failure");
@@ -276,7 +275,8 @@ test("a Codex-written PR waits for Claude, then follows its status", () => {
       body,
       claudeStatus: {
         state: "success",
-        description: "Reviewed: 0 P0/P1 findings."
+        description: "Reviewed: 0 P0/P1 findings.",
+        updatedAt: NOW
       }
     })
   );
@@ -288,7 +288,49 @@ test("a PR from both agents needs both reviews", () => {
   const body = `A change.\n\n${CLAUDE_FOOTER}\nAlso written with Codex.`;
   const decision = decide(input({ body, codexState: null }));
   assert.equal(decision.state, "pending");
-  assert.match(decision.description, /Codex and Claude/);
+  assert.match(decision.description, /Codex's review and Claude's review/);
+});
+
+test("a review that stays pending too long is started again", () => {
+  const body = "A change.\n\nWritten with Codex.";
+  const stale = decide(
+    input({
+      body,
+      claudeStatus: {
+        state: "pending",
+        description: "",
+        updatedAt: NOW - 60 * MINUTE
+      }
+    })
+  );
+  assert.equal(stale.state, "failure");
+  assert.equal(stale.claudeDue, true);
+  assert.match(stale.description, /stopped without a verdict/);
+});
+
+test("an outside PR from Codex needs a maintainer's approval, not Claude", () => {
+  const body = "A change.\n\nWritten with Codex.";
+  const waiting = decide(input({ body, authorTrusted: false }));
+  assert.equal(waiting.state, "pending");
+  assert.equal(waiting.claudeDue, false);
+  assert.match(waiting.description, /a maintainer's approval/);
+
+  // An approval of an older commit does not count.
+  assert.equal(
+    decide(input({ body, authorTrusted: false, maintainerApprovedShas: [OLD] }))
+      .state,
+    "pending"
+  );
+
+  const approved = decide(
+    input({ body, authorTrusted: false, maintainerApprovedShas: [HEAD] })
+  );
+  assert.equal(approved.state, "success");
+  assert.equal(approved.claudeDue, false);
+  assert.match(approved.description, /maintainer approved/);
+
+  // An outside PR that Codex did not help write needs only Codex.
+  assert.equal(decide(input({ authorTrusted: false })).state, "success");
 });
 
 test("the Claude status name holds the PR number", () => {

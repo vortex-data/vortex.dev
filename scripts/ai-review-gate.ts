@@ -12,26 +12,33 @@
  * The status is:
  *   success  each required review covers the head commit and has no blocking
  *            finding
- *   pending  a required review of the head commit is not there yet, or the
- *            pull request is a draft
- *   failure  a required review has a blocking finding, or the Claude review
- *            did not finish
+ *   pending  a required review or approval of the head commit is not there
+ *            yet, or the pull request is a draft
+ *   failure  a required review has a blocking finding, the Claude review did
+ *            not finish, the base branch changed, or another open pull
+ *            request has the same head commit
  *
  * A blocking finding is a P0 or P1 finding. For Codex, it is an unresolved
  * review thread that Codex started, on a line the head commit still has (not
  * outdated), with a P0 or P1 badge or with no badge. For Claude, it is an
  * unresolved, not outdated thread from the review that starts with "**P0**"
- * or "**P1**". If Claude's verdict counts P0 or P1 findings but it left no
- * finding thread, the gate fails, because nobody can resolve that.
+ * or "**P1**". At verdict time, `claude-verdict` checks that each P0 or P1
+ * finding Claude counted has an open thread; if not, it records the review
+ * as unfinished, because nobody could resolve those findings.
+ *
+ * Claude reviews only for an author with write access, or Codex, so an
+ * outside author cannot spend the API key. An outside pull request that Codex
+ * helped write needs a maintainer's approval of the head commit instead.
  *
  * Retries: when Codex has not reviewed the head commit, the gate posts
  * `@codex review`, and posts it again on a later run if Codex has still not
  * started after RETRY_CODEX_AFTER_MS, up to MAX_CODEX_REQUESTS times per
  * commit. A Claude review that ended without a verdict sets the Claude status
- * to `error`, not `failure`, and the next gate run starts a new one.
+ * to `error`, not `failure`, and the next gate run starts a new one. So does
+ * a Claude status still pending after STALE_CLAUDE_MS.
  *
  * ai-review.yml runs this script from main on base-branch events
- * (pull_request_target, issue_comment, pull_request_review), so a pull
+ * (pull_request_target, issue_comment), so a pull
  * request cannot change the rules that judge it.
  *
  * Commands:
@@ -84,11 +91,25 @@ const FOOTER_LINES = 5;
 const REQUEST_MARKER = "<!-- ai-review-gate:codex-requested";
 
 /**
- * The hidden marker on the gate's comment when a pull request's base branch
- * changes. The diff can change with the base, so no review of that head
- * commit counts any more.
+ * The status that records that a pull request's base branch changed under
+ * its head commit. The diff can change with the base, so no review of that
+ * commit counts any more. A status, not a comment, because only a token with
+ * write access can set one, and the gate sets it before anything else that
+ * can fail.
  */
-const BASE_CHANGED_MARKER = "<!-- ai-review-gate:base-changed";
+export function baseChangedContext(pr: number): string {
+  return `AI cross-review / base changed #${pr}`;
+}
+
+/**
+ * Authors whose pull requests Claude may review. The review runs with the
+ * Anthropic key and a write token, so it never reads an outside author's
+ * pull request: a maintainer's approval of the head commit replaces it.
+ */
+const TRUSTED_ASSOCIATIONS = new Set(["OWNER", "MEMBER", "COLLABORATOR"]);
+
+/** How long a Claude review can stay pending before the gate retries it. */
+const STALE_CLAUDE_MS = 45 * 60 * 1000;
 
 /** The author of the gate's own comments: the workflow token's. */
 const GATE_LOGIN = "github-actions[bot]";
@@ -125,8 +146,17 @@ export type GateInput = {
   /** The commits that Codex's submitted, not dismissed, reviews cover. */
   codexReviewedShas: string[];
   threads: ReviewThread[];
-  /** The `AI cross-review / Claude` status on the head commit, if any. */
-  claudeStatus: { state: string; description: string } | null;
+  /** This pull request's Claude status on the head commit, if any. */
+  claudeStatus: {
+    state: string;
+    description: string;
+    /** When it was set, in milliseconds. */
+    updatedAt: number;
+  } | null;
+  /** True when the author has write access, or is Codex. */
+  authorTrusted: boolean;
+  /** The commits that a maintainer's review approved. */
+  maintainerApprovedShas: string[];
   /** When the gate asked Codex to review the head commit, in milliseconds. */
   codexRequests: number[];
   /** The time of this run, in milliseconds. */
@@ -207,24 +237,15 @@ function claudePriority(body: string): string | null {
  * Counts the Claude findings that block a merge: unresolved threads, on lines
  * the head commit still has, that start with P0 or P1. Like Codex's, they
  * stop blocking when someone resolves them, so a recheck needs no new push.
+ * `claude-verdict` checks that each blocker Claude counts has such a thread.
  */
-function blockingClaudeThreads(threads: ReviewThread[]): {
-  blocking: number;
-  findings: number;
-} {
-  // Only P0 and P1 threads count, also as evidence that Claude's counted
-  // findings have threads: a P2 thread is no stand-in for a missing P1.
-  const claude = threads.filter((thread) => {
+export function blockingClaudeThreads(threads: ReviewThread[]): number {
+  return threads.filter((thread) => {
     if (thread.author !== CLAUDE_THREAD_AUTHOR) return false;
+    if (thread.isResolved || thread.isOutdated) return false;
     const priority = claudePriority(thread.body);
     return priority === "P0" || priority === "P1";
-  });
-  return {
-    findings: claude.length,
-    blocking: claude.filter(
-      (thread) => !thread.isResolved && !thread.isOutdated
-    ).length
-  };
+  }).length;
 }
 
 /** Reads the count from a Claude status description, "Reviewed: N ...". */
@@ -315,34 +336,38 @@ export function decide(input: GateInput): Decision {
       problems.push(`Codex: ${findings(blocking)}`);
     }
   } else {
-    waiting.push("Codex");
+    waiting.push("Codex's review");
   }
 
   let claudeDue = false;
-  if (needsClaude) {
+  if (needsClaude && !input.authorTrusted) {
+    // Claude never reads an outside author's pull request.
+    if (!input.maintainerApprovedShas.includes(input.headSha)) {
+      waiting.push("a maintainer's approval, in place of Claude's review,");
+    }
+  } else if (needsClaude) {
     const status = input.claudeStatus;
     if (status === null) {
-      waiting.push("Claude");
+      waiting.push("Claude's review");
       claudeDue = true;
     } else if (status.state === "pending") {
-      waiting.push("Claude");
+      if (input.now - status.updatedAt > STALE_CLAUDE_MS) {
+        // The job stopped before it recorded a verdict. Start a new one.
+        problems.push("Claude's review stopped without a verdict");
+        claudeDue = true;
+      } else {
+        waiting.push("Claude's review");
+      }
     } else if (status.state === "error") {
       // The review did not finish. The workflow starts a new one.
       problems.push(`Claude's review did not finish (${status.description})`);
       claudeDue = true;
     } else if (status.state === "success") {
-      const reported = reportedBlocking(status.description);
-      const threads = blockingClaudeThreads(input.threads);
-      if (reported === null) {
+      if (reportedBlocking(status.description) === null) {
         problems.push(`Claude: unreadable status "${status.description}"`);
-      } else if (reported > 0 && threads.findings === 0) {
-        // Claude counted findings but left no thread to resolve or fix.
-        problems.push(
-          `Claude: ${reported} P0/P1 findings with no review thread`
-        );
-      } else if (threads.blocking > 0) {
-        problems.push(`Claude: ${findings(threads.blocking)}`);
       }
+      const blocking = blockingClaudeThreads(input.threads);
+      if (blocking > 0) problems.push(`Claude: ${findings(blocking)}`);
     } else {
       problems.push(`Claude: ${status.description}`);
     }
@@ -360,15 +385,22 @@ export function decide(input: GateInput): Decision {
     return {
       ...result,
       state: "pending",
-      description: `Waiting for ${waiting.join(" and ")} to review the head commit.`
+      description: clip(
+        `Waiting for ${waiting.join(" and ")} of the head commit.`.replace(
+          ", of",
+          " of"
+        )
+      )
     };
   }
   return {
     ...result,
     state: "success",
-    description: needsClaude
-      ? "Codex and Claude reviewed the head commit."
-      : "Codex reviewed the head commit."
+    description: !needsClaude
+      ? "Codex reviewed the head commit."
+      : input.authorTrusted
+        ? "Codex and Claude reviewed the head commit."
+        : "Codex reviewed and a maintainer approved the head commit."
   };
 }
 
@@ -570,6 +602,7 @@ async function gate(): Promise<void> {
 
   const pr = await github<{
     user: { login: string };
+    author_association: string;
     draft: boolean;
     body: string | null;
     state: string;
@@ -602,12 +635,16 @@ async function gate(): Promise<void> {
       user: { login: string } | null;
       commit_id: string;
       state: string;
+      author_association: string;
     }>(`/repos/${repo}/pulls/${number}/reviews`),
     reviewThreads(owner, name, number),
     // Newest first, every page: the combined status holds only 30 contexts.
-    githubList<{ context: string; state: string; description: string | null }>(
-      `/repos/${repo}/commits/${headSha}/statuses`
-    ),
+    githubList<{
+      context: string;
+      state: string;
+      description: string | null;
+      updated_at: string;
+    }>(`/repos/${repo}/commits/${headSha}/statuses`),
     githubList<{ number: number; state: string; head: { sha: string } }>(
       `/repos/${repo}/commits/${headSha}/pulls`
     )
@@ -622,18 +659,27 @@ async function gate(): Promise<void> {
 
   // Only the gate's own comments count as markers; anyone can post the text.
   const gateComments = comments.filter((c) => c.user?.login === GATE_LOGIN);
-  const baseChangeMarker = `${BASE_CHANGED_MARKER} ${headSha} -->`;
-  let baseChanged = gateComments.some((c) => c.body.includes(baseChangeMarker));
+
+  let baseChanged = statuses.some(
+    (s) => s.context === baseChangedContext(number)
+  );
   if (process.env.BASE_CHANGED === "true" && !baseChanged) {
     baseChanged = true;
-    console.error(`The base changed under ${headSha.slice(0, 7)}.`);
+    // Record it first, so a later run knows even if the notice fails.
+    await setStatus(
+      repo,
+      headSha,
+      baseChangedContext(number),
+      "failure",
+      "The base branch changed after this commit was reviewed."
+    );
     if (!dryRun) {
       await github(`/repos/${repo}/issues/${number}/comments`, {
         method: "POST",
         body: {
-          body: `The base branch changed, so the AI reviews of ${headSha.slice(0, 7)} no longer count. Push a new commit to get new reviews.\n\n${baseChangeMarker}`
+          body: `The base branch changed, so the AI reviews of ${headSha.slice(0, 7)} no longer count. Push a new commit to get new reviews.`
         }
-      });
+      }).catch((err: unknown) => console.error(`Notice failed: ${err}`));
     }
   }
 
@@ -649,8 +695,22 @@ async function gate(): Promise<void> {
       .map((r) => r.commit_id),
     threads,
     claudeStatus: claude
-      ? { state: claude.state, description: claude.description ?? "" }
+      ? {
+          state: claude.state,
+          description: claude.description ?? "",
+          updatedAt: Date.parse(claude.updated_at)
+        }
       : null,
+    authorTrusted:
+      pr.user.login === CODEX_LOGIN ||
+      TRUSTED_ASSOCIATIONS.has(pr.author_association),
+    maintainerApprovedShas: reviews
+      .filter(
+        (r) =>
+          r.state === "APPROVED" &&
+          TRUSTED_ASSOCIATIONS.has(r.author_association)
+      )
+      .map((r) => r.commit_id),
     codexRequests: gateComments
       .filter((c) => c.body.includes(`${REQUEST_MARKER} ${headSha} -->`))
       .map((c) => Date.parse(c.created_at)),
@@ -699,6 +759,22 @@ async function claudeVerdict(): Promise<void> {
     // `error`: the review did not finish, so the gate starts a new one
     // instead of treating this as a finding.
     await setStatus(repo, headSha, context, "error", verdict.error);
+    return;
+  }
+  // The gate counts blockers from open threads, so each blocker Claude counts
+  // must have one. If not, the review is incomplete: retry it.
+  const [owner = "", name = ""] = repo.split("/");
+  const open = blockingClaudeThreads(
+    await reviewThreads(owner, name, Number(env("PR_NUMBER")))
+  );
+  if (verdict.blocking > open) {
+    await setStatus(
+      repo,
+      headSha,
+      context,
+      "error",
+      `counted ${verdict.blocking} P0/P1 findings but left ${open} open threads`
+    );
     return;
   }
   // `success` means the review finished. The gate counts the blocking
