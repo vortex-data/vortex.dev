@@ -29,10 +29,53 @@ jobs:
     name: Lint, build, verify
     runs-on: ubuntu-26.04
     timeout-minutes: 30
+    env:
+      # The browser tests run in Microsoft's Playwright image, pinned by
+      # digest, so no step runs apt. Renovate updates the tag and digest
+      # together (customManagers in renovate.json) and groups them with
+      # @playwright/test. The tag must name the installed @playwright/test
+      # version: a step below checks it, and tests/unit/workflows.test.ts
+      # checks that lighthouse.yml's axe job uses the same image.
+      PLAYWRIGHT_IMAGE: mcr.microsoft.com/playwright:v1.64.1-resolute@sha256:f76885029244e5a384243a930ff283cef67d90653978ee27a77dd4cff8882fb4
     steps:
+      # Start the pull first, so it overlaps the install, the build and the
+      # tests. A later step waits for it, and retries once if it failed. The
+      # step shell runs with `set -e`, so the status is written in an && / ||
+      # list: a failed pull must still write its status, or the wait step
+      # would hang.
+      - name: Start pulling the Playwright image
+        run: |
+          (timeout 180 docker pull -q "$PLAYWRIGHT_IMAGE" > /tmp/pull.log 2>&1 && echo 0 > /tmp/pull.status || echo 1 > /tmp/pull.status) &
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           persist-credentials: false
+
+      # Static checks of the workflow files, before anything else runs. Both
+      # images are pinned by digest, and Renovate updates them
+      # (customManagers in renovate.json). actionlint checks syntax,
+      # expressions and the inline shell (with shellcheck), and gets no
+      # network. This actionlint release predates the ubuntu-26.04 runner
+      # label, so that one message is ignored. zizmor audits for security
+      # problems; it uses the job's read-only token to compare each action pin
+      # with the action's repository. Justify a zizmor exception beside the
+      # line it covers, as `# zizmor: ignore[audit-name] reason`.
+      - name: Lint the workflows (actionlint)
+        env:
+          ACTIONLINT_IMAGE: rhysd/actionlint:1.7.12@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667
+        run: |
+          docker run --rm --network none --user "$(id -u):$(id -g)" -e HOME=/tmp \
+            -v "$GITHUB_WORKSPACE:/repo:ro" -w /repo \
+            "$ACTIONLINT_IMAGE" -color -ignore 'label "ubuntu-26.04" is unknown'
+
+      - name: Audit the workflows (zizmor)
+        env:
+          ZIZMOR_IMAGE: ghcr.io/zizmorcore/zizmor:1.32.0@sha256:3014cc8f68f663935f69b3c3e0e41f5ce102b268d97db13db0f62208747f860d
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp -e GH_TOKEN \
+            -v "$GITHUB_WORKSPACE:/repo:ro" -w /repo \
+            "$ZIZMOR_IMAGE" --no-progress --color=always .github/workflows .github/actions
 
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6  # v2.2.0
         with:
@@ -72,7 +115,19 @@ jobs:
             ${{ runner.os }}-nextjs-
 
       - name: Install
+        id: install
         run: bun install --frozen-lockfile
+
+      - name: Check the image matches @playwright/test
+        run: |
+          version=$(node -p "require('@playwright/test/package.json').version")
+          case "$PLAYWRIGHT_IMAGE" in
+            *":v$version-"*) echo "Image and @playwright/test are both $version." ;;
+            *)
+              echo "::error::@playwright/test is $version, but PLAYWRIGHT_IMAGE is $PLAYWRIGHT_IMAGE. Update the image tag and digest in .github/workflows/ci.yml and lighthouse.yml."
+              exit 1
+              ;;
+          esac
 
       - name: Lint + format check
         run: bun run check:ci
@@ -131,7 +186,7 @@ jobs:
         run: |
           bun run start > /tmp/server.log 2>&1 &
           echo $! > /tmp/server.pid
-          for i in $(seq 1 30); do
+          for _ in $(seq 1 30); do
             if curl -sf http://localhost:3000 > /dev/null; then
               echo "server ready"
               exit 0
@@ -145,49 +200,50 @@ jobs:
       - name: Verify endpoints
         run: bun run verify
 
-      # Playwright browsers are ~250 MB. Cache them keyed on the
-      # @playwright/test version pinned in package.json — invalidates on
-      # bumps, hits otherwise. System deps (apt packages) aren't covered by
-      # the cache, so install those separately even on cache hit (~10s vs
-      # ~3min for the full install).
-      # Key the cache on the installed version, not the range in package.json,
-      # which a lock refresh can move past, and on the runner image: browser
-      # builds link against the image's system libraries, so a cache made on
-      # ubuntu24 fails on ubuntu26.
-      - name: Get Playwright version
-        id: playwright-version
+      # Both pulls stop after 180 s; a normal pull finishes while the build
+      # and tests run. The step timeout covers what is left of the first pull
+      # plus the whole retry.
+      - name: Wait for the Playwright image
+        timeout-minutes: 7
         run: |
-          VERSION=$(node -p "require('@playwright/test/package.json').version")
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "image=${ImageOS:-unknown}" >> "$GITHUB_OUTPUT"
-
-      - name: Cache Playwright browsers
-        id: playwright-cache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
-        with:
-          path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-${{ steps.playwright-version.outputs.image }}-playwright-${{ steps.playwright-version.outputs.version }}
-
-      - name: Install Playwright browsers (cache miss)
-        if: steps.playwright-cache.outputs.cache-hit != 'true'
-        run: bunx playwright install --with-deps chromium webkit
-
-      - name: Install Playwright system deps (cache hit)
-        if: steps.playwright-cache.outputs.cache-hit == 'true'
-        run: bunx playwright install-deps chromium webkit
+          while [ ! -f /tmp/pull.status ]; do sleep 1; done
+          if [ "$(cat /tmp/pull.status)" != 0 ]; then
+            cat /tmp/pull.log
+            echo "::warning::The first pull of the Playwright image failed or took over 3 minutes. Trying once more."
+            timeout 180 docker pull -q "$PLAYWRIGHT_IMAGE"
+          fi
 
       # The axe specs need bench's database, so they run on the preview in
-      # lighthouse.yml.
+      # lighthouse.yml. The test runner runs in the image with the host
+      # network, so it reaches the server on localhost. The runner's user
+      # owns the files the tests write, and HOME points at a directory that
+      # user can write.
       - name: Browser smoke tests
-        run: bun run test:e2e --grep-invert @axe
+        id: browser-tests
+        run: |
+          docker run --rm --init --ipc=host --network=host \
+            --user "$(id -u):$(id -g)" \
+            -e HOME=/tmp -e CI -e GITHUB_ACTIONS -e BASE_URL=http://localhost:3000 \
+            -v "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" -w "$GITHUB_WORKSPACE" \
+            "$PLAYWRIGHT_IMAGE" \
+            node node_modules/@playwright/test/cli.js test --grep-invert @axe
 
-      # In CI, playwright.config.ts uses only the `github` reporter, so there
-      # is no HTML report; a failed test keeps its trace in test-results/.
+      # The JSON report keeps each attempt and its duration, so it uploads on
+      # success too. A failed test keeps its trace in test-results/.
+      - name: Upload Playwright results
+        if: always() && (steps.browser-tests.outcome == 'success' || steps.browser-tests.outcome == 'failure')
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: playwright-results-attempt-${{ github.run_attempt }}
+          path: test-results/results.json
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Upload Playwright traces
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
-          name: playwright-traces
+          name: playwright-traces-attempt-${{ github.run_attempt }}
           path: test-results/
           retention-days: 7
 
@@ -195,80 +251,39 @@ jobs:
         if: always()
         run: |
           if [ -f /tmp/server.pid ]; then
-            kill $(cat /tmp/server.pid) 2>/dev/null || true
+            kill "$(cat /tmp/server.pid)" 2>/dev/null || true
           fi
 
       - name: Server logs (on failure)
         if: failure()
         run: cat /tmp/server.log || true
 
-  # Reports dependency advisories WITHOUT gating merges. A new advisory can
-  # surface at any time from an upstream publish, with no change on our
-  # side, so a hard gate here blocks unrelated PRs on work we often cannot
-  # do (see CLAUDE.md "Audit advisories" for the upstream-blocked ones).
-  # `continue-on-error` on the step keeps the job green while still marking
-  # the step red and posting the full advisory list to the job summary, so
-  # the status stays visible on every run. Nothing is `--ignore`d: with no
-  # gate to keep green, suppressing advisories only hides information.
-  audit:
-    name: Dependency audit (non-blocking)
-    runs-on: ubuntu-26.04
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
-        with:
-          persist-credentials: false
-
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6  # v2.2.0
-        with:
-          bun-version: 1.4.4
-
-      - name: Cache Bun install cache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
-        with:
-          path: ~/.bun/install/cache
-          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-bun-
-
-      - name: Install
-        run: bun install --frozen-lockfile
-
+      # Hard-gated, and it runs after a failed earlier step too, so every run
+      # reports the advisory state. Resolve a new advisory with a direct
+      # bump, an `overrides` entry in package.json, or, when no fix exists
+      # yet, an `--ignore=GHSA-...` flag on this line with an entry in
+      # package.json's `auditExceptions` (an `expires` time and a `reason`).
+      # tests/unit/dated-exceptions.test.ts fails for a flag without an
+      # entry, an entry without a flag, and an entry 7 days past its time.
+      # See CLAUDE.md "Audit advisories".
       - name: Dependency audit
-        continue-on-error: true
-        run: |
-          bun audit | tee /tmp/audit.log
-          status=${PIPESTATUS[0]}
-
-          {
-            echo "## Dependency audit"
-            echo
-            if [ "$status" -eq 0 ]; then
-              echo "No advisories reported."
-            else
-              echo "Advisories reported. Informational only — this does not block merge."
-              echo
-              echo '```'
-              cat /tmp/audit.log
-              echo '```'
-            fi
-          } >> "$GITHUB_STEP_SUMMARY"
-
-          exit "$status"
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: bun audit
 
   # Runs only on PRs (no baseline diff to compute on a push to main).
   # Compares the PR's dependency manifest against main and flags
-  # high-severity advisories or license incompatibilities. Hard-gated: the
-  # `bun audit` job is informational, so this is the one advisory check
-  # that blocks merge, and it is scoped to what the PR itself introduces
-  # (severity `high` and above) rather than the whole pre-existing tree.
+  # high-severity advisories or license incompatibilities. It complements
+  # the `bun audit` step above: that step gates the whole locked tree, and
+  # this review catches what the PR itself introduces (severity `high` and
+  # above), with GitHub's advisory provenance.
   #
   # GitHub's dependency graph does not read bun.lock. The dependency-snapshot
   # workflow submits it, and the action would pass without it, so a guard
   # runs first (see its comment). The retry inputs then cover the short time
   # GitHub takes to process a submitted snapshot. `fail-on-scopes` stays at
   # the action's default, `runtime`: a development-only advisory does not
-  # block merge and stays with `bun audit` and CLAUDE.md "Audit advisories".
+  # fail this review. The `bun audit` step gates the whole tree, development
+  # packages included.
   dependency-review:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-26.04

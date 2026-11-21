@@ -68,7 +68,8 @@ jobs:
       - name: Prepare migration interpreter
         run: |
           set -Eeuo pipefail
-          export UV_EXCLUDE_NEWER="$(date -u -d '7 days ago' +%Y-%m-%dT%H:%M:%SZ)"
+          UV_EXCLUDE_NEWER="$(date -u -d '7 days ago' +%Y-%m-%dT%H:%M:%SZ)"
+          export UV_EXCLUDE_NEWER
           uv venv "${RUNNER_TEMP}/migration-venv"
           uv export --script migrate-schema.py --no-hashes > "${RUNNER_TEMP}/migration-requirements.txt"
           uv pip install --python "${RUNNER_TEMP}/migration-venv/bin/python" -r "${RUNNER_TEMP}/migration-requirements.txt"

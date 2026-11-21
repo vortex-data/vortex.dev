@@ -24,6 +24,26 @@
   "patch": {
     "groupName": "all patch updates"
   },
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "The browser tests (ci.yml) and axe (lighthouse.yml) run in Microsoft's Playwright image, pinned by tag and digest in a job env var that the github-actions manager does not read.",
+      "managerFilePatterns": ["/^\\.github/workflows/(ci|lighthouse)\\.yml$/"],
+      "matchStrings": [
+        "PLAYWRIGHT_IMAGE: (?<depName>mcr\\.microsoft\\.com/playwright):(?<currentValue>v[^@\\s]+)@(?<currentDigest>sha256:[a-f0-9]{64})"
+      ],
+      "datasourceTemplate": "docker"
+    },
+    {
+      "customType": "regex",
+      "description": "ci.yml lints the workflows with actionlint and zizmor from images pinned by tag and digest in step env vars, which the github-actions manager does not read.",
+      "managerFilePatterns": ["/^\\.github/workflows/ci\\.yml$/"],
+      "matchStrings": [
+        "(?:ACTIONLINT|ZIZMOR)_IMAGE: (?<depName>[^:\\s]+):(?<currentValue>[^@\\s]+)@(?<currentDigest>sha256:[a-f0-9]{64})"
+      ],
+      "datasourceTemplate": "docker"
+    }
+  ],
   "packageRules": [
     {
       "description": "Renovate cannot apply minimumReleaseAge to Bun lock refreshes, so its stability check would stay pending and hold the automerge. bunfig.toml's install.minimumReleaseAge enforces the same 7-day wait while Bun regenerates the lockfile.",
@@ -75,6 +95,11 @@
       "description": "One Bun version everywhere: package.json's packageManager and the workflows' bun-version move in one PR. This rule comes after the GitHub Actions group so that it wins.",
       "matchDepNames": ["bun"],
       "groupName": "Bun"
+    },
+    {
+      "description": "The Playwright image must carry the browsers of the installed @playwright/test, so both move in one PR. CI fails if they differ. This rule comes after the GitHub Actions group so that it wins.",
+      "matchDepNames": ["@playwright/test", "mcr.microsoft.com/playwright"],
+      "groupName": "Playwright"
     },
     {
       "description": "Keep bench's updates apart from the marketing site's: the packages only bench uses, and bench's workflows.",
