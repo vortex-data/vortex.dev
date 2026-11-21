@@ -154,6 +154,10 @@ if (!profileSettings[profile]) {
 //   /bench   0.87   1129 ms  3023 ms  1137 ms       184 ms   0
 //   chart    0.94   1126 ms  2061 ms  1851 ms       269 ms   0.006
 //
+// /faq and /bench/methodology joined later, with six runs each on both
+// profiles in two CI runs on 2026-11-21, within these floors. Their worst
+// cases on mobile were performance 0.91 and 0.98, and LCP 3327 and 2360 ms.
+//
 // Single runs were slower: performance fell to 0.69 on the homepage and 0.75
 // on /bench, and blocking time reached 1686 ms on the homepage. So the
 // mobile performance floor is 0.8, and each metric cap is about 1.3 to 2
