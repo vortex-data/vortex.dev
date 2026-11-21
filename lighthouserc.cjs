@@ -197,13 +197,13 @@ const policy = {
         "best-practices": 0.96,
         "speed-index": 3000,
         reason:
-          "On a phone, Lighthouse's font-size audit fails when less than 60% of a page's text is at least 12px. The footer (.vx-footer) and the small labels (.vx-label-sm) are 11px. On 2026-11-21, 59.03% of the homepage's text was legible, and 21.54% of the chart page's, where the footer is most of the text. Every mobile run of both pages failed the audit, so best practices was 0.96. Raise the footer to 12px, then remove this override. The WebGL mark makes the homepage's Speed Index the slowest: 2051 ms in the worst case of ten runs, and 2431 ms in one run."
+          "On a phone, Lighthouse's font-size audit fails when less than 60% of a page's text is at least 12px. The footer (.vx-footer) and the small labels (.vx-label-sm) are 11px. On 2026-11-21, 59.03% of the homepage's text was legible, and 21.54% of the chart page's, where the footer is most of the text. Every mobile run of both pages failed the audit, so best practices was 0.96. The footer stays at 11px on purpose: it is the design system's footer, and it matches the docs' footer. The WebGL mark makes the homepage's Speed Index the slowest: 2051 ms in the worst case of ten runs, and 2431 ms in one run."
       },
       chart: {
         "best-practices": 0.96,
         "speed-index": 3000,
         reason:
-          "On a phone, Lighthouse's font-size audit fails when less than 60% of a page's text is at least 12px. The footer (.vx-footer) and the small labels (.vx-label-sm) are 11px. On 2026-11-21, 59.03% of the homepage's text was legible, and 21.54% of the chart page's, where the footer is most of the text. Every mobile run of both pages failed the audit, so best practices was 0.96. Raise the footer to 12px, then remove this override. The chart draws after its data loads, so its Speed Index is 1851 ms in the worst case of ten runs."
+          "On a phone, Lighthouse's font-size audit fails when less than 60% of a page's text is at least 12px. The footer (.vx-footer) and the small labels (.vx-label-sm) are 11px. On 2026-11-21, 59.03% of the homepage's text was legible, and 21.54% of the chart page's, where the footer is most of the text. Every mobile run of both pages failed the audit, so best practices was 0.96. The footer stays at 11px on purpose: it is the design system's footer, and it matches the docs' footer. The chart draws after its data loads, so its Speed Index is 1851 ms in the worst case of ten runs."
       }
     }
   }
