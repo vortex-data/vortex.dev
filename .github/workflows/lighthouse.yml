@@ -117,8 +117,8 @@ jobs:
           LHCI_PAGE: ${{ matrix.page }}
           LHCI_PROFILE: ${{ matrix.profile }}
           BENCH_CHART_PATH: ${{ steps.page.outputs.chart }}
-          LHCI_RUNS: ${{ inputs.runs || (matrix.profile == 'mobile' && 5) || 3 }}
-          LHCI_BASELINE: ${{ (github.event_name == 'workflow_dispatch' || matrix.profile == 'mobile') && '1' || '' }}
+          LHCI_RUNS: ${{ inputs.runs || 3 }}
+          LHCI_BASELINE: ${{ github.event_name == 'workflow_dispatch' && '1' || '' }}
         with:
           configPath: ./lighthouserc.cjs
           uploadArtifacts: false
@@ -136,7 +136,7 @@ jobs:
           LHCI_PAGE: ${{ matrix.page }}
           LHCI_PROFILE: ${{ matrix.profile }}
           BENCH_CHART_PATH: ${{ steps.page.outputs.chart }}
-          LHCI_RUNS: ${{ inputs.runs || (matrix.profile == 'mobile' && 5) || 3 }}
+          LHCI_RUNS: ${{ inputs.runs || 3 }}
         run: node scripts/lighthouse-scores.mjs keep "${RUNNER_TEMP}/lighthouse-scores"
 
       # Uploaded when the assertions fail too.

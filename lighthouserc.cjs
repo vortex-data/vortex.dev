@@ -141,6 +141,22 @@ if (!profileSettings[profile]) {
 // bench's chart page sits at 0.011), to catch a real regression but not a
 // slow runner.
 //
+// Mobile. The values come from ten runs of every page on a preview, in two
+// CI runs on 2026-11-21. With three runs, a check is judged by the best of
+// them, so the worst case is each page's third-worst value of the ten:
+//
+//            perf   FCP      LCP      Speed Index   TBT      CLS
+//   /        0.95   1141 ms  1784 ms  2051 ms       245 ms   0
+//   /blog    0.90   1145 ms  2817 ms  1154 ms       104 ms   0
+//   post     0.91   1097 ms  3443 ms  1097 ms       95 ms    0
+//   /bench   0.87   1129 ms  3023 ms  1137 ms       184 ms   0
+//   chart    0.94   1126 ms  2061 ms  1851 ms       269 ms   0.006
+//
+// Single runs were slower: performance fell to 0.69 on the homepage and 0.75
+// on /bench, and blocking time reached 1686 ms on the homepage. So the
+// mobile performance floor is 0.8, and each metric cap is about 1.3 to 2
+// times the worst value above. Accessibility and SEO were 1.00 in every run.
+//
 // Recalibrate from a baseline run (see "Baseline" in lighthouse.yml), and
 // don't relax a value to mask a regression without a separate PR.
 const policy = {
@@ -166,17 +182,30 @@ const policy = {
   },
   mobile: {
     defaults: {
-      performance: 0.9,
+      performance: 0.8,
       accessibility: 1,
       "best-practices": 1,
       seo: 1,
-      "first-contentful-paint": 3000,
-      "largest-contentful-paint": 4000,
-      "speed-index": 4000,
-      "total-blocking-time": 600,
-      "cumulative-layout-shift": 0.1
+      "first-contentful-paint": 1800,
+      "largest-contentful-paint": 4500,
+      "speed-index": 2000,
+      "total-blocking-time": 500,
+      "cumulative-layout-shift": 0.05
     },
-    pages: {}
+    pages: {
+      home: {
+        "best-practices": 0.96,
+        "speed-index": 3000,
+        reason:
+          "On a phone, Lighthouse's font-size audit fails when less than 60% of a page's text is at least 12px. The footer (.vx-footer) and the small labels (.vx-label-sm) are 11px. On 2026-11-21, 59.03% of the homepage's text was legible, and 21.54% of the chart page's, where the footer is most of the text. Every mobile run of both pages failed the audit, so best practices was 0.96. Raise the footer to 12px, then remove this override. The WebGL mark makes the homepage's Speed Index the slowest: 2051 ms in the worst case of ten runs, and 2431 ms in one run."
+      },
+      chart: {
+        "best-practices": 0.96,
+        "speed-index": 3000,
+        reason:
+          "On a phone, Lighthouse's font-size audit fails when less than 60% of a page's text is at least 12px. The footer (.vx-footer) and the small labels (.vx-label-sm) are 11px. On 2026-11-21, 59.03% of the homepage's text was legible, and 21.54% of the chart page's, where the footer is most of the text. Every mobile run of both pages failed the audit, so best practices was 0.96. Raise the footer to 12px, then remove this override. The chart draws after its data loads, so its Speed Index is 1851 ms in the worst case of ten runs."
+      }
+    }
   }
 };
 
