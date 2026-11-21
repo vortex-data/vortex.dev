@@ -874,7 +874,8 @@ function bucketGeoMean(byBucket: ReadonlyMap<string, readonly number[]>): number
  *
  * Each dataset is one entry in the geometric means, except that a family counts once
  * ([`sizeBucket`]). `minRatio` and `maxRatio` are over single datasets. `measured` and `total`
- * count buckets. A format measured on every bucket ranks above one that is not, because their
+ * count buckets, and a format measures a family's bucket only when it has every dataset of the
+ * family that any format has. A format measured on every bucket ranks above one that is not, because their
  * means are over different datasets. Within each tier, the order is by compression ratio once
  * every format in the summary has one, and by baseline ratio until then.
  */
@@ -890,7 +891,8 @@ function compressionSizeRankings(
       bytesByDataset: Map<string, number>;
     }
   >();
-  const buckets = new Set<string>();
+  // The datasets in each bucket, over every format.
+  const bucketDatasets = new Map<string, Set<string>>();
   for (const row of rows) {
     const ratios = grouped.get(row.format) ?? {
       sizeRatios: new Map<string, number[]>(),
@@ -908,8 +910,9 @@ function compressionSizeRankings(
         ...(ratios.sizeRatios.get(bucket) ?? []),
         row.valueBytes / row.baselineBytes,
       ]);
-      ratios.bytesByDataset.set(JSON.stringify([row.dataset, row.datasetVariant]), row.valueBytes);
-      buckets.add(bucket);
+      const dataset = JSON.stringify([row.dataset, row.datasetVariant]);
+      ratios.bytesByDataset.set(dataset, row.valueBytes);
+      bucketDatasets.set(bucket, (bucketDatasets.get(bucket) ?? new Set()).add(dataset));
     }
     if (
       row.uncompressedBytes !== null &&
@@ -958,8 +961,10 @@ function compressionSizeRankings(
                 (sum, dataset) => sum + (ratios.bytesByDataset.get(dataset) ?? 0),
                 0,
               ),
-        measured: ratios.sizeRatios.size,
-        total: buckets.size,
+        measured: [...bucketDatasets.values()].filter((datasets) =>
+          [...datasets].every((dataset) => ratios.bytesByDataset.has(dataset)),
+        ).length,
+        total: bucketDatasets.size,
       });
     }
   }

@@ -69,10 +69,10 @@ describe('data-cache wrappers', () => {
     expect(BENCH_DATA_TAG).toBe('bench-data');
     expect(DATA_CACHE_BACKSTOP_SECONDS).toBe(86400);
     expect(cacheCalls.map((call) => call.keyParts)).toEqual([
-      ['data-cache:group-charts:v15:n100'],
-      ['data-cache:chart-payload:v15:n100'],
-      ['data-cache:groups:v15'],
-      ['data-cache:filter-universe:v15'],
+      ['data-cache:group-charts:v16:n100'],
+      ['data-cache:chart-payload:v16:n100'],
+      ['data-cache:groups:v16'],
+      ['data-cache:filter-universe:v16'],
     ]);
     for (const call of cacheCalls) {
       expect(call.options.tags).toEqual([BENCH_DATA_TAG]);

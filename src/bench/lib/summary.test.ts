@@ -170,6 +170,39 @@ describe('compression summaries', () => {
     expect(vortex.totalBytes).toBe(880);
   });
 
+  it('measures a family only for a format that has all of its datasets', async () => {
+    const row = (format: string, dataset: string, valueBytes: number) => ({
+      format,
+      dataset,
+      datasetVariant: null,
+      valueBytes,
+      baselineBytes: 100,
+      uncompressedBytes: null,
+    });
+    query.mockResolvedValueOnce({
+      rows: [
+        row('vortex-file-compressed', 'taxi', 50),
+        row('vortex-file-compressed', 'sparse-wide-flat-runs', 50),
+        row('vortex-file-compressed', 'sparse-wide-lists-runs', 50),
+        // Lance has one sparse-wide shape, and the smallest ratio. It has not measured the family,
+        // so it ranks after the format that has.
+        row('lance', 'taxi', 10),
+        row('lance', 'sparse-wide-flat-runs', 10),
+      ],
+    });
+
+    const summary = await collectGroupSummary({ k: 'CompressionSizeGroup' });
+    if (summary === null || summary.type !== 'compressionSize') {
+      throw new Error('expected a compressionSize summary');
+    }
+    expect(
+      summary.rankings.map((ranking) => [ranking.name, ranking.measured, ranking.total]),
+    ).toEqual([
+      ['vortex-file-compressed', 2, 2],
+      ['lance', 1, 2],
+    ]);
+  });
+
   it("ranks the SQL suites' totals with the compress-bench sizes", async () => {
     const row = (format: string, dataset: string, valueBytes: number, baselineBytes: number) => ({
       format,
