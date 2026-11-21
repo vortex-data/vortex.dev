@@ -107,6 +107,8 @@ export type GateInput = {
   codexRequests: number[];
   /** The time of this run, in milliseconds. */
   now: number;
+  /** Other open pull requests whose head is the same commit. */
+  siblingPrs: number[];
 };
 
 type Decision = {
@@ -185,16 +187,32 @@ function codexProgress(
   input: Pick<GateInput, "headSha" | "codexState" | "codexReviewedShas">
 ): "done" | "running" | "none" {
   const { headSha, codexState } = input;
+  // A submitted review is final. The summary comment can lag behind it, and
+  // it stays at "running" if Codex fails to edit it.
+  if (input.codexReviewedShas.includes(headSha)) return "done";
   if (codexState?.commitSha === headSha) {
     return codexState.status === "completed" ? "done" : "running";
   }
-  if (input.codexReviewedShas.includes(headSha)) return "done";
   return "none";
 }
 
 export function decide(input: GateInput): Decision {
   const needsClaude = codexHelped(input.body, input.author);
   const base = { needsClaude, claudeDue: false, requestCodex: false };
+
+  // A commit status belongs to a commit, not to a pull request, so a status
+  // set for one pull request would also count for another with the same
+  // head commit. The gate cannot tell them apart, so it passes neither.
+  if (input.siblingPrs.length > 0) {
+    const others = input.siblingPrs.map((n) => `#${n}`).join(", ");
+    return {
+      ...base,
+      state: "failure",
+      description: clip(
+        `Another open PR (${others}) has the same head commit. Push a commit that only this PR has.`
+      )
+    };
+  }
 
   if (EXEMPT_AUTHORS.has(input.author)) {
     return {
@@ -480,7 +498,17 @@ async function gate(): Promise<void> {
     return;
   }
 
-  const [comments, reviews, threads, combined] = await Promise.all([
+  // GitHub uses the newest status of each context. If a read below fails,
+  // an earlier `success` would stand, so withdraw it first.
+  await setStatus(
+    repo,
+    headSha,
+    GATE_CONTEXT,
+    "pending",
+    "Evaluating the AI reviews of the head commit."
+  );
+
+  const [comments, reviews, threads, combined, commitPrs] = await Promise.all([
     githubList<{
       user: { login: string } | null;
       body: string;
@@ -498,7 +526,10 @@ async function gate(): Promise<void> {
         state: string;
         description: string | null;
       }[];
-    }>(`/repos/${repo}/commits/${headSha}/status`)
+    }>(`/repos/${repo}/commits/${headSha}/status`),
+    githubList<{ number: number; state: string; head: { sha: string } }>(
+      `/repos/${repo}/commits/${headSha}/pulls`
+    )
   ]);
 
   const codexComments = comments.filter((c) => c.user?.login === CODEX_LOGIN);
@@ -525,7 +556,13 @@ async function gate(): Promise<void> {
     codexRequests: comments
       .filter((c) => c.body.includes(`${REQUEST_MARKER} ${headSha}`))
       .map((c) => Date.parse(c.created_at)),
-    now: Date.now()
+    now: Date.now(),
+    siblingPrs: commitPrs
+      .filter(
+        (p) =>
+          p.number !== number && p.state === "open" && p.head.sha === headSha
+      )
+      .map((p) => p.number)
   });
 
   await setStatus(

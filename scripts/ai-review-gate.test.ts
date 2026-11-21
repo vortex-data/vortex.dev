@@ -41,6 +41,7 @@ function input(overrides: Partial<GateInput> = {}): GateInput {
     claudeStatus: null,
     codexRequests: [],
     now: NOW,
+    siblingPrs: [],
     ...overrides
   };
 }
@@ -131,6 +132,27 @@ test("a Codex review of an older commit does not count", () => {
   );
   assert.equal(decision.state, "pending");
   assert.equal(decision.requestCodex, true);
+});
+
+test("a submitted Codex review wins over a summary still marked running", () => {
+  const decision = decide(
+    input({
+      codexState: { commitSha: HEAD, status: "in_progress" },
+      codexReviewedShas: [HEAD]
+    })
+  );
+  assert.equal(decision.state, "success");
+});
+
+test("another open PR with the same head commit blocks the gate", () => {
+  const decision = decide(input({ siblingPrs: [12] }));
+  assert.equal(decision.state, "failure");
+  assert.match(decision.description, /#12/);
+  // Even a dependency update, whose status would otherwise pass.
+  assert.equal(
+    decide(input({ author: "renovate[bot]", siblingPrs: [12] })).state,
+    "failure"
+  );
 });
 
 test("a submitted Codex review of the head counts without the summary", () => {
