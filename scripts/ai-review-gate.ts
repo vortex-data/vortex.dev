@@ -683,12 +683,24 @@ async function gate(): Promise<void> {
     draft: boolean;
     body: string | null;
     state: string;
+    merged: boolean;
     head: { sha: string };
     base: { ref: string };
   }>(`/repos/${repo}/pulls/${number}`);
   const headSha = pr.head.sha;
   if (pr.state !== "open") {
-    console.error(`#${number} is ${pr.state}; nothing to do.`);
+    // A status belongs to the commit, so another PR with this head would
+    // inherit a `success`. Withdraw it unless the commit merged.
+    if (!pr.merged) {
+      await setStatus(
+        repo,
+        headSha,
+        GATE_CONTEXT,
+        "pending",
+        "The PR closed without merging, so its reviews do not count."
+      );
+    }
+    console.error(`#${number} is ${pr.state}; nothing more to do.`);
     await writeOutputs({ head_sha: headSha, claude_due: "false" });
     return;
   }
