@@ -93,7 +93,7 @@ export function groupHeadline(summary: Summary | undefined): Headline | null {
     case 'compressionSize':
       // A summary with its own baseline compares with that, not Parquet, so it has no headline.
       return summary.baseline === undefined
-        ? sizeHeadline(summary.rankings.find((row) => row.name === VORTEX)?.ratio)
+        ? sizeHeadline(summary.rankings.find((row) => row.name === VORTEX))
         : null;
     case 'vectorSearch':
       return vectorSearchHeadline(summary.rankings);
@@ -307,10 +307,13 @@ function queryHeadline(rankings: SeriesRanking[]): Headline | null {
  * and `2.0× smaller` once Parquet is at least twice Vortex's size (ratio 0.5
  * and below). No size reads "100% larger" or "100% smaller".
  */
-function sizeHeadline(ratio: number | undefined): Headline | null {
-  if (ratio === undefined || !isUsableRatio(ratio)) {
+function sizeHeadline(
+  vortex: { ratio: number; measured: number; total: number } | undefined,
+): Headline | null {
+  if (vortex === undefined || !isUsableRatio(vortex.ratio)) {
     return null;
   }
+  const { ratio } = vortex;
   const pct = Math.round(Math.abs(ratio - 1) * 100);
   let part: HeadlinePart;
   if (ratio > 1 && pct >= 100) {
@@ -324,7 +327,8 @@ function sizeHeadline(ratio: number | undefined): Headline | null {
   } else {
     part = { text: `${pct}% smaller than Parquet`, tone: 'better' };
   }
-  return { parts: [part], suffix: null, partial: false };
+  // A Vortex mean over fewer datasets than the summary covers is marked, as the card marks it.
+  return { parts: [part], suffix: null, partial: vortex.measured < vortex.total };
 }
 
 /** No Parquet series exists here, so name the flavor with the lowest score. */

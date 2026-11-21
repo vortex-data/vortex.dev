@@ -202,14 +202,35 @@ describe('groupHeadline', () => {
     expect(h?.parts[0]?.tone).toBe(tone);
   });
 
+  it('marks a size headline partial when Vortex lacks some of the datasets', () => {
+    const h = groupHeadline({
+      type: 'compressionSize',
+      title: 's',
+      explanation: 'e',
+      rankings: [
+        {
+          name: VX,
+          minRatio: 0.8,
+          ratio: 0.8,
+          maxRatio: 0.8,
+          compressionRatio: null,
+          totalBytes: null,
+          measured: 5,
+          total: 6,
+        },
+      ],
+    });
+    expect(h && headlineText(h)).toBe('20% smaller than Parquet (partial)');
+  });
+
   it('has no headline for a size summary with its own baseline', () => {
-    // The SQL file size summary compares with Vortex itself, which would read "same size as Parquet".
+    // The string encoding size summary compares with FSST, so a Parquet headline would be wrong.
     expect(
       groupHeadline({
         type: 'compressionSize',
         title: 's',
         explanation: 'e',
-        baseline: 'vortex',
+        baseline: 'FSST',
         rankings: [
           {
             name: VX,
