@@ -75,7 +75,7 @@ export const METHODOLOGY: readonly MethodologySection[] = [
       'Parquet has two variants, one for size and one for speed. Parquet is zstd at level ' +
         '3, written with parquet-rs 59. It is the baseline of the throughput and file size ' +
         'scores. Parquet (Snappy) is Parquet as DuckDB writes it by default: Snappy, with ' +
-        'DuckDB’s row groups, dictionaries, statistics, and Bloom filters. The DuckDB 1.5 ' +
+        'DuckDB’s row groups, dictionaries, statistics, and Bloom filters. The DuckDB 2.0 ' +
         'command line tool writes it from the same rows. The compression benchmark records ' +
         'its size, and TPC-DS at scale factor 1 queries it.',
       'Every SQL suite’s Parquet is zstd Parquet, except in ClickBench and FineWeb, which ' +
