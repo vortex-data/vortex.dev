@@ -113,11 +113,16 @@ export function valueWidth(rows) {
  * that is, Vortex first. Otherwise `missing` is null.
  */
 export function versusParquet(rows, better) {
+  return versus(rows, better, "Parquet");
+}
+
+/** Vortex against any system the rows name (`name`, matched whatever the case), as `versusParquet`; `missing` is "Vortex" or `name`. */
+export function versus(rows, better, name) {
   const v = find(rows, "vortex");
-  const p = find(rows, "parquet");
-  if (!isMeasured(v) || !isMeasured(p)) return { factor: null, vortexWins: null, tie: null, missing: isMeasured(v) ? "Parquet" : "Vortex" };
-  const vortexWins = better === "higher" ? v.score > p.score : v.score < p.score;
-  return { factor: Math.max(v.score / p.score, p.score / v.score), vortexWins, tie: v.score === p.score, missing: null };
+  const o = find(rows, String(name).toLowerCase());
+  if (!isMeasured(v) || !isMeasured(o)) return { factor: null, vortexWins: null, tie: null, missing: isMeasured(v) ? name : "Vortex" };
+  const vortexWins = better === "higher" ? v.score > o.score : v.score < o.score;
+  return { factor: Math.max(v.score / o.score, o.score / v.score), vortexWins, tie: v.score === o.score, missing: null };
 }
 
 /** A factor in ×: 32× from 10 up, 5.1× from 1.1 up, 1.07× below, — for none. The verdict uses it from 2× up (`panelFactor`). */
@@ -210,45 +215,76 @@ export function resultsSystems(panels) {
 }
 
 /**
+ * How Vortex does against `rival` in one panel, worded as the verdict against Parquet is ("14× faster",
+ * "48% smaller"): "N/A" when the rival cannot run the benchmark, "Lance not measured" when it has no
+ * result, and "—" when the panel does not show it.
+ */
+function rivalVerdict(panel, rival) {
+  const r = find(pickSystems(panel.rows, panel.systems), String(rival).toLowerCase());
+  if (!r) return "—";
+  if (r.unavailable) return "N/A";
+  return panelVerdict(panel.kind, versus(panel.rows, panel.better, rival));
+}
+
+/**
+ * How many times behind its row's best a figure must be for the results table to call it out
+ * (`far`): an order of magnitude, a gap no reader should miss.
+ */
+export const FAR_BEHIND = 10;
+
+/** The foot's key for the far mark, which `renderResults` prints only when a cell is far behind. */
+export const FAR_KEY = `Dotted: ${FAR_BEHIND}× or more behind the best`;
+
+/**
  * One panel as a row of the results table: {name, cells, verdict}. `name` is the panel's `short`
  * name, or its title. There is a cell per name in `systems`, with the label and exact value a bar
  * shows (`panelRows`); a system the panel does not show was not run, and reads "—". `best` marks
- * the measured cells with the panel's best score, every one of them when they tie.
+ * the measured cells with the panel's best score, every one of them when they tie. `behind` is how
+ * many times worse than the best a measured cell is (1 for the best, null for a cell with no
+ * score), and `far` marks a cell `FAR_BEHIND` times or more behind, whose `exact` then says so
+ * ("575.75 ms, 14× behind the best").
  */
-export function resultsRow(panel, systems) {
+export function resultsRow(panel, systems, { rival } = {}) {
   const { title, short, unit, kind, better, rows } = panel;
   const shown = panelRows(pickSystems(rows, panel.systems), better, unit);
   const top = shown[0]?.state === "measured" ? shown[0].score : null;
   const cells = systems.map((system) => {
     const r = shown.find((x) => String(x.system).toLowerCase() === String(system).toLowerCase());
-    if (!r) return { system, label: "—", exact: "not run in this benchmark", state: "not-run", ours: isOurs(system), best: false };
-    return { system, label: r.label, exact: r.exact, state: r.state, ours: r.ours, best: top !== null && r.state === "measured" && r.score === top };
+    if (!r) return { system, label: "—", exact: "not run in this benchmark", state: "not-run", ours: isOurs(system), best: false, behind: null, far: false };
+    const measured = top !== null && r.state === "measured";
+    const behind = measured ? (better === "higher" ? top / r.score : r.score / top) : null;
+    const far = behind !== null && behind >= FAR_BEHIND;
+    const exact = far ? `${r.exact}, ${formatFactor(behind)} behind the best` : r.exact;
+    return { system, label: r.label, exact, state: r.state, ours: r.ours, best: measured && r.score === top, behind, far };
   });
-  return { name: short ?? title, cells, verdict: panelVerdict(kind, versusParquet(rows, better)), source: panel.source ?? null };
+  return { name: short ?? title, cells, verdict: panelVerdict(kind, versusParquet(rows, better)), rivalVerdict: rival ? rivalVerdict(panel, rival) : null, source: panel.source ?? null };
 }
 
 /**
  * The results table: one row per panel and a column per system, Vortex first in Blue, the best
- * figure in each row underlined, and the verdict against Parquet last. The head names the source
- * and the date the figures were read (`read`, "2 Nov 2026") on one line; the foot keys the
- * underline. `icon` is the markup of the open_in_new icon that ends the
+ * figure in each row underlined, a figure `FAR_BEHIND` times or more behind it dotted, and the
+ * verdict against Parquet last. The head names the source and the date the figures were read
+ * (`read`, "2 Nov 2026") on one line; the foot keys the underline, and the dots when a cell has
+ * them. With `rival` ("Lance"), a phone shows a second verdict, against that system, in place of the
+ * figures (`is-rival`, hidden on wider screens). `icon` is the markup of the open_in_new icon that ends the
  * source link, as every source line does.
  */
-export function renderResults(panels, { read, icon = "" } = {}) {
+export function renderResults(panels, { read, icon = "", rival } = {}) {
   const systems = resultsSystems(panels);
   const cls = (...c) => (c.filter(Boolean).length ? ` class="${c.filter(Boolean).join(" ")}"` : "");
   const when = read ? `<span aria-hidden="true">·</span><span>read ${esc(read)}</span>` : "";
   const head = `<p class="vx-results-head"><span>File format benchmarks</span><span class="vx-label-sm vx-results-src"><a class="vx-source vx-nav-link" href="https://bench.vortex.dev">bench.vortex.dev${icon}</a>${when}</span></p>`;
-  const cols = `<tr><th scope="col">Benchmark</th>${systems.map((s) => `<th scope="col"${cls(isOurs(s) && "is-ours")}>${esc(s)}</th>`).join("")}<th scope="col" class="is-verdict">vs Parquet</th></tr>`;
-  const body = panels
-    .map((p) => {
-      const row = resultsRow(p, systems);
-      const cells = row.cells.map((c) => `<td${cls(c.ours && "is-ours", c.best && "is-best", c.state !== "measured" && "is-missing")} title="${esc(c.system)}: ${esc(c.exact)}">${esc(c.label)}</td>`).join("");
+  const cols = `<tr><th scope="col">Benchmark</th>${systems.map((s) => `<th scope="col"${cls(isOurs(s) && "is-ours")}>${esc(s)}</th>`).join("")}<th scope="col" class="is-verdict"><span class="vx-results-subject">Vortex </span>vs Parquet</th>${rival ? `<th scope="col" class="is-verdict is-rival"><span class="vx-results-subject">Vortex </span>vs ${esc(rival)}</th>` : ""}</tr>`;
+  const rows = panels.map((p) => resultsRow(p, systems, { rival }));
+  const body = rows
+    .map((row) => {
+      const cells = row.cells.map((c) => `<td${cls(c.ours && "is-ours", c.best && "is-best", c.far && "is-far", c.state !== "measured" && "is-missing")} title="${esc(c.system)}: ${esc(c.exact)}">${esc(c.label)}</td>`).join("");
       const src = row.source ? ` title="${esc(row.source.note)}"` : "";
       const srText = row.source ? `<span class="vx-sr-only">, ${esc(row.source.note)}</span>` : "";
-      return `<tr><th scope="row"${src}>${esc(row.name)}${srText}</th>${cells}<td class="is-verdict">${esc(row.verdict)}</td></tr>`;
+      return `<tr><th scope="row"${src}>${esc(row.name)}${srText}</th>${cells}<td class="is-verdict">${esc(row.verdict)}</td>${rival ? `<td class="is-verdict is-rival">${esc(row.rivalVerdict)}</td>` : ""}</tr>`;
     })
     .join("");
-  const foot = `<p class="vx-results-foot"><span>Underlined: the best in each row</span></p>`;
+  const far = rows.some((row) => row.cells.some((c) => c.far)) ? `<span>${FAR_KEY}</span>` : "";
+  const foot = `<p class="vx-results-foot"><span>Underlined: the best in each row</span>${far}</p>`;
   return `<section class="vx-frame vx-results" aria-label="Benchmark results">${head}<div class="vx-results-wrap"><table class="vx-results-table"><thead>${cols}</thead><tbody>${body}</tbody></table></div>${foot}</section>`;
 }

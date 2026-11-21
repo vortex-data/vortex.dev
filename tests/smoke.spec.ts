@@ -899,7 +899,7 @@ test.describe("results table on phones", () => {
     test.describe(`at ${width}px`, () => {
       test.use({ viewport: { width, height: 812 } });
 
-      test("shows Vortex and the verdict, inside the screen", async ({
+      test("shows the verdicts against Parquet and Lance, inside the screen", async ({
         page
       }) => {
         await page.goto("/");
@@ -910,12 +910,22 @@ test.describe("results table on phones", () => {
         ).toHaveText("File format benchmarks");
         const m = await table.evaluate((el) => ({
           right: el.getBoundingClientRect().right,
+          // The table fits its frame, so the wrap does not scroll sideways.
+          overflow: (() => {
+            const wrap = el.querySelector(".vx-results-wrap");
+            return wrap ? wrap.scrollWidth - wrap.clientWidth : -1;
+          })(),
           heads: [...el.querySelectorAll("thead th")]
             .filter((th) => getComputedStyle(th).display !== "none")
             .map((th) => th.textContent)
         }));
-        expect(m.heads).toEqual(["Benchmark", "Vortex", "vs Parquet"]);
+        expect(m.heads).toEqual([
+          "Benchmark",
+          "Vortex vs Parquet",
+          "Vortex vs Lance"
+        ]);
         expect(m.right).toBeLessThanOrEqual(width);
+        expect(m.overflow).toBe(0);
       });
     });
   }
