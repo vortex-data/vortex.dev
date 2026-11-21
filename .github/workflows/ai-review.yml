@@ -109,6 +109,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number || inputs.pr }}
+          # The gate starts a Claude review only for an actor the Claude
+          # action accepts: Codex, this workflow, or someone with write access.
+          TRIGGER_ACTOR: ${{ github.actor }}
         run: bun scripts/ai-review-gate.ts gate
 
   claude-review:

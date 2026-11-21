@@ -61,6 +61,8 @@
  *                      when the review did not finish
  *   GITHUB_SERVER_URL, GITHUB_RUN_ID  link each status to its run
  *   GITHUB_OUTPUT      where `gate` writes its outputs
+ *   TRIGGER_ACTOR      the actor of the event; `gate` starts a Claude review
+ *                      only for Codex, this workflow, or a writer
  *   REFRESH=1          a scheduled recheck: write the status only if the
  *                      result changed
  *   DRY_RUN=1          print what the gate would do and write nothing
@@ -157,6 +159,9 @@ const MAX_CLAUDE_ATTEMPTS = 3;
 
 /** The author of the gate's own comments: the workflow token's. */
 const GATE_LOGIN = "github-actions[bot]";
+
+/** Bots that the Claude job's `allowed_bots` lets start a review. */
+const TRUSTED_BOTS = new Set([CODEX_LOGIN, GATE_LOGIN]);
 
 /** How many times the gate asks Codex to review one commit. */
 const MAX_CODEX_REQUESTS = 3;
@@ -900,9 +905,22 @@ async function gate(): Promise<void> {
     }
   }
 
+  // The Claude action refuses an actor without write access, and each
+  // refused start would use one of the commit's attempts. So only Codex, the
+  // workflow's own token, and actors with write access start a review; the
+  // refresh starts it for anyone else's event.
+  const actor = process.env.TRIGGER_ACTOR;
+  let claudeDue = decision.claudeDue;
+  if (claudeDue && actor && !TRUSTED_BOTS.has(actor)) {
+    if (!(await canWrite(repo, actor))) {
+      console.error(`${actor} cannot start a Claude review; the refresh will.`);
+      claudeDue = false;
+    }
+  }
+
   await writeOutputs({
     head_sha: headSha,
-    claude_due: String(decision.claudeDue)
+    claude_due: String(claudeDue)
   });
 }
 
