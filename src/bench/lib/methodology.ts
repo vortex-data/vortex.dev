@@ -12,10 +12,10 @@
  * `bench-orchestrator/bench_orchestrator/cli.py`, `scripts/random-access-split.py`
  * and `scripts/compress-split.py`, `scripts/setup-benchmark.sh`, and the versions
  * in `Cargo.toml`, `Cargo.lock` and `vortex-duckdb/build.rs`. The Parquet
- * variants come from vortex-data/vortex#11720: `parquet_writer_properties()` in
- * `vortex-bench/src/utils/parquet.rs`, `vortex-bench/src/parquet_copies.rs`, and
- * the DuckDB version in `.github/actions/setup-duckdb/action.yml`. Update this
- * file when those change.
+ * settings come from vortex-data/vortex#11720: `parquet_writer_properties()` in
+ * `vortex-bench/src/utils/parquet.rs`, and `snappy_parquet_size()` in
+ * `benchmarks/compress-bench/src/parquet.rs`. The tuning results in "How Parquet
+ * is written" are that PR's. Update this file when those change.
  * The scoring is this site's own (`summary.ts`).
  */
 
@@ -72,16 +72,53 @@ export const METHODOLOGY: readonly MethodologySection[] = [
       'Queries run on DataFusion 55 and DuckDB 2.0. The formats are Vortex (its default ' +
         'and compact write strategies), Apache Parquet, Lance 13, Arrow IPC, DuckDB’s own ' +
         'format, and, for random access, LitData. Not every suite runs every format.',
-      'Parquet has two variants, one for size and one for speed. Parquet is zstd at level ' +
-        '3, written with parquet-rs 59. It is the baseline of the throughput and file size ' +
-        'scores. Parquet (Snappy) is Parquet as DuckDB writes it by default: Snappy, with ' +
-        'DuckDB’s row groups, dictionaries, statistics, and Bloom filters. The DuckDB 2.0 ' +
-        'command line tool writes it from the same rows. The compression benchmark records ' +
-        'its size, and TPC-DS at scale factor 1 queries it.',
+      'Parquet has two variants, which differ only in their codec. Parquet is zstd at level ' +
+        '3, and it is the baseline of the throughput and file size scores. Parquet (Snappy) ' +
+        'is the same Parquet with Snappy, the default codec of DuckDB, Spark, and PyArrow. ' +
+        'Only the compression benchmark writes it, for its size. Both are written with ' +
+        'parquet-rs 59, except SpatialBench’s Parquet, which its generator writes with ' +
+        'parquet-rs 56.',
       'Every SQL suite’s Parquet is zstd Parquet, except in ClickBench and FineWeb, which ' +
         'query their published Parquet files as Parquet. ClickBench prescribes its files, ' +
-        'which are Snappy, so its Parquet results are not zstd Parquet and are not DuckDB’s ' +
-        'Parquet (Snappy) either.',
+        'which are Snappy, so its Parquet results are not zstd Parquet and do not use the ' +
+        'settings below.',
+    ],
+  },
+  {
+    title: 'How Parquet is written',
+    text: [
+      'The zstd Parquet is tuned to be good at everything bench measures: file size, scans, ' +
+        'and random access. Every suite that generates Parquet writes it with one set of ' +
+        'settings, and only the row group size depends on the storage. Each setting below ' +
+        'was tested on its own, on TPC-H at scale factor 10 with both engines and on the ' +
+        'random access datasets, on a 16-core Apple M-series Mac with local NVMe. Two runs ' +
+        'with the same settings differed by up to 2% on DataFusion and 6% on DuckDB, so ' +
+        'smaller differences are noise.',
+      'Compression is zstd at level 3, the default of DuckDB and parquet-java. Level 1 made ' +
+        'the files 7.5% larger, and level 9 made them 1.6% smaller. Neither changed query ' +
+        'times by more than noise.',
+      'A column chunk’s dictionary holds at most 64 KiB. When it outgrows that, the rest of ' +
+        'the chunk is written without one. parquet-rs’s default of 1 MiB keeps dictionaries ' +
+        'for columns with many distinct values, such as keys and comments. With 1 MiB ' +
+        'dictionaries, the TPC-H files were 22% larger, DataFusion was 8% slower, and lookups ' +
+        'were up to 2.8 times slower. DuckDB makes the choice once per column chunk: it keeps ' +
+        'a dictionary when the chunk has at most one distinct value for every five rows.',
+      'Data pages hold at most 20,000 rows and 1 MiB, the defaults of parquet-rs. ' +
+        'parquet-java uses the same row limit, which it chose so that the page index has ' +
+        'enough pages to skip. Each file has a page index, which records each page’s ' +
+        'minimum, maximum, and position. With it, a lookup reads and decodes only the pages ' +
+        'that hold its rows. Against pages limited by size alone, the row limit made lookups ' +
+        'up to 4 times faster, at the same file size and with query times within noise. ' +
+        'Leaving out the page index saved no space. DuckDB 2.0 writes no page index, and its ' +
+        'column chunks are usually one page.',
+      'The files have no Bloom filters. Filters on every column made the TPC-H files 14% ' +
+        'larger and made no query faster.',
+      'Row groups hold 122,880 rows, DuckDB’s default, in files that queries read from ' +
+        'local NVMe. They hold 1,048,576 rows, parquet-rs’s default, in files read from S3 ' +
+        'and in the random access files. On the benchmark machines, the smaller row groups ' +
+        'made TPC-H at scale factor 10 28% to 38% faster on NVMe. On S3, the larger ones made ' +
+        'DataFusion 14% to 21% faster and DuckDB 3% to 8% slower. The page index lets a ' +
+        'lookup skip pages inside a row group, so random access keeps parquet-rs’s default.',
     ],
   },
   {
