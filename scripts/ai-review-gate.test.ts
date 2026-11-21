@@ -11,6 +11,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  approversOf,
   blockingCodexThreads,
   claudeContext,
   codexHelped,
@@ -36,7 +37,7 @@ function input(overrides: Partial<GateInput> = {}): GateInput {
     draft: false,
     body: CLAUDE_FOOTER,
     headSha: HEAD,
-    codexState: { commitSha: HEAD, status: "completed" },
+    codexState: { commitSha: HEAD, status: "completed", hasFindings: false },
     codexReviewedShas: [],
     threads: [],
     claudeStatus: null,
@@ -56,6 +57,7 @@ function codexThread(overrides: Partial<ReviewThread> = {}): ReviewThread {
     isOutdated: false,
     author: "chatgpt-codex-connector",
     body: "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  A bug**",
+    commitSha: HEAD,
     ...overrides
   };
 }
@@ -89,8 +91,15 @@ test("parseCodexState reads the summary marker", () => {
 <details>`;
   assert.deepEqual(parseCodexState(body), {
     commitSha: HEAD,
-    status: "completed"
+    status: "completed",
+    hasFindings: false
   });
+  assert.equal(
+    parseCodexState(
+      body.replace('"has_any_findings":false', '"has_any_findings":true')
+    )?.hasFindings,
+    true
+  );
   assert.equal(parseCodexState("A plain comment."), null);
   assert.equal(
     parseCodexState("<!-- codex-review-state:v1 {not json} -->"),
@@ -130,7 +139,7 @@ test("a PR with no AI footer still needs Codex", () => {
 test("a Codex review of an older commit does not count", () => {
   const decision = decide(
     input({
-      codexState: { commitSha: OLD, status: "completed" },
+      codexState: { commitSha: OLD, status: "completed", hasFindings: false },
       codexReviewedShas: [OLD]
     })
   );
@@ -141,7 +150,11 @@ test("a Codex review of an older commit does not count", () => {
 test("a submitted Codex review wins over a summary still marked running", () => {
   const decision = decide(
     input({
-      codexState: { commitSha: HEAD, status: "in_progress" },
+      codexState: {
+        commitSha: HEAD,
+        status: "in_progress",
+        hasFindings: false
+      },
       codexReviewedShas: [HEAD]
     })
   );
@@ -181,7 +194,9 @@ test("the gate asks Codex again only after a wait, up to three times", () => {
 
 test("the gate does not ask Codex while its review runs", () => {
   const running = decide(
-    input({ codexState: { commitSha: HEAD, status: "in_progress" } })
+    input({
+      codexState: { commitSha: HEAD, status: "in_progress", hasFindings: false }
+    })
   );
   assert.equal(running.state, "pending");
   assert.equal(running.requestCodex, false);
@@ -370,4 +385,63 @@ test("parseClaudeVerdict fails closed", () => {
   assert.equal(parseClaudeVerdict(JSON.stringify({ blocking: "0" })).ok, false);
   assert.equal(parseClaudeVerdict(JSON.stringify({ blocking: -1 })).ok, false);
   assert.equal(parseClaudeVerdict(JSON.stringify({ blocking: 1.5 })).ok, false);
+});
+
+test("Codex findings that no thread shows block the gate", () => {
+  const reported = {
+    commitSha: HEAD,
+    status: "completed",
+    hasFindings: true
+  };
+  const missing = decide(input({ codexState: reported }));
+  assert.equal(missing.state, "failure");
+  assert.match(missing.description, /no thread shows/);
+
+  // A resolved thread on the head commit shows the findings.
+  assert.equal(
+    decide(
+      input({
+        codexState: reported,
+        threads: [codexThread({ isResolved: true })]
+      })
+    ).state,
+    "success"
+  );
+
+  // A thread from an older commit does not.
+  assert.equal(
+    decide(
+      input({
+        codexState: reported,
+        threads: [codexThread({ isResolved: true, commitSha: OLD })]
+      })
+    ).state,
+    "failure"
+  );
+});
+
+test("a later request for changes withdraws an approval", () => {
+  const user = { login: "reviewer" };
+  const approved = { user, commit_id: HEAD, state: "APPROVED" };
+  assert.deepEqual(approversOf([approved], HEAD), ["reviewer"]);
+  assert.deepEqual(
+    approversOf(
+      [approved, { user, commit_id: HEAD, state: "CHANGES_REQUESTED" }],
+      HEAD
+    ),
+    []
+  );
+  // A comment after the approval changes nothing.
+  assert.deepEqual(
+    approversOf(
+      [approved, { user, commit_id: HEAD, state: "COMMENTED" }],
+      HEAD
+    ),
+    ["reviewer"]
+  );
+  // An approval of an older commit does not count.
+  assert.deepEqual(
+    approversOf([{ user, commit_id: OLD, state: "APPROVED" }], HEAD),
+    []
+  );
 });

@@ -60,7 +60,6 @@
  *                      `{ "blocking": number, "summary": string }`; empty
  *                      when the review did not finish
  *   GITHUB_SERVER_URL, GITHUB_RUN_ID  link each status to its run
- *   BASE_CHANGED       "true" when the event changed the base branch
  *   GITHUB_OUTPUT      where `gate` writes its outputs
  *   DRY_RUN=1          print what the gate would do and write nothing
  */
@@ -91,14 +90,43 @@ const FOOTER_LINES = 5;
 const REQUEST_MARKER = "<!-- ai-review-gate:codex-requested";
 
 /**
- * The status that records that a pull request's base branch changed under
- * its head commit. The diff can change with the base, so no review of that
- * commit counts any more. A status, not a comment, because only a token with
- * write access can set one, and the gate sets it before anything else that
- * can fail.
+ * The status that records the base branch a pull request had when the gate
+ * first saw its head commit. The diff can change with the base, so when the
+ * base differs from the record, no review of that commit counts any more.
+ * The gate compares state, not events: GitHub can cancel a waiting run, so
+ * the run for the event that changed the base may never run. A status, not a
+ * comment, because only a token with write access can set one.
  */
-export function baseChangedContext(pr: number): string {
-  return `AI cross-review / base changed #${pr}`;
+function baseContext(pr: number): string {
+  return `AI cross-review / base #${pr}`;
+}
+
+function baseRecord(ref: string): string {
+  return clip(`Reviews of this commit are against ${ref}.`);
+}
+
+type Review = {
+  user: { login: string } | null;
+  commit_id: string;
+  state: string;
+};
+
+/**
+ * The reviewers whose latest approving or blocking review approves
+ * `headSha`. A later request for changes withdraws an approval, as it does
+ * on GitHub, and a comment-only review changes nothing.
+ */
+export function approversOf(reviews: Review[], headSha: string): string[] {
+  const latest = new Map<string, Review>();
+  for (const review of reviews) {
+    if (!review.user) continue;
+    if (["APPROVED", "CHANGES_REQUESTED", "DISMISSED"].includes(review.state)) {
+      latest.set(review.user.login, review);
+    }
+  }
+  return [...latest]
+    .filter(([, r]) => r.state === "APPROVED" && r.commit_id === headSha)
+    .map(([login]) => login);
 }
 
 /**
@@ -129,6 +157,8 @@ type State = "success" | "pending" | "failure" | "error";
 type CodexState = {
   commitSha: string | null;
   status: string | null;
+  /** True when Codex reported findings on `commitSha`. */
+  hasFindings: boolean;
 };
 
 export type ReviewThread = {
@@ -136,6 +166,8 @@ export type ReviewThread = {
   isOutdated: boolean;
   author: string | null;
   body: string;
+  /** The commit the thread's first comment was made on. */
+  commitSha: string | null;
 };
 
 export type GateInput = {
@@ -199,13 +231,18 @@ export function parseCodexState(body: string): CodexState | null {
   if (!match?.[1]) return null;
   try {
     const parsed = JSON.parse(match[1]) as {
-      code_review?: { commit_sha?: unknown; status?: unknown };
+      code_review?: {
+        commit_sha?: unknown;
+        status?: unknown;
+        has_any_findings?: unknown;
+      };
     };
     const review = parsed.code_review ?? {};
     return {
       commitSha:
         typeof review.commit_sha === "string" ? review.commit_sha : null,
-      status: typeof review.status === "string" ? review.status : null
+      status: typeof review.status === "string" ? review.status : null,
+      hasFindings: review.has_any_findings === true
     };
   } catch {
     return null;
@@ -220,11 +257,16 @@ function findingPriority(body: string): string | null {
   return body.match(/!\[(P[0-3]) Badge\]/)?.[1] ?? null;
 }
 
+function isCodexThread(thread: ReviewThread): boolean {
+  // GraphQL gives a bot's login without "[bot]".
+  return thread.author === CODEX_LOGIN.replace("[bot]", "");
+}
+
 /** Counts the Codex threads that block a merge. */
 export function blockingCodexThreads(threads: ReviewThread[]): number {
   return threads.filter((thread) => {
     if (thread.isResolved || thread.isOutdated) return false;
-    if (thread.author !== CODEX_LOGIN.replace("[bot]", "")) return false;
+    if (!isCodexThread(thread)) return false;
     const priority = findingPriority(thread.body);
     return priority === null || priority === "P0" || priority === "P1";
   }).length;
@@ -336,6 +378,20 @@ export function decide(input: GateInput): Decision {
     const blocking = blockingCodexThreads(input.threads);
     if (blocking > 0) {
       problems.push(`Codex: ${findings(blocking)}`);
+    }
+    // The threads are the only record of each finding's priority. If Codex
+    // reports findings on the head commit but no thread shows one, a P0 or
+    // P1 could be missing, so the gate does not pass.
+    const reported =
+      input.codexState?.commitSha === input.headSha &&
+      input.codexState.hasFindings;
+    const shown = input.threads.some(
+      (t) => isCodexThread(t) && t.commitSha === input.headSha
+    );
+    if (reported && !shown) {
+      problems.push(
+        "Codex reported findings that no thread shows; comment to recheck"
+      );
     }
   } else {
     waiting.push("Codex's review");
@@ -504,7 +560,11 @@ type ThreadsResponse = {
             isResolved: boolean;
             isOutdated: boolean;
             comments: {
-              nodes: { author: { login: string } | null; body: string }[];
+              nodes: {
+                author: { login: string } | null;
+                body: string;
+                originalCommit: { oid: string } | null;
+              }[];
             };
           }[];
         };
@@ -534,7 +594,9 @@ async function reviewThreads(
                 nodes {
                   isResolved
                   isOutdated
-                  comments(first: 1) { nodes { author { login } body } }
+                  comments(first: 1) {
+                    nodes { author { login } body originalCommit { oid } }
+                  }
                 }
               }
             }
@@ -551,7 +613,8 @@ async function reviewThreads(
         isResolved: node.isResolved,
         isOutdated: node.isOutdated,
         author: first?.author?.login ?? null,
-        body: first?.body ?? ""
+        body: first?.body ?? "",
+        commitSha: first?.originalCommit?.oid ?? null
       });
     }
     after = page.pageInfo.hasNextPage ? page.pageInfo.endCursor : null;
@@ -621,6 +684,7 @@ async function gate(): Promise<void> {
     body: string | null;
     state: string;
     head: { sha: string };
+    base: { ref: string };
   }>(`/repos/${repo}/pulls/${number}`);
   const headSha = pr.head.sha;
   if (pr.state !== "open") {
@@ -639,25 +703,36 @@ async function gate(): Promise<void> {
     "Evaluating the AI reviews of the head commit."
   );
 
-  const [comments, reviews, threads, statuses, commitPrs] = await Promise.all([
+  // Newest first, every page: the combined status holds only 30 contexts.
+  const statuses = await githubList<{
+    context: string;
+    state: string;
+    description: string | null;
+    updated_at: string;
+  }>(`/repos/${repo}/commits/${headSha}/statuses`);
+
+  // Record the base before the other reads, which can fail.
+  const record = statuses.find((s) => s.context === baseContext(number));
+  const baseChanged =
+    record !== undefined && record.description !== baseRecord(pr.base.ref);
+  if (!record) {
+    await setStatus(
+      repo,
+      headSha,
+      baseContext(number),
+      "success",
+      baseRecord(pr.base.ref)
+    );
+  }
+
+  const [comments, reviews, threads, commitPrs] = await Promise.all([
     githubList<{
       user: { login: string } | null;
       body: string;
       created_at: string;
     }>(`/repos/${repo}/issues/${number}/comments`),
-    githubList<{
-      user: { login: string } | null;
-      commit_id: string;
-      state: string;
-    }>(`/repos/${repo}/pulls/${number}/reviews`),
+    githubList<Review>(`/repos/${repo}/pulls/${number}/reviews`),
     reviewThreads(owner, name, number),
-    // Newest first, every page: the combined status holds only 30 contexts.
-    githubList<{
-      context: string;
-      state: string;
-      description: string | null;
-      updated_at: string;
-    }>(`/repos/${repo}/commits/${headSha}/statuses`),
     githubList<{ number: number; state: string; head: { sha: string } }>(
       `/repos/${repo}/commits/${headSha}/pulls`
     )
@@ -673,38 +748,10 @@ async function gate(): Promise<void> {
   // Only the gate's own comments count as markers; anyone can post the text.
   const gateComments = comments.filter((c) => c.user?.login === GATE_LOGIN);
 
-  let baseChanged = statuses.some(
-    (s) => s.context === baseChangedContext(number)
-  );
-  if (process.env.BASE_CHANGED === "true" && !baseChanged) {
-    baseChanged = true;
-    // Record it first, so a later run knows even if the notice fails.
-    await setStatus(
-      repo,
-      headSha,
-      baseChangedContext(number),
-      "failure",
-      "The base branch changed after this commit was reviewed."
-    );
-    if (!dryRun) {
-      await github(`/repos/${repo}/issues/${number}/comments`, {
-        method: "POST",
-        body: {
-          body: `The base branch changed, so the AI reviews of ${headSha.slice(0, 7)} no longer count. Push a new commit to get new reviews.`
-        }
-      }).catch((err: unknown) => console.error(`Notice failed: ${err}`));
-    }
-  }
-
   // Only an approval of the head commit can count, so check only those
   // reviewers' permissions.
-  const approvers = new Set(
-    reviews
-      .filter((r) => r.state === "APPROVED" && r.commit_id === headSha)
-      .flatMap((r) => (r.user ? [r.user.login] : []))
-  );
   let approvedByMaintainer = false;
-  for (const login of approvers) {
+  for (const login of approversOf(reviews, headSha)) {
     if (await canWrite(repo, login)) {
       approvedByMaintainer = true;
       break;

@@ -44,8 +44,10 @@ jobs:
           contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)))
     runs-on: ubuntu-26.04
     timeout-minutes: 5
-    # One gate per pull request at a time. A newer event replaces a waiting
-    # run, so the last run sets the status from the newest state.
+    # One gate per pull request at a time. A newer run replaces a waiting
+    # one, so some events get no run of their own. That is safe because the
+    # gate reads only the current state, never the event: each run, the last
+    # one included, sees every change, a new base branch too.
     concurrency:
       group: ai-review-gate-${{ github.event.pull_request.number || github.event.issue.number }}
       cancel-in-progress: false
@@ -75,8 +77,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
-          # An `edited` event that moved the pull request to another base.
-          BASE_CHANGED: ${{ github.event.action == 'edited' && github.event.changes.base != null }}
         run: bun scripts/ai-review-gate.ts gate
 
   claude-review:
