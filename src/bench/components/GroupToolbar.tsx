@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
 
 import { FilterIcon } from '@/bench/components/icons';
-import { DEFAULT_VISIBLE, type FilterUniverse } from '@/bench/lib/chart-format';
+import { DEFAULT_VISIBLE, type FilterUniverse, type SeriesLabels } from '@/bench/lib/chart-format';
 import {
   applyGroupMacro,
   clearGroupFilterRow,
@@ -51,9 +51,12 @@ import { returnFocusToTrigger } from '@/bench/lib/panel-focus';
 export function GroupToolbar({
   groupSlug,
   universe,
+  seriesLabels,
 }: {
   groupSlug: string;
   universe: FilterUniverse;
+  /** Display names the chips give some formats (see `SeriesLabels`). */
+  seriesLabels?: SeriesLabels | undefined;
 }) {
   const [open, setOpen] = useState(false);
   const panelId = useId();
@@ -179,6 +182,7 @@ export function GroupToolbar({
             groupSlug={groupSlug}
             snapshot={snapshot}
             globalSnapshot={globalSnapshot}
+            seriesLabels={seriesLabels}
           />
           <div className="global-filter-row group-series-row">
             <span className="global-filter-label">Series</span>
@@ -207,7 +211,7 @@ export function GroupToolbar({
                     aria-pressed={isActive}
                     onClick={() => toggleGroupSeries(groupSlug, label)}
                   >
-                    {label}
+                    {relabel(label, seriesLabels)}
                   </button>
                 );
               })}
@@ -262,6 +266,7 @@ function MacroRow({
   groupSlug,
   snapshot,
   globalSnapshot,
+  seriesLabels,
 }: {
   label: string;
   dim: 'engine' | 'format';
@@ -269,6 +274,7 @@ function MacroRow({
   groupSlug: string;
   snapshot: ReturnType<typeof getGroupSnapshot>;
   globalSnapshot: ReturnType<typeof getGlobalFilterSnapshot>;
+  seriesLabels?: SeriesLabels | undefined;
 }) {
   return (
     <div className="global-filter-row group-macro-row">
@@ -295,10 +301,24 @@ function MacroRow({
             aria-pressed={isActive}
             onClick={() => applyGroupMacro(groupSlug, dim, value)}
           >
-            {value}
+            {relabel(value, seriesLabels)}
           </button>
         );
       })}
     </div>
   );
+}
+
+/**
+ * A chip's text: the series label with each segment the group renames (see `SeriesLabels`)
+ * replaced. The chips otherwise show the real labels, so this is not `displaySeriesLabel`.
+ */
+function relabel(label: string, labels: SeriesLabels | undefined): string {
+  if (labels === undefined) {
+    return label;
+  }
+  return label
+    .split(':')
+    .map((segment) => labels[segment] ?? segment)
+    .join(':');
 }

@@ -49,6 +49,7 @@ import {
   throttle,
   truncate,
   visibleRange,
+  ZSTD_PARQUET_LABELS,
 } from './chart-format';
 import type { ChartResponse, CommitPoint, UnitKind } from './queries';
 import { defined } from '@/lib/defined';
@@ -545,6 +546,17 @@ describe('the chart canvas label', () => {
       ),
     ).toBe('Latest commit with data: vortex 4.25.');
   });
+
+  it('names each series as its card labels it', () => {
+    expect(
+      latestValuesSentence(
+        [{ label: 'parquet', values: [4.25] }],
+        [{ timestamp: undefined as unknown as string }],
+        pickDisplayUnit('ratio', [4.25]),
+        ZSTD_PARQUET_LABELS,
+      ),
+    ).toBe('Latest commit with data: parquet-zstd 4.25.');
+  });
 });
 
 describe('displayFormat / displaySeriesLabel', () => {
@@ -569,6 +581,15 @@ describe('displayFormat / displaySeriesLabel', () => {
     expect(displaySeriesLabel('vortex-file-compressed')).toBe('vortex');
     // Untouched labels pass through.
     expect(displaySeriesLabel('datafusion:parquet')).toBe('datafusion:parquet');
+  });
+
+  it('applies a group’s own labels over the defaults', () => {
+    expect(displayFormat('parquet', ZSTD_PARQUET_LABELS)).toBe('parquet-zstd');
+    expect(displayFormat('parquet-snappy', ZSTD_PARQUET_LABELS)).toBe('parquet-snappy');
+    expect(displayFormat('vortex-file-compressed', ZSTD_PARQUET_LABELS)).toBe('vortex');
+    expect(displaySeriesLabel('datafusion:parquet', ZSTD_PARQUET_LABELS)).toBe(
+      'datafusion:parquet-zstd',
+    );
   });
 });
 

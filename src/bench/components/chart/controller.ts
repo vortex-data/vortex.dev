@@ -23,6 +23,7 @@ import {
   PAN_THROTTLE_MS,
   pickDisplayUnit,
   rangeTouchesUnloadedHistory,
+  type SeriesLabels,
   seriesPassesGroupFilter,
   throttle,
   visibleRange,
@@ -87,6 +88,8 @@ export class ChartController {
     private readonly base: BenchBase,
     private readonly els: () => CardElements,
     private readonly cb: CardCallbacks,
+    /** Display names this card gives some formats (see `SeriesLabels`). */
+    seriesLabels?: SeriesLabels | undefined,
   ) {
     this.state = {
       chart: null,
@@ -94,6 +97,7 @@ export class ChartController {
       payload: null,
       ui: { y: 'linear', scope: DEFAULT_VISIBLE },
       overrides: {},
+      seriesLabels,
       displayUnit: IDENTITY_UNIT,
       fullLoaded: false,
       initialFetchEntry: null,
@@ -1031,7 +1035,9 @@ export class ChartController {
     const series = benchDatasets(chart).flatMap((ds, i) =>
       chart.isDatasetVisible(i) ? [{ label: ds.label ?? '', values: ds.rawData ?? [] }] : [],
     );
-    this.cb.setLatestValues(latestValuesSentence(series, payload.commits, displayUnit));
+    this.cb.setLatestValues(
+      latestValuesSentence(series, payload.commits, displayUnit, this.state.seriesLabels),
+    );
   }
 
   /** Cancel any in-flight `?n=100` / `?n=all` request WITHOUT tearing down the

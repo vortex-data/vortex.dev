@@ -677,6 +677,13 @@ describe.skipIf(!databaseAvailable)('summary math fidelity (testcontainers Postg
       benchmark: 'tpcds',
       scale_factor: '1.0',
     });
+    // The group shows `parquet` as `parquet-zstd`, except on ClickBench's published Snappy files.
+    expect(defined(group).seriesLabels).toEqual({ parquet: 'parquet-zstd' });
+    expect(defined(group).charts.map((chart) => chart.seriesLabels)).toEqual([
+      undefined,
+      { parquet: 'parquet-zstd' },
+      { parquet: 'parquet-zstd' },
+    ]);
     // Only TPC-DS is ranked. Each format uses its own newest commit that has zstd Parquet:
     // Snappy the nightly one, and the Vortex formats the develop one.
     const summary = defined(group).summary;

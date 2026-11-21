@@ -161,13 +161,14 @@ export function lineChartConfig(input: {
         legend: {
           position: legendPosition,
           // Rewrite only the displayed legend text (vortex-file-compressed ->
-          // vortex); `dataset.label` stays the real key the toggle/filter use.
+          // vortex, and the card's own labels); `dataset.label` stays the real
+          // key the toggle/filter use.
           labels: {
             generateLabels: (ci) => {
               const items = Chart.defaults.plugins.legend.labels.generateLabels(ci);
               for (const item of items) {
                 if (typeof item.text === 'string') {
-                  item.text = displaySeriesLabel(item.text);
+                  item.text = displaySeriesLabel(item.text, state.seriesLabels);
                 }
               }
               return items;

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
-import { displayFormat, displaySeriesLabel } from '@/bench/lib/chart-format';
+import { displayFormat, displaySeriesLabel, type SeriesLabels } from '@/bench/lib/chart-format';
 import {
   byteUnit,
   formatBytesIn,
@@ -61,9 +61,18 @@ function runtimeText(item: SeriesRanking): string {
  * its `<details>`, so it shows whether the group is open or collapsed. It is
  * server-rendered, so it shows before hydration and with JavaScript off too.
  *
+ * `seriesLabels` are the group's display names for some formats (see `SeriesLabels`). The
+ * compression-size panels use them for their rows and for the Parquet baseline's header.
+ *
  * Returns `null` when there is no summary or the variant has no content.
  */
-export function SummaryCard({ summary }: { summary?: Summary | undefined }) {
+export function SummaryCard({
+  summary,
+  seriesLabels,
+}: {
+  summary?: Summary | undefined;
+  seriesLabels?: SeriesLabels | undefined;
+}) {
   if (summary === undefined) {
     return null;
   }
@@ -143,7 +152,7 @@ export function SummaryCard({ summary }: { summary?: Summary | undefined }) {
               </div>
               <div className="compression-size-arrow-list">
                 {summary.rankings.map((item, idx) => {
-                  const label = displayFormat(item.name);
+                  const label = displayFormat(item.name, seriesLabels);
                   // A format measured on only some datasets has its means over those alone, so
                   // the row says how many, and it ranks after the complete ones.
                   const partial = item.measured < item.total;
@@ -189,7 +198,9 @@ export function SummaryCard({ summary }: { summary?: Summary | undefined }) {
             </div>
             <div className="compression-size-panel compression-size-parquet-panel">
               <div className="compression-size-parquet-header">
-                <span className="compression-size-group">vs {summary.baseline ?? 'Parquet'}</span>
+                <span className="compression-size-group">
+                  vs {summary.baseline ?? seriesLabels?.parquet ?? 'Parquet'}
+                </span>
                 <span className="compression-size-heading compression-size-range">Min</span>
                 <span className="compression-size-heading">GeoMean</span>
                 <span className="compression-size-heading compression-size-range">Max</span>
@@ -205,7 +216,7 @@ export function SummaryCard({ summary }: { summary?: Summary | undefined }) {
                       key={item.name}
                     >
                       <span className="vx-sr-only">
-                        {`${displayFormat(item.name)}: minimum ${minRatio}, geometric mean ${meanRatio}, maximum ${maxRatio}`}
+                        {`${displayFormat(item.name, seriesLabels)}: minimum ${minRatio}, geometric mean ${meanRatio}, maximum ${maxRatio}`}
                       </span>
                       <span
                         aria-hidden="true"

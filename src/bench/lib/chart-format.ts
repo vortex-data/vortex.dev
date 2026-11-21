@@ -280,9 +280,21 @@ export function seriesOrder(
  * a presentation-only rename: callers pass the real format to the data layer and
  * route it through here ONLY when rendering. All other formats pass through.
  */
-export function displayFormat(format: string): string {
-  return format === 'vortex-file-compressed' ? 'vortex' : format;
+export function displayFormat(format: string, labels?: SeriesLabels): string {
+  return labels?.[format] ?? (format === 'vortex-file-compressed' ? 'vortex' : format);
 }
+
+/**
+ * Display names that one group or chart gives some of its formats, over
+ * [`displayFormat`]'s. The Compression & File Size group shows `parquet` as
+ * `parquet-zstd`, because it also charts `parquet-snappy`. Like
+ * [`displayFormat`], it changes only what is shown: the series keys stay the
+ * real formats.
+ */
+export type SeriesLabels = Readonly<Record<string, string>>;
+
+/** The Compression & File Size group's display names (see [`SeriesLabels`]). */
+export const ZSTD_PARQUET_LABELS: SeriesLabels = { parquet: 'parquet-zstd' };
 
 /**
  * Whether `format` names one of Vortex's other scans. The SQL benchmarks run
@@ -302,8 +314,11 @@ export function isOtherScan(format: string): boolean {
  * the `vortex-file-compressed` token reads `vortex` wherever it appears while the
  * underlying label (the dataset/override/lookup key) stays unchanged.
  */
-export function displaySeriesLabel(label: string): string {
-  return label.split(':').map(displayFormat).join(':');
+export function displaySeriesLabel(label: string, labels?: SeriesLabels): string {
+  return label
+    .split(':')
+    .map((segment) => displayFormat(segment, labels))
+    .join(':');
 }
 
 /** First 7 characters of a commit SHA. */
@@ -684,6 +699,7 @@ export function latestValuesSentence(
   series: readonly VisibleSeries[],
   commits: readonly (Pick<CommitPoint, 'timestamp'> | null)[],
   displayUnit: DisplayUnit,
+  labels?: SeriesLabels,
 ): string {
   if (series.length === 0) {
     return 'No series is shown.';
@@ -701,7 +717,7 @@ export function latestValuesSentence(
   for (const { label, values } of series) {
     const value = values[latest];
     if (isMeasured(value)) {
-      parts.push(`${displaySeriesLabel(label)} ${formatDisplayValue(value, displayUnit)}`);
+      parts.push(`${displaySeriesLabel(label, labels)} ${formatDisplayValue(value, displayUnit)}`);
     }
   }
   const date = shortDate(commits[latest]?.timestamp);

@@ -5,13 +5,35 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
 import { SummaryCard } from '@/bench/components/SummaryCard';
+import { type SeriesLabels, ZSTD_PARQUET_LABELS } from '@/bench/lib/chart-format';
 import type { Summary } from '@/bench/lib/summary';
 
-function render(summary?: Summary): string {
-  return renderToStaticMarkup(<SummaryCard summary={summary} />);
+function render(summary?: Summary, seriesLabels?: SeriesLabels): string {
+  return renderToStaticMarkup(<SummaryCard summary={summary} seriesLabels={seriesLabels} />);
 }
 
 describe('SummaryCard', () => {
+  it('names zstd Parquet as the group labels it', () => {
+    const ranking = {
+      name: 'parquet',
+      minRatio: 1,
+      ratio: 1,
+      maxRatio: 1,
+      compressionRatio: 4.5,
+      totalBytes: 100,
+      measured: 1,
+      total: 1,
+    };
+    const html = render(
+      { type: 'compressionSize', title: 't', rankings: [ranking], explanation: 'e' },
+      ZSTD_PARQUET_LABELS,
+    );
+    expect(html).toContain('>vs parquet-zstd<');
+    expect(html).toContain('>parquet-zstd<');
+    expect(html).toContain('parquet-zstd: minimum');
+    expect(html).not.toContain('>parquet<');
+  });
+
   it('renders nothing when there is no summary', () => {
     expect(render(undefined)).toBe('');
   });

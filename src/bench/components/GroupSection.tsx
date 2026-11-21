@@ -130,13 +130,14 @@ export function GroupSection({
           </span>
         </summary>
       </details>
-      <SummaryCard summary={group.summary} />
+      <SummaryCard summary={group.summary} seriesLabels={group.seriesLabels} />
       <GroupBody
         groupSlug={group.slug}
         charts={group.charts}
         startIndex={startIndex}
         universe={universe}
         initialFilter={initialFilter}
+        seriesLabels={group.seriesLabels}
       />
     </section>
   );

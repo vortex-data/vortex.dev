@@ -832,7 +832,7 @@ async function collectFileSizesSummary(): Promise<Summary | null> {
     title: 'Compression & File Size Summary',
     rankings,
     explanation:
-      'Total file size, and geometric means of file sizes versus Arrow (higher is better) and versus Parquet-zstd (lower is better)',
+      'Total file size, and geometric means of file sizes versus Arrow (higher is better) and versus parquet-zstd (lower is better)',
   };
 }
 

@@ -49,7 +49,12 @@ import {
   isFileSizesDataset,
   SQL_FILE_SIZES_GROUP_NAME,
 } from './file-sizes';
-import { type FilterUniverse, isOtherScan } from './chart-format';
+import {
+  type FilterUniverse,
+  isOtherScan,
+  type SeriesLabels,
+  ZSTD_PARQUET_LABELS,
+} from './chart-format';
 import { type ChartKind, compareCodeUnits, FAMILIES, type GroupKind } from './families';
 import { chartKeyFromSlug, chartKeyToSlug, groupKeyFromSlug, groupKeyToSlug } from './slug';
 import type { ChartKey, GroupKey } from './slug';
@@ -1252,6 +1257,8 @@ function payloadsFromRows(
 export interface ChartLink {
   name: string;
   slug: string;
+  /** Display names the chart gives some of its formats (see `SeriesLabels`). */
+  seriesLabels?: SeriesLabels;
 }
 
 /**
@@ -1268,6 +1275,8 @@ export interface Group {
   charts: ChartLink[];
   summary?: Summary;
   description?: string;
+  /** Display names the group's toolbar and summary give some formats (see `SeriesLabels`). */
+  seriesLabels?: SeriesLabels;
 }
 
 /** Body of `GET /api/groups`: every group surfaced by discovery, in canonical order. */
@@ -1771,6 +1780,8 @@ async function collectFileSizesGroup(datasets: readonly DatasetVariantRow[]): Pr
     FILE_SIZE_SCOPES.map((scope) => scope.benchmark),
     FILE_SIZE_SCOPES.map((scope) => scope.scale_factor),
   ]);
+  // The group shows `parquet` as `parquet-zstd`, since it also charts `parquet-snappy`. ClickBench
+  // keeps `parquet`: it charts its published files, which are Snappy.
   const charts: ChartLink[] = [
     ...scopes.rows.map((row) => ({
       name: fileSizeChartName(row.benchmark, row.scale_factor),
@@ -1779,16 +1790,25 @@ async function collectFileSizesGroup(datasets: readonly DatasetVariantRow[]): Pr
         benchmark: row.benchmark,
         scale_factor: row.scale_factor,
       }),
+      ...(row.benchmark === 'clickbench' ? {} : { seriesLabels: ZSTD_PARQUET_LABELS }),
     })),
     ...datasets
       .filter((row) => isFileSizesDataset(row.dataset, row.dataset_variant))
-      .map((row) => compressionChartLink(row, 'CompressionSize')),
+      .map((row) => ({
+        ...compressionChartLink(row, 'CompressionSize'),
+        seriesLabels: ZSTD_PARQUET_LABELS,
+      })),
   ];
   if (charts.length === 0) {
     return [];
   }
   return [
-    { name: FILE_SIZES_GROUP_NAME, slug: groupKeyToSlug({ k: 'CompressionSizeGroup' }), charts },
+    {
+      name: FILE_SIZES_GROUP_NAME,
+      slug: groupKeyToSlug({ k: 'CompressionSizeGroup' }),
+      charts,
+      seriesLabels: ZSTD_PARQUET_LABELS,
+    },
   ];
 }
 

@@ -14,6 +14,7 @@ import {
   chartUnitLabel,
   parseFilterCsv,
   singleSearchParam,
+  ZSTD_PARQUET_LABELS,
 } from '@/bench/lib/chart-format';
 import { cachedDefaultChartPayload, cachedFilterUniverse } from '@/bench/lib/data-cache';
 import { NOT_FOUND_METADATA } from '@/bench/lib/not-found-metadata';
@@ -176,8 +177,9 @@ export default async function ChartPage({
   // well-formed slugs the chart payload and the filter universe are
   // independent queries run in parallel (getChart is React-cache'd, so the
   // generateMetadata dedupe is unaffected), matching the landing page.
+  let key: ChartKey;
   try {
-    chartKeyFromSlug(slug);
+    key = chartKeyFromSlug(slug);
   } catch {
     notFound();
   }
@@ -211,7 +213,15 @@ export default async function ChartPage({
           {' · '}
           {seriesCount} series · {commitCount} commit{commitCount !== 1 ? 's' : ''}
         </p>
-        <Chart slug={slug} name={chart.display_name} index={0} initialPayload={chart} />
+        <Chart
+          slug={slug}
+          name={chart.display_name}
+          index={0}
+          initialPayload={chart}
+          // A compression chart's Parquet is zstd, and it also charts Snappy Parquet. A file-size
+          // chart keeps `parquet`: the SQL File Sizes group shares it, and ClickBench's is Snappy.
+          seriesLabels={key.k === 'CompressionSize' ? ZSTD_PARQUET_LABELS : undefined}
+        />
         <noscript>
           <p className="no-script">JavaScript is required to render the chart.</p>
         </noscript>
