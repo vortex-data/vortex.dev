@@ -118,6 +118,8 @@ describe('compression summaries', () => {
         row('vortex', 'tpch', '100', 100),
         row('vortex', 'tpcds', '1.0', 200),
         row('vortex-compact', 'tpcds', '1.0', 50),
+        // Lance has one of TPC-H's three scale factors, which counts as measured on TPC-H.
+        row('lance', 'tpch', '1.0', 400),
         row('duckdb', 'tpcds', '1.0', 90),
       ],
     });
@@ -151,6 +153,7 @@ describe('compression summaries', () => {
       parquet: [1, 2, 2, null],
       vortex: [expect.closeTo(1, 12), 2, 2, null],
       'vortex-compact': [0.5, 1, 2, null],
+      lance: [4, 1, 2, null],
     });
   });
 

@@ -740,6 +740,7 @@ async function collectFileSizeSummary(): Promise<Summary | null> {
     rows.filter((sample) => !SIZE_SUMMARY_EXCLUDED_FORMATS.includes(sample.format)),
     'none',
     (dataset) => JSON.stringify([dataset]),
+    'any',
   );
   if (rankings.length === 0) {
     return null;
@@ -829,9 +830,12 @@ function bucketGeoMean(byBucket: ReadonlyMap<string, readonly number[]>): number
  *
  * Each dataset is one entry in the geometric means, except that the datasets of one bucket count
  * once (`bucketOf`, by default [`sizeBucket`], which buckets a family). `minRatio` and `maxRatio`
- * are over single datasets. `measured` and `total` count buckets, and a format measures a bucket
- * only when it has every dataset of the bucket that any format has. A format measured on every
- * bucket ranks above one that is not, because their means are over different datasets. Within each tier, the order is by compression ratio when
+ * are over single datasets. `measured` and `total` count buckets. With `coverage` `every`, the
+ * default, a format measures a bucket only when it has every dataset of the bucket that any
+ * format has. With `any`, one dataset of the bucket is enough: the SQL Benchmark File Sizes
+ * summary uses it, so a format with one TPC-DS scale factor counts as measured on TPC-DS. A
+ * format measured on every bucket ranks above one that is not, because their means are over
+ * different datasets. Within each tier, the order is by compression ratio when
  * every format has one on every bucket it is ranked on, and by baseline ratio otherwise. In the
  * Compression & File Size summary, TPC-DS has no Arrow size, so its order is by baseline ratio.
  */
@@ -839,6 +843,7 @@ function compressionSizeRankings(
   rows: readonly CompressionSizeSample[],
   totals: SizeTotals = 'shared',
   bucketOf: (dataset: string, datasetVariant: string | null) => string = sizeBucket,
+  coverage: 'every' | 'any' = 'every',
 ): CompressionSizeRanking[] {
   const grouped = new Map<
     string,
@@ -925,7 +930,9 @@ function compressionSizeRankings(
                 0,
               ),
         measured: [...bucketDatasets.values()].filter((datasets) =>
-          [...datasets].every((dataset) => ratios.bytesByDataset.has(dataset)),
+          coverage === 'any'
+            ? [...datasets].some((dataset) => ratios.bytesByDataset.has(dataset))
+            : [...datasets].every((dataset) => ratios.bytesByDataset.has(dataset)),
         ).length,
         total: bucketDatasets.size,
       });
