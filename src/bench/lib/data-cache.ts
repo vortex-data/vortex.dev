@@ -50,14 +50,16 @@ export const DATA_CACHE_BACKSTOP_SECONDS = 86400;
 const CACHE_OPTIONS = { tags: [BENCH_DATA_TAG], revalidate: DATA_CACHE_BACKSTOP_SECONDS };
 
 /**
- * Version of cached group payloads, including their embedded summary wire shape.
+ * Version of every cached read below: group payloads with their embedded
+ * summaries, chart payloads, and the filter universe.
  * This value must change when a deployment cannot read the preceding shape, and
  * when the same data would give a different payload, as after a change to a
- * summary query. The Data Cache outlives a deploy, so without a new key the new
- * code can serve payloads the old code computed until the next ingest.
+ * summary query or to the series a chart shows. The Data Cache outlives a
+ * deploy, so without a new key the new code can serve payloads the old code
+ * computed until the next ingest.
  * It is independent of the producer-facing benchmark schema version.
  */
-const GROUP_PAYLOAD_CACHE_VERSION = 'v14';
+const GROUP_PAYLOAD_CACHE_VERSION = 'v15';
 
 // The default last-100 group bundle, keyed by group slug. The slug is the cache
 // key (an `unstable_cache` argument), so one wrapper covers every group. A
@@ -78,7 +80,7 @@ const groupChartsCached = unstable_cache(
 const chartPayloadCached = unstable_cache(
   async (slug: string): Promise<ChartResponse | null> =>
     chartPayload(chartKeyFromSlug(slug), { kind: 'last', n: DEFAULT_COMMIT_WINDOW }),
-  ['data-cache:chart-payload:n100'],
+  [`data-cache:chart-payload:${GROUP_PAYLOAD_CACHE_VERSION}:n100`],
   CACHE_OPTIONS,
 );
 
@@ -93,7 +95,7 @@ const groupsCached = unstable_cache(
 
 const filterUniverseCached = unstable_cache(
   async (): Promise<FilterUniverse> => collectFilterUniverse(),
-  ['data-cache:filter-universe'],
+  [`data-cache:filter-universe:${GROUP_PAYLOAD_CACHE_VERSION}`],
   CACHE_OPTIONS,
 );
 

@@ -6,9 +6,18 @@ export default defineConfig({
   testMatch: "*.spec.ts",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
+  // The retry classifies a failure for diagnosis: a test that fails and then
+  // passes is flaky, and a flaky test still fails CI.
   retries: process.env.CI ? 1 : 0,
-  workers: 1,
-  reporter: process.env.CI ? "github" : "list",
+  failOnFlakyTests: !!process.env.CI,
+  // Two browsers at once, beside the local server, on the 4-CPU runner that
+  // GitHub gives a public repository. The axe job sets its own count.
+  workers: 2,
+  // The JSON report keeps each attempt and its duration. CI uploads it on
+  // success too, and a failed test keeps its trace in test-results/.
+  reporter: process.env.CI
+    ? [["github"], ["json", { outputFile: "test-results/results.json" }]]
+    : [["list"], ["json", { outputFile: "test-results/results.json" }]],
   use: {
     baseURL: process.env.BASE_URL ?? "http://localhost:3000",
     trace: "retain-on-failure"

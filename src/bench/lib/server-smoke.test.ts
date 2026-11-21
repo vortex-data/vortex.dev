@@ -113,7 +113,7 @@ describe.skipIf(!databaseAvailable || !BUILD_PRESENT)(
       expect(html).toContain('<footer class="vx-footer">');
       expect(html).toContain('</header><h1 class="vx-sr-only">Benchmarks</h1>');
       expect(html).toContain(
-        '<div class="vx-header-tools"><div class="bench-toolbar-controls" aria-label="Benchmark group controls">',
+        '<div class="vx-header-tools"><div class="bench-toolbar-controls" role="group" aria-label="Benchmark group controls">',
       );
       expect(html).toContain('<div class="vx-header-end"><div class="vx-header-social">');
       expect(html).toMatch(

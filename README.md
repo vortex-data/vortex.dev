@@ -34,9 +34,9 @@ bench is at http://localhost:3000/bench. It needs the `BENCH_DB_*` variables for
 | `bun run test:bench` | bench's tests on Vitest. Its Postgres integration suite needs Docker or `BENCH_TEST_DATABASE_URL`, and skips without either |
 | `bun run verify` | HTTP suite against a running server: sitemap, robots, RSS, OG, canonicals, JSON-LD, theme parity, `/api/subscribe`, internal links |
 | `bun run test:e2e` | Playwright browser smoke (Chromium desktop + WebKit iPhone-13). One-time setup: `bun run test:e2e:install` |
-| `bun run lighthouse` | Local Lighthouse CI run against a server you started, at `BASE_URL` (default `http://localhost:3000`; bench's pages need its `BENCH_DB_*` variables). Fetches a pinned `@lhci/cli` with `bunx`; it is not a dependency |
+| `bun run lighthouse` | Local Lighthouse CI run against a server you started, at `BASE_URL` (default `http://localhost:3000`; bench's pages need its `BENCH_DB_*` variables). `LHCI_PROFILE=mobile` audits as a phone; the default is desktop. Fetches a pinned `@lhci/cli` with `bunx`; it is not a dependency |
 
-CI runs `check:ci → build → typecheck → knip → unit and bench tests → start → verify → playwright` for both sites on every PR via [.github/workflows/ci.yml](.github/workflows/ci.yml), with a non-blocking `bun audit`. [.github/workflows/lighthouse.yml](.github/workflows/lighthouse.yml) runs Lighthouse and axe on both sites on the PR's Vercel preview and posts a sticky score table.
+CI runs `actionlint and zizmor → check:ci → build → typecheck → knip → unit and bench tests → start → verify → playwright → bun audit` for both sites on every PR via [.github/workflows/ci.yml](.github/workflows/ci.yml). An advisory that `bun audit` reports fails the run. [.github/workflows/lighthouse.yml](.github/workflows/lighthouse.yml) runs Lighthouse, on desktop and mobile, and axe on both sites on the PR's Vercel preview and posts a sticky score table.
 
 ## Contributing
 

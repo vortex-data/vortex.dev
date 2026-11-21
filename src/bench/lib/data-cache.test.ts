@@ -68,10 +68,12 @@ describe('data-cache wrappers', () => {
   it('tags every wrapper with the shared bench-data tag and the backstop TTL', () => {
     expect(BENCH_DATA_TAG).toBe('bench-data');
     expect(DATA_CACHE_BACKSTOP_SECONDS).toBe(86400);
-    expect(cacheCalls.map((call) => call.keyParts)).toContainEqual([
-      'data-cache:group-charts:v14:n100',
+    expect(cacheCalls.map((call) => call.keyParts)).toEqual([
+      ['data-cache:group-charts:v15:n100'],
+      ['data-cache:chart-payload:v15:n100'],
+      ['data-cache:groups:v15'],
+      ['data-cache:filter-universe:v15'],
     ]);
-    expect(cacheCalls.map((call) => call.keyParts)).toContainEqual(['data-cache:groups:v14']);
     for (const call of cacheCalls) {
       expect(call.options.tags).toEqual([BENCH_DATA_TAG]);
       expect(call.options.revalidate).toBe(DATA_CACHE_BACKSTOP_SECONDS);

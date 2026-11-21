@@ -64,8 +64,10 @@ export function Toolbar({
     universe !== undefined && (universe.engines.length > 0 || universe.formats.length > 0);
 
   return (
-    // biome-ignore lint/a11y/useAriaPropsSupportedByRole: deliberate markup, as bench has always rendered the group controls.
-    <div className="bench-toolbar-controls" aria-label="Benchmark group controls">
+    // A group, so its label is allowed: axe fails aria-label on a div with no role, as on
+    // bench's methodology page, where the toolbar is empty.
+    // biome-ignore lint/a11y/useSemanticElements: a fieldset would bring the browser's fieldset border, padding and min-width to this flex row in the header.
+    <div className="bench-toolbar-controls" role="group" aria-label="Benchmark group controls">
       {groupControls && (
         <>
           <button

@@ -72,6 +72,8 @@ export const METHODOLOGY: readonly MethodologySection[] = [
       'Queries run on DataFusion 55 and DuckDB 2.0. The formats are Vortex (its default ' +
         'and compact write strategies), Apache Parquet, Lance 13, Arrow IPC, DuckDB’s own ' +
         'format, and, for random access, LitData. Not every suite runs every format.',
+      'Vortex has more than one way to scan a file in each query engine. bench shows each ' +
+        'suite’s default scan. The benchmark reports on pull requests also compare the others.',
       'Parquet has two variants, which differ only in their codec. Parquet is zstd at level ' +
         '3, and it is the baseline of the throughput and file size scores. Parquet (Snappy) ' +
         'is the same Parquet with Snappy, the default codec of DuckDB, Spark, and PyArrow. ' +

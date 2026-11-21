@@ -17,6 +17,7 @@ import {
   displayFormat,
   displaySeriesLabel,
   escapeHtml,
+  isOtherScan,
   FETCH_TIMEOUT_MS,
   firstLine,
   formatDisplayValue,
@@ -551,6 +552,13 @@ describe('displayFormat / displaySeriesLabel', () => {
     expect(displayFormat('vortex-file-compressed')).toBe('vortex');
     expect(displayFormat('vortex-compact')).toBe('vortex-compact');
     expect(displayFormat('parquet')).toBe('parquet');
+  });
+
+  it('tells the other Vortex scans from the formats bench shows', () => {
+    expect(isOtherScan('vortex-file-compressed [file, v1]')).toBe(true);
+    expect(isOtherScan('vortex-file-compressed [datasource, v1]')).toBe(true);
+    expect(isOtherScan('vortex-file-compressed')).toBe(false);
+    expect(isOtherScan('parquet-snappy')).toBe(false);
   });
 
   it('rewrites the vortex token in any colon-delimited label', () => {
