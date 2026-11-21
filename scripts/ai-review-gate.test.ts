@@ -17,11 +17,14 @@ import {
   type GateInput,
   parseClaudeVerdict,
   parseCodexState,
-  type ReviewThread
+  type ReviewThread,
+  shouldRequestCodex
 } from "./ai-review-gate";
 
 const HEAD = "a".repeat(40);
 const OLD = "b".repeat(40);
+const NOW = Date.parse("2026-11-21T12:00:00Z");
+const MINUTE = 60 * 1000;
 
 const CLAUDE_FOOTER =
   "## What changes\n\nA fix.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)";
@@ -36,7 +39,8 @@ function input(overrides: Partial<GateInput> = {}): GateInput {
     codexReviewedShas: [],
     threads: [],
     claudeStatus: null,
-    codexRequested: false,
+    codexRequests: [],
+    now: NOW,
     ...overrides
   };
 }
@@ -136,11 +140,20 @@ test("a submitted Codex review of the head counts without the summary", () => {
   assert.equal(decision.state, "success");
 });
 
-test("the gate asks Codex once per head commit, and not while it runs", () => {
+test("the gate asks Codex again only after a wait, up to three times", () => {
+  assert.equal(shouldRequestCodex([], NOW), true);
+  assert.equal(shouldRequestCodex([NOW - 5 * MINUTE], NOW), false);
+  assert.equal(shouldRequestCodex([NOW - 25 * MINUTE], NOW), true);
+  const three = [NOW - 90 * MINUTE, NOW - 60 * MINUTE, NOW - 30 * MINUTE];
+  assert.equal(shouldRequestCodex(three, NOW), false);
   assert.equal(
-    decide(input({ codexState: null, codexRequested: true })).requestCodex,
+    decide(input({ codexState: null, codexRequests: [NOW - MINUTE] }))
+      .requestCodex,
     false
   );
+});
+
+test("the gate does not ask Codex while its review runs", () => {
   const running = decide(
     input({ codexState: { commitSha: HEAD, status: "in_progress" } })
   );
@@ -176,6 +189,18 @@ test("a Codex-written PR waits for Claude, then follows its status", () => {
   );
   assert.equal(failed.state, "failure");
   assert.match(failed.description, /Claude: 2 P0\/P1 findings/);
+  assert.equal(failed.claudeDue, false);
+
+  // A review that did not finish is retried, not counted as a finding.
+  const errored = decide(
+    input({
+      body,
+      claudeStatus: { state: "error", description: "no verdict" }
+    })
+  );
+  assert.equal(errored.state, "failure");
+  assert.equal(errored.claudeDue, true);
+  assert.match(errored.description, /did not finish \(no verdict\)/);
 
   const passed = decide(
     input({ body, claudeStatus: { state: "success", description: "" } })

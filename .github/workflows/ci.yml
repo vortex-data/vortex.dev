@@ -95,10 +95,11 @@ jobs:
       - name: Unit tests
         run: bun run test
 
-      - name: Test the parity check and the deploy check
+      - name: Test the parity check, the deploy check and the AI review gate
         run: |
           bun test scripts/parity/compare-api.test.ts
           node --test scripts/verify-web-deploy.test.mjs
+          bun test scripts/ai-review-gate.test.ts
 
       - name: Check infrastructure trust policies offline
         run: |

@@ -14,12 +14,23 @@
  *            finding
  *   pending  a required review of the head commit is not there yet, or the
  *            pull request is a draft
- *   failure  a required review has a blocking finding
+ *   failure  a required review has a blocking finding, or the Claude review
+ *            did not finish
  *
  * A blocking finding is a P0 or P1 finding. For Codex, it is an unresolved
  * review thread that Codex started, on a line the head commit still has (not
  * outdated), with a P0 or P1 badge or with no badge. For Claude, it is the
  * `blocking` count in the review's structured output (its verdict).
+ *
+ * Retries: when Codex has not reviewed the head commit, the gate posts
+ * `@codex review`, and posts it again on a later run if Codex has still not
+ * started after RETRY_CODEX_AFTER_MS, up to MAX_CODEX_REQUESTS times per
+ * commit. A Claude review that ended without a verdict sets the Claude status
+ * to `error`, not `failure`, and the next gate run starts a new one.
+ *
+ * ai-review.yml runs this script from main on base-branch events
+ * (pull_request_target, issue_comment, pull_request_review), so a pull
+ * request cannot change the rules that judge it.
  *
  * Commands:
  *   gate                   evaluate the pull request, set the status, ask
@@ -58,9 +69,15 @@ const FOOTER_LINES = 5;
 /** The hidden marker on the gate's own `@codex review` comments. */
 const REQUEST_MARKER = "<!-- ai-review-gate:codex-requested";
 
+/** How many times the gate asks Codex to review one commit. */
+const MAX_CODEX_REQUESTS = 3;
+
+/** How long the gate waits for Codex to start before it asks again. */
+const RETRY_CODEX_AFTER_MS = 20 * 60 * 1000;
+
 const API = "https://api.github.com";
 
-type State = "success" | "pending" | "failure";
+type State = "success" | "pending" | "failure" | "error";
 
 type CodexState = {
   commitSha: string | null;
@@ -81,13 +98,15 @@ export type GateInput = {
   headSha: string;
   /** The parsed Codex summary comment, if Codex posted one. */
   codexState: CodexState | null;
-  /** The commits that Codex's submitted reviews cover. */
+  /** The commits that Codex's submitted, not dismissed, reviews cover. */
   codexReviewedShas: string[];
   threads: ReviewThread[];
   /** The `AI cross-review / Claude` status on the head commit, if any. */
   claudeStatus: { state: string; description: string } | null;
-  /** True when the gate already asked Codex to review the head commit. */
-  codexRequested: boolean;
+  /** When the gate asked Codex to review the head commit, in milliseconds. */
+  codexRequests: number[];
+  /** The time of this run, in milliseconds. */
+  now: number;
 };
 
 type Decision = {
@@ -151,6 +170,16 @@ export function blockingCodexThreads(threads: ReviewThread[]): number {
   }).length;
 }
 
+/**
+ * True when the gate should ask Codex for a review of the head commit: it has
+ * not asked yet, or Codex has not started since its last request.
+ */
+export function shouldRequestCodex(requests: number[], now: number): boolean {
+  if (requests.length === 0) return true;
+  if (requests.length >= MAX_CODEX_REQUESTS) return false;
+  return now - Math.max(...requests) >= RETRY_CODEX_AFTER_MS;
+}
+
 /** "done" when Codex finished a review of the head commit. */
 function codexProgress(
   input: Pick<GateInput, "headSha" | "codexState" | "codexReviewedShas">
@@ -187,7 +216,8 @@ export function decide(input: GateInput): Decision {
   const waiting: string[] = [];
 
   const codex = codexProgress(input);
-  const requestCodex = codex === "none" && !input.codexRequested;
+  const requestCodex =
+    codex === "none" && shouldRequestCodex(input.codexRequests, input.now);
   if (codex === "done") {
     const blocking = blockingCodexThreads(input.threads);
     if (blocking > 0) {
@@ -207,6 +237,10 @@ export function decide(input: GateInput): Decision {
       claudeDue = true;
     } else if (status.state === "pending") {
       waiting.push("Claude");
+    } else if (status.state === "error") {
+      // The review did not finish. The workflow starts a new one.
+      problems.push(`Claude's review did not finish (${status.description})`);
+      claudeDue = true;
     } else if (status.state !== "success") {
       problems.push(`Claude: ${status.description}`);
     }
@@ -447,12 +481,16 @@ async function gate(): Promise<void> {
   }
 
   const [comments, reviews, threads, combined] = await Promise.all([
-    githubList<{ user: { login: string } | null; body: string }>(
-      `/repos/${repo}/issues/${number}/comments`
-    ),
-    githubList<{ user: { login: string } | null; commit_id: string }>(
-      `/repos/${repo}/pulls/${number}/reviews`
-    ),
+    githubList<{
+      user: { login: string } | null;
+      body: string;
+      created_at: string;
+    }>(`/repos/${repo}/issues/${number}/comments`),
+    githubList<{
+      user: { login: string } | null;
+      commit_id: string;
+      state: string;
+    }>(`/repos/${repo}/pulls/${number}/reviews`),
     reviewThreads(owner, name, number),
     github<{
       statuses: {
@@ -476,16 +514,18 @@ async function gate(): Promise<void> {
     body: pr.body,
     headSha,
     codexState: summary ?? null,
+    // A dismissed review no longer counts.
     codexReviewedShas: reviews
-      .filter((r) => r.user?.login === CODEX_LOGIN)
+      .filter((r) => r.user?.login === CODEX_LOGIN && r.state !== "DISMISSED")
       .map((r) => r.commit_id),
     threads,
     claudeStatus: claude
       ? { state: claude.state, description: claude.description ?? "" }
       : null,
-    codexRequested: comments.some((c) =>
-      c.body.includes(`${REQUEST_MARKER} ${headSha}`)
-    )
+    codexRequests: comments
+      .filter((c) => c.body.includes(`${REQUEST_MARKER} ${headSha}`))
+      .map((c) => Date.parse(c.created_at)),
+    now: Date.now()
   });
 
   await setStatus(
@@ -519,7 +559,9 @@ async function claudeVerdict(): Promise<void> {
   const headSha = env("HEAD_SHA");
   const verdict = parseClaudeVerdict(process.env.CLAUDE_VERDICT);
   if (!verdict.ok) {
-    await setStatus(repo, headSha, CLAUDE_CONTEXT, "failure", verdict.error);
+    // `error`, not `failure`: the review did not finish, so the gate starts
+    // a new one instead of treating this as a finding.
+    await setStatus(repo, headSha, CLAUDE_CONTEXT, "error", verdict.error);
     return;
   }
   const { blocking } = verdict;
