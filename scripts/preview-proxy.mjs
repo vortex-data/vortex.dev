@@ -89,7 +89,12 @@ export function previewProxy(target, secret, { allowLoopback = false } = {}) {
         const headers = { ...response.headers };
         delete headers["x-robots-tag"];
         if (headers.location) {
-          const location = new URL(headers.location, origin);
+          // Resolve against the request's URL, as a browser does, so that
+          // `Location: next` from /foo/bar stays under /foo/.
+          const location = new URL(
+            headers.location,
+            new URL(incoming.url ?? "/", origin)
+          );
           if (location.origin === origin.origin) {
             const { port } = server.address();
             headers.location = `http://127.0.0.1:${port}${location.pathname}${location.search}${location.hash}`;

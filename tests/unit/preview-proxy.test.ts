@@ -79,11 +79,13 @@ describe("preview proxy", () => {
   it("keeps a preview redirect on the proxy and a foreign redirect as it is", async () => {
     const target = await listen(
       createServer((request, response) => {
+        const locations: Record<string, string> = {
+          "/local": `${target}/blog?x=1`,
+          "/docs/guide": "next",
+          "/docs/search?q=a": "?q=b"
+        };
         response.writeHead(308, {
-          Location:
-            request.url === "/local"
-              ? `${target}/blog?x=1`
-              : "https://example.com/"
+          Location: locations[request.url ?? ""] ?? "https://example.com/"
         });
         response.end();
       })
@@ -93,6 +95,11 @@ describe("preview proxy", () => {
     );
     const local = await request(`${proxy}/local`);
     assert.equal(local.headers.location, `${proxy}/blog?x=1`);
+    // A relative Location resolves against the request's path, not the root.
+    const relative = await request(`${proxy}/docs/guide`);
+    assert.equal(relative.headers.location, `${proxy}/docs/next`);
+    const query = await request(`${proxy}/docs/search?q=a`);
+    assert.equal(query.headers.location, `${proxy}/docs/search?q=b`);
     const foreign = await request(`${proxy}/foreign`);
     assert.equal(foreign.headers.location, "https://example.com/");
   });
