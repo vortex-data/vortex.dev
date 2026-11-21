@@ -21,7 +21,7 @@ name: AI review
 # too), and the Codex GitHub app on the repository.
 
 on:
-  # Safe here: every job checks out main, never the pull request.
+  # zizmor: ignore[dangerous-triggers] The gate must set a status on fork and Dependabot PRs and must not run their code. These events run the workflow file from the default branch, and every job checks out the default branch, never the PR.
   pull_request_target:
     types: [opened, synchronize, reopened, ready_for_review, converted_to_draft, edited]
   # Codex posts its findings as a review and edits its summary comment. A

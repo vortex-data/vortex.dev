@@ -58,6 +58,11 @@ runs:
         echo "::error::No Vercel preview of ${SHA} after 20 minutes."
         exit 1
 
+    # The audits after this step run third-party code as this user, and a
+    # process can read the environment of another process of its user. So
+    # the secret reaches the proxy on standard input, from a shell builtin,
+    # and `env -u` starts the proxy without the variable. The proxy refuses
+    # to start with the variable set. No later step receives the secret.
     - name: Start the preview proxy
       shell: bash
       env:
@@ -65,7 +70,8 @@ runs:
         PREVIEW_URL: ${{ steps.preview.outputs.url }}
         PORT: ${{ inputs.port }}
       run: |
-        node scripts/preview-proxy.mjs "${PORT}" "${PREVIEW_URL}" &
+        printf '%s' "${VERCEL_AUTOMATION_BYPASS_SECRET}" \
+          | env -u VERCEL_AUTOMATION_BYPASS_SECRET node scripts/preview-proxy.mjs "${PORT}" "${PREVIEW_URL}" &
         for _ in $(seq 1 30); do
           if curl -sf -o /dev/null "http://127.0.0.1:${PORT}/bench/api/health"; then exit 0; fi
           sleep 1

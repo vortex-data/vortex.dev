@@ -55,7 +55,11 @@ jobs:
         with:
           node-version-file: .nvmrc
 
-      - uses: ./.github/actions/preview-proxy
+      # zizmor's self-repository audit suggests a newer `$/` syntax. The `./`
+      # form loads the action from the workspace, which this job's first
+      # step checks out at the PR's head commit, the commit this workflow
+      # file comes from, and no earlier step writes to `.github/actions`.
+      - uses: ./.github/actions/preview-proxy  # zizmor: ignore[self-repository]
         with:
           sha: ${{ github.event.pull_request.head.sha }}
           bypass-secret: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
@@ -148,7 +152,17 @@ jobs:
     permissions:
       contents: read
       deployments: read
+    env:
+      # The same image as ci.yml's browser tests; tests/unit/workflows.test.ts
+      # keeps the two equal. See ci.yml for how Renovate updates it.
+      PLAYWRIGHT_IMAGE: mcr.microsoft.com/playwright:v1.64.1-resolute@sha256:f76885029244e5a384243a930ff283cef67d90653978ee27a77dd4cff8882fb4
     steps:
+      # Start the pull first, so it overlaps the install and the wait for the
+      # preview. See ci.yml's step of the same name.
+      - name: Start pulling the Playwright image
+        run: |
+          (timeout 180 docker pull -q "$PLAYWRIGHT_IMAGE" > /tmp/pull.log 2>&1 && echo 0 > /tmp/pull.status || echo 1 > /tmp/pull.status) &
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           ref: ${{ github.event.pull_request.head.sha }}
@@ -175,53 +189,68 @@ jobs:
       - name: Install
         run: bun install --frozen-lockfile
 
-      - uses: ./.github/actions/preview-proxy
+      # zizmor's self-repository audit suggests a newer `$/` syntax. The `./`
+      # form loads the action from the workspace, which this job's first
+      # step checks out at the PR's head commit, the commit this workflow
+      # file comes from, and no earlier step writes to `.github/actions`.
+      - uses: ./.github/actions/preview-proxy  # zizmor: ignore[self-repository]
         with:
           sha: ${{ github.event.pull_request.head.sha }}
           bypass-secret: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
 
-      # The same browsers as the smoke tests in ci.yml, from the same cache,
-      # keyed on the installed Playwright version and the runner image.
-      - name: Get Playwright version
-        id: playwright-version
+      - name: Check the image matches @playwright/test
         run: |
-          VERSION=$(node -p "require('@playwright/test/package.json').version")
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "image=${ImageOS:-unknown}" >> "$GITHUB_OUTPUT"
+          version=$(node -p "require('@playwright/test/package.json').version")
+          case "$PLAYWRIGHT_IMAGE" in
+            *":v$version-"*) echo "Image and @playwright/test are both $version." ;;
+            *)
+              echo "::error::@playwright/test is $version, but PLAYWRIGHT_IMAGE is $PLAYWRIGHT_IMAGE. Update the image tag and digest in .github/workflows/ci.yml and lighthouse.yml."
+              exit 1
+              ;;
+          esac
 
-      - name: Cache Playwright browsers
-        id: playwright-cache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
-        with:
-          path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-${{ steps.playwright-version.outputs.image }}-playwright-${{ steps.playwright-version.outputs.version }}
-
-      - name: Install Playwright browsers
-        env:
-          CACHE_HIT: ${{ steps.playwright-cache.outputs.cache-hit }}
+      - name: Wait for the Playwright image
+        timeout-minutes: 7
         run: |
-          if [ "${CACHE_HIT}" = "true" ]; then
-            bunx playwright install-deps chromium webkit
-          else
-            bunx playwright install --with-deps chromium webkit
+          while [ ! -f /tmp/pull.status ]; do sleep 1; done
+          if [ "$(cat /tmp/pull.status)" != 0 ]; then
+            cat /tmp/pull.log
+            echo "::warning::The first pull of the Playwright image failed or took over 3 minutes. Trying once more."
+            timeout 180 docker pull -q "$PLAYWRIGHT_IMAGE"
           fi
 
       # playwright.config.ts runs one test at a time, for the smoke tests
       # against the local server in ci.yml. The preview has no such limit, so
-      # axe uses the runner's four CPUs.
+      # axe uses the runner's four CPUs. The test runner runs in the image
+      # with the host network, so it reaches the proxy on 127.0.0.1. The
+      # bypass secret is not in this step's environment.
       - name: axe
-        env:
-          BASE_URL: ${{ env.PROXY }}
-          BENCH_URL: ${{ env.PROXY }}/bench
-        run: bunx playwright test --grep @axe --workers=4
+        id: axe
+        run: |
+          docker run --rm --init --ipc=host --network=host \
+            --user "$(id -u):$(id -g)" \
+            -e HOME=/tmp -e CI -e GITHUB_ACTIONS \
+            -e BASE_URL="${PROXY}" -e BENCH_URL="${PROXY}/bench" \
+            -v "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" -w "$GITHUB_WORKSPACE" \
+            "$PLAYWRIGHT_IMAGE" \
+            node node_modules/@playwright/test/cli.js test --grep @axe --workers=4
 
-      # In CI, playwright.config.ts uses only the `github` reporter, so there
-      # is no HTML report; a failed test keeps its trace in test-results/.
+      # The JSON report keeps each attempt and its duration, so it uploads on
+      # success too. A failed test keeps its trace in test-results/.
+      - name: Upload Playwright results
+        if: always() && (steps.axe.outcome == 'success' || steps.axe.outcome == 'failure')
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: axe-results-attempt-${{ github.run_attempt }}
+          path: test-results/results.json
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Upload Playwright traces
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
-          name: playwright-traces
+          name: playwright-traces-attempt-${{ github.run_attempt }}
           path: test-results/
           retention-days: 7
 
