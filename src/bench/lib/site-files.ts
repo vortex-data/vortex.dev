@@ -199,28 +199,15 @@ const FORMATS: ReadonlyMap<string, string> = new Map([
 ]);
 
 /**
- * A format in words. A Vortex scan other than the suite's default, as
- * `vortex-file-compressed [file, v1]`, reads "Vortex (file, v1)". A name this
- * table does not know stays as bench spells it.
- */
-function formatLabel(format: string): string {
-  const scan = /^(.+) \[(.+)\]$/.exec(format);
-  if (scan?.[1] !== undefined && scan[2] !== undefined) {
-    return `${FORMATS.get(scan[1]) ?? scan[1]} (${scan[2]})`;
-  }
-  return FORMATS.get(format) ?? format;
-}
-
-/**
  * A series in words: `engine:format` as "DataFusion on Parquet", a format alone
  * by its name. A name this table does not know stays as bench spells it.
  */
 export function seriesLabel(name: string): string {
   const [first = '', second] = name.split(':');
   if (second === undefined) {
-    return formatLabel(first);
+    return FORMATS.get(first) ?? first;
   }
-  return `${ENGINES.get(first) ?? first} on ${formatLabel(second)}`;
+  return `${ENGINES.get(first) ?? first} on ${FORMATS.get(second) ?? second}`;
 }
 
 const OPERATIONS: ReadonlyMap<string, string> = new Map([
@@ -239,13 +226,13 @@ export function chartSeriesLabel(kind: ChartKind, name: string): string {
     case 'QueryMeasurement':
       return seriesLabel(name);
     case 'CompressionTime':
-      return `${formatLabel(format)} ${OPERATIONS.get(detail) ?? detail}`;
+      return `${FORMATS.get(format) ?? format} ${OPERATIONS.get(detail) ?? detail}`;
     case 'RandomAccess':
-      return `${formatLabel(format)} (${detail})`;
+      return `${FORMATS.get(format) ?? format} (${detail})`;
     case 'CompressionSize':
     case 'VectorSearch':
     case 'FileSize':
-      return formatLabel(name);
+      return FORMATS.get(name) ?? name;
   }
 }
 

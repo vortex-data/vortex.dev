@@ -37,6 +37,7 @@
  */
 
 import { BRANCH_COMMITS, factOnReadBranch, onReadBranch } from './branch';
+import { isOtherScan } from './chart-format';
 import { getPool } from './db';
 import { randomAccessStorage, type RandomAccessStorage } from './random-access';
 import { compareCodeUnits } from './families';
@@ -1284,8 +1285,11 @@ async function collectQuerySummary(
     await getPool().query<{ query_idx: number; series: string; value_ns: number }>(text, params)
   ).rows;
 
+  // `series` is `engine:format`, and no engine name holds a colon.
   const rankings = rankSeries(
-    rows.map((row) => ({ series: row.series, bucket: row.query_idx, value: row.value_ns })),
+    rows
+      .filter((row) => !isOtherScan(row.series.slice(row.series.indexOf(':') + 1)))
+      .map((row) => ({ series: row.series, bucket: row.query_idx, value: row.value_ns })),
     (a, b) => a - b,
     QUERY_PENALTY_FLOOR_NS,
     2,
