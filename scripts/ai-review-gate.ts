@@ -31,8 +31,7 @@
  *                          `AI cross-review / Claude` status on HEAD_SHA
  *
  * Environment (set by GitHub Actions, or by hand):
- *   GITHUB_TOKEN       token with `statuses: write`, `issues: write` and
- *                      `pull-requests: read`
+ *   GITHUB_TOKEN       token with `statuses: write` and `pull-requests: write`
  *   GITHUB_REPOSITORY  owner/name
  *   PR_NUMBER          the pull request
  *   HEAD_SHA           the head commit, for `claude-verdict`

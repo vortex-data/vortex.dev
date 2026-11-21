@@ -8,9 +8,15 @@ name: AI review
 # reviews are clean. scripts/ai-review-gate.ts holds the rules; CLAUDE.md
 # ("AI review") explains them.
 #
-# The result is a commit status, not this job's check, because a comment or a
-# review starts this workflow on main's commit, and a check from that run
-# would not attach to the pull request's head commit.
+# This workflow runs on pull_request events only. ai-review-recheck.yml runs
+# the gate again when Codex or a member comments or reviews. The two are
+# separate files because a workflow that runs on issue_comment has a write
+# token, and it must never run the pull request's own code (CodeQL's
+# "untrusted checkout" rule).
+#
+# The result is a commit status, not this job's check, because the recheck
+# runs on main's commit, and a check from that run would not attach to the
+# pull request's head commit.
 #
 # Required setup: the repository secret ANTHROPIC_API_KEY (claude.yml uses it
 # too), and the Codex GitHub app on the repository.
@@ -18,11 +24,6 @@ name: AI review
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review, converted_to_draft, edited]
-  # Codex posts its findings as a review and edits its summary comment.
-  pull_request_review:
-    types: [submitted, dismissed]
-  issue_comment:
-    types: [created, edited]
 
 # Nothing by default; each job asks for what it uses.
 permissions: {}
@@ -30,31 +31,24 @@ permissions: {}
 jobs:
   gate:
     name: Gate
-    # Fork pull requests get a read-only token on pull_request and
-    # pull_request_review, which cannot set a status, so those runs skip
-    # them. A comment from Codex or a member reruns the gate for any pull
-    # request, with main's workflow and a write token; the gate reads the
-    # pull request through the API and never runs its code.
-    if: >-
-      ((github.event_name == 'pull_request' || github.event_name == 'pull_request_review') &&
-        github.event.pull_request.head.repo.full_name == github.repository) ||
-      (github.event_name == 'issue_comment' && github.event.issue.pull_request &&
-        (github.event.comment.user.login == 'chatgpt-codex-connector[bot]' ||
-          contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)))
+    # Fork pull requests get a read-only token, which cannot set a status.
+    # ai-review-recheck.yml evaluates them when Codex or a member comments.
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-26.04
     timeout-minutes: 5
-    # One gate per pull request at a time. A newer event replaces a waiting
-    # run, so the last run sets the status from the newest state.
+    # One gate per pull request at a time, shared with ai-review-recheck.yml.
+    # A newer event replaces a waiting run, so the last run sets the status
+    # from the newest state.
     concurrency:
-      group: ai-review-gate-${{ github.event.pull_request.number || github.event.issue.number }}
+      group: ai-review-gate-${{ github.event.pull_request.number }}
       cancel-in-progress: false
     permissions:
       contents: read
       # Set the `AI cross-review` status.
       statuses: write
-      # Post `@codex review` when Codex has not reviewed the head commit.
-      issues: write
-      pull-requests: read
+      # Post `@codex review` when Codex has not reviewed the head commit. A
+      # comment on a pull request needs `pull-requests: write`.
+      pull-requests: write
     outputs:
       head_sha: ${{ steps.gate.outputs.head_sha }}
       claude_due: ${{ steps.gate.outputs.claude_due }}
@@ -76,15 +70,13 @@ jobs:
         id: gate
         env:
           GITHUB_TOKEN: ${{ github.token }}
-          PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: bun scripts/ai-review-gate.ts gate
 
   claude-review:
     name: Claude review
     needs: gate
-    # Only a pull_request event starts a review: it is the one event that
-    # carries a same-repository pull request's own head commit.
-    if: needs.gate.outputs.claude_due == 'true' && github.event_name == 'pull_request'
+    if: needs.gate.outputs.claude_due == 'true'
     runs-on: ubuntu-26.04
     timeout-minutes: 30
     # A push cancels the review of the commit it replaced.
@@ -112,11 +104,9 @@ jobs:
           -f description="Claude is reviewing the head commit."
           -f target_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
 
-      # The default ref: on pull_request, the merge commit, which holds the
-      # head commit's changes. Claude reads the diff with `gh pr diff`, and
-      # the statuses go on HEAD_SHA. Naming the head commit here would make
-      # CodeQL flag an untrusted checkout, because this workflow also runs on
-      # issue_comment with a write token.
+      # The default ref, the merge commit, holds the head commit's changes.
+      # Claude reads the diff with `gh pr diff`, and the statuses go on
+      # HEAD_SHA.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           persist-credentials: false
