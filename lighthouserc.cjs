@@ -100,7 +100,8 @@ const urls = picked.filter(Boolean).map((p) => `${base}${p}`);
 // Accessibility and SEO were 1.00 in every run since the contrast fixes of
 // 2026-10-30. Best practices was 0.96 in every run, from one audit only: off
 // Vercel, the Vercel Analytics script is a 404 and logs a console error. The
-// site's layout now leaves the script out there.
+// site's layout now leaves the script out there. On a preview, Vercel's
+// Toolbar can fail two of its audits; `collect.settings` below blocks it.
 //
 // So every URL gets one bar: performance at 0.9; accessibility, best
 // practices and SEO at 1.00, since their audits don't depend on timing and
@@ -145,7 +146,19 @@ module.exports = {
       settings: {
         preset: "desktop",
         throttlingMethod: "simulate",
-        skipAudits: ["uses-http2"]
+        skipAudits: ["uses-http2"],
+        // Vercel adds its Toolbar to previews only, from vercel.live, which
+        // uses pusher.com. The proxy's `x-vercel-skip-toolbar` header does not
+        // always keep it out, and the Toolbar can set a third-party cookie.
+        // That fails the third-party-cookies and inspector-issues audits on
+        // every page. On 2026-11-20, best practices fell to 0.78 on all five
+        // pages of a preview in two attempts, and a later run of the same PR
+        // scored 1.00. A local build scored 1.00 too. CI kept only category
+        // scores then, so it did not record which audits failed. The Toolbar
+        // is not part of the app and production never loads it, so the audit
+        // blocks both hosts. Lighthouse ignores a blocked request in
+        // errors-in-console.
+        blockedUrlPatterns: ["*vercel.live*", "*pusher.com*"]
       }
     },
     assert: {
