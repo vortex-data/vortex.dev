@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
+import { PARQUET_CODEC_LABELS } from '@/bench/lib/chart-format';
 import { describe, expect, it } from 'vitest';
 
 import type { ChartResponse, Group } from '@/bench/lib/queries';
@@ -144,6 +145,60 @@ describe('summaryLines', () => {
     ).toBe(
       '1. Vortex: 1.14x the size of Parquet (from 0.677x to 1.55x across datasets), ' +
         '5.74x smaller than Arrow in memory, 1,604.0 MB in total',
+    );
+  });
+
+  it('names zstd Parquet as the baseline under the group’s labels', () => {
+    const size = (name: string, ratio: number) => ({
+      name,
+      minRatio: ratio,
+      ratio,
+      maxRatio: ratio,
+      compressionRatio: null,
+      totalBytes: null,
+      measured: 1,
+      total: 1,
+    });
+    const lines = summaryLines(
+      {
+        type: 'compressionSize',
+        title: 't',
+        explanation: 'e',
+        rankings: [size('parquet', 1), size('parquet-snappy', 1.34)],
+      },
+      PARQUET_CODEC_LABELS,
+    );
+    expect(lines[0]).toContain('divided by Parquet (zstd)’s');
+    expect(lines).toContain('1. Parquet (zstd): the baseline');
+    expect(lines.at(-1)).toBe(
+      '2. Parquet (Snappy): 1.34x the size of Parquet (zstd) (from 1.34x to 1.34x across datasets)',
+    );
+  });
+
+  it('weighs the SQL size summary by benchmark, and ranges over scale factors', () => {
+    const lines = summaryLines({
+      type: 'compressionSize',
+      title: 't',
+      explanation: 'e',
+      coverageUnit: 'benchmarks',
+      rankings: [
+        {
+          name: VX,
+          minRatio: 0.7,
+          ratio: 0.9,
+          maxRatio: 1.1,
+          compressionRatio: null,
+          totalBytes: null,
+          measured: 5,
+          total: 6,
+        },
+      ],
+    });
+    expect(lines[0]).toContain('over the benchmarks');
+    expect(lines[0]).toContain('each benchmark counts once');
+    expect(lines.at(-1)).toBe(
+      '1. Vortex: 0.9x the size of Parquet (from 0.7x to 1.1x across benchmarks and ' +
+        'scale factors), measured on 5 of 6 benchmarks',
     );
   });
 });

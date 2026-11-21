@@ -79,7 +79,7 @@ export function GroupSection({
   // selected by the dataset name inside the group's slug (`null` if the slug
   // does not parse or no matching explainer exists).
   const docUrl = groupDocUrl(group.slug);
-  const headline = groupHeadline(group.summary);
+  const headline = groupHeadline(group.summary, group.seriesLabels);
   return (
     <section
       className="group-details"

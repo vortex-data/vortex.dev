@@ -43,6 +43,11 @@ export const SCORES = {
   size:
     'the geometric mean, over the datasets, of the format’s file size divided by ' +
     'Parquet’s. Lower is better.',
+  /** The SQL Benchmark File Sizes summary's score, which weighs each benchmark once. */
+  benchmarkSize:
+    'the geometric mean, over the benchmarks, of the format’s file size divided by ' +
+    'Parquet’s, where each benchmark counts once, as the geometric mean of its scale ' +
+    'factors. Lower is better.',
   arrow:
     'the geometric mean, over the datasets, of the data’s size in memory as Arrow divided by ' +
     'the format’s file size. Higher is better.',

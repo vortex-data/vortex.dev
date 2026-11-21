@@ -15,7 +15,7 @@
 
 import { groupAnchor, groupAnchors } from '@/bench/lib/anchor';
 import { groupDocUrl } from '@/bench/lib/benchmark-docs';
-import { higherIsBetter } from '@/bench/lib/chart-format';
+import { higherIsBetter, proseParquet, type SeriesLabels } from '@/bench/lib/chart-format';
 import {
   formatBytes,
   formatCompressionSizeRatio,
@@ -252,8 +252,11 @@ function timingLines(rankings: readonly SeriesRanking[], unit: string, runtime: 
   );
 }
 
-/** One summary's rankings as Markdown lines, best first, with their units. */
-export function summaryLines(summary: Summary): string[] {
+/**
+ * One summary's rankings as Markdown lines, best first, with their units. `seriesLabels` are the
+ * group's display names, which name zstd Parquet in the Compression & File Size group.
+ */
+export function summaryLines(summary: Summary, seriesLabels?: SeriesLabels): string[] {
   switch (summary.type) {
     case 'queryBenchmark':
       return [
@@ -309,18 +312,25 @@ export function summaryLines(summary: Summary): string[] {
       ];
     }
     case 'compressionSize': {
-      const baseline = summary.baseline ?? 'Parquet';
+      const baseline = summary.baseline ?? proseParquet(seriesLabels);
+      const name = (format: string) =>
+        summary.baseline === undefined && format === 'parquet' ? baseline : seriesLabel(format);
+      // The SQL Benchmark File Sizes summary weighs each benchmark once, and its range is over
+      // single scale factors.
+      const byBenchmark = summary.coverageUnit === 'benchmarks';
+      const score = byBenchmark ? SCORES.benchmarkSize : SCORES.size;
       return [
-        `Score: ${SCORES.size.replace('Parquet', baseline)}`,
+        `Score: ${score.replace('Parquet', baseline)}`,
         '',
         ...summary.rankings.map(
           (item, idx) =>
-            `${idx + 1}. ${seriesLabel(item.name)}: ` +
-            (seriesLabel(item.name) === baseline
+            `${idx + 1}. ${name(item.name)}: ` +
+            (name(item.name) === baseline
               ? 'the baseline'
               : `${formatCompressionSizeRatio(item.ratio)} the size of ${baseline} ` +
                 `(from ${formatCompressionSizeRatio(item.minRatio)} ` +
-                `to ${formatCompressionSizeRatio(item.maxRatio)} across datasets)`) +
+                `to ${formatCompressionSizeRatio(item.maxRatio)} ` +
+                `${byBenchmark ? 'across benchmarks and scale factors' : 'across datasets'})`) +
             (item.compressionRatio === null
               ? ''
               : `, ${formatCompressionSizeRatio(item.compressionRatio)} smaller than Arrow in memory`) +
@@ -374,13 +384,13 @@ export function llmsText(groups: readonly Group[], readAt: Date): string {
       lines.push(`${group.description}.`, '');
     }
     // The landing page's headline, when it compares Vortex with Parquet.
-    const headline = groupHeadline(group.summary);
+    const headline = groupHeadline(group.summary, group.seriesLabels);
     const headlineWords = headline === null ? '' : headlineText(headline);
     if (headlineWords.includes('Parquet')) {
       lines.push(`Vortex compared with Parquet: ${headlineWords}.`, '');
     }
     if (group.summary !== undefined) {
-      lines.push(...summaryLines(group.summary), '');
+      lines.push(...summaryLines(group.summary, group.seriesLabels), '');
     }
     const doc = groupDocUrl(group.slug);
     lines.push(

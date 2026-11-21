@@ -3,6 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 
+import { PARQUET_CODEC_LABELS } from '@/bench/lib/chart-format';
 import { groupHeadline, headlineText } from '@/bench/lib/headline';
 import type { SeriesRanking, Summary } from '@/bench/lib/summary';
 
@@ -221,6 +222,30 @@ describe('groupHeadline', () => {
       ],
     });
     expect(h && headlineText(h)).toBe('20% smaller than Parquet (partial)');
+  });
+
+  it('names zstd Parquet in a size headline under the group’s labels', () => {
+    const h = groupHeadline(
+      {
+        type: 'compressionSize',
+        title: 's',
+        explanation: 'e',
+        rankings: [
+          {
+            name: VX,
+            minRatio: 1.1,
+            ratio: 1.1,
+            maxRatio: 1.1,
+            compressionRatio: null,
+            totalBytes: null,
+            measured: 1,
+            total: 1,
+          },
+        ],
+      },
+      PARQUET_CODEC_LABELS,
+    );
+    expect(h && headlineText(h)).toBe('10% larger than Parquet (zstd)');
   });
 
   it('has no headline for a size summary with its own baseline', () => {

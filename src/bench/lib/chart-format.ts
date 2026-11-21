@@ -301,6 +301,14 @@ export const PARQUET_CODEC_LABELS: SeriesLabels = {
 };
 
 /**
+ * Parquet's name in prose (headlines, `llms.txt`) under a group's `labels`: "Parquet", or
+ * "Parquet (zstd)" in the Compression & File Size group, which also charts Snappy Parquet.
+ */
+export function proseParquet(labels?: SeriesLabels): string {
+  return labels?.parquet?.replace(/^parquet/, 'Parquet') ?? 'Parquet';
+}
+
+/**
  * The Compression & File Size group's ClickBench chart's display names: it keeps `parquet`,
  * because it charts ClickBench's published files, which are Snappy.
  */
