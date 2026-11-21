@@ -19,8 +19,10 @@
  *
  * A blocking finding is a P0 or P1 finding. For Codex, it is an unresolved
  * review thread that Codex started, on a line the head commit still has (not
- * outdated), with a P0 or P1 badge or with no badge. For Claude, it is the
- * `blocking` count in the review's structured output (its verdict).
+ * outdated), with a P0 or P1 badge or with no badge. For Claude, it is an
+ * unresolved, not outdated thread from the review that starts with "**P0**"
+ * or "**P1**". If Claude's verdict counts P0 or P1 findings but it left no
+ * finding thread, the gate fails, because nobody can resolve that.
  *
  * Retries: when Codex has not reviewed the head commit, the gate posts
  * `@codex review`, and posts it again on a later run if Codex has still not
@@ -39,7 +41,8 @@
  *                          GITHUB_OUTPUT
  *   claude-verdict         read the Claude review's verdict from
  *                          CLAUDE_VERDICT and set the
- *                          `AI cross-review / Claude` status on HEAD_SHA
+ *                          `AI cross-review / Claude #<PR_NUMBER>` status on
+ *                          HEAD_SHA
  *
  * Environment (set by GitHub Actions, or by hand):
  *   GITHUB_TOKEN       token with `statuses: write` and `pull-requests: write`
@@ -57,7 +60,17 @@
 import { appendFile } from "node:fs/promises";
 
 const GATE_CONTEXT = "AI cross-review";
-const CLAUDE_CONTEXT = "AI cross-review / Claude";
+/**
+ * The Claude review's status. Its name holds the pull request's number,
+ * because a commit status belongs to a commit, and another pull request with
+ * the same head commit must not reuse this pull request's review.
+ */
+export function claudeContext(pr: number): string {
+  return `AI cross-review / Claude #${pr}`;
+}
+
+/** The login of the Claude review's inline comments: the workflow token's. */
+const CLAUDE_THREAD_AUTHOR = "github-actions";
 const CODEX_LOGIN = "chatgpt-codex-connector[bot]";
 
 /** Authors whose pull requests need no AI review: dependency updates. */
@@ -172,6 +185,45 @@ export function blockingCodexThreads(threads: ReviewThread[]): number {
   }).length;
 }
 
+/** The priority that starts a Claude finding, such as "**P1**", or null. */
+function claudePriority(body: string): string | null {
+  return body.match(/^\s*\*\*(P[0-3])\*\*/)?.[1] ?? null;
+}
+
+/**
+ * Counts the Claude findings that block a merge: unresolved threads, on lines
+ * the head commit still has, that start with P0 or P1. Like Codex's, they
+ * stop blocking when someone resolves them, so a recheck needs no new push.
+ */
+function blockingClaudeThreads(threads: ReviewThread[]): {
+  blocking: number;
+  findings: number;
+} {
+  const claude = threads.filter(
+    (thread) =>
+      thread.author === CLAUDE_THREAD_AUTHOR &&
+      claudePriority(thread.body) !== null
+  );
+  return {
+    findings: claude.length,
+    blocking: claude.filter((thread) => {
+      if (thread.isResolved || thread.isOutdated) return false;
+      const priority = claudePriority(thread.body);
+      return priority === "P0" || priority === "P1";
+    }).length
+  };
+}
+
+/** Reads the count from a Claude status description, "Reviewed: N ...". */
+function reportedBlocking(description: string): number | null {
+  const match = description.match(/^Reviewed: (\d+) /);
+  return match?.[1] ? Number(match[1]) : null;
+}
+
+function findings(count: number): string {
+  return `${count} unresolved P0/P1 finding${count === 1 ? "" : "s"}`;
+}
+
 /**
  * True when the gate should ask Codex for a review of the head commit: it has
  * not asked yet, or Codex has not started since its last request.
@@ -239,9 +291,7 @@ export function decide(input: GateInput): Decision {
   if (codex === "done") {
     const blocking = blockingCodexThreads(input.threads);
     if (blocking > 0) {
-      problems.push(
-        `Codex: ${blocking} unresolved P0/P1 finding${blocking === 1 ? "" : "s"}`
-      );
+      problems.push(`Codex: ${findings(blocking)}`);
     }
   } else {
     waiting.push("Codex");
@@ -259,7 +309,20 @@ export function decide(input: GateInput): Decision {
       // The review did not finish. The workflow starts a new one.
       problems.push(`Claude's review did not finish (${status.description})`);
       claudeDue = true;
-    } else if (status.state !== "success") {
+    } else if (status.state === "success") {
+      const reported = reportedBlocking(status.description);
+      const threads = blockingClaudeThreads(input.threads);
+      if (reported === null) {
+        problems.push(`Claude: unreadable status "${status.description}"`);
+      } else if (reported > 0 && threads.findings === 0) {
+        // Claude counted findings but left no thread to resolve or fix.
+        problems.push(
+          `Claude: ${reported} P0/P1 findings with no review thread`
+        );
+      } else if (threads.blocking > 0) {
+        problems.push(`Claude: ${findings(threads.blocking)}`);
+      }
+    } else {
       problems.push(`Claude: ${status.description}`);
     }
   }
@@ -537,7 +600,9 @@ async function gate(): Promise<void> {
     .map((c) => parseCodexState(c.body))
     .filter((state): state is CodexState => state !== null)
     .at(-1);
-  const claude = combined.statuses.find((s) => s.context === CLAUDE_CONTEXT);
+  const claude = combined.statuses.find(
+    (s) => s.context === claudeContext(number)
+  );
 
   const decision = decide({
     author: pr.user.login,
@@ -594,22 +659,22 @@ async function gate(): Promise<void> {
 async function claudeVerdict(): Promise<void> {
   const repo = env("GITHUB_REPOSITORY");
   const headSha = env("HEAD_SHA");
+  const context = claudeContext(Number(env("PR_NUMBER")));
   const verdict = parseClaudeVerdict(process.env.CLAUDE_VERDICT);
   if (!verdict.ok) {
-    // `error`, not `failure`: the review did not finish, so the gate starts
-    // a new one instead of treating this as a finding.
-    await setStatus(repo, headSha, CLAUDE_CONTEXT, "error", verdict.error);
+    // `error`: the review did not finish, so the gate starts a new one
+    // instead of treating this as a finding.
+    await setStatus(repo, headSha, context, "error", verdict.error);
     return;
   }
-  const { blocking } = verdict;
+  // `success` means the review finished. The gate counts the blocking
+  // findings from Claude's open threads, so resolving one can clear it.
   await setStatus(
     repo,
     headSha,
-    CLAUDE_CONTEXT,
-    blocking === 0 ? "success" : "failure",
-    blocking === 0
-      ? "no blocking findings"
-      : `${blocking} P0/P1 finding${blocking === 1 ? "" : "s"}`
+    context,
+    "success",
+    `Reviewed: ${verdict.blocking} P0/P1 finding${verdict.blocking === 1 ? "" : "s"}.`
   );
 }
 

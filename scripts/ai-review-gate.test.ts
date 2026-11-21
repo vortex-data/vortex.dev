@@ -12,6 +12,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   blockingCodexThreads,
+  claudeContext,
   codexHelped,
   decide,
   type GateInput,
@@ -203,15 +204,46 @@ test("a Codex-written PR waits for Claude, then follows its status", () => {
   assert.equal(running.state, "pending");
   assert.equal(running.claudeDue, false);
 
+  // Claude finished with findings: its open P0/P1 threads block.
+  const reviewed = {
+    state: "success",
+    description: "Reviewed: 1 P0/P1 finding."
+  };
+  const claudeP1 = codexThread({
+    author: "github-actions",
+    body: "**P1** A bug."
+  });
   const failed = decide(
-    input({
-      body,
-      claudeStatus: { state: "failure", description: "2 P0/P1 findings" }
-    })
+    input({ body, claudeStatus: reviewed, threads: [claudeP1] })
   );
   assert.equal(failed.state, "failure");
-  assert.match(failed.description, /Claude: 2 P0\/P1 findings/);
+  assert.match(failed.description, /Claude: 1 unresolved P0\/P1 finding\./);
   assert.equal(failed.claudeDue, false);
+
+  // Resolving the thread clears it on the next run, with no new push.
+  const cleared = decide(
+    input({
+      body,
+      claudeStatus: reviewed,
+      threads: [{ ...claudeP1, isResolved: true }]
+    })
+  );
+  assert.equal(cleared.state, "success");
+
+  // A P2 from Claude does not block.
+  const p2 = decide(
+    input({
+      body,
+      claudeStatus: reviewed,
+      threads: [{ ...claudeP1, body: "**P2** A nit." }]
+    })
+  );
+  assert.equal(p2.state, "success");
+
+  // Counted findings with no thread cannot be resolved, so they fail.
+  const threadless = decide(input({ body, claudeStatus: reviewed }));
+  assert.equal(threadless.state, "failure");
+  assert.match(threadless.description, /no review thread/);
 
   // A review that did not finish is retried, not counted as a finding.
   const errored = decide(
@@ -225,7 +257,13 @@ test("a Codex-written PR waits for Claude, then follows its status", () => {
   assert.match(errored.description, /did not finish \(no verdict\)/);
 
   const passed = decide(
-    input({ body, claudeStatus: { state: "success", description: "" } })
+    input({
+      body,
+      claudeStatus: {
+        state: "success",
+        description: "Reviewed: 0 P0/P1 findings."
+      }
+    })
   );
   assert.equal(passed.state, "success");
   assert.match(passed.description, /Codex and Claude/);
@@ -236,6 +274,10 @@ test("a PR from both agents needs both reviews", () => {
   const decision = decide(input({ body, codexState: null }));
   assert.equal(decision.state, "pending");
   assert.match(decision.description, /Codex and Claude/);
+});
+
+test("the Claude status name holds the PR number", () => {
+  assert.equal(claudeContext(229), "AI cross-review / Claude #229");
 });
 
 test("drafts wait and dependency updates pass", () => {

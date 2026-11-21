@@ -110,7 +110,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: >-
           gh api "repos/${GITHUB_REPOSITORY}/statuses/${HEAD_SHA}"
-          -f state=pending -f context="AI cross-review / Claude"
+          -f state=pending -f context="AI cross-review / Claude #${PR_NUMBER}"
           -f description="Claude is reviewing the head commit."
           -f target_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
 
@@ -166,9 +166,11 @@ jobs:
                  merge.
                - P2: it should be fixed, but it does not block the merge.
                - P3: a small improvement.
-            5. Post each new finding as an inline comment. Start the comment
-               with its priority, for example "**P1**". If an open comment
-               already reports a finding, do not post it again.
+            5. Post each new finding as an inline comment on a line of the
+               diff. Start the comment with its priority, for example
+               "**P1**". The gate counts the open P0 and P1 comments, so a
+               P0 or P1 finding must have one. If an open comment already
+               reports a finding, do not post it again.
             6. Post one summary comment with
                `gh pr comment ${{ env.PR_NUMBER }}`.
             7. In your structured output, set `blocking` to the number of P0
