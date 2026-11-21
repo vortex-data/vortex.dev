@@ -123,7 +123,16 @@ export function GroupBody({
     <div className="group-body" ref={ref}>
       {open && (
         <>
-          <GroupToolbar groupSlug={groupSlug} universe={universe} seriesLabels={seriesLabels} />
+          <GroupToolbar
+            groupSlug={groupSlug}
+            universe={universe}
+            seriesLabels={seriesLabels}
+            unlabeledCharts={
+              seriesLabels === undefined
+                ? []
+                : charts.filter((link) => link.seriesLabels === undefined).map((link) => link.name)
+            }
+          />
           <div className="chart-grid">
             {charts.map((link, i) => (
               <Chart

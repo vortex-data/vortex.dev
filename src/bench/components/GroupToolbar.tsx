@@ -52,11 +52,14 @@ export function GroupToolbar({
   groupSlug,
   universe,
   seriesLabels,
+  unlabeledCharts = [],
 }: {
   groupSlug: string;
   universe: FilterUniverse;
   /** Display names the chips give some formats (see `SeriesLabels`). */
   seriesLabels?: SeriesLabels | undefined;
+  /** The group's charts that keep the real names, which a renamed chip's title lists. */
+  unlabeledCharts?: readonly string[];
 }) {
   const [open, setOpen] = useState(false);
   const panelId = useId();
@@ -183,6 +186,7 @@ export function GroupToolbar({
             snapshot={snapshot}
             globalSnapshot={globalSnapshot}
             seriesLabels={seriesLabels}
+            unlabeledCharts={unlabeledCharts}
           />
           <div className="global-filter-row group-series-row">
             <span className="global-filter-label">Series</span>
@@ -210,6 +214,7 @@ export function GroupToolbar({
                     data-value={label}
                     aria-pressed={isActive}
                     onClick={() => toggleGroupSeries(groupSlug, label)}
+                    title={chipTitle(label, seriesLabels, unlabeledCharts)}
                   >
                     {relabel(label, seriesLabels)}
                   </button>
@@ -267,6 +272,7 @@ function MacroRow({
   snapshot,
   globalSnapshot,
   seriesLabels,
+  unlabeledCharts = [],
 }: {
   label: string;
   dim: 'engine' | 'format';
@@ -275,6 +281,7 @@ function MacroRow({
   snapshot: ReturnType<typeof getGroupSnapshot>;
   globalSnapshot: ReturnType<typeof getGlobalFilterSnapshot>;
   seriesLabels?: SeriesLabels | undefined;
+  unlabeledCharts?: readonly string[];
 }) {
   return (
     <div className="global-filter-row group-macro-row">
@@ -300,6 +307,7 @@ function MacroRow({
             data-value={value}
             aria-pressed={isActive}
             onClick={() => applyGroupMacro(groupSlug, dim, value)}
+            title={chipTitle(value, seriesLabels, unlabeledCharts)}
           >
             {relabel(value, seriesLabels)}
           </button>
@@ -321,4 +329,22 @@ function relabel(label: string, labels: SeriesLabels | undefined): string {
     .split(':')
     .map((segment) => labels[segment] ?? segment)
     .join(':');
+}
+
+/**
+ * A renamed chip's title, when some of the group's charts keep the real name: the chip also
+ * toggles the series there. In the Compression & File Size group, the `parquet-zstd` chip's title
+ * is "parquet-zstd, and parquet on clickbench", because ClickBench's Parquet is its published
+ * Snappy files.
+ */
+function chipTitle(
+  label: string,
+  labels: SeriesLabels | undefined,
+  unlabeledCharts: readonly string[],
+): string | undefined {
+  const shown = relabel(label, labels);
+  if (shown === label || unlabeledCharts.length === 0) {
+    return undefined;
+  }
+  return `${shown}, and ${label} on ${unlabeledCharts.join(', ')}`;
 }
