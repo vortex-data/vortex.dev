@@ -11,8 +11,11 @@
  * `bench-orchestrator/bench_orchestrator/ci_matrix/catalog.py`, the runners in
  * `bench-orchestrator/bench_orchestrator/cli.py`, `scripts/random-access-split.py`
  * and `scripts/compress-split.py`, `scripts/setup-benchmark.sh`, and the versions
- * in `Cargo.toml`, `Cargo.lock` and `vortex-duckdb/build.rs`. Update this file
- * when those change.
+ * in `Cargo.toml`, `Cargo.lock` and `vortex-duckdb/build.rs`. The Parquet
+ * variants come from vortex-data/vortex#11720: `parquet_writer_properties()` in
+ * `vortex-bench/src/utils/parquet.rs`, `vortex-bench/src/parquet_copies.rs`, and
+ * the DuckDB version in `.github/actions/setup-duckdb/action.yml`. Update this
+ * file when those change.
  * The scoring is this site's own (`summary.ts`).
  */
 
@@ -68,9 +71,17 @@ export const METHODOLOGY: readonly MethodologySection[] = [
     text: [
       'Queries run on DataFusion 55 and DuckDB 2.0. The formats are Vortex (its default ' +
         'and compact write strategies), Apache Parquet, Lance 13, Arrow IPC, DuckDB’s own ' +
-        'format, and, for random access, LitData. Not every suite runs every format. The ' +
-        'compression and file size benchmarks write Parquet with parquet-rs 59 and zstd at ' +
-        'level 3. ClickBench reads its published Parquet files.',
+        'format, and, for random access, LitData. Not every suite runs every format.',
+      'Parquet has two variants, one for size and one for speed. Parquet is zstd at level ' +
+        '3, written with parquet-rs 59. It is the baseline of the throughput and file size ' +
+        'scores. Parquet (Snappy) is Parquet as DuckDB writes it by default: Snappy, with ' +
+        'DuckDB’s row groups, dictionaries, statistics, and Bloom filters. The DuckDB 1.5 ' +
+        'command line tool writes it from the same rows. The compression benchmark records ' +
+        'its size, and TPC-DS at scale factor 1 queries it.',
+      'Every SQL suite’s Parquet is zstd Parquet, except in ClickBench and FineWeb, which ' +
+        'query their published Parquet files as Parquet. ClickBench prescribes its files, ' +
+        'which are Snappy, so its Parquet results are not zstd Parquet and are not DuckDB’s ' +
+        'Parquet (Snappy) either.',
     ],
   },
   {
@@ -96,6 +107,9 @@ export const METHODOLOGY: readonly MethodologySection[] = [
       'In both, a query or dataset a series did not run counts as twice that series’ own ' +
         'slowest time, and at least twice the fastest series’ time, so a series cannot ' +
         'rank well by skipping work. Each summary says how many a series ran.',
+      'A query suite also ranks a series that missed a query below every series that ran ' +
+        'them all. Lance cannot run TPC-DS query 72, so it ranks below the complete series ' +
+        'on TPC-DS at scale factor 1.',
       `Write and scan throughput scores are ${SCORES.throughput}`,
       `File size scores are ${SCORES.size}`,
       'Total is the sum of a format’s file sizes over the datasets that every format has.',
