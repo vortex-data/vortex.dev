@@ -85,12 +85,14 @@ codec. `parquet` is the suite's base Parquet: zstd level 3 where the benchmarks 
 dataset's published files where the suite prescribes them, as ClickBench's are Snappy. CI
 reads the records back as the develop baseline for the PR comment's file-size section.
 
-The read service charts both tables in the `File Sizes` group, one line per format. It charts every
-current `compress-bench` dataset in `compression_sizes`, and three `file_sizes` scopes, each summed
-over its files: ClickBench, TPC-H at SF10, and TPC-DS at SF1 (`src/bench/lib/file-sizes.ts`). Its
-summary compares each format with zstd Parquet on the `compress-bench` datasets and on TPC-DS.
-On develop, TPC-DS SF1 records the sizes of Lance and Arrow IPC beside Parquet and Vortex. It
-queries Lance on DataFusion, and writes Arrow IPC after its queries, for its size only. Lance skips q72, which it cannot run; the query summary ranks a series
+The read service charts both tables in the `File Sizes & Compression Ratios` group, one line per
+format. It charts every current `compress-bench` dataset in `compression_sizes`, and three
+`file_sizes` scopes, each summed over its files: ClickBench, TPC-H at SF10, and TPC-DS at SF1
+(`src/bench/lib/file-sizes.ts`). Its summary compares each format with zstd Parquet on the
+`compress-bench` datasets and on TPC-DS. It leaves out `duckdb`, DuckDB's database file, which
+the group still charts. On develop, TPC-DS SF1 records the sizes of Lance, Arrow IPC, and Snappy
+Parquet (`parquet-snappy`) beside Parquet and Vortex. It queries Lance on DataFusion, and writes
+Arrow IPC and Snappy Parquet after its queries, for their sizes only. Lance skips q72, which it cannot run; the query summary ranks a series
 that misses a query below every series that ran them all.
 
 The `SQL File Sizes` group charts every `file_sizes` scope, at every scale factor, and leaves out

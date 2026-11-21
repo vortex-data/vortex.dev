@@ -378,12 +378,12 @@ describe('compareGroupSortKey canonical group ordering (no DB)', () => {
       'cohere-large-10m / partitioned',
       'String Encoding',
       'Random Access (NVMe)',
-      'File Sizes',
+      'File Sizes & Compression Ratios',
       'Compression',
     ].sort(compareGroupSortKey);
     expect(sorted).toEqual([
       'Compression',
-      'File Sizes',
+      'File Sizes & Compression Ratios',
       'Random Access (NVMe)',
       'Clickbench',
       'cohere-large-10m / partitioned',

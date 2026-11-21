@@ -175,7 +175,7 @@ describe('SummaryCard', () => {
     });
     const html = render({
       type: 'compressionSize',
-      title: 'File Sizes Summary',
+      title: 'File Sizes & Compression Ratios Summary',
       rankings: [ranking('parquet', 2), ranking('vortex-compact', 1)],
       explanation: 'e',
     });

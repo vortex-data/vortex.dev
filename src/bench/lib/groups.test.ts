@@ -75,7 +75,7 @@ describe.skipIf(!databaseAvailable)(
       // Random-access sections precede Clickbench in GROUP_ORDER.
       expect(groups.map((g) => g.name)).toEqual([
         'Compression',
-        'File Sizes',
+        'File Sizes & Compression Ratios',
         'Random Access (NVMe)',
         'TPC-H (NVMe) (SF=1)',
         'cohere-large-10m / partitioned',
@@ -176,7 +176,7 @@ describe.skipIf(!databaseAvailable)(
     it('computes compression-size rankings for Vortex, Parquet, Lance, and Arrow IPC', async () => {
       const groups = await collectGroups();
       const summary = expectDefined(
-        groups.find((g) => g.name === 'File Sizes')?.summary,
+        groups.find((g) => g.name === 'File Sizes & Compression Ratios')?.summary,
         'compression size summary',
       );
       if (summary.type !== 'compressionSize') {
@@ -252,7 +252,7 @@ describe.skipIf(!databaseAvailable)(
       const body = (await res.json()) as GroupsResponse;
       expect(body.groups.map((g) => g.name)).toEqual([
         'Compression',
-        'File Sizes',
+        'File Sizes & Compression Ratios',
         'Random Access (NVMe)',
         'TPC-H (NVMe) (SF=1)',
         'cohere-large-10m / partitioned',
@@ -567,7 +567,7 @@ describe.skipIf(!databaseAvailable)('summary math fidelity (testcontainers Postg
     const groups = await collectGroups();
     expect(groups.map((group) => group.name)).toEqual([
       'Compression',
-      'File Sizes',
+      'File Sizes & Compression Ratios',
       'String Encoding',
       'String Encoding Size',
     ]);
@@ -661,7 +661,10 @@ describe.skipIf(!databaseAvailable)('summary math fidelity (testcontainers Postg
     }
 
     const groups = await collectGroups();
-    expect(groups.map((group) => group.name)).toEqual(['File Sizes', 'SQL File Sizes']);
+    expect(groups.map((group) => group.name)).toEqual([
+      'File Sizes & Compression Ratios',
+      'SQL File Sizes',
+    ]);
     const [group, sql] = groups;
     expect(groupKeyFromSlug(defined(group).slug)).toEqual({ k: 'CompressionSizeGroup' });
     expect(defined(group).charts.map((chart) => chart.name)).toEqual([
@@ -679,7 +682,7 @@ describe.skipIf(!databaseAvailable)('summary math fidelity (testcontainers Postg
     const summary = defined(group).summary;
     expect(summary).toMatchObject({
       type: 'compressionSize',
-      title: 'File Sizes Summary',
+      title: 'File Sizes & Compression Ratios Summary',
       rankings: [
         { name: 'vortex-compact', ratio: 0.5, totalBytes: 200, measured: 1, total: 1 },
         { name: 'parquet', ratio: 1, totalBytes: 400, measured: 1, total: 1 },

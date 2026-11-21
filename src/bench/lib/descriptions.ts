@@ -46,7 +46,7 @@ function staticDescription(name: string): string | null {
       return 'Tests performance of selecting arbitrary row indices from a file on S3 storage';
     case 'Compression':
       return 'Measures write and scan throughput for Vortex, Parquet, and Lance files';
-    case 'File Sizes':
+    case 'File Sizes & Compression Ratios':
       return (
         'Compares file sizes and compression ratios across formats against zstd Parquet, on the ' +
         'compression datasets and on one scale factor each of ClickBench, TPC-H, and TPC-DS'
@@ -54,8 +54,8 @@ function staticDescription(name: string): string | null {
     case 'SQL File Sizes':
       return (
         'Tracks the size of the files each SQL benchmark writes, at every scale factor, against ' +
-        'Vortex. Unlike File Sizes, it leaves out the compression datasets and does not rank ' +
-        'formats against Parquet'
+        'Vortex. Unlike File Sizes & Compression Ratios, it leaves out the compression ' +
+        'datasets and does not rank formats against Parquet'
       );
     case 'String Encoding':
       return 'Measures Vortex file write and scan throughput for each string encoder';

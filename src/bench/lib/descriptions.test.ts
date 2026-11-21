@@ -20,13 +20,13 @@ describe('groupDescription', () => {
     expect(groupDescription('Compression')).toBe(
       'Measures write and scan throughput for Vortex, Parquet, and Lance files',
     );
-    expect(groupDescription('File Sizes')).toBe(
+    expect(groupDescription('File Sizes & Compression Ratios')).toBe(
       'Compares file sizes and compression ratios across formats against zstd Parquet, on the ' +
         'compression datasets and on one scale factor each of ClickBench, TPC-H, and TPC-DS',
     );
     expect(groupDescription('SQL File Sizes')).toBe(
       'Tracks the size of the files each SQL benchmark writes, at every scale factor, against ' +
-        'Vortex. Unlike File Sizes, it leaves out the compression datasets and does not rank ' +
+        'Vortex. Unlike File Sizes & Compression Ratios, it leaves out the compression datasets and does not rank ' +
         'formats against Parquet',
     );
     expect(groupDescription('Clickbench')).toBe(

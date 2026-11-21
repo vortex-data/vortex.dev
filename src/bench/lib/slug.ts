@@ -47,7 +47,7 @@ export type GroupKey =
     }
   // `suite` is absent for the `compress-bench` group, so its slug predates the split.
   | { k: 'CompressionTimeGroup'; suite?: 'strings' }
-  // Without `suite`, the File Sizes group: `compress-bench`'s sizes and three SQL scopes.
+  // Without `suite`, the File Sizes & Compression Ratios group: `compress-bench`'s sizes and three SQL scopes.
   | { k: 'CompressionSizeGroup'; suite?: 'strings' }
   | { k: 'RandomAccessGroup'; storage: RandomAccessStorage }
   | { k: 'VectorSearchGroup'; dataset: string; layout: string }

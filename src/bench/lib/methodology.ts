@@ -77,7 +77,8 @@ export const METHODOLOGY: readonly MethodologySection[] = [
       'Parquet has two variants, which differ only in their codec. Parquet is zstd at level ' +
         '3, and it is the baseline of the throughput and file size scores. Parquet (Snappy) ' +
         'is the same Parquet with Snappy, the default codec of DuckDB, Spark, and PyArrow. ' +
-        'Only the compression benchmark writes it, for its size. Both are written with ' +
+        'Only the compression benchmark and TPC-DS at scale factor 1 write it, for its ' +
+        'size. Both are written with ' +
         'parquet-rs 59, except SpatialBench’s Parquet, which its generator writes with ' +
         'parquet-rs 56.',
       'Every SQL suite’s Parquet is zstd Parquet, except in ClickBench and FineWeb, which ' +
@@ -155,7 +156,8 @@ export const METHODOLOGY: readonly MethodologySection[] = [
       'The compression summaries leave out the wide table and sparse-wide datasets, which ' +
         'have many variants each. The file size summary also leaves out statpopgen, and counts ' +
         'the TPC-H l_comment column once, because its canonical and chunked files are the ' +
-        'same size. These datasets still have charts.',
+        'same size. It does not rank DuckDB’s database file, which is a query engine’s ' +
+        'storage, not a file format. These datasets and DuckDB’s file still have charts.',
       'The string encoding benchmark compares its encoders with FSST instead of Parquet, so ' +
         'its throughput and size scores divide by FSST’s.',
       'Each summary uses each series’ newest result on develop.',

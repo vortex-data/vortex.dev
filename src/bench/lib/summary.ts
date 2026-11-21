@@ -729,7 +729,7 @@ const FILE_SIZE_BASELINE = 'vortex-file-compressed';
 /**
  * The SQL File Sizes rollup: each format's total file size against `vortex-file-compressed`, per
  * benchmark scope (benchmark and scale factor) at that scope's newest commit with a baseline.
- * Unlike the File Sizes summary, it covers every scope in `file_sizes` and leaves out
+ * Unlike the File Sizes & Compression Ratios summary, it covers every scope in `file_sizes` and leaves out
  * `compress-bench`. Scopes come from nightly as well as develop runs, so each one uses its own
  * newest commit. File sizes record no Arrow size, so the Arrow ratio is empty.
  */
@@ -811,7 +811,7 @@ async function collectFileSizeSummary(): Promise<Summary | null> {
 }
 
 /**
- * The `File Sizes` rollup: each format's sizes against Parquet's (zstd) over the
+ * The `File Sizes & Compression Ratios` rollup: each format's sizes against Parquet's (zstd) over the
  * `compress-bench` datasets ([`compressionSizeSamples`]) and the SQL scopes in
  * [`FILE_SIZE_SUMMARY_SCOPES`] ([`fileSizeSamples`]). Each synthetic family in
  * [`SIZE_SUMMARY_FAMILIES`] counts as one dataset. Only `compress-bench` records Arrow memory
@@ -820,13 +820,16 @@ async function collectFileSizeSummary(): Promise<Summary | null> {
  */
 async function collectFileSizesSummary(): Promise<Summary | null> {
   const [sizes, files] = await Promise.all([compressionSizeSamples(), fileSizeSamples()]);
-  const rankings = compressionSizeRankings([...sizes, ...files], 'complete');
+  const rankings = compressionSizeRankings(
+    [...sizes, ...files].filter((sample) => !SIZE_SUMMARY_EXCLUDED_FORMATS.includes(sample.format)),
+    'complete',
+  );
   if (rankings.length === 0) {
     return null;
   }
   return {
     type: 'compressionSize',
-    title: 'File Sizes Summary',
+    title: 'File Sizes & Compression Ratios Summary',
     rankings,
     explanation:
       'Total file size, and geometric means of file sizes versus Arrow (higher is better) and versus Parquet-zstd (lower is better)',
@@ -834,12 +837,19 @@ async function collectFileSizesSummary(): Promise<Summary | null> {
 }
 
 /**
+ * Formats the File Sizes & Compression Ratios summary leaves out. They still chart in the group.
+ * DuckDB's database file (`duckdb`) is a query engine's storage, not a file format to compare,
+ * and only TPC-DS records it.
+ */
+const SIZE_SUMMARY_EXCLUDED_FORMATS: readonly string[] = ['duckdb'];
+
+/**
  * Which datasets a size summary's totals cover:
  * - `shared`: the datasets that every ranked format has. Every format gets a total.
  * - `complete`: every dataset in the summary. Only a format measured on all of them gets a
- *   total. The File Sizes summary uses it: its SQL scopes record DuckDB and Vortex Compact,
- *   which `compress-bench` does not write, and `compress-bench` records Arrow IPC, which the SQL
- *   suites do not, so no dataset is shared by every format.
+ *   total. The File Sizes & Compression Ratios summary uses it, because its two sources record
+ *   formats at different times and some formats only on some datasets, so a format can lack a
+ *   dataset that the others have.
  */
 type SizeTotals = 'shared' | 'complete';
 

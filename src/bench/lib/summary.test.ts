@@ -20,7 +20,7 @@ const GROUP_KINDS = FAMILIES.map((family) => family.groupKind);
 describe('compression summaries', () => {
   beforeEach(() => {
     query.mockReset();
-    // The File Sizes summary also reads the SQL suites' sizes; a test that sets no rows for that
+    // The File Sizes & Compression Ratios summary also reads the SQL suites' sizes; a test that sets no rows for that
     // second query gets none.
     query.mockResolvedValue({ rows: [] });
   });
@@ -85,7 +85,7 @@ describe('compression summaries', () => {
     // Both formats have both datasets, so each total sums both.
     expect(byFormat.get('vortex-file-compressed')?.totalBytes).toBe(901);
     expect(byFormat.get('parquet')?.totalBytes).toBe(104);
-    expect(summary.title).toBe('File Sizes Summary');
+    expect(summary.title).toBe('File Sizes & Compression Ratios Summary');
     expect(summary.explanation).toBe(
       'Total file size, and geometric means of file sizes versus Arrow (higher is better) and versus Parquet-zstd (lower is better)',
     );
@@ -241,6 +241,27 @@ describe('compression summaries', () => {
       // Vortex Compact has a size for TPC-DS alone, so it ranks after the complete formats.
       ['vortex-compact', 0.5, 1, null],
     ]);
+  });
+
+  it("leaves DuckDB's database file out of the ranking", async () => {
+    const row = (format: string, dataset: string, valueBytes: number) => ({
+      format,
+      dataset,
+      datasetVariant: dataset === 'tpcds' ? 'sf=1.0' : null,
+      valueBytes,
+      baselineBytes: 100,
+      uncompressedBytes: null,
+    });
+    query.mockResolvedValueOnce({ rows: [row('parquet', 'taxi', 100)] });
+    query.mockResolvedValueOnce({
+      rows: [row('parquet', 'tpcds', 100), row('duckdb', 'tpcds', 20)],
+    });
+
+    const summary = await collectGroupSummary({ k: 'CompressionSizeGroup' });
+    if (summary === null || summary.type !== 'compressionSize') {
+      throw new Error('expected a compressionSize summary');
+    }
+    expect(summary.rankings.map((ranking) => ranking.name)).toEqual(['parquet']);
   });
 
   it('gives no total when the formats share no dataset', async () => {
@@ -418,7 +439,7 @@ describe('compression summaries', () => {
     await collectGroupSummary({ k: 'CompressionTimeGroup' });
     await collectGroupSummary({ k: 'CompressionSizeGroup' });
 
-    // The File Sizes summary reads the SQL suites' sizes in a third query.
+    // The File Sizes & Compression Ratios summary reads the SQL suites' sizes in a third query.
     expect(query).toHaveBeenCalledTimes(3);
     const timingParams = [
       ['vortex-file-compressed', 'parquet', 'lance'],

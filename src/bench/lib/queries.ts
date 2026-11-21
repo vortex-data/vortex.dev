@@ -1055,7 +1055,7 @@ function groupRowsQuery(
       break;
     }
     case 'CompressionSizeGroup': {
-      // The File Sizes group holds two families. Both give one size per format, so their blocks
+      // The File Sizes & Compression Ratios group holds two families. Both give one size per format, so their blocks
       // share columns. The String Encoding Size group holds `compression_sizes` charts alone.
       const sizes: [CompressionChartKey, number][] = [];
       const files: [FileSizeChartKey, number][] = [];
@@ -1298,7 +1298,7 @@ export interface GroupChartsResponse {
  */
 const GROUP_ORDER: readonly string[] = [
   'Compression',
-  'File Sizes',
+  'File Sizes & Compression Ratios',
   'SQL File Sizes',
   'Random Access (NVMe)',
   'Random Access (S3)',
@@ -1583,7 +1583,7 @@ type DatasetVariantRow = { dataset: string; dataset_variant: string | null };
 
 /**
  * Group display names per compression suite and family. The size family's group without a suite
- * is the File Sizes group, which [`collectFileSizesGroup`] builds, so the size family names only
+ * is the File Sizes & Compression Ratios group, which [`collectFileSizesGroup`] builds, so the size family names only
  * `string-bench`'s group here.
  */
 const COMPRESSION_GROUP_NAMES = {
@@ -1663,7 +1663,7 @@ async function compressionSizeDatasets(): Promise<DatasetVariantRow[]> {
 }
 
 /**
- * The File Sizes group and the `String Encoding Size` group, each left out when it has no
+ * The File Sizes & Compression Ratios group and the `String Encoding Size` group, each left out when it has no
  * charts.
  */
 async function collectCompressionSizeGroup(): Promise<Group[]> {
@@ -1750,7 +1750,7 @@ async function collectVectorSearchGroups(): Promise<Group[]> {
 type FileSizeScopeRow = { benchmark: string; scale_factor: string };
 
 /**
- * The File Sizes group, or `[]` if neither table has a chart for it: the SQL suites' scopes in
+ * The File Sizes & Compression Ratios group, or `[]` if neither table has a chart for it: the SQL suites' scopes in
  * [`FILE_SIZE_SCOPES`] that have rows, in that order, then the `compress-bench` datasets of
  * `datasets`, the rows of `compression_sizes`, by name.
  */
