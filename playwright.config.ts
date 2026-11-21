@@ -10,7 +10,9 @@ export default defineConfig({
   // passes is flaky, and a flaky test still fails CI.
   retries: process.env.CI ? 1 : 0,
   failOnFlakyTests: !!process.env.CI,
-  workers: 1,
+  // Two browsers at once, beside the local server, on the 4-CPU runner that
+  // GitHub gives a public repository. The axe job sets its own count.
+  workers: 2,
   // The JSON report keeps each attempt and its duration. CI uploads it on
   // success too, and a failed test keeps its trace in test-results/.
   reporter: process.env.CI
