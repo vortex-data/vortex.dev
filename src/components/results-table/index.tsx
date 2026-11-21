@@ -18,7 +18,8 @@ const classes = (...names: (string | false)[]) =>
  * rules (results.js): a row per panel and a column per system, Vortex
  * first in Blue, the best figure in each row underlined, a figure 10× or more
  * behind it dotted, and how Vortex does against Parquet last. A phone shows
- * only the verdicts: against Parquet, and against Lance. Its markup is
+ * only the verdicts, against Parquet and against Lance, under "Vortex" in
+ * place of "Benchmark". Its markup is
  * the same as the system's `renderResults`, and
  * tests/unit/results-table.test.tsx holds it there. A
  * row whose figures are not bench's names their source in its head's hover
@@ -54,7 +55,12 @@ export function ResultsTable({
         <table className="vx-results-table">
           <thead>
             <tr>
-              <th scope="col">Benchmark</th>
+              <th scope="col">
+                <span className="vx-results-label">Benchmark</span>
+                <span className="vx-results-lead" aria-hidden="true">
+                  Vortex
+                </span>
+              </th>
               {systems.map((s) => (
                 <th
                   key={s}

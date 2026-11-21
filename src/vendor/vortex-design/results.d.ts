@@ -150,7 +150,7 @@ export type ResultsRow = {
   name: string;
   cells: ResultsCell[];
   verdict: string;
-  /** With the `rival` option, how Vortex does against that system, worded as `verdict`: "14× faster", "N/A", or "—" when the panel does not show it. Otherwise null. */
+  /** With the `rival` option, how Vortex does against that system, worded as `verdict`: "14× faster", or "—" when that system cannot run the benchmark or the panel does not show it. Otherwise null. */
   rivalVerdict: string | null;
   /** Where the figures come from when they are not bench's, as the row head's hover title and screen-reader text. */
   source: PanelSource | null;

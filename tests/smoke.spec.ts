@@ -233,7 +233,7 @@ test.describe("home bands", () => {
       "Write",
       "ClickBench",
       "TPC-H",
-      "GPU, cuDF",
+      "GPU analytics",
       "Random access",
       "File size"
     ]);
@@ -250,7 +250,7 @@ test.describe("home bands", () => {
     ).toHaveText("N/A");
     await expect(
       table.locator('tbody th[title^="end to end, hot, "]')
-    ).toContainText("GPU, cuDF");
+    ).toContainText("GPU analytics");
   });
 
   // The exact list and order are logo-banner.test.tsx's; here the page shows
@@ -899,7 +899,7 @@ test.describe("results table on phones", () => {
     test.describe(`at ${width}px`, () => {
       test.use({ viewport: { width, height: 812 } });
 
-      test("shows the verdicts against Parquet and Lance, inside the screen", async ({
+      test("shows Vortex's verdicts against Parquet and Lance, inside the screen", async ({
         page
       }) => {
         await page.goto("/");
@@ -915,15 +915,31 @@ test.describe("results table on phones", () => {
             const wrap = el.querySelector(".vx-results-wrap");
             return wrap ? wrap.scrollWidth - wrap.clientWidth : -1;
           })(),
+          // What a sighted reader sees: text in boxes wider than 1px, so the
+          // visually hidden "Benchmark" and "Vortex " are left out.
           heads: [...el.querySelectorAll("thead th")]
             .filter((th) => getComputedStyle(th).display !== "none")
-            .map((th) => th.textContent)
+            .map((th) =>
+              [...th.childNodes]
+                .filter(
+                  (n) =>
+                    n.nodeType === Node.TEXT_NODE ||
+                    (n instanceof HTMLElement && n.offsetWidth > 1)
+                )
+                .map((n) => n.textContent)
+                .join("")
+            )
         }));
-        expect(m.heads).toEqual([
+        expect(m.heads).toEqual(["Vortex", "vs Parquet", "vs Lance"]);
+        // What a screen reader hears.
+        const heads = table.getByRole("columnheader");
+        await expect(heads).toHaveCount(3);
+        for (const [i, name] of [
           "Benchmark",
           "Vortex vs Parquet",
           "Vortex vs Lance"
-        ]);
+        ].entries())
+          await expect(heads.nth(i)).toHaveAccessibleName(name);
         expect(m.right).toBeLessThanOrEqual(width);
         expect(m.overflow).toBe(0);
       });
