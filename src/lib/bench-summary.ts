@@ -112,14 +112,6 @@ type Source = {
   where?: Ranking;
   /** The ranking's field that holds the score. */
   score: "score" | "ratio";
-  /**
-   * Show a system's score even when bench measured it on only part of the
-   * workload. The file size summary covers the SQL suites' files, which
-   * have no Lance or Arrow IPC copies, so those two are partial there. A
-   * size ratio is to Parquet's size on the same dataset, so it stays
-   * comparable over the datasets the system has.
-   */
-  partialScores?: true;
   /** The systems the panel shows. */
   systems: readonly string[];
   /**
@@ -221,7 +213,6 @@ const SOURCES: (Source | Panel)[] = [
     rankings: (s) => s.rankings,
     name: (f) => f,
     score: "ratio",
-    partialScores: true,
     systems: WITH_ARROW
   }
 ];
@@ -245,9 +236,10 @@ const measured = (r: Row) =>
   r.score !== null &&
   !(r.measured !== undefined && r.total !== undefined && r.measured < r.total);
 
-// Bench's coverage passes through, unless the source shows partial scores:
-// results.js shows a system measured on only part of the workload as
-// "Not measured".
+// Bench's coverage passes through: results.js shows a system measured on
+// only part of the workload as "Not measured". That holds for file sizes
+// too: a geomean over fewer datasets is not comparable with one over all
+// of them, although both are ratios to Parquet.
 function rowFor(source: Source, rankings: Ranking[], format: string) {
   const name = source.name(format);
   const where = Object.entries(source.where ?? {});
@@ -256,7 +248,6 @@ function rowFor(source: Source, rankings: Ranking[], format: string) {
   );
   if (!r) return { score: null };
   const score = r[source.score];
-  if (source.partialScores) return { score: positive(score) ? score : null };
   const measured = count(r.measured);
   const total = count(r.total);
   return {

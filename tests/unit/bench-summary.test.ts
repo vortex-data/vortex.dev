@@ -353,10 +353,9 @@ describe("panelsFrom", () => {
     });
   });
 
-  it("keeps a file size score bench measured on part of the datasets", () => {
-    // The SQL suites write no Lance or Arrow IPC files, so bench's file size
-    // summary has those two on part of its datasets. A size ratio is to
-    // Parquet on the same dataset, so the card keeps it.
+  it("passes through the coverage of a file size score measured on part of the datasets", () => {
+    // A geomean over fewer datasets is not comparable with one over all of
+    // them, so results.js shows this row as "Not measured".
     const gs = groups();
     const lance = group(gs, "Compression & File Size").summary.rankings?.find(
       (r) => r.name === "lance"
@@ -366,7 +365,9 @@ describe("panelsFrom", () => {
     lance.total = 13;
     assert.deepEqual(panelsFrom(gs, charts())?.[6]?.rows[2], {
       system: "Lance",
-      score: 1.9876533869960349
+      score: 1.9876533869960349,
+      measured: 12,
+      total: 13
     });
   });
 
