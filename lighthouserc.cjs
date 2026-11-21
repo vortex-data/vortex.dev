@@ -62,10 +62,12 @@ const pages = {
   home: "/",
   blog: "/blog",
   post: seed ? `/blog/${seed}` : undefined,
+  faq: "/faq",
   bench: "/bench",
   chart: process.env.BENCH_CHART_PATH
     ? `/bench${process.env.BENCH_CHART_PATH}`
-    : undefined
+    : undefined,
+  methodology: "/bench/methodology"
 };
 // LHCI_PAGE picks one page, as each of CI's Lighthouse jobs does; without
 // it, every page.

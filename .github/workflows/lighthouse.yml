@@ -52,7 +52,7 @@ jobs:
       # The keys of `pages` and `policy` in lighthouserc.cjs;
       # tests/unit/lighthouse-scores.test.ts keeps them equal.
       matrix:
-        page: [home, blog, post, bench, chart]
+        page: [home, blog, post, faq, bench, chart, methodology]
         profile: [desktop, mobile]
     steps:
       # The PR's head commit, which Vercel built the preview from, not the
