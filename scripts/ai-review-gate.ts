@@ -149,6 +149,12 @@ const WRITE_PERMISSIONS = new Set(["admin", "write"]);
 /** How long a Claude review can stay pending before the gate retries it. */
 const STALE_CLAUDE_MS = 45 * 60 * 1000;
 
+/**
+ * How many Claude reviews the gate starts for one head commit. Retries come
+ * on their own from the scheduled refresh, so the cap bounds the API spend.
+ */
+const MAX_CLAUDE_ATTEMPTS = 3;
+
 /** The author of the gate's own comments: the workflow token's. */
 const GATE_LOGIN = "github-actions[bot]";
 
@@ -195,6 +201,8 @@ export type GateInput = {
   codexStateUpdatedAt: number | null;
   /** The commits that Codex's submitted, not dismissed, reviews cover. */
   codexReviewedShas: string[];
+  /** The commits whose Codex review a maintainer dismissed. */
+  codexDismissedShas: string[];
   threads: ReviewThread[];
   /** This pull request's Claude status on the head commit, if any. */
   claudeStatus: {
@@ -203,6 +211,8 @@ export type GateInput = {
     /** When it was set, in milliseconds. */
     updatedAt: number;
   } | null;
+  /** How many Claude reviews of the head commit started. */
+  claudeAttempts: number;
   /** True when the author has write access, or is Codex. */
   authorTrusted: boolean;
   /** The commits that a maintainer's review approved. */
@@ -336,6 +346,7 @@ function codexProgress(
     | "codexState"
     | "codexStateUpdatedAt"
     | "codexReviewedShas"
+    | "codexDismissedShas"
     | "now"
   >
 ): "done" | "running" | "none" {
@@ -343,6 +354,9 @@ function codexProgress(
   // A submitted review is final. The summary comment can lag behind it, and
   // it stays at "running" if Codex fails to edit it.
   if (input.codexReviewedShas.includes(headSha)) return "done";
+  // A dismissed review does not count, and the summary comment still says
+  // "completed", so it must not stand in for the review.
+  if (input.codexDismissedShas.includes(headSha)) return "none";
   if (codexState?.commitSha === headSha) {
     if (codexState.status === "completed") return "done";
     // A review that never finished counts as none, so the gate can ask
@@ -425,6 +439,17 @@ export function decide(input: GateInput): Decision {
   }
 
   let claudeDue = false;
+  const canRetry = input.claudeAttempts < MAX_CLAUDE_ATTEMPTS;
+  const retryClaude = (problem: string) => {
+    if (canRetry) {
+      problems.push(problem);
+      claudeDue = true;
+    } else {
+      problems.push(
+        `${problem}, ${MAX_CLAUDE_ATTEMPTS} times; push a commit to try again`
+      );
+    }
+  };
   if (needsClaude && !input.authorTrusted) {
     // Claude never reads an outside author's pull request.
     if (!input.maintainerApprovedShas.includes(input.headSha)) {
@@ -438,15 +463,13 @@ export function decide(input: GateInput): Decision {
     } else if (status.state === "pending") {
       if (input.now - status.updatedAt > STALE_CLAUDE_MS) {
         // The job stopped before it recorded a verdict. Start a new one.
-        problems.push("Claude's review stopped without a verdict");
-        claudeDue = true;
+        retryClaude("Claude's review stopped without a verdict");
       } else {
         waiting.push("Claude's review");
       }
     } else if (status.state === "error") {
       // The review did not finish. The workflow starts a new one.
-      problems.push(`Claude's review did not finish (${status.description})`);
-      claudeDue = true;
+      retryClaude(`Claude's review did not finish (${status.description})`);
     } else if (status.state === "success") {
       if (reportedBlocking(status.description) === null) {
         problems.push(`Claude: unreadable status "${status.description}"`);
@@ -818,6 +841,9 @@ async function gate(): Promise<void> {
     codexReviewedShas: reviews
       .filter((r) => r.user?.login === CODEX_LOGIN && r.state !== "DISMISSED")
       .map((r) => r.commit_id),
+    codexDismissedShas: reviews
+      .filter((r) => r.user?.login === CODEX_LOGIN && r.state === "DISMISSED")
+      .map((r) => r.commit_id),
     threads,
     claudeStatus: claude
       ? {
@@ -826,6 +852,10 @@ async function gate(): Promise<void> {
           updatedAt: Date.parse(claude.updated_at)
         }
       : null,
+    // The Claude job marks each start with a pending status.
+    claudeAttempts: statuses.filter(
+      (s) => s.context === claudeContext(number) && s.state === "pending"
+    ).length,
     authorTrusted,
     maintainerApprovedShas,
     codexRequests: gateComments

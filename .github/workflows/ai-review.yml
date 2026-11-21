@@ -38,6 +38,15 @@ on:
   # evaluate each open PR again, from main.
   schedule:
     - cron: "*/15 * * * *"
+  # The refresh starts this for a PR whose Claude review is due, because
+  # only a gate run can start the Claude job. A token's other events start
+  # no workflow. A person can run it too; the gate reads only state.
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: Pull request number
+        required: true
+        type: number
 
 # Nothing by default; each job asks for what it uses.
 permissions: {}
@@ -47,6 +56,7 @@ jobs:
     name: Gate
     if: >-
       github.event_name == 'pull_request_target' ||
+      github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'issue_comment' && github.event.issue.pull_request &&
         (github.event.comment.user.login == 'chatgpt-codex-connector[bot]' ||
           contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)))
@@ -57,7 +67,7 @@ jobs:
     # gate reads only the current state, never the event: each run, the last
     # one included, sees every change, a new base branch too.
     concurrency:
-      group: ai-review-gate-${{ github.event.pull_request.number || github.event.issue.number }}
+      group: ai-review-gate-${{ github.event.pull_request.number || github.event.issue.number || inputs.pr }}
       cancel-in-progress: false
     permissions:
       contents: read
@@ -76,7 +86,7 @@ jobs:
       - name: Withdraw the earlier result
         env:
           GH_TOKEN: ${{ github.token }}
-          PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
+          PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number || inputs.pr }}
         run: |
           sha=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}" --jq .head.sha)
           gh api "repos/${GITHUB_REPOSITORY}/statuses/${sha}" --silent \
@@ -98,7 +108,7 @@ jobs:
         id: gate
         env:
           GITHUB_TOKEN: ${{ github.token }}
-          PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
+          PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number || inputs.pr }}
         run: bun scripts/ai-review-gate.ts gate
 
   claude-review:
@@ -114,7 +124,7 @@ jobs:
     timeout-minutes: 30
     # A push cancels the review of the commit it replaced.
     concurrency:
-      group: ai-review-claude-${{ github.event.pull_request.number || github.event.issue.number }}
+      group: ai-review-claude-${{ github.event.pull_request.number || github.event.issue.number || inputs.pr }}
       cancel-in-progress: true
     permissions:
       contents: read
@@ -123,7 +133,7 @@ jobs:
       id-token: write
     env:
       HEAD_SHA: ${{ needs.gate.outputs.head_sha }}
-      PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
+      PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number || inputs.pr }}
     steps:
       # main, for CLAUDE.md and the gate. Claude reads the change through the
       # API, so the pull request's code never lands on disk.
@@ -160,7 +170,8 @@ jobs:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ github.token }}
           # Codex comments, reviews, and can push to a pull request it opened.
-          allowed_bots: chatgpt-codex-connector[bot]
+          # github-actions[bot] is the actor when the refresh starts a run.
+          allowed_bots: chatgpt-codex-connector[bot],github-actions[bot]
           prompt: |
             REPO: ${{ github.repository }}
             PR NUMBER: ${{ env.PR_NUMBER }}
@@ -191,7 +202,10 @@ jobs:
                - P2: it should be fixed, but it does not block the merge.
                - P3: a small improvement.
             5. Post each new finding as an inline comment on a line of the
-               diff. Start the comment with its priority, for example
+               diff, with the inline comment tool. If that tool is not
+               available (a run that the refresh started), use
+               `gh api repos/${{ github.repository }}/pulls/${{ env.PR_NUMBER }}/comments -f commit_id=${{ needs.gate.outputs.head_sha }} -f path=PATH -F line=LINE -f side=RIGHT -f body=BODY`.
+               Start the comment with its priority, for example
                "**P1**". The gate counts the open P0 and P1 comments, so a
                P0 or P1 finding must have one. If an open comment already
                reports a finding, do not post it again.
@@ -202,7 +216,7 @@ jobs:
                findings from earlier comments. Set `summary` to one sentence.
 
           claude_args: |
-            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh api repos/${{ github.repository }}/contents/:*),Read,Grep,Glob"
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh api repos/${{ github.repository }}/contents/:*),Bash(gh api repos/${{ github.repository }}/pulls/${{ env.PR_NUMBER }}/comments:*),Read,Grep,Glob"
             --json-schema '{"type":"object","properties":{"blocking":{"type":"integer","minimum":0},"summary":{"type":"string"}},"required":["blocking","summary"],"additionalProperties":false}'
 
       # The Claude action can check out the pull request's branch, so check
@@ -238,7 +252,7 @@ jobs:
     runs-on: ubuntu-26.04
     timeout-minutes: 5
     concurrency:
-      group: ai-review-gate-${{ github.event.pull_request.number || github.event.issue.number }}
+      group: ai-review-gate-${{ github.event.pull_request.number || github.event.issue.number || inputs.pr }}
       cancel-in-progress: false
     permissions:
       contents: read
@@ -257,7 +271,7 @@ jobs:
       - name: Evaluate the reviews
         env:
           GITHUB_TOKEN: ${{ github.token }}
-          PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
+          PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number || inputs.pr }}
         run: bun scripts/ai-review-gate.ts gate
 
   open-prs:
@@ -298,6 +312,8 @@ jobs:
       contents: read
       statuses: write
       pull-requests: write
+      # Start this workflow for a PR whose Claude review is due.
+      actions: write
     steps:
       # A scheduled run's ref is the default branch.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
@@ -310,8 +326,19 @@ jobs:
 
       # Writes the status only when the result changed.
       - name: Evaluate the reviews
+        id: gate
         env:
           GITHUB_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ matrix.pr }}
           REFRESH: "1"
         run: bun scripts/ai-review-gate.ts gate
+
+      # The gate job of the new run evaluates again and starts the review.
+      - name: Start the due Claude review
+        if: steps.gate.outputs.claude_due == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ matrix.pr }}
+        run: >-
+          gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/ai-review.yml/dispatches"
+          -f ref="${GITHUB_REF_NAME}" -f "inputs[pr]=${PR_NUMBER}"

@@ -40,6 +40,8 @@ function input(overrides: Partial<GateInput> = {}): GateInput {
     codexState: { commitSha: HEAD, status: "completed", hasFindings: false },
     codexStateUpdatedAt: NOW - MINUTE,
     codexReviewedShas: [],
+    codexDismissedShas: [],
+    claudeAttempts: 0,
     threads: [],
     claudeStatus: null,
     authorTrusted: true,
@@ -453,4 +455,31 @@ test("a later request for changes withdraws an approval", () => {
     approversOf([{ user, commit_id: OLD, state: "APPROVED" }], HEAD),
     []
   );
+});
+
+test("a dismissed Codex review of the head does not count", () => {
+  const decision = decide(input({ codexDismissedShas: [HEAD] }));
+  assert.equal(decision.state, "pending");
+  assert.equal(decision.requestCodex, true);
+  // A newer review of the head counts again.
+  assert.equal(
+    decide(input({ codexDismissedShas: [HEAD], codexReviewedShas: [HEAD] }))
+      .state,
+    "success"
+  );
+});
+
+test("the gate starts at most three Claude reviews of a commit", () => {
+  const body = "A change.\n\nWritten with Codex.";
+  const claudeStatus = {
+    state: "error",
+    description: "no verdict",
+    updatedAt: NOW
+  };
+  const second = decide(input({ body, claudeStatus, claudeAttempts: 2 }));
+  assert.equal(second.claudeDue, true);
+  const capped = decide(input({ body, claudeStatus, claudeAttempts: 3 }));
+  assert.equal(capped.state, "failure");
+  assert.equal(capped.claudeDue, false);
+  assert.match(capped.description, /push a commit/);
 });
