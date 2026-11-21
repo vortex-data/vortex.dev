@@ -208,6 +208,36 @@ describe('SummaryCard', () => {
     expect(html.match(/measured on/g)).toHaveLength(2);
   });
 
+  it('renders only the parquet ratios when a size summary has no totals or Arrow sizes', () => {
+    const ranking = (name: string, ratio: number, measured: number) => ({
+      name,
+      minRatio: ratio,
+      ratio,
+      maxRatio: ratio,
+      compressionRatio: null,
+      totalBytes: null,
+      measured,
+      total: 2,
+    });
+    const html = render({
+      type: 'compressionSize',
+      title: 'SQL Benchmark File Sizes Summary',
+      rankings: [
+        ranking('vortex-compact', 0.7, 2),
+        ranking('parquet', 1, 2),
+        ranking('lance', 4, 1),
+      ],
+      explanation: 'e',
+      coverageUnit: 'benchmarks',
+    });
+    expect(html).toContain('class="compression-size-scores compression-size-scores--ratios-only"');
+    expect(html).toContain('>vs parquet<');
+    expect(html).not.toContain('>vs Arrow<');
+    expect(html).not.toContain('>Total<');
+    expect(html).toContain('measured on 1 of 2 benchmarks');
+    expect(html).not.toContain('datasets');
+  });
+
   it('renders nothing for a compression card with no rankings', () => {
     expect(render({ type: 'compression', title: 't', rankings: [], explanation: 'e' })).toBe('');
   });
@@ -253,7 +283,7 @@ describe('SummaryCard', () => {
     expect(html).not.toContain('<h3 class="scores-title">Compression Size Summary</h3>');
     expect(html).toContain('class="compression-size-scores"');
     expect(html).toContain('>vs Arrow<');
-    expect(html).toContain('>vs Parquet<');
+    expect(html).toContain('>vs parquet<');
     expect(html.match(/>GeoMean</g)).toHaveLength(1);
     expect(html).not.toContain('>Mean<');
     expect(html.match(/>Total</g)).toHaveLength(1);

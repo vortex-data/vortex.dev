@@ -25,10 +25,10 @@ describe('groupDescription', () => {
         'charts the compression datasets and one scale factor each of ClickBench, TPC-H, and ' +
         'TPC-DS, and ranks formats on the compression datasets and TPC-DS',
     );
-    expect(groupDescription('SQL File Sizes')).toBe(
-      'Tracks the size of the files each SQL benchmark writes, at every scale factor, against ' +
-        'Vortex. Unlike Compression & File Size, it leaves out the compression datasets and does ' +
-        'not rank formats against Parquet',
+    expect(groupDescription('SQL Benchmark File Sizes')).toBe(
+      'Tracks the size of the files the SQL benchmarks above read, at every scale factor. It ' +
+        'ranks formats against Parquet on the benchmarks that write Parquet with bench’s ' +
+        'settings, each benchmark once. Compression & File Size compares the formats’ compression',
     );
     expect(groupDescription('Clickbench')).toBe(
       "ClickHouse's analytical benchmark suite testing real-world query patterns on web " +

@@ -139,16 +139,44 @@ export function SummaryCard({
         item.totalBytes === null ? [] : [item.totalBytes],
       );
       const totalUnit = totals.length === 0 ? null : byteUnit(Math.max(...totals));
+      // A summary with no totals and no Arrow sizes, such as the SQL benchmarks', shows neither
+      // column: the left panel keeps only the ranks and names.
+      const ratiosOnly = summary.rankings.every(
+        (item) => item.totalBytes === null && item.compressionRatio === null,
+      );
+      const coverageUnit = summary.coverageUnit ?? 'datasets';
       return (
         <section className="benchmark-scores-summary" aria-label={summary.title}>
-          <div className="compression-size-scores">
+          <div
+            className={
+              ratiosOnly
+                ? 'compression-size-scores compression-size-scores--ratios-only'
+                : 'compression-size-scores'
+            }
+          >
             <div className="compression-size-panel compression-size-arrow-panel">
               <div className="compression-size-arrow-header">
-                <span className="compression-size-group compression-size-total-group">Total</span>
-                <span className="compression-size-heading compression-size-total-unit">
-                  {totalUnit}
-                </span>
-                <span className="compression-size-group">vs Arrow</span>
+                {ratiosOnly ? (
+                  // Two empty rows, so the names line up with the ratios beside them.
+                  <>
+                    <span className="compression-size-spacer" aria-hidden="true">
+                      {'\u00a0'}
+                    </span>
+                    <span className="compression-size-spacer" aria-hidden="true">
+                      {'\u00a0'}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="compression-size-group compression-size-total-group">
+                      Total
+                    </span>
+                    <span className="compression-size-heading compression-size-total-unit">
+                      {totalUnit}
+                    </span>
+                    <span className="compression-size-group">vs Arrow</span>
+                  </>
+                )}
               </div>
               <div className="compression-size-arrow-list">
                 {summary.rankings.map((item, idx) => {
@@ -156,7 +184,7 @@ export function SummaryCard({
                   // A format measured on only some datasets has its means over those alone, so
                   // the row says how many, and it ranks after the complete ones.
                   const partial = item.measured < item.total;
-                  const coverage = `measured on ${item.measured} of ${item.total} datasets`;
+                  const coverage = `measured on ${item.measured} of ${item.total} ${coverageUnit}`;
                   return (
                     <div
                       className={rowClass('score-item compression-size-arrow-row', item.name)}
@@ -175,22 +203,26 @@ export function SummaryCard({
                           </>
                         ) : null}
                       </span>
-                      <span className="score-runtime compression-size-value">
-                        {item.totalBytes === null || totalUnit === null ? (
-                          '—'
-                        ) : (
-                          <>
-                            <span className="vx-sr-only">Total: </span>
-                            {formatBytesIn(item.totalBytes, totalUnit)}
-                            <span className="vx-sr-only"> {totalUnit}</span>
-                          </>
-                        )}
-                      </span>
-                      <span className="score-value compression-size-value">
-                        {item.compressionRatio === null
-                          ? '—'
-                          : formatCompressionSizeRatio(item.compressionRatio)}
-                      </span>
+                      {ratiosOnly ? null : (
+                        <>
+                          <span className="score-runtime compression-size-value">
+                            {item.totalBytes === null || totalUnit === null ? (
+                              '—'
+                            ) : (
+                              <>
+                                <span className="vx-sr-only">Total: </span>
+                                {formatBytesIn(item.totalBytes, totalUnit)}
+                                <span className="vx-sr-only"> {totalUnit}</span>
+                              </>
+                            )}
+                          </span>
+                          <span className="score-value compression-size-value">
+                            {item.compressionRatio === null
+                              ? '—'
+                              : formatCompressionSizeRatio(item.compressionRatio)}
+                          </span>
+                        </>
+                      )}
                     </div>
                   );
                 })}
@@ -199,7 +231,7 @@ export function SummaryCard({
             <div className="compression-size-panel compression-size-parquet-panel">
               <div className="compression-size-parquet-header">
                 <span className="compression-size-group">
-                  vs {summary.baseline ?? seriesLabels?.parquet ?? 'Parquet'}
+                  vs {summary.baseline ?? seriesLabels?.parquet ?? 'parquet'}
                 </span>
                 <span className="compression-size-heading compression-size-range">Min</span>
                 <span className="compression-size-heading">GeoMean</span>

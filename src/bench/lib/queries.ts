@@ -1309,7 +1309,6 @@ export interface GroupChartsResponse {
 const GROUP_ORDER: readonly string[] = [
   'Compression',
   'Compression & File Size',
-  'SQL File Sizes',
   'Random Access (NVMe)',
   'Random Access (S3)',
   'Clickbench',
@@ -1331,8 +1330,15 @@ const GROUP_ORDER: readonly string[] = [
   'appian [nvme]',
 ];
 
-/** Groups that sort after every other group, in this order: the string-bench groups. */
-const GROUP_ORDER_LAST: readonly string[] = ['String Encoding', 'String Encoding Size'];
+/**
+ * Groups that sort after every other group, in this order: the SQL benchmarks' file sizes, after
+ * the query groups whose files they are, then the string-bench groups.
+ */
+const GROUP_ORDER_LAST: readonly string[] = [
+  'SQL Benchmark File Sizes',
+  'String Encoding',
+  'String Encoding Size',
+];
 
 /**
  * Sort key for a group name: names in [`GROUP_ORDER`] sort by position, then
@@ -1822,9 +1828,9 @@ function fileSizeChartRank(benchmark: string): number {
 }
 
 /**
- * The SQL File Sizes group: one chart per benchmark and scale factor in `file_sizes`, or `[]` if
- * the table is empty. Charts order by [`FILE_SIZE_CHART_ORDER`], then by benchmark name, then by numeric
- * scale factor, so `10.0` follows `1.0`.
+ * The SQL Benchmark File Sizes group: one chart per benchmark and scale factor in `file_sizes`, or
+ * `[]` if the table is empty. Charts order by [`FILE_SIZE_CHART_ORDER`], then by benchmark name,
+ * then by numeric scale factor, so `10.0` follows `1.0`.
  */
 async function collectFileSizeGroup(): Promise<Group[]> {
   // A recursive skip scan of `idx_file_sizes_baseline`: one descent per scope instead of a scan

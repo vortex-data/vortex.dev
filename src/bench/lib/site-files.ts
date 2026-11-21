@@ -326,7 +326,7 @@ export function summaryLines(summary: Summary): string[] {
               : `, ${formatCompressionSizeRatio(item.compressionRatio)} smaller than Arrow in memory`) +
             (item.totalBytes === null ? '' : `, ${formatBytes(item.totalBytes)} in total`) +
             (item.measured < item.total
-              ? `, measured on ${item.measured} of ${item.total} datasets`
+              ? `, measured on ${item.measured} of ${item.total} ${summary.coverageUnit ?? 'datasets'}`
               : ''),
         ),
       ];

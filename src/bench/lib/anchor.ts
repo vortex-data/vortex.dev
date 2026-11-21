@@ -20,7 +20,7 @@
 const KEPT_ANCHORS: Readonly<Record<string, string>> = {
   'Polar Signals Profiling': 'polarsignals-profiling',
   'Compression & File Size': 'compression-size',
-  'SQL File Sizes': 'sql-file-size',
+  'SQL Benchmark File Sizes': 'sql-file-size',
 };
 
 /**

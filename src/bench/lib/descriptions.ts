@@ -52,11 +52,11 @@ function staticDescription(name: string): string | null {
         'charts the compression datasets and one scale factor each of ClickBench, TPC-H, and ' +
         'TPC-DS, and ranks formats on the compression datasets and TPC-DS'
       );
-    case 'SQL File Sizes':
+    case 'SQL Benchmark File Sizes':
       return (
-        'Tracks the size of the files each SQL benchmark writes, at every scale factor, against ' +
-        'Vortex. Unlike Compression & File Size, it leaves out the compression ' +
-        'datasets and does not rank formats against Parquet'
+        'Tracks the size of the files the SQL benchmarks above read, at every scale factor. It ' +
+        'ranks formats against Parquet on the benchmarks that write Parquet with bench’s ' +
+        'settings, each benchmark once. Compression & File Size compares the formats’ compression'
       );
     case 'String Encoding':
       return 'Measures Vortex file write and scan throughput for each string encoder';

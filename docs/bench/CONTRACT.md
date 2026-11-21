@@ -95,9 +95,12 @@ Parquet (`parquet-snappy`) beside Parquet and Vortex. It queries Lance on DataFu
 Arrow IPC and Snappy Parquet after its queries, for their sizes only. Lance skips q72, which it cannot run; the query summary ranks a series
 that misses a query below every series that ran them all.
 
-The `SQL File Sizes` group charts every `file_sizes` scope, at every scale factor, and leaves out
-`compression_sizes`. Its summary compares each format with `vortex-file-compressed`, per scope at
-that scope's newest commit with a Vortex size.
+The `SQL Benchmark File Sizes` group charts every `file_sizes` scope, at every scale factor, and
+leaves out `compression_sizes`. Its summary compares each format with Parquet, at each format's
+newest commit that also has Parquet, on the benchmarks that write Parquet with bench's settings:
+JOB, Polar Signals, statpopgen, TPC-DS, TPC-H, and nested TPC-H
+(`FILE_SIZE_RANKED_BENCHMARKS`). It counts each benchmark once, as the geometric mean of its
+scale factors, and shows no totals.
 
 `random_access_time` records include `open_mode`. The value is `cached` for a reused accessor
 or `reopen` when each timed take includes a new accessor. Historical rows use `cached`.

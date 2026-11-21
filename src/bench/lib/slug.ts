@@ -52,7 +52,7 @@ export type GroupKey =
   | { k: 'CompressionSizeGroup'; suite?: 'strings' }
   | { k: 'RandomAccessGroup'; storage: RandomAccessStorage }
   | { k: 'VectorSearchGroup'; dataset: string; layout: string }
-  // The SQL File Sizes group: every SQL benchmark and scale factor in `file_sizes`.
+  // The SQL Benchmark File Sizes group: every SQL benchmark and scale factor in `file_sizes`.
   | { k: 'FileSizeGroup' };
 
 const CHART_KINDS: readonly ChartKind[] = [

@@ -596,7 +596,7 @@ describe.skipIf(!databaseAvailable)('groupChartPayloads at the window edges', ()
       ],
     ],
     [
-      // The SQL File Sizes group holds `file_sizes` charts alone, at every scale factor.
+      // The SQL Benchmark File Sizes group holds `file_sizes` charts alone, at every scale factor.
       { k: 'FileSizeGroup' },
       [
         { k: 'FileSize', benchmark: 'tpch', scale_factor: '10.0' },

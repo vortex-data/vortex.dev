@@ -42,7 +42,7 @@ import { getPool } from './db';
 import { randomAccessStorage, type RandomAccessStorage } from './random-access';
 import { compareCodeUnits } from './families';
 import type { GroupKey } from './slug';
-import { FILE_SIZE_SUMMARY_SCOPES } from './file-sizes';
+import { FILE_SIZE_RANKED_BENCHMARKS, FILE_SIZE_SUMMARY_SCOPES } from './file-sizes';
 import {
   SIZE_SUMMARY_EXCLUDED_DATASET_PATTERNS,
   SIZE_SUMMARY_FAMILIES,
@@ -187,6 +187,8 @@ export type Summary =
       explanation: string;
       /** What `ratio` compares sizes with, when not Parquet. */
       baseline?: string;
+      /** What `measured` and `total` count, when not datasets. */
+      coverageUnit?: 'benchmarks';
     }
   | {
       type: 'queryBenchmark';
@@ -723,90 +725,32 @@ async function compressionSamples(): Promise<CompressionTimeSample[]> {
   return (await getPool().query<CompressionTimeSample>(text, compressionSummaryQueryParams())).rows;
 }
 
-/** The format every other SQL benchmark file format is compared with. */
-const FILE_SIZE_BASELINE = 'vortex-file-compressed';
-
 /**
- * The SQL File Sizes rollup: each format's total file size against `vortex-file-compressed`, per
- * benchmark scope (benchmark and scale factor) at that scope's newest commit with a baseline.
- * Unlike the Compression & File Size summary, it covers every scope in `file_sizes` and leaves out
- * `compress-bench`. Scopes come from nightly as well as develop runs, so each one uses its own
- * newest commit. File sizes record no Arrow size, so the Arrow ratio is empty.
+ * The SQL Benchmark File Sizes rollup: each format's file sizes against Parquet's, over every
+ * scale factor of [`FILE_SIZE_RANKED_BENCHMARKS`], the suites that write Parquet with bench's
+ * settings ([`fileSizeSamples`]). It counts each benchmark once, as the geometric mean of its scale
+ * factors. File sizes record no Arrow size, and the scopes run from megabytes to tens of
+ * gigabytes, so a sum would be the largest scope's size: the card shows the ratios alone.
  */
 async function collectFileSizeSummary(): Promise<Summary | null> {
-  // `scopes` is a skip scan of `idx_file_sizes_baseline`. `latest` walks the read branch's
-  // commits newest first and probes that index, so it stops at the newest commit with a baseline.
-  const text = `
-    WITH RECURSIVE scopes AS (
-      (SELECT f.benchmark, f.scale_factor
-         FROM file_sizes f
-        ORDER BY f.benchmark, f.scale_factor
-        LIMIT 1)
-      UNION ALL
-      SELECT nxt.benchmark, nxt.scale_factor
-        FROM scopes s
-       CROSS JOIN LATERAL (
-         SELECT f.benchmark, f.scale_factor
-           FROM file_sizes f
-          WHERE (f.benchmark, f.scale_factor) > (s.benchmark, s.scale_factor)
-          ORDER BY f.benchmark, f.scale_factor
-          LIMIT 1
-       ) nxt
-    ),
-    latest AS (
-      SELECT s.benchmark, s.scale_factor, l.commit_sha
-        FROM scopes s
-       CROSS JOIN LATERAL (
-         SELECT c.commit_sha
-           FROM ${BRANCH_COMMITS} c
-          WHERE EXISTS (
-                  SELECT 1
-                    FROM file_sizes f
-                   WHERE f.benchmark = s.benchmark
-                     AND f.scale_factor = s.scale_factor
-                     AND f.format = $1
-                     AND f.commit_sha = c.commit_sha)
-          ORDER BY c.timestamp DESC, c.commit_sha DESC
-          LIMIT 1
-       ) l
-    ),
-    totals AS (
-      SELECT f.benchmark, f.scale_factor, f.format, SUM(f.value_bytes)::float8 AS bytes
-        FROM file_sizes f
-        JOIN latest l
-          ON l.benchmark = f.benchmark
-         AND l.scale_factor = f.scale_factor
-         AND l.commit_sha = f.commit_sha
-       GROUP BY f.benchmark, f.scale_factor, f.format
-    )
-    SELECT t.format AS format,
-           t.benchmark AS dataset,
-           t.scale_factor AS "datasetVariant",
-           t.bytes AS "valueBytes",
-           b.bytes AS "baselineBytes",
-           NULL::float8 AS "uncompressedBytes"
-      FROM totals t
-      JOIN totals b
-        ON b.benchmark = t.benchmark
-       AND b.scale_factor = t.scale_factor
-       AND b.format = $1
-     WHERE t.bytes > 0
-       AND b.bytes > 0
-     ORDER BY t.format, t.benchmark, t.scale_factor
-  `;
-  const rows = (await getPool().query<CompressionSizeSample>(text, [FILE_SIZE_BASELINE])).rows;
-  const rankings = compressionSizeRankings(rows);
+  const rows = await fileSizeSamples(
+    FILE_SIZE_RANKED_BENCHMARKS.map((benchmark) => ({ benchmark, scale_factor: null })),
+  );
+  const rankings = compressionSizeRankings(
+    rows.filter((sample) => !SIZE_SUMMARY_EXCLUDED_FORMATS.includes(sample.format)),
+    'none',
+    (dataset) => JSON.stringify([dataset]),
+  );
   if (rankings.length === 0) {
     return null;
   }
   return {
     type: 'compressionSize',
-    title: 'SQL File Sizes Summary',
+    title: 'SQL Benchmark File Sizes Summary',
     rankings,
     explanation:
-      'Total size of the files each SQL benchmark writes at every scale factor, and geometric means of sizes versus vortex (lower is better)',
-    // The card names formats by their display names, which call `vortex-file-compressed` `vortex`.
-    baseline: 'vortex',
+      'Geometric means of file sizes versus parquet (lower is better), over the SQL benchmarks that write Parquet with bench’s settings, each benchmark once',
+    coverageUnit: 'benchmarks',
   };
 }
 
@@ -837,9 +781,8 @@ async function collectFileSizesSummary(): Promise<Summary | null> {
 }
 
 /**
- * Formats the Compression & File Size summary leaves out. They still chart in the group.
- * DuckDB's database file (`duckdb`) is a query engine's storage, not a file format to compare,
- * and only TPC-DS records it.
+ * Formats the size summaries leave out. They still chart in their groups. DuckDB's database
+ * file (`duckdb`) is a query engine's storage, not a file format to compare.
  */
 const SIZE_SUMMARY_EXCLUDED_FORMATS: readonly string[] = ['duckdb'];
 
@@ -850,8 +793,10 @@ const SIZE_SUMMARY_EXCLUDED_FORMATS: readonly string[] = ['duckdb'];
  *   total. The Compression & File Size summary uses it, because its two sources record
  *   formats at different times and some formats only on some datasets, so a format can lack a
  *   dataset that the others have.
+ * - `none`: no format gets a total. The SQL Benchmark File Sizes summary uses it, because its
+ *   scopes run from a few megabytes to tens of gigabytes, so a sum is the largest scope's size.
  */
-type SizeTotals = 'shared' | 'complete';
+type SizeTotals = 'shared' | 'complete' | 'none';
 
 /** One size paired with the baseline's size for the same dataset and commit. */
 interface CompressionSizeSample {
@@ -882,17 +827,18 @@ function bucketGeoMean(byBucket: ReadonlyMap<string, readonly number[]>): number
 /**
  * Rank each format by its size ratios to the baseline and its compression ratio to Arrow.
  *
- * Each dataset is one entry in the geometric means, except that a family counts once
- * ([`sizeBucket`]). `minRatio` and `maxRatio` are over single datasets. `measured` and `total`
- * count buckets, and a format measures a family's bucket only when it has every dataset of the
- * family that any format has. A format measured on every bucket ranks above one that is not, because their
- * means are over different datasets. Within each tier, the order is by compression ratio when
+ * Each dataset is one entry in the geometric means, except that the datasets of one bucket count
+ * once (`bucketOf`, by default [`sizeBucket`], which buckets a family). `minRatio` and `maxRatio`
+ * are over single datasets. `measured` and `total` count buckets, and a format measures a bucket
+ * only when it has every dataset of the bucket that any format has. A format measured on every
+ * bucket ranks above one that is not, because their means are over different datasets. Within each tier, the order is by compression ratio when
  * every format has one on every bucket it is ranked on, and by baseline ratio otherwise. In the
  * Compression & File Size summary, TPC-DS has no Arrow size, so its order is by baseline ratio.
  */
 function compressionSizeRankings(
   rows: readonly CompressionSizeSample[],
   totals: SizeTotals = 'shared',
+  bucketOf: (dataset: string, datasetVariant: string | null) => string = sizeBucket,
 ): CompressionSizeRanking[] {
   const grouped = new Map<
     string,
@@ -910,7 +856,7 @@ function compressionSizeRankings(
       compressionRatios: new Map<string, number[]>(),
       bytesByDataset: new Map<string, number>(),
     };
-    const bucket = sizeBucket(row.dataset, row.datasetVariant);
+    const bucket = bucketOf(row.dataset, row.datasetVariant);
     if (
       row.valueBytes > 0 &&
       Number.isFinite(row.valueBytes) &&
@@ -970,6 +916,7 @@ function compressionSizeRankings(
         maxRatio,
         compressionRatio: bucketGeoMean(ratios.compressionRatios),
         totalBytes:
+          totals === 'none' ||
           commonDatasets.length === 0 ||
           !commonDatasets.every((dataset) => ratios.bytesByDataset.has(dataset))
             ? null
@@ -1210,14 +1157,17 @@ async function collectStringEncodingSizeSummary(): Promise<Summary | null> {
 }
 
 /**
- * Size samples for the SQL scopes in [`FILE_SIZE_SUMMARY_SCOPES`]: each format's total over a
- * scope's files, with Parquet's total from the same commit. Each format uses its own newest
+ * Size samples for the SQL scopes in `scopes`, by default [`FILE_SIZE_SUMMARY_SCOPES`]: each
+ * format's total over a scope's files, with Parquet's total from the same commit. A scope with a
+ * `null` scale factor covers the benchmark's every scale factor. Each format uses its own newest
  * commit that also has Parquet, as Lance does in the `compress-bench` samples, so a format that a
  * suite records less often than every run still counts. Scopes and formats come from a skip scan
  * of `idx_file_sizes_baseline`. `latest` walks the read branch's commits newest first and probes
  * that index, so it stops at the newest commit with both formats.
  */
-async function fileSizeSamples(): Promise<CompressionSizeSample[]> {
+async function fileSizeSamples(
+  scopes: readonly { benchmark: string; scale_factor: string | null }[] = FILE_SIZE_SUMMARY_SCOPES,
+): Promise<CompressionSizeSample[]> {
   const text = `
     WITH RECURSIVE scope_formats AS (
       (SELECT f.benchmark, f.scale_factor, f.format
@@ -1240,7 +1190,7 @@ async function fileSizeSamples(): Promise<CompressionSizeSample[]> {
         FROM scope_formats t
         JOIN unnest($1::text[], $2::text[]) AS s(benchmark, scale_factor)
           ON s.benchmark = t.benchmark
-         AND s.scale_factor = t.scale_factor
+         AND (s.scale_factor IS NULL OR s.scale_factor = t.scale_factor)
        CROSS JOIN LATERAL (
          SELECT c.commit_sha
            FROM ${BRANCH_COMMITS} c
@@ -1292,8 +1242,8 @@ async function fileSizeSamples(): Promise<CompressionSizeSample[]> {
   `;
   return (
     await getPool().query<CompressionSizeSample>(text, [
-      FILE_SIZE_SUMMARY_SCOPES.map((scope) => scope.benchmark),
-      FILE_SIZE_SUMMARY_SCOPES.map((scope) => scope.scale_factor),
+      scopes.map((scope) => scope.benchmark),
+      scopes.map((scope) => scope.scale_factor),
       COMPRESSION_BASELINE,
     ])
   ).rows;

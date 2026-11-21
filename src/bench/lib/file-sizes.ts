@@ -13,10 +13,29 @@ import { compressionSuite } from './compression-suite';
 export const FILE_SIZES_GROUP_NAME = 'Compression & File Size';
 
 /**
- * The SQL File Sizes group's display name. That group charts every SQL benchmark and scale factor
- * in `file_sizes`, and its summary compares the formats with Vortex.
+ * The SQL Benchmark File Sizes group's display name. That group charts the files every SQL
+ * benchmark reads, at every scale factor in `file_sizes`, and its summary compares the formats with
+ * Parquet on [`FILE_SIZE_RANKED_BENCHMARKS`].
  */
-export const SQL_FILE_SIZES_GROUP_NAME = 'SQL File Sizes';
+export const SQL_FILE_SIZES_GROUP_NAME = 'SQL Benchmark File Sizes';
+
+/**
+ * The SQL benchmarks the SQL Benchmark File Sizes summary ranks: the suites that write their
+ * Parquet with bench's settings (`parquet_writer_properties()` in the monorepo), so their
+ * `parquet` is bench's standard Parquet. The others still chart:
+ *
+ * - ClickBench and FineWeb query the Parquet files they download, and ClickBench's are Snappy.
+ * - `clickbench-sorted`, Appian, and the Vortex queries write their Parquet with DuckDB, not with
+ *   bench's settings.
+ */
+export const FILE_SIZE_RANKED_BENCHMARKS: readonly string[] = [
+  'job',
+  'polarsignals',
+  'statpopgen',
+  'tpcds',
+  'tpch',
+  'tpch-nested',
+];
 
 /** One SQL suite's data at one scale factor, as `file_sizes` spells them. */
 export interface FileSizeScope {

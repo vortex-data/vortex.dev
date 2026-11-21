@@ -749,6 +749,17 @@ main {
   text-align: center;
 }
 
+.compression-size-scores--ratios-only .compression-size-arrow-header,
+.compression-size-scores--ratios-only .score-item.compression-size-arrow-row {
+  grid-template-columns: 2.25rem minmax(0, 1fr);
+}
+
+/* An empty header row of a panel with no Total or vs Arrow column, as tall as a heading. */
+.compression-size-spacer {
+  grid-column: 1 / -1;
+  font-size: 0.75rem;
+}
+
 .score-item {
   display: flex;
   align-items: center;
@@ -1599,6 +1610,10 @@ main > .chart-card:not(.chart-grid .chart-card) .chart-wrap {
   .score-item.compression-size-arrow-row {
     grid-template-columns: 1.75rem minmax(0, 1fr) 3.75rem 3.4rem;
     column-gap: 0.35rem;
+  }
+  .compression-size-scores--ratios-only .compression-size-arrow-header,
+  .compression-size-scores--ratios-only .score-item.compression-size-arrow-row {
+    grid-template-columns: 1.75rem minmax(0, 1fr);
   }
   .compression-size-parquet-panel {
     padding-left: 0.35rem;

@@ -96,6 +96,64 @@ describe('compression summaries', () => {
     ]);
   });
 
+  it('ranks the SQL benchmarks against parquet, each benchmark once', async () => {
+    const row = (format: string, dataset: string, sf: string, valueBytes: number) => ({
+      format,
+      dataset,
+      datasetVariant: `sf=${sf}`,
+      valueBytes,
+      baselineBytes: 100,
+      uncompressedBytes: null,
+    });
+    query.mockResolvedValueOnce({
+      rows: [
+        row('parquet', 'tpch', '1.0', 100),
+        row('parquet', 'tpch', '10.0', 100),
+        row('parquet', 'tpch', '100', 100),
+        row('parquet', 'tpcds', '1.0', 100),
+        // TPC-H's three scale factors make one benchmark, so its geometric mean, 0.5, weighs
+        // as much as TPC-DS's 2.
+        row('vortex', 'tpch', '1.0', 25),
+        row('vortex', 'tpch', '10.0', 50),
+        row('vortex', 'tpch', '100', 100),
+        row('vortex', 'tpcds', '1.0', 200),
+        row('vortex-compact', 'tpcds', '1.0', 50),
+        row('duckdb', 'tpcds', '1.0', 90),
+      ],
+    });
+
+    const summary = await collectGroupSummary({ k: 'FileSizeGroup' });
+    if (summary === null || summary.type !== 'compressionSize') {
+      throw new Error('expected a compressionSize summary');
+    }
+    // One query, over every scale factor of the benchmarks that write Parquet with bench's
+    // settings, against parquet.
+    expect(query).toHaveBeenCalledTimes(1);
+    const params = defined(query.mock.calls[0])[1];
+    expect(params).toEqual([
+      ['job', 'polarsignals', 'statpopgen', 'tpcds', 'tpch', 'tpch-nested'],
+      [null, null, null, null, null, null],
+      'parquet',
+    ]);
+    expect(summary).toMatchObject({
+      title: 'SQL Benchmark File Sizes Summary',
+      coverageUnit: 'benchmarks',
+    });
+    expect(summary).not.toHaveProperty('baseline');
+    expect(
+      Object.fromEntries(
+        summary.rankings.map((ranking) => [
+          ranking.name,
+          [ranking.ratio, ranking.measured, ranking.total, ranking.totalBytes],
+        ]),
+      ),
+    ).toEqual({
+      parquet: [1, 2, 2, null],
+      vortex: [expect.closeTo(1, 12), 2, 2, null],
+      'vortex-compact': [0.5, 1, 2, null],
+    });
+  });
+
   it('totals every dataset, for the formats measured on all of them', async () => {
     const row = (format: string, dataset: string, valueBytes: number, datasetVariant = null) => ({
       format,

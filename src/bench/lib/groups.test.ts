@@ -635,9 +635,11 @@ describe.skipIf(!databaseAvailable)('summary math fidelity (testcontainers Postg
     // The group charts ClickBench, TPC-H SF10, and TPC-DS SF1. It leaves out TPC-H SF1 and
     // SF100 and Appian. The newest commit, a nightly run, writes Parquet and Snappy Parquet
     // for TPC-DS but no Vortex. ClickBench has no scale-factor directory, so it is recorded as
-    // 1.0.
+    // 1.0. Appian's Parquet comes from DuckDB, so the SQL Benchmark File Sizes summary does not
+    // rank it.
     for (const [sha, benchmark, scaleFactor, format, file, bytes] of [
       [develop, 'tpch', '1.0', 'vortex-file-compressed', 'lineitem.vortex', 300],
+      [develop, 'tpch', '1.0', 'parquet', 'lineitem.parquet', 300],
       [develop, 'tpch', '10.0', 'vortex-file-compressed', 'lineitem.vortex', 4000],
       [develop, 'tpch', '10.0', 'parquet', 'lineitem.parquet', 2000],
       [nightly, 'tpch', '100', 'vortex-file-compressed', 'lineitem.vortex', 40000],
@@ -651,6 +653,7 @@ describe.skipIf(!databaseAvailable)('summary math fidelity (testcontainers Postg
       [nightly, 'tpcds', '1.0', 'parquet', 'store_sales.parquet', 400],
       [nightly, 'tpcds', '1.0', 'parquet-snappy', 'store_sales.parquet', 600],
       [develop, 'appian', '1.0', 'vortex-file-compressed', 'data.vortex', 70],
+      [develop, 'appian', '1.0', 'parquet', 'data.parquet', 700],
     ] as const) {
       await getPool().query(
         `INSERT INTO file_sizes
@@ -663,7 +666,7 @@ describe.skipIf(!databaseAvailable)('summary math fidelity (testcontainers Postg
     const groups = await collectGroups();
     expect(groups.map((group) => group.name)).toEqual([
       'Compression & File Size',
-      'SQL File Sizes',
+      'SQL Benchmark File Sizes',
     ]);
     const [group, sql] = groups;
     expect(groupKeyFromSlug(defined(group).slug)).toEqual({ k: 'CompressionSizeGroup' });
@@ -699,9 +702,10 @@ describe.skipIf(!databaseAvailable)('summary math fidelity (testcontainers Postg
     });
     expect(summary).not.toHaveProperty('baseline');
 
-    // The SQL File Sizes group charts every scope, and ranks each format against Vortex at each
-    // scope's newest commit with a Vortex size. TPC-DS's newest commit with Vortex is the
-    // develop one, so the nightly Snappy file is not in its totals.
+    // The SQL Benchmark File Sizes group charts every scope. Its summary ranks each format
+    // against Parquet on TPC-H and TPC-DS only, each benchmark once, at each format's newest
+    // commit with Parquet. It leaves out ClickBench and Appian, whose Parquet bench does not
+    // write.
     expect(groupKeyFromSlug(defined(sql).slug)).toEqual({ k: 'FileSizeGroup' });
     expect(defined(sql).charts.map((chart) => chart.name)).toEqual([
       'clickbench',
@@ -711,22 +715,29 @@ describe.skipIf(!databaseAvailable)('summary math fidelity (testcontainers Postg
       'tpcds sf=1.0',
       'appian',
     ]);
-    expect(defined(sql).summary).toMatchObject({
-      type: 'compressionSize',
-      title: 'SQL File Sizes Summary',
-      baseline: 'vortex',
-    });
     const sqlSummary = defined(defined(sql).summary);
+    expect(sqlSummary).toMatchObject({
+      type: 'compressionSize',
+      title: 'SQL Benchmark File Sizes Summary',
+      coverageUnit: 'benchmarks',
+    });
+    expect(sqlSummary).not.toHaveProperty('baseline');
     if (sqlSummary.type !== 'compressionSize') {
       throw new Error(`expected a compressionSize summary, got ${sqlSummary.type}`);
     }
     expect(
-      Object.fromEntries(sqlSummary.rankings.map((ranking) => [ranking.name, ranking.ratio])),
+      Object.fromEntries(
+        sqlSummary.rankings.map((ranking) => [
+          ranking.name,
+          [ranking.ratio, ranking.measured, ranking.total, ranking.totalBytes],
+        ]),
+      ),
     ).toEqual({
-      'vortex-file-compressed': 1,
-      'vortex-compact': 0.5,
-      // TPC-H SF10's Parquet is half its Vortex size, and TPC-DS's is the same size.
-      parquet: expect.closeTo(Math.sqrt(0.5 * 1), 12),
+      parquet: [1, 2, 2, null],
+      // TPC-H is the geometric mean of SF1 (1) and SF10 (2), and TPC-DS is 1.
+      'vortex-file-compressed': [expect.closeTo(2 ** 0.25, 12), 2, 2, null],
+      'vortex-compact': [0.5, 1, 2, null],
+      'parquet-snappy': [1.5, 1, 2, null],
     });
   });
 

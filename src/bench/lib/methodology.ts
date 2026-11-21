@@ -167,13 +167,21 @@ export const METHODOLOGY: readonly MethodologySection[] = [
         'The Compression & File Size summary instead gives a total only to a format that has ' +
         'every dataset in the summary, and ranks a format that lacks a dataset after the ' +
         'formats that have them all.',
+      'The SQL Benchmark File Sizes summary scores JOB, Polar Signals, statpopgen, TPC-DS, ' +
+        'TPC-H, and nested TPC-H, whose Parquet files bench writes with its own settings. ' +
+        'ClickBench and FineWeb query downloaded files, and DuckDB writes the Parquet files ' +
+        'for Appian, sorted ClickBench, and the Vortex queries, so the summary leaves them ' +
+        'out. They still have charts. It counts each benchmark once, as the geometric mean of ' +
+        'its scale factors, and gives no total, because its scale factors run from megabytes ' +
+        'to tens of gigabytes.',
       'The compression time summary leaves out the wide table and sparse-wide datasets, ' +
         'which have many variants each. The Compression & File Size summary counts each of ' +
         'those two suites as one dataset, the geometric mean of its ratios. It also leaves ' +
         'out statpopgen, and counts ' +
         'the TPC-H l_comment column once, because its canonical and chunked files are the ' +
-        'same size. It does not rank DuckDB’s database file, which is a query engine’s ' +
-        'storage, not a file format. These datasets and DuckDB’s file still have charts.',
+        'same size. These datasets still have charts.',
+      'No size summary ranks DuckDB’s database file, which is a query engine’s storage, not ' +
+        'a file format. It still has charts.',
       'The string encoding benchmark compares its encoders with FSST instead of Parquet, so ' +
         'its throughput and size scores divide by FSST’s.',
       'Each summary uses each series’ newest result on develop.',
