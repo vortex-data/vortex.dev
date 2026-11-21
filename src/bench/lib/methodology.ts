@@ -43,6 +43,9 @@ export const SCORES = {
   size:
     'the geometric mean, over the datasets, of the format’s file size divided by ' +
     'Parquet’s. Lower is better.',
+  arrow:
+    'the geometric mean, over the datasets, of the data’s size in memory as Arrow divided by ' +
+    'the format’s file size. Higher is better.',
 } as const;
 
 export const METHODOLOGY: readonly MethodologySection[] = [
@@ -117,9 +120,10 @@ export const METHODOLOGY: readonly MethodologySection[] = [
       'The files have no Bloom filters. Filters on every column made the TPC-H files 14% ' +
         'larger and made no query faster.',
       'Row groups hold 122,880 rows, DuckDB’s default, in files that queries read from ' +
-        'local NVMe. They hold 1,048,576 rows, parquet-rs’s default, in files read from S3 ' +
-        'and in the random access files. On the benchmark machines, the smaller row groups ' +
-        'made TPC-H at scale factor 10 28% to 38% faster on NVMe. On S3, the larger ones made ' +
+        'local NVMe. They hold 1,048,576 rows, parquet-rs’s default, in files read from S3, ' +
+        'in the random access files, and in the compression benchmark’s files. On the ' +
+        'benchmark machines, the smaller row groups made TPC-H at scale factor 10 28% to 38% ' +
+        'faster on NVMe. On S3, the larger ones made ' +
         'DataFusion 14% to 21% faster and DuckDB 3% to 8% slower. The page index lets a ' +
         'lookup skip pages inside a row group, so random access keeps parquet-rs’s default.',
     ],
@@ -152,6 +156,13 @@ export const METHODOLOGY: readonly MethodologySection[] = [
         'on TPC-DS at scale factor 1.',
       `Write and scan throughput scores are ${SCORES.throughput}`,
       `File size scores are ${SCORES.size}`,
+      'The Compression & File Size summary also gives each format’s ratio versus Arrow: ' +
+        `${SCORES.arrow} ` +
+        'The Arrow size is the memory that the compression benchmark’s data takes once it is ' +
+        'read from Parquet into Arrow arrays, with string and binary view columns read as ' +
+        'plain string and binary columns. The SQL suites record no Arrow size, so this ratio ' +
+        'covers the compression benchmark’s datasets alone. The summary orders the formats by ' +
+        'their file size score, which also covers TPC-DS.',
       'Total is the sum of a format’s file sizes over the datasets that every format has. ' +
         'The Compression & File Size summary instead gives a total only to a format that has ' +
         'every dataset in the summary, and ranks a format that lacks a dataset after the ' +

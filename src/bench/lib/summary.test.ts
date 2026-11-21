@@ -69,10 +69,11 @@ describe('compression summaries', () => {
     }
     const byFormat = new Map(summary.rankings.map((ranking) => [ranking.name, ranking]));
 
-    // sqrt((1 / 4) * (900 / 100)) is 1.5.
+    // sqrt((1 / 4) * (900 / 100)) is 1.5. Parquet has no Arrow size for b, so the order is by
+    // the Parquet ratio.
     expect(summary.rankings.map((ranking) => ranking.name)).toEqual([
-      'vortex-file-compressed',
       'parquet',
+      'vortex-file-compressed',
     ]);
     expect(byFormat.get('vortex-file-compressed')?.ratio).toBeCloseTo(1.5, 6);
     expect(byFormat.get('parquet')?.ratio).toBeCloseTo(1, 6);
@@ -368,6 +369,48 @@ describe('compression summaries', () => {
     expect(summary.rankings.map((ranking) => ranking.name)).toEqual([
       'parquet',
       'vortex-file-compressed',
+      'lance',
+    ]);
+  });
+
+  it('ranks by the Parquet ratio when a dataset has no Arrow size', async () => {
+    const row = (
+      format: string,
+      dataset: string,
+      valueBytes: number,
+      uncompressedBytes: number | null,
+    ) => ({
+      format,
+      dataset,
+      datasetVariant: dataset === 'tpcds' ? 'sf=1.0' : null,
+      valueBytes,
+      baselineBytes: 100,
+      uncompressedBytes,
+    });
+    // On taxi, Lance compresses Arrow better than Vortex. TPC-DS has no Arrow size, and Vortex is
+    // much smaller than Lance there, so Vortex has the better Parquet ratio over both datasets.
+    query.mockResolvedValueOnce({
+      rows: [
+        row('vortex-file-compressed', 'taxi', 90, 900),
+        row('lance', 'taxi', 80, 900),
+        row('parquet', 'taxi', 100, 900),
+      ],
+    });
+    query.mockResolvedValueOnce({
+      rows: [
+        row('vortex-file-compressed', 'tpcds', 50, null),
+        row('lance', 'tpcds', 150, null),
+        row('parquet', 'tpcds', 100, null),
+      ],
+    });
+
+    const summary = await collectGroupSummary({ k: 'CompressionSizeGroup' });
+    if (summary === null || summary.type !== 'compressionSize') {
+      throw new Error('expected a compressionSize summary');
+    }
+    expect(summary.rankings.map((ranking) => ranking.name)).toEqual([
+      'vortex-file-compressed',
+      'parquet',
       'lance',
     ]);
   });

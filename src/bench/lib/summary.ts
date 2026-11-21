@@ -886,8 +886,9 @@ function bucketGeoMean(byBucket: ReadonlyMap<string, readonly number[]>): number
  * ([`sizeBucket`]). `minRatio` and `maxRatio` are over single datasets. `measured` and `total`
  * count buckets, and a format measures a family's bucket only when it has every dataset of the
  * family that any format has. A format measured on every bucket ranks above one that is not, because their
- * means are over different datasets. Within each tier, the order is by compression ratio once
- * every format in the summary has one, and by baseline ratio until then.
+ * means are over different datasets. Within each tier, the order is by compression ratio when
+ * every format has one on every bucket it is ranked on, and by baseline ratio otherwise. In the
+ * Compression & File Size summary, TPC-DS has no Arrow size, so its order is by baseline ratio.
  */
 function compressionSizeRankings(
   rows: readonly CompressionSizeSample[],
@@ -948,6 +949,8 @@ function compressionSizeRankings(
         )
       : [...new Set(ranked.flatMap((ratios) => [...ratios.bytesByDataset.keys()]))];
   const rankings: CompressionSizeRanking[] = [];
+  // Whether every ranked format's compression ratio covers each bucket of its baseline ratio.
+  let arrowRatiosCoverEveryBucket = true;
   for (const [name, ratios] of grouped) {
     const ratio = bucketGeoMean(ratios.sizeRatios);
     if (ratio !== null) {
@@ -956,6 +959,9 @@ function compressionSizeRankings(
       for (const sizeRatio of [...ratios.sizeRatios.values()].flat()) {
         minRatio = Math.min(minRatio, sizeRatio);
         maxRatio = Math.max(maxRatio, sizeRatio);
+      }
+      if ([...ratios.sizeRatios.keys()].some((bucket) => !ratios.compressionRatios.has(bucket))) {
+        arrowRatiosCoverEveryBucket = false;
       }
       rankings.push({
         name,
@@ -978,14 +984,13 @@ function compressionSizeRankings(
       });
     }
   }
-  const hasCompleteArrowRatios = rankings.every((ranking) => ranking.compressionRatio !== null);
   const partial = (ranking: CompressionSizeRanking) => (ranking.measured < ranking.total ? 1 : 0);
   rankings.sort((a, b) => {
     const tier = partial(a) - partial(b);
     if (tier !== 0) {
       return tier;
     }
-    if (!hasCompleteArrowRatios) {
+    if (!arrowRatiosCoverEveryBucket) {
       return a.ratio - b.ratio || compareCodeUnits(a.name, b.name);
     }
     return (
