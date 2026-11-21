@@ -47,7 +47,7 @@ describe("ResultsTable", () => {
       "Write",
       "ClickBench",
       "TPC-H",
-      "GPU, cuDF",
+      "GPU analytics",
       "Random access",
       "File size"
     ])
@@ -89,5 +89,9 @@ describe("ResultsTable", () => {
       /<th scope="col" class="is-verdict is-rival"><span class="vx-results-subject">Vortex <\/span>vs Lance<\/th>/
     );
     assert.equal(html.match(/<td class="is-verdict is-rival">/g)?.length, 7);
+    assert.match(
+      html,
+      /<th scope="col"><span class="vx-results-label">Benchmark<\/span><span class="vx-results-lead" aria-hidden="true">Vortex<\/span><\/th>/
+    );
   });
 });

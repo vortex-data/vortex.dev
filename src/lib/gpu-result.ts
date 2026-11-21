@@ -75,7 +75,7 @@ export const GPU_DETAIL =
 
 export const GPU_PANEL: Panel = {
   title: "GPU analytics with cuDF",
-  short: "GPU, cuDF",
+  short: "GPU analytics",
   unit: "ms",
   kind: "speed",
   better: "lower",

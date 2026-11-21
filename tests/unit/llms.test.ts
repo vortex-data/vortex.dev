@@ -37,7 +37,10 @@ describe("resultsSentences", () => {
       sentences[3] ?? "",
       /^TPC-H, the geometric mean time of the 22/
     );
-    assert.match(sentences[4] ?? "", /^GPU, cuDF, query time on a GPU in cuDF/);
+    assert.match(
+      sentences[4] ?? "",
+      /^GPU analytics, query time on a GPU in cuDF/
+    );
     // Lance cannot run in cuDF, and the sentence says why, not a figure.
     assert.match(
       sentences[4] ?? "",

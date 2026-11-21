@@ -1,7 +1,7 @@
 /* Vortex design system components (sections: base, brand, chrome, site, blog, tables, focus), copied by tools/site-styles.mjs.
    Edit the system, then run tools/site-styles.mjs; do not edit here.
    Made by: node tools/site-styles.mjs <site> --sections base,brand,chrome,site,blog,tables,focus --faces --vx-face --base --reads ..
-   sha256 a6f0b79a7f5a1d42b0d3dcb2b5e7bfafca0a8b41eba5d01465c5d5c4cbe5c4ae */
+   sha256 63cc1276044b2919cc131b328dbfb69b558ba6b89283ca337ac44e33b43625a9 */
 
 /* ------------------------------------------------------------------ base */
 /* Every component sizes with border-box, so it draws the same under a site's reset or none. */
@@ -618,20 +618,21 @@ html:has(.vx-header) { scroll-padding-top: calc(var(--space-64) + var(--space-8)
 .vx-results-table .is-far { color: var(--warn-ink); text-decoration: underline dotted 2px var(--warn-ink); text-underline-offset: 5px; }
 .vx-results-table .is-far.is-ours { color: var(--accent-ink); }
 .vx-results-table .is-verdict { padding-left: var(--space-24); color: var(--ink); }
-/* The verdict's head names Vortex only on a phone, where Vortex's column is gone. The rival's verdict shows only there too. */
-.vx-results-subject { display: none; color: var(--accent-ink); }
+/* On a phone, where Vortex's column is gone, the first head shows "Vortex" (`vx-results-lead`) in place of "Benchmark", so the row reads "Vortex · Scan · 7.5× faster vs Parquet". Screen readers keep "Benchmark" and "Vortex vs Parquet" (`vx-results-subject`). The rival's verdict shows only there too. */
+.vx-results-subject, .vx-results-lead { display: none; }
+.vx-results-lead { color: var(--accent-ink); }
 .vx-results-table .is-rival { display: none; }
 @media (max-width: 760px) {
   .vx-results { padding: var(--space-16); }
-  /* A phone shows each benchmark and its verdicts alone: against Parquet and, with a rival, against it. Vortex's figure would repeat the verdict. With no figure left to mark, the key goes too. The verdict heads wrap ("Vortex vs / Parquet"). */
+  /* A phone shows each benchmark and its verdicts alone: against Parquet and, with a rival, against it. Vortex's figure would repeat the verdict. With no figure left to mark, the key goes too. The heads read "Vortex", "vs Parquet", "vs Lance", each on one line. */
   .vx-results-table :is(th, td):not(:first-child, .is-verdict) { display: none; }
   .vx-results-table .is-rival { display: table-cell; }
   .vx-results-table .is-verdict { padding-left: var(--space-16); }
-  .vx-results-table thead .is-verdict { white-space: normal; }
-  .vx-results-subject { display: inline; }
+  .vx-results-lead { display: inline; }
+  .vx-results-subject, .vx-results-label { display: inline; position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .vx-results-foot { display: none; }
 }
-/* Small phones: 12px of padding, 12px between the columns, and headings that wrap. */
+/* Small phones: 12px of padding, 12px between the columns, and row heads that wrap ("Random / access"). */
 @media (max-width: 400px) {
   .vx-results { padding: var(--space-12); }
   .vx-results-table :is(th, td):not(:first-child) { padding-left: var(--space-12); }

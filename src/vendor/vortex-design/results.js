@@ -216,13 +216,13 @@ export function resultsSystems(panels) {
 
 /**
  * How Vortex does against `rival` in one panel, worded as the verdict against Parquet is ("14× faster",
- * "48% smaller"): "N/A" when the rival cannot run the benchmark, "Lance not measured" when it has no
- * result, and "—" when the panel does not show it.
+ * "48% smaller"): "—" when the rival cannot run the benchmark or the panel does not show it, and
+ * "Lance not measured" when it could run but has no result. The figure's own cell still says "N/A".
  */
 function rivalVerdict(panel, rival) {
   const r = find(pickSystems(panel.rows, panel.systems), String(rival).toLowerCase());
   if (!r) return "—";
-  if (r.unavailable) return "N/A";
+  if (r.unavailable) return "—";
   return panelVerdict(panel.kind, versus(panel.rows, panel.better, rival));
 }
 
@@ -274,7 +274,7 @@ export function renderResults(panels, { read, icon = "", rival } = {}) {
   const cls = (...c) => (c.filter(Boolean).length ? ` class="${c.filter(Boolean).join(" ")}"` : "");
   const when = read ? `<span aria-hidden="true">·</span><span>read ${esc(read)}</span>` : "";
   const head = `<p class="vx-results-head"><span>File format benchmarks</span><span class="vx-label-sm vx-results-src"><a class="vx-source vx-nav-link" href="https://bench.vortex.dev">bench.vortex.dev${icon}</a>${when}</span></p>`;
-  const cols = `<tr><th scope="col">Benchmark</th>${systems.map((s) => `<th scope="col"${cls(isOurs(s) && "is-ours")}>${esc(s)}</th>`).join("")}<th scope="col" class="is-verdict"><span class="vx-results-subject">Vortex </span>vs Parquet</th>${rival ? `<th scope="col" class="is-verdict is-rival"><span class="vx-results-subject">Vortex </span>vs ${esc(rival)}</th>` : ""}</tr>`;
+  const cols = `<tr><th scope="col"><span class="vx-results-label">Benchmark</span><span class="vx-results-lead" aria-hidden="true">Vortex</span></th>${systems.map((s) => `<th scope="col"${cls(isOurs(s) && "is-ours")}>${esc(s)}</th>`).join("")}<th scope="col" class="is-verdict"><span class="vx-results-subject">Vortex </span>vs Parquet</th>${rival ? `<th scope="col" class="is-verdict is-rival"><span class="vx-results-subject">Vortex </span>vs ${esc(rival)}</th>` : ""}</tr>`;
   const rows = panels.map((p) => resultsRow(p, systems, { rival }));
   const body = rows
     .map((row) => {
