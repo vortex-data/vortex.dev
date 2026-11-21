@@ -106,7 +106,9 @@ export function baseChangedContext(pr: number): string {
  * Anthropic key and a write token, so it never reads an outside author's
  * pull request: a maintainer's approval of the head commit replaces it.
  */
-const TRUSTED_ASSOCIATIONS = new Set(["OWNER", "MEMBER", "COLLABORATOR"]);
+// Repository permissions that can push. `author_association` is not enough:
+// an organization member with read access is still a MEMBER.
+const WRITE_PERMISSIONS = new Set(["admin", "write"]);
 
 /** How long a Claude review can stay pending before the gate retries it. */
 const STALE_CLAUDE_MS = 45 * 60 * 1000;
@@ -557,6 +559,19 @@ async function reviewThreads(
   return threads;
 }
 
+/** True when `login` can push to `repo`. Any error counts as no. */
+async function canWrite(repo: string, login: string): Promise<boolean> {
+  try {
+    const { permission } = await github<{ permission: string }>(
+      `/repos/${repo}/collaborators/${encodeURIComponent(login)}/permission`
+    );
+    return WRITE_PERMISSIONS.has(permission);
+  } catch (err) {
+    console.error(`No permission for ${login}: ${err}`);
+    return false;
+  }
+}
+
 function runUrl(): string | undefined {
   const server = process.env.GITHUB_SERVER_URL;
   const repo = process.env.GITHUB_REPOSITORY;
@@ -602,7 +617,6 @@ async function gate(): Promise<void> {
 
   const pr = await github<{
     user: { login: string };
-    author_association: string;
     draft: boolean;
     body: string | null;
     state: string;
@@ -635,7 +649,6 @@ async function gate(): Promise<void> {
       user: { login: string } | null;
       commit_id: string;
       state: string;
-      author_association: string;
     }>(`/repos/${repo}/pulls/${number}/reviews`),
     reviewThreads(owner, name, number),
     // Newest first, every page: the combined status holds only 30 contexts.
@@ -683,6 +696,24 @@ async function gate(): Promise<void> {
     }
   }
 
+  // Only an approval of the head commit can count, so check only those
+  // reviewers' permissions.
+  const approvers = new Set(
+    reviews
+      .filter((r) => r.state === "APPROVED" && r.commit_id === headSha)
+      .flatMap((r) => (r.user ? [r.user.login] : []))
+  );
+  let approvedByMaintainer = false;
+  for (const login of approvers) {
+    if (await canWrite(repo, login)) {
+      approvedByMaintainer = true;
+      break;
+    }
+  }
+  const maintainerApprovedShas = approvedByMaintainer ? [headSha] : [];
+  const authorTrusted =
+    pr.user.login === CODEX_LOGIN || (await canWrite(repo, pr.user.login));
+
   const decision = decide({
     author: pr.user.login,
     draft: pr.draft,
@@ -701,16 +732,8 @@ async function gate(): Promise<void> {
           updatedAt: Date.parse(claude.updated_at)
         }
       : null,
-    authorTrusted:
-      pr.user.login === CODEX_LOGIN ||
-      TRUSTED_ASSOCIATIONS.has(pr.author_association),
-    maintainerApprovedShas: reviews
-      .filter(
-        (r) =>
-          r.state === "APPROVED" &&
-          TRUSTED_ASSOCIATIONS.has(r.author_association)
-      )
-      .map((r) => r.commit_id),
+    authorTrusted,
+    maintainerApprovedShas,
     codexRequests: gateComments
       .filter((c) => c.body.includes(`${REQUEST_MARKER} ${headSha} -->`))
       .map((c) => Date.parse(c.created_at)),
