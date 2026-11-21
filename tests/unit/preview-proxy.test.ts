@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { createServer, type Server } from "node:http";
+import {
+  createServer,
+  get as httpGet,
+  type IncomingHttpHeaders,
+  type Server
+} from "node:http";
 import type { AddressInfo } from "node:net";
 import { Readable } from "node:stream";
 import { afterEach, describe, it } from "node:test";
@@ -12,6 +17,24 @@ import {
 
 const loopback = { allowLoopback: true };
 const deployment = "https://vortex-abc123-vortex-data.vercel.app";
+
+// node:http, not fetch: bun runs every test file in one process, and another
+// file replaces globalThis.fetch with a stub that rejects. http.get also
+// leaves a redirect unfollowed.
+function request(
+  url: string
+): Promise<{ headers: IncomingHttpHeaders; body: string }> {
+  return new Promise((resolve, reject) => {
+    httpGet(url, (response) => {
+      let body = "";
+      response.setEncoding("utf8");
+      response.on("data", (chunk: string) => {
+        body += chunk;
+      });
+      response.on("end", () => resolve({ headers: response.headers, body }));
+    }).on("error", reject);
+  });
+}
 
 const servers: Server[] = [];
 async function listen(server: Server) {
@@ -44,13 +67,13 @@ describe("preview proxy", () => {
     const proxy = await listen(
       previewProxy(target, "fixture-secret", loopback)
     );
-    const response = await fetch(`${proxy}/bench`);
-    assert.equal(await response.text(), "preview");
+    const response = await request(`${proxy}/bench`);
+    assert.equal(response.body, "preview");
     assert.equal(headers["x-vercel-protection-bypass"], "fixture-secret");
     assert.equal(headers["x-vercel-skip-toolbar"], "1");
     assert.equal(headers.host, new URL(target).host);
-    assert.equal(response.headers.get("x-robots-tag"), null);
-    assert.equal(response.headers.get("x-vercel-protection-bypass"), null);
+    assert.equal(response.headers["x-robots-tag"], undefined);
+    assert.equal(response.headers["x-vercel-protection-bypass"], undefined);
   });
 
   it("keeps a preview redirect on the proxy and a foreign redirect as it is", async () => {
@@ -68,10 +91,10 @@ describe("preview proxy", () => {
     const proxy = await listen(
       previewProxy(target, "fixture-secret", loopback)
     );
-    const local = await fetch(`${proxy}/local`, { redirect: "manual" });
-    assert.equal(local.headers.get("location"), `${proxy}/blog?x=1`);
-    const foreign = await fetch(`${proxy}/foreign`, { redirect: "manual" });
-    assert.equal(foreign.headers.get("location"), "https://example.com/");
+    const local = await request(`${proxy}/local`);
+    assert.equal(local.headers.location, `${proxy}/blog?x=1`);
+    const foreign = await request(`${proxy}/foreign`);
+    assert.equal(foreign.headers.location, "https://example.com/");
   });
 
   it("forwards only to an HTTPS Vercel deployment", () => {
