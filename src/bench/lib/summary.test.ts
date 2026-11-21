@@ -88,7 +88,7 @@ describe('compression summaries', () => {
     expect(byFormat.get('parquet')?.totalBytes).toBe(104);
     expect(summary.title).toBe('Compression & File Size Summary');
     expect(summary.explanation).toBe(
-      'Total file size, and geometric means of file sizes versus Arrow (higher is better) and versus parquet-zstd (lower is better)',
+      'Total file size, and geometric means of file sizes versus Arrow (higher is better) and versus parquet (zstd) (lower is better)',
     );
     expect(summary.rankings.map((ranking) => [ranking.measured, ranking.total])).toEqual([
       [2, 2],

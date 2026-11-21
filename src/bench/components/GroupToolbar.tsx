@@ -52,14 +52,17 @@ export function GroupToolbar({
   groupSlug,
   universe,
   seriesLabels,
-  unlabeledCharts = [],
+  unlabeledCharts = {},
 }: {
   groupSlug: string;
   universe: FilterUniverse;
   /** Display names the chips give some formats (see `SeriesLabels`). */
   seriesLabels?: SeriesLabels | undefined;
-  /** The group's charts that keep the real names, which a renamed chip's title lists. */
-  unlabeledCharts?: readonly string[];
+  /**
+   * For each format the group renames, its charts that keep the real name, which the renamed
+   * chip's title lists.
+   */
+  unlabeledCharts?: UnlabeledCharts;
 }) {
   const [open, setOpen] = useState(false);
   const panelId = useId();
@@ -272,7 +275,7 @@ function MacroRow({
   snapshot,
   globalSnapshot,
   seriesLabels,
-  unlabeledCharts = [],
+  unlabeledCharts = {},
 }: {
   label: string;
   dim: 'engine' | 'format';
@@ -281,7 +284,7 @@ function MacroRow({
   snapshot: ReturnType<typeof getGroupSnapshot>;
   globalSnapshot: ReturnType<typeof getGlobalFilterSnapshot>;
   seriesLabels?: SeriesLabels | undefined;
-  unlabeledCharts?: readonly string[];
+  unlabeledCharts?: UnlabeledCharts;
 }) {
   return (
     <div className="global-filter-row group-macro-row">
@@ -331,20 +334,31 @@ function relabel(label: string, labels: SeriesLabels | undefined): string {
     .join(':');
 }
 
+/** For each format a group renames, the group's charts that keep the real name. */
+type UnlabeledCharts = Readonly<Record<string, readonly string[]>>;
+
 /**
  * A renamed chip's title, when some of the group's charts keep the real name: the chip also
- * toggles the series there. In the Compression & File Size group, the `parquet-zstd` chip's title
- * is "parquet-zstd, and parquet on clickbench", because ClickBench's Parquet is its published
- * Snappy files.
+ * toggles the series there. In the Compression & File Size group, the `parquet (zstd)` chip's
+ * title is "parquet (zstd), and parquet on clickbench", because ClickBench's Parquet is its
+ * published Snappy files.
  */
 function chipTitle(
   label: string,
   labels: SeriesLabels | undefined,
-  unlabeledCharts: readonly string[],
+  unlabeledCharts: UnlabeledCharts,
 ): string | undefined {
   const shown = relabel(label, labels);
-  if (shown === label || unlabeledCharts.length === 0) {
+  const charts = [
+    ...new Set(
+      label
+        .split(':')
+        .filter((segment) => labels?.[segment] !== undefined)
+        .flatMap((segment) => unlabeledCharts[segment] ?? []),
+    ),
+  ];
+  if (shown === label || charts.length === 0) {
     return undefined;
   }
-  return `${shown}, and ${label} on ${unlabeledCharts.join(', ')}`;
+  return `${shown}, and ${label} on ${charts.join(', ')}`;
 }

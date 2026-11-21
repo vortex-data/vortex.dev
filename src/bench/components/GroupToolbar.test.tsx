@@ -58,13 +58,14 @@ describe('GroupToolbar renamed chips', () => {
       <GroupToolbar
         groupSlug="toolbar-renamed"
         universe={UNIVERSE}
-        seriesLabels={{ parquet: 'parquet-zstd' }}
-        unlabeledCharts={['clickbench']}
+        seriesLabels={{ parquet: 'parquet (zstd)', vortex: 'vortex (default)' }}
+        unlabeledCharts={{ parquet: ['clickbench'], vortex: [] }}
       />,
     );
-    expect(html).toContain('>parquet-zstd<');
-    expect(html).toContain('title="parquet-zstd, and parquet on clickbench"');
-    // A chip the group does not rename has no title.
+    expect(html).toContain('>parquet (zstd)<');
+    expect(html).toContain('title="parquet (zstd), and parquet on clickbench"');
+    // A renamed chip that every chart renames has no title.
+    expect(html).toContain('>vortex (default)<');
     expect(html).not.toMatch(/data-value="vortex"[^>]*title=/);
   });
 });

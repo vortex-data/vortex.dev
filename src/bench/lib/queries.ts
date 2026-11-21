@@ -53,7 +53,8 @@ import {
   type FilterUniverse,
   isOtherScan,
   type SeriesLabels,
-  ZSTD_PARQUET_LABELS,
+  CLICKBENCH_PARQUET_LABELS,
+  PARQUET_CODEC_LABELS,
 } from './chart-format';
 import { type ChartKind, compareCodeUnits, FAMILIES, type GroupKind } from './families';
 import { chartKeyFromSlug, chartKeyToSlug, groupKeyFromSlug, groupKeyToSlug } from './slug';
@@ -1786,8 +1787,9 @@ async function collectFileSizesGroup(datasets: readonly DatasetVariantRow[]): Pr
     FILE_SIZE_SCOPES.map((scope) => scope.benchmark),
     FILE_SIZE_SCOPES.map((scope) => scope.scale_factor),
   ]);
-  // The group shows `parquet` as `parquet-zstd`, since it also charts `parquet-snappy`. ClickBench
-  // keeps `parquet`: it charts its published files, which are Snappy.
+  // The group shows `parquet` as `parquet (zstd)` and `parquet-snappy` as `parquet (snappy)`,
+  // since it charts both. ClickBench keeps `parquet`: it charts its published files, which are
+  // Snappy.
   const charts: ChartLink[] = [
     ...scopes.rows.map((row) => ({
       name: fileSizeChartName(row.benchmark, row.scale_factor),
@@ -1796,13 +1798,14 @@ async function collectFileSizesGroup(datasets: readonly DatasetVariantRow[]): Pr
         benchmark: row.benchmark,
         scale_factor: row.scale_factor,
       }),
-      ...(row.benchmark === 'clickbench' ? {} : { seriesLabels: ZSTD_PARQUET_LABELS }),
+      seriesLabels:
+        row.benchmark === 'clickbench' ? CLICKBENCH_PARQUET_LABELS : PARQUET_CODEC_LABELS,
     })),
     ...datasets
       .filter((row) => isFileSizesDataset(row.dataset, row.dataset_variant))
       .map((row) => ({
         ...compressionChartLink(row, 'CompressionSize'),
-        seriesLabels: ZSTD_PARQUET_LABELS,
+        seriesLabels: PARQUET_CODEC_LABELS,
       })),
   ];
   if (charts.length === 0) {
@@ -1813,7 +1816,7 @@ async function collectFileSizesGroup(datasets: readonly DatasetVariantRow[]): Pr
       name: FILE_SIZES_GROUP_NAME,
       slug: groupKeyToSlug({ k: 'CompressionSizeGroup' }),
       charts,
-      seriesLabels: ZSTD_PARQUET_LABELS,
+      seriesLabels: PARQUET_CODEC_LABELS,
     },
   ];
 }

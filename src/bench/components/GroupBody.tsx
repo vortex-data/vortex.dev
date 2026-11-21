@@ -127,11 +127,14 @@ export function GroupBody({
             groupSlug={groupSlug}
             universe={universe}
             seriesLabels={seriesLabels}
-            unlabeledCharts={
-              seriesLabels === undefined
-                ? []
-                : charts.filter((link) => link.seriesLabels === undefined).map((link) => link.name)
-            }
+            unlabeledCharts={Object.fromEntries(
+              Object.keys(seriesLabels ?? {}).map((format) => [
+                format,
+                charts
+                  .filter((link) => link.seriesLabels?.[format] === undefined)
+                  .map((link) => link.name),
+              ]),
+            )}
           />
           <div className="chart-grid">
             {charts.map((link, i) => (

@@ -287,14 +287,26 @@ export function displayFormat(format: string, labels?: SeriesLabels): string {
 /**
  * Display names that one group or chart gives some of its formats, over
  * [`displayFormat`]'s. The Compression & File Size group shows `parquet` as
- * `parquet-zstd`, because it also charts `parquet-snappy`. Like
+ * `parquet (zstd)` and `parquet-snappy` as `parquet (snappy)`, because it charts
+ * both. Like
  * [`displayFormat`], it changes only what is shown: the series keys stay the
  * real formats.
  */
 export type SeriesLabels = Readonly<Record<string, string>>;
 
 /** The Compression & File Size group's display names (see [`SeriesLabels`]). */
-export const ZSTD_PARQUET_LABELS: SeriesLabels = { parquet: 'parquet-zstd' };
+export const PARQUET_CODEC_LABELS: SeriesLabels = {
+  parquet: 'parquet (zstd)',
+  'parquet-snappy': 'parquet (snappy)',
+};
+
+/**
+ * The Compression & File Size group's ClickBench chart's display names: it keeps `parquet`,
+ * because it charts ClickBench's published files, which are Snappy.
+ */
+export const CLICKBENCH_PARQUET_LABELS: SeriesLabels = {
+  'parquet-snappy': PARQUET_CODEC_LABELS['parquet-snappy'] ?? 'parquet-snappy',
+};
 
 /**
  * Whether `format` names one of Vortex's other scans. The SQL benchmarks run

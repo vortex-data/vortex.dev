@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
 import { SummaryCard } from '@/bench/components/SummaryCard';
-import { type SeriesLabels, ZSTD_PARQUET_LABELS } from '@/bench/lib/chart-format';
+import { type SeriesLabels, PARQUET_CODEC_LABELS } from '@/bench/lib/chart-format';
 import type { Summary } from '@/bench/lib/summary';
 
 function render(summary?: Summary, seriesLabels?: SeriesLabels): string {
@@ -26,11 +26,11 @@ describe('SummaryCard', () => {
     };
     const html = render(
       { type: 'compressionSize', title: 't', rankings: [ranking], explanation: 'e' },
-      ZSTD_PARQUET_LABELS,
+      PARQUET_CODEC_LABELS,
     );
-    expect(html).toContain('>vs parquet-zstd<');
-    expect(html).toContain('>parquet-zstd<');
-    expect(html).toContain('parquet-zstd: minimum');
+    expect(html).toContain('>vs parquet (zstd)<');
+    expect(html).toContain('>parquet (zstd)<');
+    expect(html).toContain('parquet (zstd): minimum');
     expect(html).not.toContain('>parquet<');
   });
 
