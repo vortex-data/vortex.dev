@@ -32,6 +32,12 @@ on:
   # file, which the pull request can change.
   issue_comment:
     types: [created, edited]
+  # Some changes start no run here: a review (see above), or a PR closing
+  # while another open PR has the same head commit. A Codex review can also
+  # stop without an event. So every 15 minutes, the refresh jobs below
+  # evaluate each open PR again, from main.
+  schedule:
+    - cron: "*/15 * * * *"
 
 # Nothing by default; each job asks for what it uses.
 permissions: {}
@@ -252,4 +258,60 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
+        run: bun scripts/ai-review-gate.ts gate
+
+  open-prs:
+    name: List open pull requests
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 2
+    permissions:
+      pull-requests: read
+    outputs:
+      numbers: ${{ steps.list.outputs.numbers }}
+    steps:
+      - name: List the open, ready pull requests
+        id: list
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          numbers=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/pulls?state=open&per_page=100" \
+            --jq '.[] | select(.draft | not) | .number' | jq -sc .)
+          echo "numbers=${numbers}" >> "$GITHUB_OUTPUT"
+
+  refresh:
+    name: Refresh #${{ matrix.pr }}
+    needs: open-prs
+    if: needs.open-prs.outputs.numbers != '[]'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        pr: ${{ fromJSON(needs.open-prs.outputs.numbers) }}
+    # The gate's lock, so a refresh cannot overwrite a newer gate run.
+    concurrency:
+      group: ai-review-gate-${{ matrix.pr }}
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      statuses: write
+      pull-requests: write
+    steps:
+      # A scheduled run's ref is the default branch.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6  # v2.2.0
+        with:
+          bun-version: 1.4.4
+
+      # Writes the status only when the result changed.
+      - name: Evaluate the reviews
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ matrix.pr }}
+          REFRESH: "1"
         run: bun scripts/ai-review-gate.ts gate

@@ -61,6 +61,8 @@
  *                      when the review did not finish
  *   GITHUB_SERVER_URL, GITHUB_RUN_ID  link each status to its run
  *   GITHUB_OUTPUT      where `gate` writes its outputs
+ *   REFRESH=1          a scheduled recheck: write the status only if the
+ *                      result changed
  *   DRY_RUN=1          print what the gate would do and write nothing
  */
 
@@ -153,6 +155,12 @@ const GATE_LOGIN = "github-actions[bot]";
 /** How many times the gate asks Codex to review one commit. */
 const MAX_CODEX_REQUESTS = 3;
 
+/**
+ * How long a Codex review can stay "in progress" before the gate treats it
+ * as stopped and may ask again.
+ */
+const STALE_CODEX_MS = 60 * 60 * 1000;
+
 /** How long the gate waits for Codex to start before it asks again. */
 const RETRY_CODEX_AFTER_MS = 20 * 60 * 1000;
 
@@ -183,6 +191,8 @@ export type GateInput = {
   headSha: string;
   /** The parsed Codex summary comment, if Codex posted one. */
   codexState: CodexState | null;
+  /** When Codex last edited that comment, in milliseconds. */
+  codexStateUpdatedAt: number | null;
   /** The commits that Codex's submitted, not dismissed, reviews cover. */
   codexReviewedShas: string[];
   threads: ReviewThread[];
@@ -320,14 +330,25 @@ export function shouldRequestCodex(requests: number[], now: number): boolean {
 
 /** "done" when Codex finished a review of the head commit. */
 function codexProgress(
-  input: Pick<GateInput, "headSha" | "codexState" | "codexReviewedShas">
+  input: Pick<
+    GateInput,
+    | "headSha"
+    | "codexState"
+    | "codexStateUpdatedAt"
+    | "codexReviewedShas"
+    | "now"
+  >
 ): "done" | "running" | "none" {
   const { headSha, codexState } = input;
   // A submitted review is final. The summary comment can lag behind it, and
   // it stays at "running" if Codex fails to edit it.
   if (input.codexReviewedShas.includes(headSha)) return "done";
   if (codexState?.commitSha === headSha) {
-    return codexState.status === "completed" ? "done" : "running";
+    if (codexState.status === "completed") return "done";
+    // A review that never finished counts as none, so the gate can ask
+    // again, up to MAX_CODEX_REQUESTS times.
+    const updated = input.codexStateUpdatedAt ?? input.now;
+    return input.now - updated > STALE_CODEX_MS ? "none" : "running";
   }
   return "none";
 }
@@ -708,15 +729,22 @@ async function gate(): Promise<void> {
     return;
   }
 
+  // A scheduled refresh (REFRESH=1) only changes a result. It skips the
+  // pending status below and writes nothing when the result is the same,
+  // so its runs do not fill the commit's status history.
+  const refresh = process.env.REFRESH === "1";
+
   // GitHub uses the newest status of each context. If a read below fails,
   // an earlier `success` would stand, so withdraw it first.
-  await setStatus(
-    repo,
-    headSha,
-    GATE_CONTEXT,
-    "pending",
-    "Evaluating the AI reviews of the head commit."
-  );
+  if (!refresh) {
+    await setStatus(
+      repo,
+      headSha,
+      GATE_CONTEXT,
+      "pending",
+      "Evaluating the AI reviews of the head commit."
+    );
+  }
 
   // Newest first, every page: the combined status holds only 30 contexts.
   const statuses = await githubList<{
@@ -745,6 +773,7 @@ async function gate(): Promise<void> {
       user: { login: string } | null;
       body: string;
       created_at: string;
+      updated_at: string;
     }>(`/repos/${repo}/issues/${number}/comments`),
     githubList<Review>(`/repos/${repo}/pulls/${number}/reviews`),
     reviewThreads(owner, name, number),
@@ -754,10 +783,10 @@ async function gate(): Promise<void> {
   ]);
 
   const codexComments = comments.filter((c) => c.user?.login === CODEX_LOGIN);
-  const summary = codexComments
-    .map((c) => parseCodexState(c.body))
-    .filter((state): state is CodexState => state !== null)
+  const summaryComment = codexComments
+    .filter((c) => parseCodexState(c.body) !== null)
     .at(-1);
+  const summary = summaryComment ? parseCodexState(summaryComment.body) : null;
   const claude = statuses.find((s) => s.context === claudeContext(number));
 
   // Only the gate's own comments count as markers; anyone can post the text.
@@ -781,7 +810,10 @@ async function gate(): Promise<void> {
     draft: pr.draft,
     body: pr.body,
     headSha,
-    codexState: summary ?? null,
+    codexState: summary,
+    codexStateUpdatedAt: summaryComment
+      ? Date.parse(summaryComment.updated_at)
+      : null,
     // A dismissed review no longer counts.
     codexReviewedShas: reviews
       .filter((r) => r.user?.login === CODEX_LOGIN && r.state !== "DISMISSED")
@@ -809,13 +841,22 @@ async function gate(): Promise<void> {
     baseChanged
   });
 
-  await setStatus(
-    repo,
-    headSha,
-    GATE_CONTEXT,
-    decision.state,
-    decision.description
-  );
+  // `statuses` is newest first.
+  const current = statuses.find((s) => s.context === GATE_CONTEXT);
+  const unchanged =
+    current?.state === decision.state &&
+    current.description === clip(decision.description);
+  if (refresh && unchanged) {
+    console.error(`#${number}: unchanged (${decision.state}).`);
+  } else {
+    await setStatus(
+      repo,
+      headSha,
+      GATE_CONTEXT,
+      decision.state,
+      decision.description
+    );
+  }
 
   if (decision.requestCodex) {
     console.error(`Asking Codex to review ${headSha.slice(0, 7)}.`);

@@ -38,6 +38,7 @@ function input(overrides: Partial<GateInput> = {}): GateInput {
     body: CLAUDE_FOOTER,
     headSha: HEAD,
     codexState: { commitSha: HEAD, status: "completed", hasFindings: false },
+    codexStateUpdatedAt: NOW - MINUTE,
     codexReviewedShas: [],
     threads: [],
     claudeStatus: null,
@@ -193,13 +194,21 @@ test("the gate asks Codex again only after a wait, up to three times", () => {
 });
 
 test("the gate does not ask Codex while its review runs", () => {
-  const running = decide(
-    input({
-      codexState: { commitSha: HEAD, status: "in_progress", hasFindings: false }
-    })
-  );
+  const codexState = {
+    commitSha: HEAD,
+    status: "in_progress",
+    hasFindings: false
+  };
+  const running = decide(input({ codexState }));
   assert.equal(running.state, "pending");
   assert.equal(running.requestCodex, false);
+
+  // A review that stays in progress for over an hour has stopped.
+  const stalled = decide(
+    input({ codexState, codexStateUpdatedAt: NOW - 90 * MINUTE })
+  );
+  assert.equal(stalled.state, "pending");
+  assert.equal(stalled.requestCodex, true);
 });
 
 test("an open P1 Codex finding fails the gate", () => {
