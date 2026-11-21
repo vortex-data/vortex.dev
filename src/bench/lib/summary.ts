@@ -731,13 +731,24 @@ async function compressionSamples(): Promise<CompressionTimeSample[]> {
  * settings ([`fileSizeSamples`]). It counts each benchmark once, as the geometric mean of its scale
  * factors. File sizes record no Arrow size, and the scopes run from megabytes to tens of
  * gigabytes, so a sum would be the largest scope's size: the card shows the ratios alone.
+ * A format in [`SIZE_SUMMARY_EXCLUDED_FORMATS`] ranks only when it has a size on every benchmark
+ * that the summary covers.
  */
 async function collectFileSizeSummary(): Promise<Summary | null> {
   const rows = await fileSizeSamples(
     FILE_SIZE_RANKED_BENCHMARKS.map((benchmark) => ({ benchmark, scale_factor: null })),
   );
+  const benchmarksOf = (format: string | null) =>
+    new Set(
+      rows.filter((row) => format === null || row.format === format).map((row) => row.dataset),
+    );
+  const benchmarkCount = benchmarksOf(null).size;
   const rankings = compressionSizeRankings(
-    rows.filter((sample) => !SIZE_SUMMARY_EXCLUDED_FORMATS.includes(sample.format)),
+    rows.filter(
+      (sample) =>
+        !SIZE_SUMMARY_EXCLUDED_FORMATS.includes(sample.format) ||
+        benchmarksOf(sample.format).size === benchmarkCount,
+    ),
     'none',
     (dataset) => JSON.stringify([dataset]),
     'any',
@@ -783,7 +794,9 @@ async function collectFileSizesSummary(): Promise<Summary | null> {
 
 /**
  * Formats the size summaries leave out. They still chart in their groups. DuckDB's database
- * file (`duckdb`) is a query engine's storage, not a file format to compare.
+ * file (`duckdb`) is a query engine's storage, not a file format to compare. The SQL Benchmark
+ * File Sizes summary keeps one that has a size on every benchmark it covers, because there it
+ * is the file that DuckDB's queries read.
  */
 const SIZE_SUMMARY_EXCLUDED_FORMATS: readonly string[] = ['duckdb'];
 

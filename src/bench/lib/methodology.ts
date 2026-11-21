@@ -180,8 +180,10 @@ export const METHODOLOGY: readonly MethodologySection[] = [
         'out statpopgen, and counts ' +
         'the TPC-H l_comment column once, because its canonical and chunked files are the ' +
         'same size. These datasets still have charts.',
-      'No size summary ranks DuckDB’s database file, which is a query engine’s storage, not ' +
-        'a file format. It still has charts.',
+      'The size summaries do not rank DuckDB’s database file, which is a query engine’s ' +
+        'storage, not a file format. It still has charts. The SQL Benchmark File Sizes ' +
+        'summary ranks it only if it has a size on every benchmark that the summary covers, ' +
+        'because there it is the file that DuckDB’s queries read.',
       'The string encoding benchmark compares its encoders with FSST instead of Parquet, so ' +
         'its throughput and size scores divide by FSST’s.',
       'Each summary uses each series’ newest result on develop.',

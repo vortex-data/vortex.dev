@@ -120,6 +120,7 @@ describe('compression summaries', () => {
         row('vortex-compact', 'tpcds', '1.0', 50),
         // Lance has one of TPC-H's three scale factors, which counts as measured on TPC-H.
         row('lance', 'tpch', '1.0', 400),
+        // DuckDB has a size on TPC-DS but none on TPC-H, so it does not rank.
         row('duckdb', 'tpcds', '1.0', 90),
       ],
     });
@@ -155,6 +156,36 @@ describe('compression summaries', () => {
       'vortex-compact': [0.5, 1, 2, null],
       lance: [4, 1, 2, null],
     });
+  });
+
+  it('ranks DuckDB’s file in the SQL summary when it has every benchmark', async () => {
+    const row = (format: string, dataset: string, valueBytes: number) => ({
+      format,
+      dataset,
+      datasetVariant: 'sf=1.0',
+      valueBytes,
+      baselineBytes: 100,
+      uncompressedBytes: null,
+    });
+    query.mockResolvedValueOnce({
+      rows: [
+        row('parquet', 'tpch', 100),
+        row('parquet', 'tpcds', 100),
+        row('vortex', 'tpch', 80),
+        row('duckdb', 'tpch', 110),
+        row('duckdb', 'tpcds', 90),
+      ],
+    });
+
+    const summary = await collectGroupSummary({ k: 'FileSizeGroup' });
+    if (summary === null || summary.type !== 'compressionSize') {
+      throw new Error('expected a compressionSize summary');
+    }
+    expect(summary.rankings.map((ranking) => [ranking.name, ranking.measured])).toEqual([
+      ['duckdb', 2],
+      ['parquet', 2],
+      ['vortex', 1],
+    ]);
   });
 
   it('totals every dataset, for the formats measured on all of them', async () => {
