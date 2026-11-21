@@ -82,6 +82,9 @@ describe('seriesLabel', () => {
     expect(seriesLabel('duckdb:duckdb')).toBe("DuckDB on DuckDB's own format");
     expect(seriesLabel('arrow-ipc')).toBe('Arrow IPC');
     expect(seriesLabel('onpair-12')).toBe('onpair-12');
+    expect(seriesLabel(`datafusion:${VX} [datasource, v1]`)).toBe(
+      'DataFusion on Vortex (datasource, v1)',
+    );
   });
 });
 

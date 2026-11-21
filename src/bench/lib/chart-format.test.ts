@@ -529,6 +529,14 @@ describe('displayFormat / displaySeriesLabel', () => {
     expect(displayFormat('parquet')).toBe('parquet');
   });
 
+  it('renames vortex-file-compressed in the name of a Vortex scan', () => {
+    expect(displayFormat('vortex-file-compressed [file, v1]')).toBe('vortex [file, v1]');
+    expect(displaySeriesLabel('datafusion:vortex-file-compressed [datasource, v1]')).toBe(
+      'datafusion:vortex [datasource, v1]',
+    );
+    expect(displayFormat('vortex-file-compressed-x')).toBe('vortex-file-compressed-x');
+  });
+
   it('rewrites the vortex token in any colon-delimited label', () => {
     expect(displaySeriesLabel('datafusion:vortex-file-compressed')).toBe('datafusion:vortex');
     expect(displaySeriesLabel('duckdb:vortex-file-compressed')).toBe('duckdb:vortex');

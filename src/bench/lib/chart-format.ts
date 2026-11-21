@@ -240,15 +240,28 @@ export function seriesOrder(
 // Small formatting helpers.
 // ---------------------------------------------------------------------------
 
+/** Vortex's on-disk format as the data stores it. */
+const VORTEX_FORMAT = 'vortex-file-compressed';
+
 /**
  * The user-facing display name for a format string. Vortex's on-disk format is
  * stored as `vortex-file-compressed` everywhere in the data (series keys, filter
  * allowlists, `series_meta`), but it is shown to users as plain `vortex`. This is
  * a presentation-only rename: callers pass the real format to the data layer and
  * route it through here ONLY when rendering. All other formats pass through.
+ *
+ * A Vortex scan other than the suite's default is the format followed by its
+ * integration and scan engine, as `vortex-file-compressed [file, v1]`, which reads
+ * `vortex [file, v1]`.
  */
 export function displayFormat(format: string): string {
-  return format === 'vortex-file-compressed' ? 'vortex' : format;
+  if (format === VORTEX_FORMAT) {
+    return 'vortex';
+  }
+  if (format.startsWith(`${VORTEX_FORMAT} [`)) {
+    return `vortex${format.slice(VORTEX_FORMAT.length)}`;
+  }
+  return format;
 }
 
 /**
