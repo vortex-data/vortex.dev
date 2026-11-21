@@ -85,7 +85,7 @@ codec. `parquet` is the suite's base Parquet: zstd level 3 where the benchmarks 
 dataset's published files where the suite prescribes them, as ClickBench's are Snappy. CI
 reads the records back as the develop baseline for the PR comment's file-size section.
 
-The read service charts both tables in the `File Sizes & Compression Ratios` group, one line per
+The read service charts both tables in the `Compression & File Size` group, one line per
 format. It charts every current `compress-bench` dataset in `compression_sizes`, and three
 `file_sizes` scopes, each summed over its files: ClickBench, TPC-H at SF10, and TPC-DS at SF1
 (`src/bench/lib/file-sizes.ts`). Its summary compares each format with zstd Parquet on the

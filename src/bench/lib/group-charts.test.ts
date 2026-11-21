@@ -584,7 +584,7 @@ describe.skipIf(!databaseAvailable)('groupChartPayloads at the window edges', ()
       })),
     ],
     [
-      // The File Sizes & Compression Ratios group mixes the two tables: `compression_sizes` charts, a NULL variant
+      // The Compression & File Size group mixes the two tables: `compression_sizes` charts, a NULL variant
       // between two non-NULL ones, and `file_sizes` charts.
       { k: 'CompressionSizeGroup' },
       [

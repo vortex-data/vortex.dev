@@ -2,15 +2,15 @@
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
 /**
- * Which charts the File Sizes & Compression Ratios group holds. It joins two tables: `compression_sizes`, the
+ * Which charts the Compression & File Size group holds. It joins two tables: `compression_sizes`, the
  * size of each `compress-bench` dataset in each format, and `file_sizes`, the files that the
  * SQL suites write. Both are one dataset's size per format per commit.
  */
 
 import { compressionSuite } from './compression-suite';
 
-/** The File Sizes & Compression Ratios group's display name. */
-export const FILE_SIZES_GROUP_NAME = 'File Sizes & Compression Ratios';
+/** The Compression & File Size group's display name. */
+export const FILE_SIZES_GROUP_NAME = 'Compression & File Size';
 
 /**
  * The SQL File Sizes group's display name. That group charts every SQL benchmark and scale factor

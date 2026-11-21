@@ -48,11 +48,11 @@
       }
     },
     {
-      "name": "File Sizes & Compression Ratios",
+      "name": "Compression & File Size",
       "slug": "csg.eyJrIjoiQ29tcHJlc3Npb25TaXplR3JvdXAifQ",
       "summary": {
         "type": "compressionSize",
-        "title": "File Sizes & Compression Ratios Summary",
+        "title": "Compression & File Size Summary",
         "rankings": [
           {
             "name": "parquet",

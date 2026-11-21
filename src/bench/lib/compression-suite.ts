@@ -18,7 +18,7 @@ export const STRING_DATASET_PATTERN = `${STRING_DATASET_PREFIX}%`;
  * `LIKE` patterns for the `compress-bench` datasets the compression time summary leaves out: the
  * `wide table cols=… chunks=… rows=…` and `sparse-wide-*` suites. They are pathological cases
  * with many variants each, so in a geomean over all datasets they would be heavily
- * over-represented. They still chart in the group. The File Sizes & Compression Ratios summary counts each suite as
+ * over-represented. They still chart in the group. The Compression & File Size summary counts each suite as
  * one dataset instead (`SIZE_SUMMARY_FAMILIES`). Both patterns are anchored at the start of the
  * name, as `compress-bench` writes it, so a dataset that only mentions them is not dropped.
  */
@@ -28,7 +28,7 @@ export const SUMMARY_EXCLUDED_DATASET_PATTERNS: readonly string[] = [
 ];
 
 /**
- * `LIKE` patterns for the `compress-bench` datasets the File Sizes & Compression Ratios summary leaves out. They still
+ * `LIKE` patterns for the `compress-bench` datasets the Compression & File Size summary leaves out. They still
  * chart in the group, and the compression time summary keeps them (minus
  * `SUMMARY_EXCLUDED_DATASET_PATTERNS`).
  *
@@ -50,7 +50,7 @@ export const SIZE_SUMMARY_EXCLUDED_DATASET_PATTERNS: readonly string[] = [
 ];
 
 /**
- * Synthetic `compress-bench` families that the File Sizes & Compression Ratios summary counts as one dataset each:
+ * Synthetic `compress-bench` families that the Compression & File Size summary counts as one dataset each:
  * the geometric mean of the family's ratios is one entry in the summary's geometric mean. A
  * family has several datasets of one kind, so counted one by one they would outweigh the real
  * datasets. Each family is the datasets whose names start with its prefix.

@@ -75,7 +75,7 @@ describe.skipIf(!databaseAvailable)(
       // Random-access sections precede Clickbench in GROUP_ORDER.
       expect(groups.map((g) => g.name)).toEqual([
         'Compression',
-        'File Sizes & Compression Ratios',
+        'Compression & File Size',
         'Random Access (NVMe)',
         'TPC-H (NVMe) (SF=1)',
         'cohere-large-10m / partitioned',
@@ -176,7 +176,7 @@ describe.skipIf(!databaseAvailable)(
     it('computes compression-size rankings for Vortex, Parquet, Lance, and Arrow IPC', async () => {
       const groups = await collectGroups();
       const summary = expectDefined(
-        groups.find((g) => g.name === 'File Sizes & Compression Ratios')?.summary,
+        groups.find((g) => g.name === 'Compression & File Size')?.summary,
         'compression size summary',
       );
       if (summary.type !== 'compressionSize') {
@@ -252,7 +252,7 @@ describe.skipIf(!databaseAvailable)(
       const body = (await res.json()) as GroupsResponse;
       expect(body.groups.map((g) => g.name)).toEqual([
         'Compression',
-        'File Sizes & Compression Ratios',
+        'Compression & File Size',
         'Random Access (NVMe)',
         'TPC-H (NVMe) (SF=1)',
         'cohere-large-10m / partitioned',
@@ -567,7 +567,7 @@ describe.skipIf(!databaseAvailable)('summary math fidelity (testcontainers Postg
     const groups = await collectGroups();
     expect(groups.map((group) => group.name)).toEqual([
       'Compression',
-      'File Sizes & Compression Ratios',
+      'Compression & File Size',
       'String Encoding',
       'String Encoding Size',
     ]);
@@ -662,7 +662,7 @@ describe.skipIf(!databaseAvailable)('summary math fidelity (testcontainers Postg
 
     const groups = await collectGroups();
     expect(groups.map((group) => group.name)).toEqual([
-      'File Sizes & Compression Ratios',
+      'Compression & File Size',
       'SQL File Sizes',
     ]);
     const [group, sql] = groups;
@@ -682,7 +682,7 @@ describe.skipIf(!databaseAvailable)('summary math fidelity (testcontainers Postg
     const summary = defined(group).summary;
     expect(summary).toMatchObject({
       type: 'compressionSize',
-      title: 'File Sizes & Compression Ratios Summary',
+      title: 'Compression & File Size Summary',
       rankings: [
         { name: 'vortex-compact', ratio: 0.5, totalBytes: 200, measured: 1, total: 1 },
         { name: 'parquet', ratio: 1, totalBytes: 400, measured: 1, total: 1 },

@@ -342,10 +342,9 @@ describe("panelsFrom", () => {
 
   it("drops a score that is not a positive number", () => {
     const gs = groups();
-    const parquet = group(
-      gs,
-      "File Sizes & Compression Ratios"
-    ).summary.rankings?.find((r) => r.name === "parquet");
+    const parquet = group(gs, "Compression & File Size").summary.rankings?.find(
+      (r) => r.name === "parquet"
+    );
     assert.ok(parquet);
     parquet.ratio = "1";
     assert.deepEqual(panelsFrom(gs, charts())?.[6]?.rows[1], {
@@ -359,10 +358,9 @@ describe("panelsFrom", () => {
     // summary has those two on part of its datasets. A size ratio is to
     // Parquet on the same dataset, so the card keeps it.
     const gs = groups();
-    const lance = group(
-      gs,
-      "File Sizes & Compression Ratios"
-    ).summary.rankings?.find((r) => r.name === "lance");
+    const lance = group(gs, "Compression & File Size").summary.rankings?.find(
+      (r) => r.name === "lance"
+    );
     assert.ok(lance);
     lance.measured = 12;
     lance.total = 13;
@@ -376,7 +374,7 @@ describe("panelsFrom", () => {
     // A deploy that renames a bench group builds against production bench,
     // which still serves the old name.
     const gs = groups();
-    const sizes = group(gs, "File Sizes & Compression Ratios");
+    const sizes = group(gs, "Compression & File Size");
     sizes.name = "Compression Size";
     assert.deepEqual(panelsFrom(gs, charts()), panelsFrom(groups(), charts()));
   });
@@ -384,7 +382,7 @@ describe("panelsFrom", () => {
   it("gives null when a group is missing, so the card never shows part of the table", () => {
     for (const name of [
       "Compression",
-      "File Sizes & Compression Ratios",
+      "Compression & File Size",
       "Random Access (NVMe)",
       "Clickbench",
       "TPC-H (NVMe) (SF=10)"

@@ -729,7 +729,7 @@ const FILE_SIZE_BASELINE = 'vortex-file-compressed';
 /**
  * The SQL File Sizes rollup: each format's total file size against `vortex-file-compressed`, per
  * benchmark scope (benchmark and scale factor) at that scope's newest commit with a baseline.
- * Unlike the File Sizes & Compression Ratios summary, it covers every scope in `file_sizes` and leaves out
+ * Unlike the Compression & File Size summary, it covers every scope in `file_sizes` and leaves out
  * `compress-bench`. Scopes come from nightly as well as develop runs, so each one uses its own
  * newest commit. File sizes record no Arrow size, so the Arrow ratio is empty.
  */
@@ -811,7 +811,7 @@ async function collectFileSizeSummary(): Promise<Summary | null> {
 }
 
 /**
- * The `File Sizes & Compression Ratios` rollup: each format's sizes against Parquet's (zstd) over the
+ * The `Compression & File Size` rollup: each format's sizes against Parquet's (zstd) over the
  * `compress-bench` datasets ([`compressionSizeSamples`]) and the SQL scopes in
  * [`FILE_SIZE_SUMMARY_SCOPES`] ([`fileSizeSamples`]). Each synthetic family in
  * [`SIZE_SUMMARY_FAMILIES`] counts as one dataset. Only `compress-bench` records Arrow memory
@@ -829,7 +829,7 @@ async function collectFileSizesSummary(): Promise<Summary | null> {
   }
   return {
     type: 'compressionSize',
-    title: 'File Sizes & Compression Ratios Summary',
+    title: 'Compression & File Size Summary',
     rankings,
     explanation:
       'Total file size, and geometric means of file sizes versus Arrow (higher is better) and versus Parquet-zstd (lower is better)',
@@ -837,7 +837,7 @@ async function collectFileSizesSummary(): Promise<Summary | null> {
 }
 
 /**
- * Formats the File Sizes & Compression Ratios summary leaves out. They still chart in the group.
+ * Formats the Compression & File Size summary leaves out. They still chart in the group.
  * DuckDB's database file (`duckdb`) is a query engine's storage, not a file format to compare,
  * and only TPC-DS records it.
  */
@@ -847,7 +847,7 @@ const SIZE_SUMMARY_EXCLUDED_FORMATS: readonly string[] = ['duckdb'];
  * Which datasets a size summary's totals cover:
  * - `shared`: the datasets that every ranked format has. Every format gets a total.
  * - `complete`: every dataset in the summary. Only a format measured on all of them gets a
- *   total. The File Sizes & Compression Ratios summary uses it, because its two sources record
+ *   total. The Compression & File Size summary uses it, because its two sources record
  *   formats at different times and some formats only on some datasets, so a format can lack a
  *   dataset that the others have.
  */

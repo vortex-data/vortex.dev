@@ -216,7 +216,7 @@ const SOURCES: (Source | Panel)[] = [
     unit: "×",
     kind: "size",
     better: "lower",
-    group: "File Sizes & Compression Ratios",
+    group: "Compression & File Size",
     formerGroups: ["Compression Size"],
     rankings: (s) => s.rankings,
     name: (f) => f,

@@ -20,7 +20,7 @@ const GROUP_KINDS = FAMILIES.map((family) => family.groupKind);
 describe('compression summaries', () => {
   beforeEach(() => {
     query.mockReset();
-    // The File Sizes & Compression Ratios summary also reads the SQL suites' sizes; a test that sets no rows for that
+    // The Compression & File Size summary also reads the SQL suites' sizes; a test that sets no rows for that
     // second query gets none.
     query.mockResolvedValue({ rows: [] });
   });
@@ -85,7 +85,7 @@ describe('compression summaries', () => {
     // Both formats have both datasets, so each total sums both.
     expect(byFormat.get('vortex-file-compressed')?.totalBytes).toBe(901);
     expect(byFormat.get('parquet')?.totalBytes).toBe(104);
-    expect(summary.title).toBe('File Sizes & Compression Ratios Summary');
+    expect(summary.title).toBe('Compression & File Size Summary');
     expect(summary.explanation).toBe(
       'Total file size, and geometric means of file sizes versus Arrow (higher is better) and versus Parquet-zstd (lower is better)',
     );
@@ -439,7 +439,7 @@ describe('compression summaries', () => {
     await collectGroupSummary({ k: 'CompressionTimeGroup' });
     await collectGroupSummary({ k: 'CompressionSizeGroup' });
 
-    // The File Sizes & Compression Ratios summary reads the SQL suites' sizes in a third query.
+    // The Compression & File Size summary reads the SQL suites' sizes in a third query.
     expect(query).toHaveBeenCalledTimes(3);
     const timingParams = [
       ['vortex-file-compressed', 'parquet', 'lance'],
