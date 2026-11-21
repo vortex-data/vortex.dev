@@ -41,6 +41,8 @@ describe('groupAnchors', () => {
     expect(groupAnchor('Polar Signals Profiling')).toBe('polarsignals-profiling');
     expect(groupAnchor('Compression & File Size')).toBe('compression-size');
     expect(groupAnchor('SQL Benchmark File Sizes')).toBe('sql-file-size');
+    expect(groupAnchor('Compression Speed')).toBe('compression');
+    expect(groupAnchor('String Encoding Speed')).toBe('string-encoding');
   });
 
   it('keeps the full production group list collision-free', () => {

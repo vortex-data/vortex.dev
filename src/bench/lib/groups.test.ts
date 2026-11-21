@@ -74,7 +74,7 @@ describe.skipIf(!databaseAvailable)(
       const groups = await collectGroups();
       // Random-access sections precede Clickbench in GROUP_ORDER.
       expect(groups.map((g) => g.name)).toEqual([
-        'Compression',
+        'Compression Speed',
         'Compression & File Size',
         'Random Access (NVMe)',
         'TPC-H (NVMe) (SF=1)',
@@ -144,7 +144,7 @@ describe.skipIf(!databaseAvailable)(
     it('computes compression rankings with Parquet and Lance baselines', async () => {
       const groups = await collectGroups();
       const summary = expectDefined(
-        groups.find((g) => g.name === 'Compression')?.summary,
+        groups.find((g) => g.name === 'Compression Speed')?.summary,
         'compression summary',
       );
       if (summary.type !== 'compression') {
@@ -251,7 +251,7 @@ describe.skipIf(!databaseAvailable)(
       expect(res.headers.get('cache-control')).toBe(READ_API_CACHE_CONTROL);
       const body = (await res.json()) as GroupsResponse;
       expect(body.groups.map((g) => g.name)).toEqual([
-        'Compression',
+        'Compression Speed',
         'Compression & File Size',
         'Random Access (NVMe)',
         'TPC-H (NVMe) (SF=1)',
@@ -566,30 +566,30 @@ describe.skipIf(!databaseAvailable)('summary math fidelity (testcontainers Postg
 
     const groups = await collectGroups();
     expect(groups.map((group) => group.name)).toEqual([
-      'Compression',
+      'Compression Speed',
       'Compression & File Size',
-      'String Encoding',
+      'String Encoding Speed',
       'String Encoding Size',
     ]);
     const byName = new Map(groups.map((group) => [group.name, group]));
-    expect(groupKeyFromSlug(defined(byName.get('Compression')).slug)).toEqual({
+    expect(groupKeyFromSlug(defined(byName.get('Compression Speed')).slug)).toEqual({
       k: 'CompressionTimeGroup',
     });
-    expect(defined(byName.get('Compression')).charts.map((chart) => chart.name)).toEqual([
+    expect(defined(byName.get('Compression Speed')).charts.map((chart) => chart.name)).toEqual([
       'tpch-lineitem',
     ]);
-    expect(defined(byName.get('Compression')).summary).toMatchObject({
+    expect(defined(byName.get('Compression Speed')).summary).toMatchObject({
       type: 'compression',
       rankings: [
         { name: 'vortex-file-compressed', operation: 'encode', ratio: 2 },
         { name: 'parquet', operation: 'encode', ratio: 1 },
       ],
     });
-    expect(groupKeyFromSlug(defined(byName.get('String Encoding')).slug)).toEqual({
+    expect(groupKeyFromSlug(defined(byName.get('String Encoding Speed')).slug)).toEqual({
       k: 'CompressionTimeGroup',
       suite: 'strings',
     });
-    expect(defined(byName.get('String Encoding')).charts).toEqual(
+    expect(defined(byName.get('String Encoding Speed')).charts).toEqual(
       ['fsst', 'onpair-12'].map((encoder) => ({
         name: `fineweb/text/${encoder}`,
         slug: chartKeyToSlug({
@@ -599,7 +599,7 @@ describe.skipIf(!databaseAvailable)('summary math fidelity (testcontainers Postg
         }),
       })),
     );
-    expect(defined(byName.get('String Encoding')).summary).toMatchObject({
+    expect(defined(byName.get('String Encoding Speed')).summary).toMatchObject({
       type: 'compression',
       rankings: [
         { name: 'onpair-12', operation: 'encode', ratio: 2, throughputGbS: 6 },

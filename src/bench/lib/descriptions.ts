@@ -44,7 +44,7 @@ function staticDescription(name: string): string | null {
       return 'Tests performance of selecting arbitrary row indices from a file on NVMe storage';
     case 'Random Access (S3)':
       return 'Tests performance of selecting arbitrary row indices from a file on S3 storage';
-    case 'Compression':
+    case 'Compression Speed':
       return 'Measures write and scan throughput for Vortex, Parquet, and Lance files';
     case 'Compression & File Size':
       return (
@@ -58,7 +58,7 @@ function staticDescription(name: string): string | null {
         'ranks formats against Parquet on the benchmarks that write Parquet with bench’s ' +
         'settings, each benchmark once. Compression & File Size compares the formats’ compression'
       );
-    case 'String Encoding':
+    case 'String Encoding Speed':
       return 'Measures Vortex file write and scan throughput for each string encoder';
     case 'String Encoding Size':
       return 'Compares Vortex file sizes for each string encoder';

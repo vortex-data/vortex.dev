@@ -21,7 +21,7 @@ const VX = 'vortex-file-compressed';
 
 const groups: Group[] = [
   {
-    name: 'Compression',
+    name: 'Compression Speed',
     slug: 'ctg.eyJrIjoiQ29tcHJlc3Npb25UaW1lR3JvdXAifQ',
     charts: [{ name: 'taxi', slug: 'ct.taxi' }],
     description: 'Measures write and scan throughput for Vortex, Parquet, and Lance files',
@@ -219,12 +219,12 @@ describe('llmsText', () => {
 
   it("gives each group's headline, rankings and links", () => {
     expect(text).toContain(
-      '### Compression\n\nMeasures write and scan throughput for Vortex, Parquet, and Lance files.',
+      '### Compression Speed\n\nMeasures write and scan throughput for Vortex, Parquet, and Lance files.',
     );
     expect(text).toContain('Vortex compared with Parquet: ');
     expect(text).toContain('- [Clickbench charts](https://bench.vortex.dev/#clickbench)');
     expect(text).toContain(
-      '- [What Compression measures](https://github.com/vortex-data/vortex/blob/develop/benchmarks/compress-bench/README.md)',
+      '- [What Compression Speed measures](https://github.com/vortex-data/vortex/blob/develop/benchmarks/compress-bench/README.md)',
     );
   });
 });
@@ -261,6 +261,6 @@ describe('chartDescription', () => {
 
 describe('the Dataset JSON-LD', () => {
   it('names every group as a variable measured', () => {
-    expect(datasetJsonLd(groups).variableMeasured).toEqual(['Compression', 'Clickbench']);
+    expect(datasetJsonLd(groups).variableMeasured).toEqual(['Compression Speed', 'Clickbench']);
   });
 });

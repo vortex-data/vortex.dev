@@ -222,7 +222,7 @@ describe("panelsFrom", () => {
 
   it("keeps a system bench did not report, as Not measured", () => {
     const gs = groups();
-    const compression = group(gs, "Compression").summary;
+    const compression = group(gs, "Compression Speed").summary;
     compression.rankings = (compression.rankings ?? []).filter(
       (r) => !(r.name === "lance" && r.operation === "decode")
     );
@@ -335,7 +335,7 @@ describe("panelsFrom", () => {
 
   it("gives null when no system in a group has a score", () => {
     const gs = groups();
-    for (const r of group(gs, "Compression").summary.rankings ?? [])
+    for (const r of group(gs, "Compression Speed").summary.rankings ?? [])
       r.ratio = 0;
     assert.equal(panelsFrom(gs, charts()), null);
   });
@@ -380,9 +380,15 @@ describe("panelsFrom", () => {
     assert.deepEqual(panelsFrom(gs, charts()), panelsFrom(groups(), charts()));
   });
 
+  it("reads the scan and write panels from the group's earlier name", () => {
+    const gs = groups();
+    group(gs, "Compression Speed").name = "Compression";
+    assert.deepEqual(panelsFrom(gs, charts()), panelsFrom(groups(), charts()));
+  });
+
   it("gives null when a group is missing, so the card never shows part of the table", () => {
     for (const name of [
-      "Compression",
+      "Compression Speed",
       "Compression & File Size",
       "Random Access (NVMe)",
       "Clickbench",
@@ -400,9 +406,9 @@ describe("panelsFrom", () => {
     // Arrow alone is shown only where bench runs it, so a scan ranking that
     // listed only Arrow still counts as none.
     const only = groups();
-    group(only, "Compression").summary.rankings = [
+    group(only, "Compression Speed").summary.rankings = [
       { name: "arrow-ipc", operation: "decode", ratio: 2 },
-      ...(group(only, "Compression").summary.rankings ?? []).filter(
+      ...(group(only, "Compression Speed").summary.rankings ?? []).filter(
         (r) => r.operation === "encode"
       )
     ];
@@ -420,7 +426,7 @@ describe("panelsFrom", () => {
       "groups",
       {},
       [null],
-      [{ name: "Compression", summary: null }]
+      [{ name: "Compression Speed", summary: null }]
     ]) {
       assert.equal(panelsFrom(bad, charts()), null, JSON.stringify(bad));
     }
