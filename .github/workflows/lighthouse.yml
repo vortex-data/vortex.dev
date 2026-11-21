@@ -10,6 +10,18 @@ name: Lighthouse
 # "Lighthouse and axe", collects their results.
 on:
   pull_request:
+  # Baseline: a manual run on a branch with a Vercel preview, such as an open
+  # PR's branch. It audits every page on both profiles with more runs, asserts
+  # nothing, and posts no comment; the run's summary shows each page's
+  # scores and metric values, to calibrate the floors in lighthouserc.cjs.
+  # Its check is named "Lighthouse baseline", so it never stands in for the
+  # required "Lighthouse and axe".
+  workflow_dispatch:
+    inputs:
+      runs:
+        description: Lighthouse runs for each page and profile
+        type: number
+        default: 5
 
 permissions:
   contents: read
@@ -25,11 +37,11 @@ env:
 
 jobs:
   lighthouse:
-    name: Lighthouse (${{ matrix.page }})
+    name: Lighthouse (${{ matrix.page }}, ${{ matrix.profile }})
     # Fork PRs and Dependabot's PRs get no secrets, so they can't reach the
     # protected preview. The jobs are skipped for them, which counts as
     # passing for the required check.
-    if: github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
+    if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]')
     runs-on: ubuntu-26.04
     timeout-minutes: 30
     permissions:
@@ -37,16 +49,19 @@ jobs:
       deployments: read
     strategy:
       fail-fast: false
-      # The keys of `pages` in lighthouserc.cjs.
+      # The keys of `pages` and `policy` in lighthouserc.cjs;
+      # tests/unit/lighthouse-scores.test.ts keeps them equal.
       matrix:
-        page: [home, blog, post, bench, chart]
+        page: [home, blog, post, faq, bench, chart, methodology]
+        profile: [desktop, mobile]
     steps:
       # The PR's head commit, which Vercel built the preview from, not the
       # merge commit a pull_request checkout defaults to: the config must
-      # describe the app it audits (a post only on main would be a 404).
+      # describe the app it audits (a post only on main would be a 404). A
+      # baseline audits the branch's head commit.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
 
       # The proxy and lighthouserc.cjs use only Node's built-in modules, so
@@ -61,7 +76,7 @@ jobs:
       # file comes from, and no earlier step writes to `.github/actions`.
       - uses: ./.github/actions/preview-proxy  # zizmor: ignore[self-repository]
         with:
-          sha: ${{ github.event.pull_request.head.sha }}
+          sha: ${{ github.event.pull_request.head.sha || github.sha }}
           bypass-secret: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
 
       # Request the page once, so no Lighthouse run measures a cold start.
@@ -100,53 +115,43 @@ jobs:
         env:
           BASE_URL: ${{ env.PROXY }}
           LHCI_PAGE: ${{ matrix.page }}
+          LHCI_PROFILE: ${{ matrix.profile }}
           BENCH_CHART_PATH: ${{ steps.page.outputs.chart }}
+          LHCI_RUNS: ${{ inputs.runs || 3 }}
+          LHCI_BASELINE: ${{ github.event_name == 'workflow_dispatch' && '1' || '' }}
         with:
           configPath: ./lighthouserc.cjs
           uploadArtifacts: false
 
-      # The report job's comment needs only each run's URL and category
-      # scores. The full reports hold screenshots and page details of the
-      # protected preview, and anyone signed in to GitHub can download a
-      # public repository's artifacts, so the full reports stay on the
-      # runner. The assertion results print in the Lighthouse CI step's log,
-      # but they name only the category. So this step also keeps, for each
-      # category, the IDs of the scored audits below 1, and prints them.
-      # Audit IDs are Lighthouse's own names, not page content.
-      - name: Keep only the scores
+      # The full reports hold screenshots and page details of the protected
+      # preview, and anyone signed in to GitHub can download a public
+      # repository's artifacts, so they stay on the runner. This step checks
+      # that each report is an audit of the page on this job's profile, and
+      # keeps only its scores, metric values and the IDs of its failed
+      # audits, which it also prints. See scripts/lighthouse-scores.mjs.
+      - name: Check the reports and keep the scores
         if: always() && steps.page.outputs.path != ''
-        run: |
-          set -Eeuo pipefail
-          shopt -s nullglob
-          mkdir -p "${RUNNER_TEMP}/lighthouse-scores"
-          for report in .lighthouseci/lhr-*.json; do
-            jq '. as $r | {
-              finalUrl,
-              categories: (.categories | map_values({score})),
-              failedAudits: (.categories | map_values([
-                .auditRefs[] | select(.weight > 0) | .id
-                | select($r.audits[.].score != null and $r.audits[.].score < 1)
-              ]))
-            }' "${report}" > "${RUNNER_TEMP}/lighthouse-scores/$(basename "${report}")"
-            jq -r '"\(.finalUrl): \(.failedAudits | to_entries
-              | map(select(.value != []) | "\(.key) [\(.value | join(", "))]")
-              | if . == [] then "no failed audits" else join("; ") end)"' \
-              "${RUNNER_TEMP}/lighthouse-scores/$(basename "${report}")"
-          done
+        env:
+          BASE_URL: ${{ env.PROXY }}
+          LHCI_PAGE: ${{ matrix.page }}
+          LHCI_PROFILE: ${{ matrix.profile }}
+          BENCH_CHART_PATH: ${{ steps.page.outputs.chart }}
+          LHCI_RUNS: ${{ inputs.runs || 3 }}
+        run: node scripts/lighthouse-scores.mjs keep "${RUNNER_TEMP}/lighthouse-scores"
 
       # Uploaded when the assertions fail too.
       - name: Upload the scores
         if: always() && steps.page.outputs.path != ''
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
-          name: lighthouse-${{ matrix.page }}
+          name: lighthouse-${{ matrix.page }}-${{ matrix.profile }}
           path: ${{ runner.temp }}/lighthouse-scores/
           if-no-files-found: ignore
           retention-days: 7
 
   axe:
     name: axe
-    if: github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
     runs-on: ubuntu-26.04
     timeout-minutes: 30
     permissions:
@@ -258,9 +263,9 @@ jobs:
   # shows which page regressed, and it fails unless every job above passed.
   # It is skipped with them for fork and Dependabot PRs.
   report:
-    name: Lighthouse and axe
+    name: ${{ github.event_name == 'workflow_dispatch' && 'Lighthouse baseline' || 'Lighthouse and axe' }}
     needs: [lighthouse, axe]
-    if: ${{ !cancelled() && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' }}
+    if: ${{ !cancelled() && (github.event_name == 'workflow_dispatch' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]')) }}
     runs-on: ubuntu-26.04
     timeout-minutes: 10
     permissions:
@@ -269,9 +274,11 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
-          sparse-checkout: scripts/lighthouse-comment.sh
+          sparse-checkout: |
+            scripts/lighthouse-comment.sh
+            scripts/lighthouse-scores.mjs
           sparse-checkout-cone-mode: false
 
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
@@ -279,10 +286,20 @@ jobs:
           pattern: lighthouse-*
           path: reports
 
+      # Each page and profile's scores and metric values, across its runs.
+      - name: Summarize the runs
+        continue-on-error: true
+        run: |
+          shopt -s nullglob
+          reports=(reports/*/lhr-*.json)
+          if [ "${#reports[@]}" -eq 0 ]; then exit 0; fi
+          node scripts/lighthouse-scores.mjs summary "${reports[@]}" >> "$GITHUB_STEP_SUMMARY"
+
       # A failed comment must not fail this required check, so both comment
       # steps are non-fatal.
       - name: Format PR comment
         id: lh-comment
+        if: github.event_name == 'pull_request'
         continue-on-error: true
         run: |
           shopt -s nullglob
@@ -302,10 +319,12 @@ jobs:
           header: lighthouse
           message: ${{ steps.lh-comment.outputs.body }}
 
+      # A baseline skips axe.
       - name: Require every job to pass
         env:
           LIGHTHOUSE: ${{ needs.lighthouse.result }}
           AXE: ${{ needs.axe.result }}
+          BASELINE: ${{ github.event_name == 'workflow_dispatch' }}
         run: |
           echo "Lighthouse: ${LIGHTHOUSE}, axe: ${AXE}"
-          [ "${LIGHTHOUSE}" = success ] && [ "${AXE}" = success ]
+          [ "${LIGHTHOUSE}" = success ] && { [ "${AXE}" = success ] || [ "${BASELINE}" = true ]; }

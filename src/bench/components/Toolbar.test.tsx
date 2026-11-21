@@ -31,7 +31,7 @@ describe('Toolbar (server-rendered)', () => {
   // The site's header holds the page's title, the theme toggle and the GitHub button.
   it("is only the controls, for the site header's row", () => {
     expect(html).toMatch(
-      /^<div class="bench-toolbar-controls" aria-label="Benchmark group controls">/,
+      /^<div class="bench-toolbar-controls" role="group" aria-label="Benchmark group controls">/,
     );
     expect(html).not.toMatch(/<h1|theme-toggle/);
   });
