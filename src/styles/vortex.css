@@ -1,7 +1,7 @@
 /* Vortex design system components (sections: base, brand, chrome, site, blog, tables, focus), copied by tools/site-styles.mjs.
    Edit the system, then run tools/site-styles.mjs; do not edit here.
    Made by: node tools/site-styles.mjs <site> --sections base,brand,chrome,site,blog,tables,focus --faces --vx-face --base --reads ..
-   sha256 63cc1276044b2919cc131b328dbfb69b558ba6b89283ca337ac44e33b43625a9 */
+   sha256 224dff0799878a355f9778b7234d19a9d9215667fb6b364df73cb2d7d887a245 */
 
 /* ------------------------------------------------------------------ base */
 /* Every component sizes with border-box, so it draws the same under a site's reset or none. */
@@ -624,11 +624,13 @@ html:has(.vx-header) { scroll-padding-top: calc(var(--space-64) + var(--space-8)
 .vx-results-table .is-rival { display: none; }
 @media (max-width: 760px) {
   .vx-results { padding: var(--space-16); }
-  /* A phone shows each benchmark and its verdicts alone: against Parquet and, with a rival, against it. Vortex's figure would repeat the verdict. With no figure left to mark, the key goes too. The heads read "Vortex", "vs Parquet", "vs Lance", each on one line. */
+  /* A phone shows each benchmark and its verdicts alone: against Parquet and, with a rival, against it. Vortex's figure would repeat the verdict. With no figure left to mark, the key goes too. The heads read "Vortex", "vs Parquet", "vs Lance", each on one line: Vortex in bold, and a rule under the row (the system tables' --edge) so the row reads as one phrase, Vortex the subject of each "vs". */
   .vx-results-table :is(th, td):not(:first-child, .is-verdict) { display: none; }
   .vx-results-table .is-rival { display: table-cell; }
   .vx-results-table .is-verdict { padding-left: var(--space-16); }
-  .vx-results-lead { display: inline; }
+  .vx-results-lead { display: inline; font-weight: 600; }
+  .vx-results-table thead th { border-bottom: 1px solid var(--edge); }
+  .vx-results-table tbody tr:first-child :is(th, td) { padding-top: var(--space-8); }
   .vx-results-subject, .vx-results-label { display: inline; position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .vx-results-foot { display: none; }
 }
