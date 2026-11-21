@@ -74,8 +74,8 @@ timed.
 dataset `strings/<column>`, the string encoder (`onpair-12`, `fsst`, ...) as `dataset_variant`,
 and `vortex-file-compressed` as `format`; `encode` is the Vortex file write and `decode` the scan.
 Its `uncompressed_bytes` is the column's canonical Arrow `Utf8View` size. The site lists these
-rows in the `String Encoding` groups and compares each encoder with `fsst`, so the prefix and the
-`fsst` label are part of the contract.
+rows in the `String Encoding Speed` and `String Encoding Size` groups and compares each encoder
+with `fsst`, so the prefix and the `fsst` label are part of the contract.
 
 `file_size` records are not written by `vortex-bench`: the monorepo's
 `scripts/capture-file-sizes.py` writes one per data file a SQL benchmark leaves on disk, with

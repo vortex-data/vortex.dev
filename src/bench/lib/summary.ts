@@ -1066,7 +1066,7 @@ async function compressionSizeSamples(): Promise<CompressionSizeSample[]> {
 }
 
 /**
- * The `String Encoding` rollup: each string encoder's write (`encode`) and scan (`decode`)
+ * The `String Encoding Speed` rollup: each string encoder's write (`encode`) and scan (`decode`)
  * throughput against FSST's, on the columns both measured at the newest `string-bench` commit.
  * The suite runs every encoder in one job, so one commit is a complete snapshot.
  */

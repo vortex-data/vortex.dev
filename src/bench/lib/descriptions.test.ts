@@ -17,7 +17,7 @@ describe('groupDescription', () => {
     expect(groupDescription('Random Access')).toBe(
       'Tests performance of selecting arbitrary row indices from a file on NVMe storage',
     );
-    expect(groupDescription('Compression')).toBe(
+    expect(groupDescription('Compression Speed')).toBe(
       'Measures write and scan throughput for Vortex, Parquet, and Lance files',
     );
     expect(groupDescription('Compression & File Size')).toBe(

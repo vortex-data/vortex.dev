@@ -1308,7 +1308,7 @@ export interface GroupChartsResponse {
  * [`GROUP_ORDER_LAST`].
  */
 const GROUP_ORDER: readonly string[] = [
-  'Compression',
+  'Compression Speed',
   'Compression & File Size',
   'Random Access (NVMe)',
   'Random Access (S3)',
@@ -1337,7 +1337,7 @@ const GROUP_ORDER: readonly string[] = [
  */
 const GROUP_ORDER_LAST: readonly string[] = [
   'SQL Benchmark File Sizes',
-  'String Encoding',
+  'String Encoding Speed',
   'String Encoding Size',
 ];
 
@@ -1604,7 +1604,7 @@ type DatasetVariantRow = { dataset: string; dataset_variant: string | null };
  * names only `string-bench`'s group here.
  */
 const COMPRESSION_GROUP_NAMES = {
-  CompressionTimeGroup: { compress: 'Compression', strings: 'String Encoding' },
+  CompressionTimeGroup: { compress: 'Compression Speed', strings: 'String Encoding Speed' },
   CompressionSizeGroup: { strings: 'String Encoding Size' },
 } as const;
 
@@ -1656,7 +1656,7 @@ function compressionGroups(
   });
 }
 
-/** The `Compression` and `String Encoding` groups, or `[]` if the fact table is empty. */
+/** The `Compression Speed` and `String Encoding Speed` groups, or `[]` if the fact table is empty. */
 async function collectCompressionTimeGroup(): Promise<Group[]> {
   const text = `
     SELECT dataset, dataset_variant

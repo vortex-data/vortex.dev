@@ -348,10 +348,10 @@ describe('compareGroupSortKey canonical group ordering (no DB)', () => {
       'Random Access (S3)',
       'Random Access (NVMe)',
       'Clickbench',
-      'Compression',
+      'Compression Speed',
     ].sort(compareGroupSortKey);
     expect(sorted).toEqual([
-      'Compression',
+      'Compression Speed',
       'Random Access (NVMe)',
       'Random Access (S3)',
       'Clickbench',
@@ -361,11 +361,13 @@ describe('compareGroupSortKey canonical group ordering (no DB)', () => {
   });
 
   it('sorts listed groups before unknown groups, unknowns alphabetically last', () => {
-    const sorted = ['cohere-large-10m / partitioned', 'Random Access (NVMe)', 'Compression'].sort(
-      compareGroupSortKey,
-    );
+    const sorted = [
+      'cohere-large-10m / partitioned',
+      'Random Access (NVMe)',
+      'Compression Speed',
+    ].sort(compareGroupSortKey);
     expect(sorted).toEqual([
-      'Compression',
+      'Compression Speed',
       'Random Access (NVMe)',
       'cohere-large-10m / partitioned',
     ]);
@@ -376,18 +378,18 @@ describe('compareGroupSortKey canonical group ordering (no DB)', () => {
       'String Encoding Size',
       'Clickbench',
       'cohere-large-10m / partitioned',
-      'String Encoding',
+      'String Encoding Speed',
       'Random Access (NVMe)',
       'Compression & File Size',
-      'Compression',
+      'Compression Speed',
     ].sort(compareGroupSortKey);
     expect(sorted).toEqual([
-      'Compression',
+      'Compression Speed',
       'Compression & File Size',
       'Random Access (NVMe)',
       'Clickbench',
       'cohere-large-10m / partitioned',
-      'String Encoding',
+      'String Encoding Speed',
       'String Encoding Size',
     ]);
   });
