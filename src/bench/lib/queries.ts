@@ -42,7 +42,7 @@ import {
   STRING_DATASET_PREFIX,
 } from './compression-suite';
 import { groupDescription } from './descriptions';
-import type { FilterUniverse } from './chart-format';
+import { type FilterUniverse, isOtherScan } from './chart-format';
 import { type ChartKind, compareCodeUnits, FAMILIES, type GroupKind } from './families';
 import { chartKeyFromSlug, chartKeyToSlug, groupKeyFromSlug, groupKeyToSlug } from './slug';
 import type { ChartKey, GroupKey } from './slug';
@@ -402,13 +402,19 @@ export function seriesFor(
   }
 }
 
-/** Thread one fact row onto the seeded x-axis. A row off the seeded commits is dropped. */
+/**
+ * Thread one fact row onto the seeded x-axis. A row off the seeded commits is dropped, and so
+ * is a row of one of Vortex's other scans (`isOtherScan`).
+ */
 function recordRow(acc: SeriesAccumulator, kind: ChartKind, row: FactRow): void {
   const idx = acc.commitIdx(row.commit_sha);
   if (idx === undefined) {
     return;
   }
   const { key, engine, format } = seriesFor(kind, row);
+  if (format !== undefined && isOtherScan(format)) {
+    return;
+  }
   acc.record(key, idx, row.value);
   acc.tag(key, engine, format);
 }
@@ -1973,6 +1979,9 @@ export async function collectFilterUniverse(): Promise<FilterUniverse> {
   ]);
   return {
     engines: engines.rows.map((r) => r.value).sort(compareCodeUnits),
-    formats: formats.rows.map((r) => r.value).sort(compareCodeUnits),
+    formats: formats.rows
+      .map((r) => r.value)
+      .filter((format) => !isOtherScan(format))
+      .sort(compareCodeUnits),
   };
 }

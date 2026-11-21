@@ -16,6 +16,7 @@ vi.mock('next/cache', () => ({
 }));
 
 import {
+  collectFilterUniverse,
   collectGroup,
   collectGroupCharts,
   collectGroups,
@@ -996,6 +997,32 @@ describe.skipIf(!databaseAvailable)('summary math fidelity (testcontainers Postg
       'decode:parquet',
     ]);
     expect(defined(summary.rankings[0]).ratio).toBeCloseTo(2.0, 6);
+  });
+
+  it('shows only the default Vortex scan, not the scans the PR reports compare', async () => {
+    const sha = 'f'.repeat(40);
+    await insertCommit(sha, '2026-04-23T12:00:00Z');
+    await insertQuery(sha, 1, 'datafusion', 'vortex-file-compressed', 100_000);
+    await insertQuery(sha, 1, 'datafusion', 'vortex-file-compressed [file, v1]', 50_000);
+    await insertQuery(sha, 1, 'datafusion', 'vortex-file-compressed [datasource, v1]', 60_000);
+    await insertQuery(sha, 1, 'datafusion', 'parquet', 200_000);
+
+    const key = {
+      k: 'QueryGroup',
+      dataset: 'tpch',
+      dataset_variant: null,
+      scale_factor: '1',
+      storage: 'nvme',
+    } as const;
+    const shown = ['datafusion:parquet', 'datafusion:vortex-file-compressed'];
+    const summary = await collectGroupSummary(key);
+    if (summary?.type !== 'queryBenchmark') {
+      throw new Error(`expected queryBenchmark summary, got ${summary?.type}`);
+    }
+    expect(summary.rankings.map((r) => r.name).sort()).toEqual(shown);
+    const bundle = await collectGroupCharts(key, parseCommitWindow(null));
+    expect(Object.keys(defined(bundle?.charts[0]).series).sort()).toEqual(shown);
+    expect((await collectFilterUniverse()).formats).toEqual(['parquet', 'vortex-file-compressed']);
   });
 
   it('applies the 300_000 penalty floor so a missing query flips the ranking', async () => {

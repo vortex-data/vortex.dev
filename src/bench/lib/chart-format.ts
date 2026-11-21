@@ -252,6 +252,18 @@ export function displayFormat(format: string): string {
 }
 
 /**
+ * Whether `format` names one of Vortex's other scans. The SQL benchmarks run
+ * each suite's default scan under the plain format, and every other scan under
+ * the format followed by its integration and scan engine, as
+ * `vortex-file-compressed [datasource, v1]`. The pull request reports compare
+ * every scan with its develop baseline in bench's database, so those rows stay
+ * there, but bench shows only the default scan, as `vortex`.
+ */
+export function isOtherScan(format: string): boolean {
+  return / \[[^\]]+\]$/.test(format);
+}
+
+/**
  * The display version of a colon-delimited series label (`engine:format` or the
  * compression-time `format:op`), rewriting each segment via [`displayFormat`] so
  * the `vortex-file-compressed` token reads `vortex` wherever it appears while the

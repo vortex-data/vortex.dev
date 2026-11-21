@@ -71,6 +71,8 @@ export const METHODOLOGY: readonly MethodologySection[] = [
         'format, and, for random access, LitData. Not every suite runs every format. The ' +
         'compression and file size benchmarks write Parquet with parquet-rs 59 and zstd at ' +
         'level 3. ClickBench reads its published Parquet files.',
+      'Vortex has more than one way to scan a file in each query engine. bench shows each ' +
+        'suite’s default scan. The benchmark reports on pull requests also compare the others.',
     ],
   },
   {
