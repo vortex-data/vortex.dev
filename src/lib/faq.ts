@@ -135,7 +135,7 @@ export function faqs({
       question: "What is Vortex?",
       answer: [
         "Vortex is an open-source columnar file format. Like Apache Parquet, it stores a table column by column, so a query reads only the columns it needs. Its goals are fast scans, fast random access, and good compression.",
-        "Vortex has libraries for Rust, Python, Java, C, and C++. DuckDB, Apache DataFusion, Apache Spark, and Ray can query Vortex files, and Pandas, Polars, and PyArrow can read them through the Python library."
+        "Vortex has libraries for Rust, Python, Java, C, and C++. ClickHouse, DuckDB, Apache DataFusion, Apache Spark, and Ray can query Vortex files, and Pandas, Polars, and PyArrow can read them through the Python library."
       ],
       links: [
         { href: `${DOCS}/getting-started/`, label: "The quickstart" },
